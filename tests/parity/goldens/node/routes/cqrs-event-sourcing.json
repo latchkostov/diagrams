@@ -1,18 +1,18 @@
 {
   "smoothstep": {
-    "app-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 376, 420, 376], "path": "b74841f1c78b", "label": [334, 376, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gateway-to-command-handler": { "ok": true, "sides": ["right", "left"], "points": [640, 369, 707, 369, 707, 196, 800, 196], "path": "93b75ab2621a", "label": [707, 282.5, 107, 19], "mode": "full", "text": "POST · commands", "lines": ["POST · commands"] },
-    "gateway-to-query-api": { "ok": true, "sides": ["right", "left"], "points": [640, 383, 707, 383, 707, 556, 800, 556], "path": "df03647e8bd1", "label": [707, 469.5, 95, 19], "mode": "full", "text": "GET · queries", "lines": ["GET · queries"] },
-    "command-handler-to-event-store": { "ok": true, "sides": ["right", "left"], "points": [1022, 196, 1180, 196], "path": "7606e1cffefb", "label": [1095, 196, 107, 32], "mode": "wrap", "text": "Append · expectedVersion", "lines": ["Append ·", "expectedVersion"] },
-    "event-store-to-publisher": { "ok": true, "sides": ["right", "left"], "points": [1400, 182, 1544, 182, 1544, 196, 1560, 196], "path": "a85ddc8bd612", "label": [1473, 182, 89, 19], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
-    "publisher-to-integration-topic": { "ok": true, "sides": ["right", "left"], "points": [1780, 196, 1940, 196], "path": "296a7f9de67c", "label": [1854, 196, 125, 19], "mode": "full", "text": "Integration events", "lines": ["Integration events"] },
+    "app-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 376, 420, 376], "path": "b74841f1c78b", "label": [334, 376, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gateway-to-command-handler": { "ok": true, "sides": ["right", "left"], "points": [640, 369, 707, 369, 707, 196, 800, 196], "path": "93b75ab2621a", "label": [707, 282.5, 121.35, 22], "mode": "full", "text": "POST · commands", "lines": ["POST · commands"] },
+    "gateway-to-query-api": { "ok": true, "sides": ["right", "left"], "points": [640, 383, 707, 383, 707, 556, 800, 556], "path": "df03647e8bd1", "label": [707, 469.5, 91.17999999999999, 22], "mode": "full", "text": "GET · queries", "lines": ["GET · queries"] },
+    "command-handler-to-event-store": { "ok": true, "sides": ["right", "left"], "points": [1022, 196, 1180, 196], "path": "7606e1cffefb", "label": [1095, 196, 109.35999999999999, 38], "mode": "wrap", "text": "Append · expectedVersion", "lines": ["Append ·", "expectedVersion"] },
+    "event-store-to-publisher": { "ok": true, "sides": ["right", "left"], "points": [1400, 182, 1544, 182, 1544, 196, 1560, 196], "path": "a85ddc8bd612", "label": [1473, 182, 86.43999999999998, 22], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
+    "publisher-to-integration-topic": { "ok": true, "sides": ["right", "left"], "points": [1780, 196, 1940, 196], "path": "296a7f9de67c", "label": [1854, 196, 116.13, 22], "mode": "full", "text": "Integration events", "lines": ["Integration events"] },
     "event-store-to-balance-proj": { "ok": true, "sides": ["right", "left"], "points": [1400, 196, 1492.75, 196, 1492.75, 429, 1560, 429], "path": "562c2854bfa5" },
     "event-store-to-statement-proj": { "ok": true, "sides": ["right", "left"], "points": [1400, 210, 1481.75, 210, 1481.75, 669, 1560, 669], "path": "99807b252778" },
-    "balance-proj-to-balances-db": { "ok": true, "sides": ["left", "right"], "points": [1560, 443, 1442.5, 443, 1442.5, 436, 1421, 436], "path": "f049b235e6e4", "label": [1500.25, 443, 101, 19], "mode": "full", "text": "Upsert balance", "lines": ["Upsert balance"] },
-    "statement-proj-to-statements": { "ok": true, "sides": ["left", "right"], "points": [1560, 683, 1431.5, 683, 1431.5, 676, 1408, 676], "path": "e8ed1b64dc69", "label": [1494.75, 683, 83, 19], "mode": "full", "text": "Index entry", "lines": ["Index entry"] },
-    "query-api-to-balances-db": { "ok": true, "sides": ["right", "left"], "points": [1020, 549, 1100, 549, 1100, 436, 1180, 436], "path": "90612634cefe", "label": [1100, 492.5, 77, 19], "mode": "full", "text": "GetBalance", "lines": ["GetBalance"] },
-    "query-api-to-statements": { "ok": true, "sides": ["right", "left"], "points": [1020, 563, 1100, 563, 1100, 676, 1180, 676], "path": "056d43ccf189", "label": [1100, 619.5, 89, 19], "mode": "full", "text": "GetStatement", "lines": ["GetStatement"] },
-    "integration-topic-to-fraud": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 160, 2050, 136, 2066.5, 136, 2066.5, 112], "path": "d3b18e091d99", "label": [2050, 146, 89, 19], "mode": "full", "text": "group: fraud", "lines": ["group: fraud"] }
+    "balance-proj-to-balances-db": { "ok": true, "sides": ["left", "right"], "points": [1560, 443, 1442.5, 443, 1442.5, 436, 1421, 436], "path": "f049b235e6e4", "label": [1500.25, 443, 99.99999999999999, 22], "mode": "full", "text": "Upsert balance", "lines": ["Upsert balance"] },
+    "statement-proj-to-statements": { "ok": true, "sides": ["left", "right"], "points": [1560, 683, 1431.5, 683, 1431.5, 676, 1408, 676], "path": "e8ed1b64dc69", "label": [1494.75, 683, 78.14999999999999, 22], "mode": "full", "text": "Index entry", "lines": ["Index entry"] },
+    "query-api-to-balances-db": { "ok": true, "sides": ["right", "left"], "points": [1020, 549, 1100, 549, 1100, 436, 1180, 436], "path": "90612634cefe", "label": [1100, 492.5, 81.58, 22], "mode": "full", "text": "GetBalance", "lines": ["GetBalance"] },
+    "query-api-to-statements": { "ok": true, "sides": ["right", "left"], "points": [1020, 563, 1100, 563, 1100, 676, 1180, 676], "path": "056d43ccf189", "label": [1100, 619.5, 94.91, 22], "mode": "full", "text": "GetStatement", "lines": ["GetStatement"] },
+    "integration-topic-to-fraud": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 160, 2050, 136, 2066.5, 136, 2066.5, 112], "path": "d3b18e091d99", "label": [2058.25, 136, 83.57, 22], "mode": "full", "text": "group: fraud", "lines": ["group: fraud"] }
   },
   "bezier": {
     "app-to-gateway": {
@@ -63,7 +63,7 @@
         376
       ],
       "path": "1bfba737f375",
-      "label": [336.51480000000004, 376.00000000000006, 47, 19],
+      "label": [336.51480000000004, 376.00000000000006, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -116,7 +116,7 @@
         196
       ],
       "path": "e7624c14d938",
-      "label": [722.3056909795846, 276.034125, 107, 19],
+      "label": [722.3056909795846, 276.034125, 121.35, 22],
       "mode": "full",
       "text": "POST · commands",
       "lines": ["POST · commands"]
@@ -169,7 +169,7 @@
         556
       ],
       "path": "d03d47a3311f",
-      "label": [722.3056909795846, 475.965875, 95, 19],
+      "label": [722.3056909795846, 475.965875, 91.17999999999999, 22],
       "mode": "full",
       "text": "GET · queries",
       "lines": ["GET · queries"]
@@ -222,7 +222,7 @@
         196
       ],
       "path": "129ef82c9ea3",
-      "label": [1097.558365, 196, 107, 32],
+      "label": [1097.558365, 196, 109.35999999999999, 38],
       "mode": "wrap",
       "text": "Append · expectedVersion",
       "lines": ["Append ·", "expectedVersion"]
@@ -275,7 +275,7 @@
         196
       ],
       "path": "d9bd887279a7",
-      "label": [1476.524332195821, 188.47675, 89, 19],
+      "label": [1476.524332195821, 188.47675, 86.43999999999998, 22],
       "mode": "full",
       "text": "Subscription",
       "lines": ["Subscription"]
@@ -328,7 +328,7 @@
         196
       ],
       "path": "b0d2c28a877d",
-      "label": [1856.5148000000002, 196, 125, 19],
+      "label": [1856.5148000000002, 196, 116.13, 22],
       "mode": "full",
       "text": "Integration events",
       "lines": ["Integration events"]
@@ -479,10 +479,10 @@
         436
       ],
       "path": "39d467a95bee",
-      "label": [1512.0569468835201, 441.25787499999996, 59, 32],
-      "mode": "wrap",
+      "label": [1487.4749790780484, 439.238375, 99.99999999999999, 22],
+      "mode": "full",
       "text": "Upsert balance",
-      "lines": ["Upsert", "balance"]
+      "lines": ["Upsert balance"]
     },
     "statement-proj-to-statements": {
       "ok": true,
@@ -532,7 +532,7 @@
         676
       ],
       "path": "8cd4541d1813",
-      "label": [1480.6915719336528, 679.238375, 83, 19],
+      "label": [1480.6915719336528, 679.238375, 78.14999999999999, 22],
       "mode": "full",
       "text": "Index entry",
       "lines": ["Index entry"]
@@ -585,7 +585,7 @@
         436
       ],
       "path": "86489a037dd7",
-      "label": [1097.0742599189095, 496.72337500000003, 77, 19],
+      "label": [1097.0742599189095, 496.72337500000003, 81.58, 22],
       "mode": "full",
       "text": "GetBalance",
       "lines": ["GetBalance"]
@@ -638,7 +638,7 @@
         676
       ],
       "path": "29ac824ee212",
-      "label": [1102.9257400810907, 623.723375, 89, 19],
+      "label": [1102.9257400810907, 623.723375, 94.91, 22],
       "mode": "full",
       "text": "GetStatement",
       "lines": ["GetStatement"]
@@ -691,25 +691,25 @@
         112
       ],
       "path": "80abcf3e4063",
-      "label": [2063.4289375, 130.5325, 89, 19],
+      "label": [2063.4289375, 130.5325, 83.57, 22],
       "mode": "full",
       "text": "group: fraud",
       "lines": ["group: fraud"]
     }
   },
   "straight": {
-    "app-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 376, 420, 376], "path": "b74841f1c78b", "label": [334, 376, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gateway-to-command-handler": { "ok": true, "sides": ["right", "left"], "points": [640, 369, 800, 196], "path": "46a406bf795f", "label": [715.926091159772, 286.9049139334966, 107, 19], "mode": "full", "text": "POST · commands", "lines": ["POST · commands"] },
-    "gateway-to-query-api": { "ok": true, "sides": ["right", "left"], "points": [640, 383, 800, 556], "path": "63debd48e204", "label": [715.926091159772, 465.0950860665034, 95, 19], "mode": "full", "text": "GET · queries", "lines": ["GET · queries"] },
-    "command-handler-to-event-store": { "ok": true, "sides": ["right", "left"], "points": [1022, 196, 1180, 196], "path": "7606e1cffefb", "label": [1095, 196, 107, 32], "mode": "wrap", "text": "Append · expectedVersion", "lines": ["Append ·", "expectedVersion"] },
-    "event-store-to-publisher": { "ok": true, "sides": ["right", "left"], "points": [1400, 182, 1560, 196], "path": "ed71f841e855", "label": [1474.0228376950233, 188.47699829831453, 89, 19], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
-    "publisher-to-integration-topic": { "ok": true, "sides": ["right", "left"], "points": [1780, 196, 1940, 196], "path": "296a7f9de67c", "label": [1854, 196, 125, 19], "mode": "full", "text": "Integration events", "lines": ["Integration events"] },
+    "app-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 376, 420, 376], "path": "b74841f1c78b", "label": [334, 376, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gateway-to-command-handler": { "ok": true, "sides": ["right", "left"], "points": [640, 369, 800, 196], "path": "46a406bf795f", "label": [715.926091159772, 286.9049139334966, 121.35, 22], "mode": "full", "text": "POST · commands", "lines": ["POST · commands"] },
+    "gateway-to-query-api": { "ok": true, "sides": ["right", "left"], "points": [640, 383, 800, 556], "path": "63debd48e204", "label": [715.926091159772, 465.0950860665034, 91.17999999999999, 22], "mode": "full", "text": "GET · queries", "lines": ["GET · queries"] },
+    "command-handler-to-event-store": { "ok": true, "sides": ["right", "left"], "points": [1022, 196, 1180, 196], "path": "7606e1cffefb", "label": [1095, 196, 109.35999999999999, 38], "mode": "wrap", "text": "Append · expectedVersion", "lines": ["Append ·", "expectedVersion"] },
+    "event-store-to-publisher": { "ok": true, "sides": ["right", "left"], "points": [1400, 182, 1560, 196], "path": "ed71f841e855", "label": [1474.0228376950233, 188.47699829831453, 86.43999999999998, 22], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
+    "publisher-to-integration-topic": { "ok": true, "sides": ["right", "left"], "points": [1780, 196, 1940, 196], "path": "296a7f9de67c", "label": [1854, 196, 116.13, 22], "mode": "full", "text": "Integration events", "lines": ["Integration events"] },
     "event-store-to-balance-proj": { "ok": true, "sides": ["right", "left"], "points": [1400, 196, 1560, 429], "path": "c7994d4e62eb" },
     "event-store-to-statement-proj": { "ok": true, "sides": ["right", "left"], "points": [1400, 210, 1560, 669], "path": "06bcc41bd3a4" },
-    "balance-proj-to-balances-db": { "ok": true, "sides": ["left", "right"], "points": [1560, 443, 1421, 436], "path": "b9a19af0735b", "label": [1516.4670932698657, 440.8076953445256, 59, 32], "mode": "wrap", "text": "Upsert balance", "lines": ["Upsert", "balance"] },
-    "statement-proj-to-statements": { "ok": true, "sides": ["left", "right"], "points": [1560, 683, 1408, 676], "path": "ec0ed1a48f2c", "label": [1489.9936475679822, 679.7760232432623, 83, 19], "mode": "full", "text": "Index entry", "lines": ["Index entry"] },
-    "query-api-to-balances-db": { "ok": true, "sides": ["right", "left"], "points": [1020, 549, 1180, 436], "path": "c16b0d05f26f", "label": [1095.099041863685, 495.96130168377255, 77, 19], "mode": "full", "text": "GetBalance", "lines": ["GetBalance"] },
-    "query-api-to-statements": { "ok": true, "sides": ["right", "left"], "points": [1020, 563, 1180, 676], "path": "c17168b7ef45", "label": [1095.099041863685, 616.0386983162274, 89, 19], "mode": "full", "text": "GetStatement", "lines": ["GetStatement"] },
-    "integration-topic-to-fraud": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 160, 2066.5, 112], "path": "38068dc6dc70", "label": [2057.0703988425553, 139.43156700347566, 89, 19], "mode": "full", "text": "group: fraud", "lines": ["group: fraud"] }
+    "balance-proj-to-balances-db": { "ok": true, "sides": ["left", "right"], "points": [1560, 443, 1421, 436], "path": "b9a19af0735b", "label": [1496.4924061391998, 439.80177584873667, 99.99999999999999, 22], "mode": "full", "text": "Upsert balance", "lines": ["Upsert balance"] },
+    "statement-proj-to-statements": { "ok": true, "sides": ["left", "right"], "points": [1560, 683, 1408, 676], "path": "ec0ed1a48f2c", "label": [1489.9936475679822, 679.7760232432623, 78.14999999999999, 22], "mode": "full", "text": "Index entry", "lines": ["Index entry"] },
+    "query-api-to-balances-db": { "ok": true, "sides": ["right", "left"], "points": [1020, 549, 1180, 436], "path": "c16b0d05f26f", "label": [1095.099041863685, 495.96130168377255, 81.58, 22], "mode": "full", "text": "GetBalance", "lines": ["GetBalance"] },
+    "query-api-to-statements": { "ok": true, "sides": ["right", "left"], "points": [1020, 563, 1180, 676], "path": "c17168b7ef45", "label": [1095.099041863685, 616.0386983162274, 94.91, 22], "mode": "full", "text": "GetStatement", "lines": ["GetStatement"] },
+    "integration-topic-to-fraud": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 160, 2066.5, 112], "path": "38068dc6dc70", "label": [2057.0703988425553, 139.43156700347566, 83.57, 22], "mode": "full", "text": "group: fraud", "lines": ["group: fraud"] }
   }
 }

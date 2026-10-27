@@ -1,3 +1,6 @@
+import { openDiagramProperties } from "./fixtures";
+import { toggleTheme, expectTheme, setTheme, openAnnotate } from "./fixtures";
+import { openLibrary } from "./fixtures";
 import {
   waitForHistoryIdle,
   waitForCameraIdle,
@@ -429,6 +432,7 @@ test.describe("annotations", () => {
         await annotation(page, "shape").click();
         await waitForSelectionSettled(page);
         for (const side of ["left", "right"] as const) {
+          await waitForCameraIdle(page);
           const handle = page.getByTestId(`handle-shape-${side}`);
           await expect(handle).toBeVisible();
           // Selection and camera readiness do not mean the lazy attachment
@@ -704,9 +708,8 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("shape-outline")).toHaveCount(58);
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      if (theme === "light") await setTheme(page, theme);
+      await expectTheme(page, theme);
       await expect
         .poll(async () => {
           const contrasts = await page.getByTestId(/^annotation-solid-/).evaluateAll((els) => {
@@ -738,7 +741,7 @@ test.describe("annotations", () => {
           return contrasts.filter((c) => c.ratio < 4.5);
         })
         .toEqual([]);
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
   for (const control of ["top-left", "line-left"] as const) {
@@ -819,10 +822,11 @@ test.describe("annotations", () => {
     });
     await gotoCanvas(page, SLUG);
     await page.getByTestId("live-toggle").click();
+    await waitForLiveSession(page);
+    await waitForCameraIdle(page);
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      if (theme === "light") await setTheme(page, theme);
+      await expectTheme(page, theme);
       // Measured once the live view and theme transitions (opacity, colours) have settled.
       const measure = () =>
         page.getByTestId("canvas-wrap").evaluate((wrap) => {
@@ -859,7 +863,7 @@ test.describe("annotations", () => {
           return contrasts.filter((c) => c.ratio < 4.5).map((c) => `${theme}: ${c.id} at ${c.ratio.toFixed(2)}:1`);
         })
         .toEqual([]);
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
   test("keyboard commits restore canvas focus for F2, movement and Delete; blur keeps the next control focused", async ({
@@ -867,6 +871,7 @@ test.describe("annotations", () => {
     consoleErrors,
   }) => {
     await gotoCanvas(page, SLUG);
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "Keyboard note");
     const focused = () => annotation(page, "note-1").evaluate((el) => el.parentElement === document.activeElement);
@@ -899,6 +904,7 @@ test.describe("annotations", () => {
   }) => {
     await gotoCanvas(page, SLUG);
     await settle(page);
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
     await page.keyboard.insertText("x\n".repeat(1300));
@@ -1007,7 +1013,9 @@ test.describe("annotations", () => {
 
   test("adds from the stencil rail's Annotate group and edits in the inspector", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
+    await openAnnotate(page);
     await expect(page.getByTestId("palette-annotate")).toBeAttached();
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "From the rail");
     await expect(page.getByTestId("annotation-text-note-1")).toHaveText("From the rail");
@@ -1022,14 +1030,19 @@ test.describe("annotations", () => {
     await expect.poll(async () => (await box(annotation(page, "note-1"))).width / before).toBeGreaterThan(1.5);
 
     // One Shape tile: a rectangle, whose outline the inspector changes.
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-shape").click();
     await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "rect");
     await page.getByTestId("inspector-shape-diamond").click();
     await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "diamond");
     // The search finds the Annotate items too, each outline by name.
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("sticky");
+    await openAnnotate(page);
     await expect(page.getByTestId("palette-annotate-note")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("ellipse");
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-shape-ellipse").click();
     await expect(annotation(page, "shape-2")).toHaveAttribute("data-shape", "ellipse");
     expectNoErrors(consoleErrors);
@@ -1042,6 +1055,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await settle(page);
     for (const kind of ["note", "shape", "note", "text"] as const) {
+      await openAnnotate(page);
       await page.getByTestId(`palette-annotate-${kind}`).click();
       if (kind !== "shape") await page.keyboard.press("Escape");
     }
@@ -1069,6 +1083,7 @@ test.describe("annotations", () => {
   test("T adds text at the pointer; double-click edits it, multi-line", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
+    await waitForCameraIdle(page);
     const wrap = await box(page.getByTestId("canvas-wrap"));
     // Left of centre, but clear of the diagram card (top left, 380 px wide) at any canvas width.
     const spot = await emptySpot(page, -150);
@@ -1077,6 +1092,7 @@ test.describe("annotations", () => {
     await typeAndCommit(page, "Order flow");
     const text = annotation(page, "text-1");
     await expect(page.getByTestId("annotation-text-text-1")).toHaveText("Order flow");
+    await waitForCameraIdle(page);
     // It starts where the pointer was.
     const b = await box(text);
     expect(Math.abs(b.x - (wrap.x + spot.x))).toBeLessThan(40);
@@ -1098,6 +1114,7 @@ test.describe("annotations", () => {
 
   test("resize, undo / redo, copy / paste and delete", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "Resize me");
     // Let the new note settle into its own undo step (history commits after a quiet moment).
@@ -1304,6 +1321,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
 
     // 1. Diagram description renders rich markdown on the diagram card
+    await openDiagramProperties(page);
     const desc = page.getByTestId("diagram-description");
     await expect(desc).toBeVisible();
     await expect(desc.locator("strong")).toHaveText("orders");
@@ -1338,7 +1356,7 @@ test.describe("annotations", () => {
 
     // 5. Inspector MarkdownEditor shows Preview first when populated, switches to Edit on click, and supports Ctrl/Cmd+K
     await page.getByTestId("canvas-wrap").click({ position: await emptySpot(page) });
-    await page.getByTestId("inspector-toggle").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("inspector-field-description-rendered")).toBeVisible();
     const descField = page.getByTestId("inspector-field-description");
     await page.getByTestId("inspector-field-description-rendered").click();
@@ -1486,6 +1504,7 @@ for (const enter of ["Enter", "Shift+Enter"]) {
 }
 
 test("annotation typing and selection survive a delayed formatting chunk", async ({ page, consoleErrors }) => {
+  await page.setViewportSize({ width: 2800, height: 1200 });
   let release = () => {};
   const gate = new Promise<void>((resolve) => (release = resolve));
   let intercepted = false;

@@ -1,48 +1,48 @@
 {
   "smoothstep": {
-    "depot-chargers--depot-switch": { "ok": true, "sides": ["right", "left"], "points": [222, 236, 420, 236], "path": "be86aa12e69d", "label": [315, 236, 41, 19], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
+    "depot-chargers--depot-switch": { "ok": true, "sides": ["right", "left"], "points": [222, 236, 420, 236], "path": "be86aa12e69d", "label": [315, 236, 49.690000000000005, 22], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
     "depot-switch--depot-fw": { "ok": true, "sides": ["right", "left"], "points": [640, 243, 840, 243], "path": "e8ac5a440ad3" },
-    "depot-fw--depot-router": { "ok": true, "sides": ["right", "left"], "points": [1066, 229, 1260, 229], "path": "c3960e9674dc", "label": [1157, 229, 107, 19], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
-    "depot-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 236, 1691.5, 236, 1691.5, 222, 1940, 222], "path": "07f4f14d887c", "label": [1808.75, 222, 35, 19], "mode": "full", "text": "TLS", "lines": ["TLS"] },
-    "vendor--depot-router": { "ok": true, "sides": ["bottom", "top"], "points": [1370, 12, 1370, 200], "path": "2f2c3869c85e", "label": [1370, 100, 89, 19], "mode": "full", "text": "Remote shell", "lines": ["Remote shell"] },
+    "depot-fw--depot-router": { "ok": true, "sides": ["right", "left"], "points": [1066, 229, 1260, 229], "path": "c3960e9674dc", "label": [1157, 229, 104.89999999999999, 22], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
+    "depot-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 236, 1691.5, 236, 1691.5, 222, 1940, 222], "path": "07f4f14d887c", "label": [1808.75, 222, 37.69, 22], "mode": "full", "text": "TLS", "lines": ["TLS"] },
+    "vendor--depot-router": { "ok": true, "sides": ["bottom", "top"], "points": [1370, 12, 1370, 200], "path": "2f2c3869c85e", "label": [1370, 100, 87.72999999999999, 22], "mode": "full", "text": "Remote shell", "lines": ["Remote shell"] },
     "router-in": { "ok": true, "sides": ["left", "right"], "points": [1260, 243, 1066, 243], "path": "8c098160e1f2" },
-    "deny-vendor-shell": { "ok": true, "sides": ["left", "right"], "points": [840, 229, 640, 229], "path": "b4fee7d6af57", "label": [746, 229, 125, 19], "mode": "full", "text": "Deny: vendor shell", "lines": ["Deny: vendor shell"] },
-    "street--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 816, 1702.5, 816, 1702.5, 250, 1940, 250], "path": "989de805664a", "label": [1702.5, 573, 35, 19], "mode": "full", "text": "TLS", "lines": ["TLS"] },
-    "depot2-chargers--depot2-switch": { "ok": true, "sides": ["right", "left"], "points": [220, 556, 420, 556], "path": "104e2b1b0858", "label": [314, 556, 41, 19], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
+    "deny-vendor-shell": { "ok": true, "sides": ["left", "right"], "points": [840, 229, 640, 229], "path": "b4fee7d6af57", "label": [746, 229, 115.67999999999999, 22], "mode": "full", "text": "Deny: vendor shell", "lines": ["Deny: vendor shell"] },
+    "street--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 816, 1702.5, 816, 1702.5, 250, 1940, 250], "path": "989de805664a", "label": [1702.5, 573, 37.69, 22], "mode": "full", "text": "TLS", "lines": ["TLS"] },
+    "depot2-chargers--depot2-switch": { "ok": true, "sides": ["right", "left"], "points": [220, 556, 420, 556], "path": "104e2b1b0858", "label": [314, 556, 49.690000000000005, 22], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
     "depot2-switch--depot2-fw": { "ok": true, "sides": ["right", "left"], "points": [640, 556, 840, 556], "path": "22aa8a7b99fd" },
-    "depot2-fw--depot2-router": { "ok": true, "sides": ["right", "left"], "points": [1060, 556, 1260, 556], "path": "a87c96de1ca0", "label": [1154, 556, 107, 19], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
-    "depot2-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 556, 1691.5, 556, 1691.5, 236, 1940, 236], "path": "142a7c60709e", "label": [1848.75, 236, 35, 19], "mode": "full", "text": "TLS", "lines": ["TLS"] },
-    "ocpp--registry": { "ok": true, "sides": ["bottom", "top"], "points": [2471, 272, 2471, 306, 2470, 306, 2470, 340], "path": "6f37f4267ea0", "label": [2471, 290, 129, 19], "mode": "full", "text": "Charger identity", "lines": ["Charger identity"], "glyph": true },
+    "depot2-fw--depot2-router": { "ok": true, "sides": ["right", "left"], "points": [1060, 556, 1260, 556], "path": "a87c96de1ca0", "label": [1154, 556, 104.89999999999999, 22], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
+    "depot2-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 556, 1691.5, 556, 1691.5, 236, 1940, 236], "path": "142a7c60709e", "label": [1848.75, 236, 37.69, 22], "mode": "full", "text": "TLS", "lines": ["TLS"] },
+    "ocpp--registry": { "ok": true, "sides": ["bottom", "top"], "points": [2471, 272, 2471, 306, 2470, 306, 2470, 340], "path": "6f37f4267ea0", "label": [2471, 290, 121.52999999999999, 22], "mode": "full", "text": "Charger identity", "lines": ["Charger identity"], "glyph": true },
     "ingress--ocpp": { "ok": true, "sides": ["right", "left"], "points": [2160, 222, 2265.5, 222, 2265.5, 236, 2360, 236], "path": "8bb90363db76" },
-    "ocpp--events": { "ok": true, "sides": ["right", "left"], "points": [2582, 229, 2668, 229, 2668, 236, 2780, 236], "path": "32656c601919", "label": [2717, 236, 59, 32], "mode": "wrap", "text": "Charger events", "lines": ["Charger", "events"] },
+    "ocpp--events": { "ok": true, "sides": ["right", "left"], "points": [2582, 229, 2668, 229, 2668, 236, 2780, 236], "path": "32656c601919", "label": [2717, 236, 61.8, 38], "mode": "wrap", "text": "Charger events", "lines": ["Charger", "events"] },
     "events--state": { "ok": true, "sides": ["right", "left"], "points": [3027, 222, 3130.5, 222, 3130.5, 96, 3260, 96], "path": "804f59a20d76" },
     "events--faults": { "ok": true, "sides": ["right", "left"], "points": [3027, 236, 3260, 236], "path": "569a21a47b2b" },
     "events--metering": { "ok": true, "sides": ["bottom", "top"], "points": [2903.5, 272, 2903.5, 666, 2603.5, 666, 2603.5, 891.5, 2470, 891.5, 2470, 920], "path": "f1dd52c04ad4" },
-    "events--raw": { "ok": true, "sides": ["right", "left"], "points": [3027, 250, 3136, 250, 3136, 536, 3260, 536], "path": "4cea8bf4a646", "label": [3136, 393, 59, 19], "mode": "full", "text": "Capture", "lines": ["Capture"] },
-    "state--state-db": { "ok": true, "sides": ["right", "left"], "points": [3480, 96, 3680, 96], "path": "0641bf6b6518", "label": [3574, 96, 65, 19], "mode": "full", "text": "Reported", "lines": ["Reported"] },
-    "faults--alerts": { "ok": true, "sides": ["right", "left"], "points": [3480, 236, 3680, 236], "path": "0677742f5c63", "label": [3574, 236, 47, 19], "mode": "full", "text": "Fault", "lines": ["Fault"] },
+    "events--raw": { "ok": true, "sides": ["right", "left"], "points": [3027, 250, 3136, 250, 3136, 536, 3260, 536], "path": "4cea8bf4a646", "label": [3136, 393, 61.879999999999995, 22], "mode": "full", "text": "Capture", "lines": ["Capture"] },
+    "state--state-db": { "ok": true, "sides": ["right", "left"], "points": [3480, 96, 3680, 96], "path": "0641bf6b6518", "label": [3574, 96, 67.47999999999999, 22], "mode": "full", "text": "Reported", "lines": ["Reported"] },
+    "faults--alerts": { "ok": true, "sides": ["right", "left"], "points": [3480, 236, 3680, 236], "path": "0677742f5c63", "label": [3574, 236, 45.230000000000004, 22], "mode": "full", "text": "Fault", "lines": ["Fault"] },
     "alerts--oncall": { "ok": true, "sides": ["right", "left"], "points": [3900, 236, 4100, 236], "path": "3c1dc422a492" },
-    "oncall--tech-email": { "ok": true, "sides": ["right", "left"], "points": [4320, 236, 4620, 236], "path": "2c8cf881de43", "label": [4464, 236, 53, 19], "mode": "full", "text": "Ticket", "lines": ["Ticket"] },
-    "dashboard--state-db": { "ok": true, "sides": ["left", "right"], "points": [4100, 96, 3900, 96], "path": "3392d324dabb", "label": [4006, 96, 111, 19], "mode": "full", "text": "Queries twins", "lines": ["Queries twins"], "glyph": true },
-    "drivers--apim": { "ok": true, "sides": ["right", "left"], "points": [1480, 1036, 1702.5, 1036, 1702.5, 816, 1940, 816], "path": "f209c41ba779", "label": [1814.25, 816, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "oncall--tech-email": { "ok": true, "sides": ["right", "left"], "points": [4320, 236, 4620, 236], "path": "2c8cf881de43", "label": [4464, 236, 50.669999999999995, 22], "mode": "full", "text": "Ticket", "lines": ["Ticket"] },
+    "dashboard--state-db": { "ok": true, "sides": ["left", "right"], "points": [4100, 96, 3900, 96], "path": "3392d324dabb", "label": [4006, 96, 106.91, 22], "mode": "full", "text": "Queries twins", "lines": ["Queries twins"], "glyph": true },
+    "drivers--apim": { "ok": true, "sides": ["right", "left"], "points": [1480, 1036, 1702.5, 1036, 1702.5, 816, 1940, 816], "path": "f209c41ba779", "label": [1814.25, 816, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
     "apim--sessions-api": { "ok": true, "sides": ["right", "left"], "points": [2160, 816, 2360, 816], "path": "90953bbea2a2" },
-    "sessions-api--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 809, 2780, 809], "path": "23807b52ad38", "label": [2724, 809, 59, 19], "mode": "full", "text": "Session", "lines": ["Session"] },
-    "sessions-api--cmd-q": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 852, 2470, 880.5, 2674.166666666667, 880.5, 2674.166666666667, 1091.5, 2883, 1091.5, 2883, 1180], "path": "39bb5591f9d8", "label": [2542.0833333333335, 880.5, 83, 19], "mode": "full", "text": "RemoteStart", "lines": ["RemoteStart"] },
-    "metering--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 956, 2691.3333333333335, 956, 2691.3333333333335, 823, 2780, 823], "path": "250a21179909", "label": [2636.666666666667, 956, 35, 19], "mode": "full", "text": "kWh", "lines": ["kWh"] },
-    "sessions-db--billing": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 852, 2890, 920], "path": "efc2d04bbeb0", "label": [2890, 880, 101, 19], "mode": "full", "text": "Session closed", "lines": ["Session closed"] },
-    "billing--stripe": { "ok": true, "sides": ["right", "left"], "points": [3000, 949, 4260, 949, 4260, 816, 4620, 816], "path": "f22ce78d7dc0", "label": [3681, 949, 53, 19], "mode": "full", "text": "Charge", "lines": ["Charge"] },
-    "billing--roaming": { "ok": true, "sides": ["right", "left"], "points": [3000, 963, 4260, 963, 4260, 956, 4620, 956], "path": "975cc8950478", "label": [3631, 963, 35, 19], "mode": "full", "text": "CDR", "lines": ["CDR"] },
+    "sessions-api--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 809, 2780, 809], "path": "23807b52ad38", "label": [2724, 809, 59.45, 22], "mode": "full", "text": "Session", "lines": ["Session"] },
+    "sessions-api--cmd-q": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 852, 2470, 880.5, 2674.166666666667, 880.5, 2674.166666666667, 1091.5, 2883, 1091.5, 2883, 1180], "path": "39bb5591f9d8", "label": [2542.0833333333335, 880.5, 87.44, 22], "mode": "full", "text": "RemoteStart", "lines": ["RemoteStart"] },
+    "metering--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 956, 2691.3333333333335, 956, 2691.3333333333335, 823, 2780, 823], "path": "250a21179909", "label": [2626.666666666667, 956, 42.03, 22], "mode": "full", "text": "kWh", "lines": ["kWh"] },
+    "sessions-db--billing": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 852, 2890, 920], "path": "efc2d04bbeb0", "label": [2890, 880, 97.65, 22], "mode": "full", "text": "Session closed", "lines": ["Session closed"] },
+    "billing--stripe": { "ok": true, "sides": ["right", "left"], "points": [3000, 949, 4260, 949, 4260, 816, 4620, 816], "path": "f22ce78d7dc0", "label": [3691, 949, 57.39, 22], "mode": "full", "text": "Charge", "lines": ["Charge"] },
+    "billing--roaming": { "ok": true, "sides": ["right", "left"], "points": [3000, 963, 4260, 963, 4260, 956, 4620, 956], "path": "975cc8950478", "label": [3631, 963, 42.15, 22], "mode": "full", "text": "CDR", "lines": ["CDR"] },
     "cmd-q--commands": { "ok": true, "sides": ["top", "bottom"], "points": [2897, 1180, 2897, 1075.75, 2592.5, 1075.75, 2592.5, 666, 2471, 666, 2471, 552], "path": "1ba1c80cecd4" },
-    "cmd-q--cmd-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 1252, 2890, 1320], "path": "f41c3b659bbf", "label": [2890, 1280, 95, 19], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
-    "rollout--firmware": { "ok": true, "sides": ["right", "left"], "points": [2160, 1216, 2360, 1216], "path": "e709544c7242", "label": [2254, 1216, 41, 19], "mode": "full", "text": "Wave", "lines": ["Wave"] },
-    "firmware--images": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 1252, 2470, 1320], "path": "a2f6c2cf1238", "label": [2470, 1280, 47, 19], "mode": "full", "text": "Stage", "lines": ["Stage"] },
-    "firmware--cmd-q": { "ok": true, "sides": ["right", "left"], "points": [2580, 1209, 2680, 1209, 2680, 1216, 2780, 1216], "path": "a39fa4c0219a", "label": [2641, 1209, 101, 19], "mode": "full", "text": "UpdateFirmware", "lines": ["UpdateFirmware"] },
-    "cmd-dlq--firmware": { "ok": true, "sides": ["left", "right"], "points": [2780, 1356, 2680, 1356, 2680, 1223, 2580, 1223], "path": "4f6b401269e5", "label": [2680, 1289.5, 77, 19], "mode": "full", "text": "Retry wave", "lines": ["Retry wave"] },
-    "reports--report-job": { "ok": true, "sides": ["right", "left"], "points": [3480, 676, 3680, 676], "path": "ae95d6a171ca", "label": [3574, 676, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "report-job--lakehouse": { "ok": true, "sides": ["top", "bottom"], "points": [3790, 640, 3790, 572], "path": "1bccf5a7619a", "label": [3790, 612, 47, 19], "mode": "full", "text": "Query", "lines": ["Query"] },
-    "report-job--dso": { "ok": true, "sides": ["right", "left"], "points": [3900, 676, 4620, 676], "path": "b77928b9a979", "label": [4254, 676, 53, 19], "mode": "full", "text": "Upload", "lines": ["Upload"] },
-    "lakehouse--raw": { "ok": true, "sides": ["left", "right"], "points": [3680, 536, 3480, 536], "path": "07eab0f5ce2e", "label": [3586, 536, 63, 19], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
-    "ingress--kv": { "ok": true, "sides": ["right", "left"], "points": [2160, 250, 2251.75, 250, 2251.75, 1138, 3130.5, 1138, 3130.5, 1216, 3260, 1216], "path": "c84a28ee4374", "label": [2691.125, 1138, 93, 19], "mode": "full", "text": "Charger CA", "lines": ["Charger CA"], "glyph": true },
+    "cmd-q--cmd-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 1252, 2890, 1320], "path": "f41c3b659bbf", "label": [2890, 1280, 80.28, 22], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
+    "rollout--firmware": { "ok": true, "sides": ["right", "left"], "points": [2160, 1216, 2360, 1216], "path": "e709544c7242", "label": [2254, 1216, 48.07, 22], "mode": "full", "text": "Wave", "lines": ["Wave"] },
+    "firmware--images": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 1252, 2470, 1320], "path": "a2f6c2cf1238", "label": [2470, 1280, 49.05, 22], "mode": "full", "text": "Stage", "lines": ["Stage"] },
+    "firmware--cmd-q": { "ok": true, "sides": ["right", "left"], "points": [2580, 1209, 2680, 1209, 2680, 1216, 2780, 1216], "path": "a39fa4c0219a", "label": [2641, 1209, 109.01999999999998, 22], "mode": "full", "text": "UpdateFirmware", "lines": ["UpdateFirmware"] },
+    "cmd-dlq--firmware": { "ok": true, "sides": ["left", "right"], "points": [2780, 1356, 2680, 1356, 2680, 1223, 2580, 1223], "path": "4f6b401269e5", "label": [2680, 1289.5, 77.36, 22], "mode": "full", "text": "Retry wave", "lines": ["Retry wave"] },
+    "reports--report-job": { "ok": true, "sides": ["right", "left"], "points": [3480, 676, 3680, 676], "path": "ae95d6a171ca", "label": [3574, 676, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "report-job--lakehouse": { "ok": true, "sides": ["top", "bottom"], "points": [3790, 640, 3790, 572], "path": "1bccf5a7619a", "label": [3790, 612, 50.33, 22], "mode": "full", "text": "Query", "lines": ["Query"] },
+    "report-job--dso": { "ok": true, "sides": ["right", "left"], "points": [3900, 676, 4620, 676], "path": "b77928b9a979", "label": [4254, 676, 56.269999999999996, 22], "mode": "full", "text": "Upload", "lines": ["Upload"] },
+    "lakehouse--raw": { "ok": true, "sides": ["left", "right"], "points": [3680, 536, 3480, 536], "path": "07eab0f5ce2e", "label": [3586, 536, 67.55000000000001, 22], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
+    "ingress--kv": { "ok": true, "sides": ["right", "left"], "points": [2160, 250, 2251.75, 250, 2251.75, 1138, 3130.5, 1138, 3130.5, 1216, 3260, 1216], "path": "c84a28ee4374", "label": [2691.125, 1138, 97.16, 22], "mode": "full", "text": "Charger CA", "lines": ["Charger CA"], "glyph": true },
     "ocpp--mi": { "ok": true, "sides": ["right", "left"], "points": [2582, 243, 2657, 243, 2657, 1071, 3591, 1071, 3591, 1202, 3680, 1202], "path": "231b327a179a", "label": [3124, 1071, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "ingress--mi": { "ok": true, "sides": ["right", "left"], "points": [2160, 236, 2262.75, 236, 2262.75, 1086.75, 3580, 1086.75, 3580, 1216, 3680, 1216], "path": "96a7a53c1550", "label": [2921.375, 1086.75, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "commands--mi": { "ok": true, "sides": ["right", "left"], "points": [2582, 516, 3125, 516, 3125, 1038, 3569, 1038, 3569, 1230, 3680, 1230], "path": "f8906014153f", "label": [2854.5, 516, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
@@ -98,7 +98,7 @@
         236
       ],
       "path": "79877e047385",
-      "label": [261.418335, 236.00000000000003, 41, 19],
+      "label": [261.418335, 236.00000000000003, 49.690000000000005, 22],
       "mode": "full",
       "text": "OCPP",
       "lines": ["OCPP"]
@@ -200,7 +200,7 @@
         229
       ],
       "path": "decf4a81903d",
-      "label": [1158.7741950000002, 229, 107, 19],
+      "label": [1158.7741950000002, 229, 104.89999999999999, 22],
       "mode": "full",
       "text": "Allow: OCPP out",
       "lines": ["Allow: OCPP out"]
@@ -253,7 +253,7 @@
         222
       ],
       "path": "93f16a1f4c2c",
-      "label": [1521.3774478808054, 235.75325, 35, 19],
+      "label": [1521.3774478808054, 235.75325, 37.69, 22],
       "mode": "full",
       "text": "TLS",
       "lines": ["TLS"]
@@ -306,7 +306,7 @@
         200
       ],
       "path": "3855d3650557",
-      "label": [1370, 39.44095, 89, 19],
+      "label": [1370, 39.44095, 87.72999999999999, 22],
       "mode": "full",
       "text": "Remote shell",
       "lines": ["Remote shell"]
@@ -408,7 +408,7 @@
         229
       ],
       "path": "df6fcf362f9a",
-      "label": [735.6435, 229, 125, 19],
+      "label": [735.6435, 229, 115.67999999999999, 22],
       "mode": "full",
       "text": "Deny: vendor shell",
       "lines": ["Deny: vendor shell"]
@@ -461,7 +461,7 @@
         250
       ],
       "path": "715f991c4d25",
-      "label": [1700.9750000000001, 554.15425, 35, 19],
+      "label": [1700.9750000000001, 554.15425, 37.69, 22],
       "mode": "full",
       "text": "TLS",
       "lines": ["TLS"]
@@ -514,7 +514,7 @@
         556
       ],
       "path": "1051b8260790",
-      "label": [259.8165, 556, 41, 19],
+      "label": [259.8165, 556, 49.690000000000005, 22],
       "mode": "full",
       "text": "OCPP",
       "lines": ["OCPP"]
@@ -616,7 +616,7 @@
         556
       ],
       "path": "437f1d84fcc9",
-      "label": [1155.6435000000001, 556, 107, 19],
+      "label": [1155.6435000000001, 556, 104.89999999999999, 22],
       "mode": "full",
       "text": "Allow: OCPP out",
       "lines": ["Allow: OCPP out"]
@@ -669,7 +669,7 @@
         236
       ],
       "path": "7da8b77093a1",
-      "label": [1917.1983698615898, 237.6766967328403, 35, 19],
+      "label": [1700.9750000000004, 407.96000000000004, 37.69, 22],
       "mode": "full",
       "text": "TLS",
       "lines": ["TLS"]
@@ -722,7 +722,7 @@
         340
       ],
       "path": "eee01c23acd2",
-      "label": [2470.5373750000003, 304.795, 129, 19],
+      "label": [2470.5373750000003, 304.795, 121.52999999999999, 22],
       "mode": "full",
       "text": "Charger identity",
       "lines": ["Charger identity"],
@@ -825,7 +825,7 @@
         236
       ],
       "path": "eecec8afb30c",
-      "label": [2668.0282544222214, 231.72037500000002, 101, 19],
+      "label": [2668.0282544222214, 231.72037500000002, 100.63, 22],
       "mode": "full",
       "text": "Charger events",
       "lines": ["Charger events"]
@@ -1025,7 +1025,7 @@
         536
       ],
       "path": "d99d7c4293a4",
-      "label": [3140.5436515441656, 382.31075000000004, 59, 19],
+      "label": [3140.5436515441656, 382.31075000000004, 61.879999999999995, 22],
       "mode": "full",
       "text": "Capture",
       "lines": ["Capture"]
@@ -1078,7 +1078,7 @@
         96
       ],
       "path": "590f093980f8",
-      "label": [3519.816500000001, 96, 65, 19],
+      "label": [3519.816500000001, 96, 67.47999999999999, 22],
       "mode": "full",
       "text": "Reported",
       "lines": ["Reported"]
@@ -1131,7 +1131,7 @@
         236
       ],
       "path": "33ba6bd37468",
-      "label": [3519.816500000001, 236.00000000000003, 47, 19],
+      "label": [3519.816500000001, 236.00000000000003, 45.230000000000004, 22],
       "mode": "full",
       "text": "Fault",
       "lines": ["Fault"]
@@ -1233,7 +1233,7 @@
         236
       ],
       "path": "e1e85c242442",
-      "label": [4530.56775, 236, 53, 19],
+      "label": [4530.56775, 236, 50.669999999999995, 22],
       "mode": "full",
       "text": "Ticket",
       "lines": ["Ticket"]
@@ -1286,7 +1286,7 @@
         96
       ],
       "path": "2388505ea39a",
-      "label": [3995.6435, 96, 111, 19],
+      "label": [3995.6435, 96, 106.91, 22],
       "mode": "full",
       "text": "Queries twins",
       "lines": ["Queries twins"],
@@ -1340,7 +1340,7 @@
         816
       ],
       "path": "70c57a9e15d1",
-      "label": [1577.401881988263, 1017.8775, 47, 19],
+      "label": [1577.401881988263, 1017.8775, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -1442,7 +1442,7 @@
         809
       ],
       "path": "2a3e6aa500a9",
-      "label": [2740.1835, 809, 59, 19],
+      "label": [2675.6435, 809.0000000000001, 59.45, 22],
       "mode": "full",
       "text": "Session",
       "lines": ["Session"]
@@ -1495,7 +1495,7 @@
         1180
       ],
       "path": "cf7225307735",
-      "label": [2661.0641250000003, 1011.9085000000001, 83, 19],
+      "label": [2661.0641250000003, 1011.9085000000001, 87.44, 22],
       "mode": "full",
       "text": "RemoteStart",
       "lines": ["RemoteStart"]
@@ -1548,7 +1548,7 @@
         823
       ],
       "path": "2451bea96c91",
-      "label": [2676.2700899934457, 894.4708750000001, 35, 19],
+      "label": [2676.2700899934457, 894.4708750000001, 42.03, 22],
       "mode": "full",
       "text": "kWh",
       "lines": ["kWh"]
@@ -1601,7 +1601,7 @@
         920
       ],
       "path": "055e856d935f",
-      "label": [2890, 894.8549999999999, 101, 19],
+      "label": [2889.9999999999995, 897.4962499999999, 97.65, 22],
       "mode": "full",
       "text": "Session closed",
       "lines": ["Session closed"]
@@ -1654,7 +1654,7 @@
         816
       ],
       "path": "69fbd2f4f683",
-      "label": [3757.6200000000003, 887.4708750000001, 53, 19],
+      "label": [3757.6200000000003, 887.4708750000001, 57.39, 22],
       "mode": "full",
       "text": "Charge",
       "lines": ["Charge"]
@@ -1707,7 +1707,7 @@
         956
       ],
       "path": "96211fb8d8f6",
-      "label": [3862.3799999999997, 959.2383750000001, 35, 19],
+      "label": [3862.3799999999997, 959.2383750000001, 42.15, 22],
       "mode": "full",
       "text": "CDR",
       "lines": ["CDR"]
@@ -1809,7 +1809,7 @@
         1320
       ],
       "path": "dbf4bd9e6016",
-      "label": [2890.0000000000005, 1284.795, 95, 19],
+      "label": [2890.0000000000005, 1284.795, 80.28, 22],
       "mode": "full",
       "text": "After 5 tries",
       "lines": ["After 5 tries"]
@@ -1862,7 +1862,7 @@
         1216
       ],
       "path": "ac8b01e0a437",
-      "label": [2199.8165000000004, 1216.0000000000002, 41, 19],
+      "label": [2199.8165000000004, 1216.0000000000002, 48.07, 22],
       "mode": "full",
       "text": "Wave",
       "lines": ["Wave"]
@@ -1915,7 +1915,7 @@
         1320
       ],
       "path": "24a50d7c6889",
-      "label": [2470, 1284.795, 47, 19],
+      "label": [2470, 1284.795, 49.05, 22],
       "mode": "full",
       "text": "Stage",
       "lines": ["Stage"]
@@ -1968,7 +1968,7 @@
         1216
       ],
       "path": "bda3f3ca54dd",
-      "label": [2675.645409496646, 1212.2383750000001, 101, 19],
+      "label": [2675.645409496646, 1212.2383750000001, 109.01999999999998, 22],
       "mode": "full",
       "text": "UpdateFirmware",
       "lines": ["UpdateFirmware"]
@@ -2021,7 +2021,7 @@
         1223
       ],
       "path": "751f2a5633a1",
-      "label": [2676.2700899934453, 1284.529125, 77, 19],
+      "label": [2676.2700899934453, 1284.529125, 77.36, 22],
       "mode": "full",
       "text": "Retry wave",
       "lines": ["Retry wave"]
@@ -2074,7 +2074,7 @@
         676
       ],
       "path": "81ffeb8beba7",
-      "label": [3519.816500000001, 676, 35, 19],
+      "label": [3519.816500000001, 676, 39.12, 22],
       "mode": "full",
       "text": "Run",
       "lines": ["Run"]
@@ -2127,7 +2127,7 @@
         572
       ],
       "path": "dd0d6c11faa8",
-      "label": [3790, 604.7950000000001, 47, 19],
+      "label": [3790, 604.7950000000001, 50.33, 22],
       "mode": "full",
       "text": "Query",
       "lines": ["Query"]
@@ -2180,7 +2180,7 @@
         676
       ],
       "path": "deb27386dd8f",
-      "label": [4241.2575, 676, 53, 19],
+      "label": [4241.2575, 676, 56.269999999999996, 22],
       "mode": "full",
       "text": "Upload",
       "lines": ["Upload"]
@@ -2233,7 +2233,7 @@
         536
       ],
       "path": "715f1c0c8e7c",
-      "label": [3519.8165, 536, 63, 19],
+      "label": [3519.8165, 536, 67.55000000000001, 22],
       "mode": "full",
       "text": "Reads",
       "lines": ["Reads"],
@@ -2287,7 +2287,7 @@
         1216
       ],
       "path": "f293c02c242e",
-      "label": [2677.0550000000003, 696.89575, 93, 19],
+      "label": [2677.0550000000003, 696.89575, 97.16, 22],
       "mode": "full",
       "text": "Charger CA",
       "lines": ["Charger CA"],
@@ -2565,49 +2565,49 @@
     }
   },
   "straight": {
-    "depot-chargers--depot-switch": { "ok": true, "sides": ["right", "left"], "points": [222, 236, 420, 236], "path": "be86aa12e69d", "label": [315, 236, 41, 19], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
+    "depot-chargers--depot-switch": { "ok": true, "sides": ["right", "left"], "points": [222, 236, 420, 236], "path": "be86aa12e69d", "label": [315, 236, 49.690000000000005, 22], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
     "depot-switch--depot-fw": { "ok": true, "sides": ["right", "left"], "points": [640, 243, 840, 243], "path": "e8ac5a440ad3" },
-    "depot-fw--depot-router": { "ok": true, "sides": ["right", "left"], "points": [1066, 229, 1260, 229], "path": "c3960e9674dc", "label": [1157, 229, 107, 19], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
-    "depot-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 236, 1940, 222], "path": "59dacaf0465b", "label": [1704.002776898995, 229.18252418133494, 35, 19], "mode": "full", "text": "TLS", "lines": ["TLS"] },
-    "vendor--depot-router": { "ok": true, "sides": ["bottom", "top"], "points": [1370, 12, 1370, 200], "path": "2f2c3869c85e", "label": [1370, 100, 89, 19], "mode": "full", "text": "Remote shell", "lines": ["Remote shell"] },
+    "depot-fw--depot-router": { "ok": true, "sides": ["right", "left"], "points": [1066, 229, 1260, 229], "path": "c3960e9674dc", "label": [1157, 229, 104.89999999999999, 22], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
+    "depot-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 236, 1940, 222], "path": "59dacaf0465b", "label": [1704.002776898995, 229.18252418133494, 37.69, 22], "mode": "full", "text": "TLS", "lines": ["TLS"] },
+    "vendor--depot-router": { "ok": true, "sides": ["bottom", "top"], "points": [1370, 12, 1370, 200], "path": "2f2c3869c85e", "label": [1370, 100, 87.72999999999999, 22], "mode": "full", "text": "Remote shell", "lines": ["Remote shell"] },
     "router-in": { "ok": true, "sides": ["left", "right"], "points": [1260, 243, 1066, 243], "path": "8c098160e1f2" },
-    "deny-vendor-shell": { "ok": true, "sides": ["left", "right"], "points": [840, 229, 640, 229], "path": "b4fee7d6af57", "label": [746, 229, 125, 19], "mode": "full", "text": "Deny: vendor shell", "lines": ["Deny: vendor shell"] },
-    "street--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 816, 1940, 250], "path": "7b5d2b7f4ea0", "label": [1706.2158248782805, 537.6561806932461, 35, 19], "mode": "full", "text": "TLS", "lines": ["TLS"] },
-    "depot2-chargers--depot2-switch": { "ok": true, "sides": ["right", "left"], "points": [220, 556, 420, 556], "path": "104e2b1b0858", "label": [314, 556, 41, 19], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
+    "deny-vendor-shell": { "ok": true, "sides": ["left", "right"], "points": [840, 229, 640, 229], "path": "b4fee7d6af57", "label": [746, 229, 115.67999999999999, 22], "mode": "full", "text": "Deny: vendor shell", "lines": ["Deny: vendor shell"] },
+    "street--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 816, 1940, 250], "path": "7b5d2b7f4ea0", "label": [1706.2158248782805, 537.6561806932461, 37.69, 22], "mode": "full", "text": "TLS", "lines": ["TLS"] },
+    "depot2-chargers--depot2-switch": { "ok": true, "sides": ["right", "left"], "points": [220, 556, 420, 556], "path": "104e2b1b0858", "label": [314, 556, 49.690000000000005, 22], "mode": "full", "text": "OCPP", "lines": ["OCPP"] },
     "depot2-switch--depot2-fw": { "ok": true, "sides": ["right", "left"], "points": [640, 556, 840, 556], "path": "22aa8a7b99fd" },
-    "depot2-fw--depot2-router": { "ok": true, "sides": ["right", "left"], "points": [1060, 556, 1260, 556], "path": "a87c96de1ca0", "label": [1154, 556, 107, 19], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
-    "depot2-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 556, 1940, 236], "path": "75e357f92641", "label": [1705.074568789287, 399.4263869291916, 35, 19], "mode": "full", "text": "TLS", "lines": ["TLS"] },
-    "ocpp--registry": { "ok": true, "sides": ["bottom", "top"], "points": [2471, 272, 2470, 340], "path": "a98b32951f68", "label": [2470.5882257546514, 300.00064868371453, 129, 19], "mode": "full", "text": "Charger identity", "lines": ["Charger identity"], "glyph": true },
+    "depot2-fw--depot2-router": { "ok": true, "sides": ["right", "left"], "points": [1060, 556, 1260, 556], "path": "a87c96de1ca0", "label": [1154, 556, 104.89999999999999, 22], "mode": "full", "text": "Allow: OCPP out", "lines": ["Allow: OCPP out"] },
+    "depot2-router--ingress": { "ok": true, "sides": ["right", "left"], "points": [1480, 556, 1940, 236], "path": "75e357f92641", "label": [1705.074568789287, 399.4263869291916, 37.69, 22], "mode": "full", "text": "TLS", "lines": ["TLS"] },
+    "ocpp--registry": { "ok": true, "sides": ["bottom", "top"], "points": [2471, 272, 2470, 340], "path": "a98b32951f68", "label": [2470.5882257546514, 300.00064868371453, 121.52999999999999, 22], "mode": "full", "text": "Charger identity", "lines": ["Charger identity"], "glyph": true },
     "ingress--ocpp": { "ok": true, "sides": ["right", "left"], "points": [2160, 222, 2360, 236], "path": "1b370b3833ab" },
-    "ocpp--events": { "ok": true, "sides": ["right", "left"], "points": [2582, 229, 2780, 236], "path": "e91c6944d9fd", "label": [2675.003746106135, 232.2880112259745, 101, 19], "mode": "full", "text": "Charger events", "lines": ["Charger events"] },
+    "ocpp--events": { "ok": true, "sides": ["right", "left"], "points": [2582, 229, 2780, 236], "path": "e91c6944d9fd", "label": [2675.003746106135, 232.2880112259745, 100.63, 22], "mode": "full", "text": "Charger events", "lines": ["Charger events"] },
     "events--state": { "ok": true, "sides": ["right", "left"], "points": [3027, 222, 3260, 96], "path": "564f1f5a1f31" },
     "events--faults": { "ok": true, "sides": ["right", "left"], "points": [3027, 236, 3260, 236], "path": "569a21a47b2b" },
     "events--metering": { "ok": true, "sides": ["bottom", "top"], "points": [2903.5, 272, 2470, 920], "path": "1dacd388bfa8" },
-    "events--raw": { "ok": true, "sides": ["right", "left"], "points": [3027, 250, 3260, 536], "path": "a4a90445e3ab", "label": [3139.7103243382785, 388.34829511050475, 59, 19], "mode": "full", "text": "Capture", "lines": ["Capture"] },
-    "state--state-db": { "ok": true, "sides": ["right", "left"], "points": [3480, 96, 3680, 96], "path": "0641bf6b6518", "label": [3574, 96, 65, 19], "mode": "full", "text": "Reported", "lines": ["Reported"] },
-    "faults--alerts": { "ok": true, "sides": ["right", "left"], "points": [3480, 236, 3680, 236], "path": "0677742f5c63", "label": [3574, 236, 47, 19], "mode": "full", "text": "Fault", "lines": ["Fault"] },
+    "events--raw": { "ok": true, "sides": ["right", "left"], "points": [3027, 250, 3260, 536], "path": "a4a90445e3ab", "label": [3139.7103243382785, 388.34829511050475, 61.879999999999995, 22], "mode": "full", "text": "Capture", "lines": ["Capture"] },
+    "state--state-db": { "ok": true, "sides": ["right", "left"], "points": [3480, 96, 3680, 96], "path": "0641bf6b6518", "label": [3574, 96, 67.47999999999999, 22], "mode": "full", "text": "Reported", "lines": ["Reported"] },
+    "faults--alerts": { "ok": true, "sides": ["right", "left"], "points": [3480, 236, 3680, 236], "path": "0677742f5c63", "label": [3574, 236, 45.230000000000004, 22], "mode": "full", "text": "Fault", "lines": ["Fault"] },
     "alerts--oncall": { "ok": true, "sides": ["right", "left"], "points": [3900, 236, 4100, 236], "path": "3c1dc422a492" },
-    "oncall--tech-email": { "ok": true, "sides": ["right", "left"], "points": [4320, 236, 4620, 236], "path": "2c8cf881de43", "label": [4464, 236, 53, 19], "mode": "full", "text": "Ticket", "lines": ["Ticket"] },
-    "dashboard--state-db": { "ok": true, "sides": ["left", "right"], "points": [4100, 96, 3900, 96], "path": "3392d324dabb", "label": [4006, 96, 111, 19], "mode": "full", "text": "Queries twins", "lines": ["Queries twins"], "glyph": true },
-    "drivers--apim": { "ok": true, "sides": ["right", "left"], "points": [1480, 1036, 1940, 816], "path": "e8715a33afb1", "label": [1704.5871946701861, 928.588732983824, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "oncall--tech-email": { "ok": true, "sides": ["right", "left"], "points": [4320, 236, 4620, 236], "path": "2c8cf881de43", "label": [4464, 236, 50.669999999999995, 22], "mode": "full", "text": "Ticket", "lines": ["Ticket"] },
+    "dashboard--state-db": { "ok": true, "sides": ["left", "right"], "points": [4100, 96, 3900, 96], "path": "3392d324dabb", "label": [4006, 96, 106.91, 22], "mode": "full", "text": "Queries twins", "lines": ["Queries twins"], "glyph": true },
+    "drivers--apim": { "ok": true, "sides": ["right", "left"], "points": [1480, 1036, 1940, 816], "path": "e8715a33afb1", "label": [1704.5871946701861, 928.588732983824, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
     "apim--sessions-api": { "ok": true, "sides": ["right", "left"], "points": [2160, 816, 2360, 816], "path": "90953bbea2a2" },
-    "sessions-api--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 809, 2780, 809], "path": "23807b52ad38", "label": [2684, 809, 59, 19], "mode": "full", "text": "Session", "lines": ["Session"] },
-    "sessions-api--cmd-q": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 852, 2883, 1180], "path": "01d671cadb0b", "label": [2671.8014978722754, 1012.268501942146, 83, 19], "mode": "full", "text": "RemoteStart", "lines": ["RemoteStart"] },
-    "metering--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 956, 2780, 823], "path": "6607a61abc2b", "label": [2675.0038583765017, 892.8224341796263, 35, 19], "mode": "full", "text": "kWh", "lines": ["kWh"] },
-    "sessions-db--billing": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 852, 2890, 920], "path": "efc2d04bbeb0", "label": [2890, 880, 101, 19], "mode": "full", "text": "Session closed", "lines": ["Session closed"] },
-    "billing--stripe": { "ok": true, "sides": ["right", "left"], "points": [3000, 949, 4620, 816], "path": "49861bb8105c", "label": [3804.020118974248, 882.9909408496451, 53, 19], "mode": "full", "text": "Charge", "lines": ["Charge"] },
-    "billing--roaming": { "ok": true, "sides": ["right", "left"], "points": [3000, 963, 4620, 956], "path": "bdccf561a229", "label": [3784.0002427187474, 959.6123446302277, 35, 19], "mode": "full", "text": "CDR", "lines": ["CDR"] },
+    "sessions-api--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 809, 2780, 809], "path": "23807b52ad38", "label": [2684, 809, 59.45, 22], "mode": "full", "text": "Session", "lines": ["Session"] },
+    "sessions-api--cmd-q": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 852, 2883, 1180], "path": "01d671cadb0b", "label": [2671.8014978722754, 1012.268501942146, 87.44, 22], "mode": "full", "text": "RemoteStart", "lines": ["RemoteStart"] },
+    "metering--sessions-db": { "ok": true, "sides": ["right", "left"], "points": [2580, 956, 2780, 823], "path": "6607a61abc2b", "label": [2666.6769556706713, 898.3598244790035, 42.03, 22], "mode": "full", "text": "kWh", "lines": ["kWh"] },
+    "sessions-db--billing": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 852, 2890, 920], "path": "efc2d04bbeb0", "label": [2890, 870, 97.65, 22], "mode": "full", "text": "Session closed", "lines": ["Session closed"] },
+    "billing--stripe": { "ok": true, "sides": ["right", "left"], "points": [3000, 949, 4620, 816], "path": "49861bb8105c", "label": [3804.020118974248, 882.9909408496451, 57.39, 22], "mode": "full", "text": "Charge", "lines": ["Charge"] },
+    "billing--roaming": { "ok": true, "sides": ["right", "left"], "points": [3000, 963, 4620, 956], "path": "bdccf561a229", "label": [3774.0003360721116, 959.6555541033921, 42.15, 22], "mode": "full", "text": "CDR", "lines": ["CDR"] },
     "cmd-q--commands": { "ok": true, "sides": ["top", "bottom"], "points": [2897, 1180, 2471, 552], "path": "ea0e0ceee7cb" },
-    "cmd-q--cmd-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 1252, 2890, 1320], "path": "f41c3b659bbf", "label": [2890, 1280, 95, 19], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
-    "rollout--firmware": { "ok": true, "sides": ["right", "left"], "points": [2160, 1216, 2360, 1216], "path": "e709544c7242", "label": [2254, 1216, 41, 19], "mode": "full", "text": "Wave", "lines": ["Wave"] },
-    "firmware--images": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 1252, 2470, 1320], "path": "a2f6c2cf1238", "label": [2470, 1280, 47, 19], "mode": "full", "text": "Stage", "lines": ["Stage"] },
-    "firmware--cmd-q": { "ok": true, "sides": ["right", "left"], "points": [2580, 1209, 2780, 1216], "path": "468f198e4de5", "label": [2674.003671627037, 1212.2901285069463, 101, 19], "mode": "full", "text": "UpdateFirmware", "lines": ["UpdateFirmware"] },
-    "cmd-dlq--firmware": { "ok": true, "sides": ["left", "right"], "points": [2780, 1356, 2580, 1223], "path": "34423e0623ff", "label": [2684.9961416234983, 1292.8224341796263, 77, 19], "mode": "full", "text": "Retry wave", "lines": ["Retry wave"] },
-    "reports--report-job": { "ok": true, "sides": ["right", "left"], "points": [3480, 676, 3680, 676], "path": "ae95d6a171ca", "label": [3574, 676, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "report-job--lakehouse": { "ok": true, "sides": ["top", "bottom"], "points": [3790, 640, 3790, 572], "path": "1bccf5a7619a", "label": [3790, 612, 47, 19], "mode": "full", "text": "Query", "lines": ["Query"] },
-    "report-job--dso": { "ok": true, "sides": ["right", "left"], "points": [3900, 676, 4620, 676], "path": "b77928b9a979", "label": [4254, 676, 53, 19], "mode": "full", "text": "Upload", "lines": ["Upload"] },
-    "lakehouse--raw": { "ok": true, "sides": ["left", "right"], "points": [3680, 536, 3480, 536], "path": "07eab0f5ce2e", "label": [3586, 536, 63, 19], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
-    "ingress--kv": { "ok": true, "sides": ["right", "left"], "points": [2160, 250, 3260, 1216], "path": "f1643ec5be12", "label": [2705.4916560338697, 729.0408542988346, 93, 19], "mode": "full", "text": "Charger CA", "lines": ["Charger CA"], "glyph": true },
+    "cmd-q--cmd-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2890, 1252, 2890, 1320], "path": "f41c3b659bbf", "label": [2890, 1280, 80.28, 22], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
+    "rollout--firmware": { "ok": true, "sides": ["right", "left"], "points": [2160, 1216, 2360, 1216], "path": "e709544c7242", "label": [2254, 1216, 48.07, 22], "mode": "full", "text": "Wave", "lines": ["Wave"] },
+    "firmware--images": { "ok": true, "sides": ["bottom", "top"], "points": [2470, 1252, 2470, 1320], "path": "a2f6c2cf1238", "label": [2470, 1280, 49.05, 22], "mode": "full", "text": "Stage", "lines": ["Stage"] },
+    "firmware--cmd-q": { "ok": true, "sides": ["right", "left"], "points": [2580, 1209, 2780, 1216], "path": "468f198e4de5", "label": [2674.003671627037, 1212.2901285069463, 109.01999999999998, 22], "mode": "full", "text": "UpdateFirmware", "lines": ["UpdateFirmware"] },
+    "cmd-dlq--firmware": { "ok": true, "sides": ["left", "right"], "points": [2780, 1356, 2580, 1223], "path": "34423e0623ff", "label": [2684.9961416234983, 1292.8224341796263, 77.36, 22], "mode": "full", "text": "Retry wave", "lines": ["Retry wave"] },
+    "reports--report-job": { "ok": true, "sides": ["right", "left"], "points": [3480, 676, 3680, 676], "path": "ae95d6a171ca", "label": [3574, 676, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "report-job--lakehouse": { "ok": true, "sides": ["top", "bottom"], "points": [3790, 640, 3790, 572], "path": "1bccf5a7619a", "label": [3790, 612, 50.33, 22], "mode": "full", "text": "Query", "lines": ["Query"] },
+    "report-job--dso": { "ok": true, "sides": ["right", "left"], "points": [3900, 676, 4620, 676], "path": "b77928b9a979", "label": [4254, 676, 56.269999999999996, 22], "mode": "full", "text": "Upload", "lines": ["Upload"] },
+    "lakehouse--raw": { "ok": true, "sides": ["left", "right"], "points": [3680, 536, 3480, 536], "path": "07eab0f5ce2e", "label": [3586, 536, 67.55000000000001, 22], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
+    "ingress--kv": { "ok": true, "sides": ["right", "left"], "points": [2160, 250, 3260, 1216], "path": "f1643ec5be12", "label": [2705.4916560338697, 729.0408542988346, 97.16, 22], "mode": "full", "text": "Charger CA", "lines": ["Charger CA"], "glyph": true },
     "ocpp--mi": { "ok": true, "sides": ["right", "left"], "points": [2582, 243, 3680, 1202], "path": "ddf90a3cb3f8", "label": [3126.4809723148446, 718.5530532330929, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "ingress--mi": { "ok": true, "sides": ["right", "left"], "points": [2160, 236, 3680, 1216], "path": "2e40636e07fa", "label": [2914.9572452888888, 722.7487502520468, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "commands--mi": { "ok": true, "sides": ["right", "left"], "points": [2582, 516, 3680, 1230], "path": "58abff5306d4", "label": [3125.969966382302, 869.7291038223711, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },

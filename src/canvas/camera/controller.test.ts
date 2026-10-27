@@ -391,12 +391,21 @@ describe("camera controller", () => {
     h.camera.dispatch({ type: "pane.changed", cause: "panel" });
     h.tick(2);
     expect(h.revealBases).toHaveLength(0);
+    h.env.covered = false;
+    h.camera.dispatch({ type: "pane.changed", cause: "selection" });
+    h.tick(2);
+    // An uncovered readable pointer selection never moves the view.
+    expect(h.revealBases).toHaveLength(1);
+    expect(h.journal.at(-1)?.command).toBe("fit");
+  });
+
+  it("a dock that covers a readable selection reveals it without refitting", () => {
+    const h = harness();
     h.env.covered = true;
     h.camera.dispatch({ type: "pane.changed", cause: "selection" });
     h.tick(2);
-    // One measurement, reused by the reveal it decided.
-    expect(h.revealBases).toHaveLength(1);
-    expect(h.journal.at(-1)?.command).toBe("reveal");
+    expect(h.journal.map((entry) => `${entry.command}:${entry.cause}`)).toEqual(["reveal:selection"]);
+    expect(h.moves[0].target.zoom).toBe(1);
   });
 
   it("forgets a move that never started (d3 pre-empted it), so readiness can't stick on animating", () => {
@@ -641,6 +650,7 @@ type Model = {
   panel: boolean;
   focus: boolean;
   slowmo: boolean;
+  choice: boolean;
 };
 type Real = ReturnType<typeof harness>;
 const deferred = (m: Model) => m.pending && m.menu && m.cause === "canvas";
@@ -723,6 +733,7 @@ const fit = command("fit", (m, r) => {
   m.pending = false;
   m.cause = null;
   m.last = null;
+  m.choice = true;
 });
 const refine = command("refine", (_m, r) => r.refine());
 const finish = command("finish", (_m, r) => r.finish());
@@ -747,7 +758,7 @@ const narration = (focus: boolean) =>
     r.camera.dispatch({ type: "narration", focus: focus ? ["a"] : [] });
     const had = m.focus;
     m.focus = focus;
-    if (!m.slowmo && (focus || had)) work(m, "live");
+    if (!m.slowmo && !m.choice && (focus || had)) work(m, "live");
   });
 const slowmo = (on: boolean) =>
   command(`slowmo(${on})`, (m, r) => {
@@ -827,6 +838,7 @@ describe("camera controller: interleavings", () => {
             panel: false,
             focus: false,
             slowmo: false,
+            choice: false,
           };
           const real = harness();
           let paused = false;

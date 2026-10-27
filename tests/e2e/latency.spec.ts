@@ -1,4 +1,4 @@
-import { openInspectorLiveDetails } from "./fixtures";
+import { fitDiagram, openInspectorLiveDetails } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { pseudoText } from "../../src/i18n/pseudo";
 import type { Page } from "@playwright/test";
@@ -12,6 +12,7 @@ async function editableLatencyDetails(page: Page) {
   await input.fill("1000");
   await input.press("ArrowRight");
   await waitForCameraIdle(page);
+  await fitDiagram(page);
   const node = page.getByTestId("node-billing");
   await node.hover();
   await page.keyboard.down("Control");
@@ -252,6 +253,7 @@ for (const surface of ["embed", "presentation"]) {
     await input.fill("1000");
     await input.press("ArrowRight");
     await waitForCameraIdle(page);
+    if (surface === "presentation") await fitDiagram(page);
     const node = page.getByTestId("node-billing");
     await node.hover();
     // A fitted, zoomed-out diagram leaves the whole card tiny. Inspect at a readable zoom.

@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(-1.63265px, 282.449px) scale(1.04082)",
+    "viewport": "translate(21.5px, 254px) scale(1.25)",
     "nodes": {
       "shop": { "kind": "node", "box": "translate(40px, 100px) 220×72", "text": "Shop User" },
       "checkout": { "kind": "node", "box": "translate(400px, 100px) 220×72", "text": "Checkout Service" },
@@ -11,7 +11,7 @@
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(-119.796px, 282.449px) scale(1.04082)",
+    "viewport": "translate(-108.25px, 202px) scale(1.25)",
     "nodes": {
       "shop": { "kind": "node", "box": "translate(0px, 220px) 220×72", "text": "Shop User" },
       "checkout": { "kind": "node", "box": "translate(360px, 220px) 220×72", "text": "Checkout Service" },

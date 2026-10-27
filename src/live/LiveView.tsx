@@ -53,6 +53,8 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
+  caption?: HTMLElement | null;
+  transport?: HTMLElement | null;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;
@@ -121,7 +123,7 @@ export function LiveView(props: LiveViewProps) {
     setLive(false);
   }, []);
   // "Toggle live" and "Run simulation" in the command palette.
-  useLiveHost(toggle, goLive, enabled && !props.alwaysOn && !!props.editor);
+  useLiveHost(toggle, goLive, enabled && !props.alwaysOn && !!props.editor, LiveSession.preload);
   // React Flow fills its store in an effect; start the session once nodes are there and measured.
   const mounted = useStore((s) => s.domNode !== null);
   const initialized = useNodesInitialized();
@@ -186,7 +188,7 @@ export function LiveView(props: LiveViewProps) {
 
   return (
     <>
-      {enabled && !props.alwaysOn && (
+      {enabled && !props.alwaysOn && (!props.editor || props.presenting) && (
         <button
           className={`lv-toggle${live ? " is-on" : ""}${props.presenting ? " is-presenting" : ""}`}
           onClick={toggle}
@@ -203,6 +205,7 @@ export function LiveView(props: LiveViewProps) {
                 : "Go live: watch messages flow through this diagram (L)"
           }
           data-testid="live-toggle"
+          data-canvas-overlay
         >
           <span className="lv-toggle-dot" aria-hidden />
           Live

@@ -1,3 +1,4 @@
+import { livePropertiesGoal } from "./liveProperties";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { liveStep, practiceRun } from "./buildingBlocks";
@@ -77,7 +78,7 @@ export const loadBalancer: Tutorial = {
     {
       id: "fault",
       title: msg("tutorials.loadBalancer.faultTitle"),
-      goal: msg("tutorials.loadBalancer.faultGoal"),
+      goal: livePropertiesGoal(msg("tutorials.loadBalancer.faultGoal")),
       done: msg("tutorials.loadBalancer.faultDone"),
       check: {
         kind: "all",
@@ -88,11 +89,21 @@ export const loadBalancer: Tutorial = {
         ],
       },
       targets: [
+        {
+          testId: "dock-edit-properties",
+          tip: livePropertiesGoal(msg("tutorials.loadBalancer.faultGoal")),
+          selected: "service",
+        },
         { testId: "inspector-field-replicas", tip: msg("tutorials.loadBalancer.faultGoal"), selected: "service" },
         { testId: "node-{service}", tip: msg("tutorials.loadBalancer.faultGoal") },
       ],
       demo: [{ kind: "prop", subject: "service", props: { replicas: 2 } }],
-      solution: [{ dblclick: "node-{service}" }, { fill: "inspector-field-replicas", text: "2" }, { press: "Enter" }],
+      solution: [
+        { dblclick: "node-{service}" },
+        { open: "dock-edit-properties" },
+        { fill: "inspector-field-replicas", text: "2" },
+        { press: "Enter" },
+      ],
     },
     {
       id: "watch",

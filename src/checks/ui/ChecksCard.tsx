@@ -9,6 +9,7 @@ import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
 import { presentRule } from "../presentation";
 import { t, useLocale } from "../../i18n";
 import { useFallbackOnUnmount, useSurvivingCheckFocus } from "./survivingFocus";
+import { findingOrder, selectedFinding } from "../../canvas/checks/findingOrder";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -22,11 +23,18 @@ export interface ChecksCardProps extends RowHost {
   returnFocus(): void;
   /** Distance from the canvas's top: just under the diagram card. */
   top: number;
+  placement?: "dock" | "floating";
   onClose(): void;
   /** The lazy card is in the DOM, ready for an overlay-aware fit. */
   onMount?(): void;
   /** Run simulations: absent where it doesn't apply. */
   simulations?: Omit<SimulationsHost, "name" | "reveal">;
+  selection?: {
+    finding: string | null;
+    element: string | null;
+    select(id: string): void;
+    filter(id: string | null): void;
+  };
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -90,6 +98,7 @@ export function ChecksCard(p: ChecksCardProps) {
   useEffect(() => onMount.current?.(), []);
   const [foot, setFoot] = useState<"ignored" | "off" | "about" | null>(null);
   const [shown, setShown] = useState(PAGE);
+  const [picked, setPicked] = useState<string | null>(null);
   const self = useRef<HTMLElement>(null);
   // A fix can remove several rows at once: focus goes on to a surviving row once the new rows exist.
   useSurvivingCheckFocus((el) => (self.current?.contains(el) ? self.current : null));
@@ -103,10 +112,19 @@ export function ChecksCard(p: ChecksCardProps) {
     const el = self.current;
     return () => {
       const at = document.activeElement;
-      if (!at || at === document.body || el?.contains(at)) requestAnimationFrame(() => returnFocus.current());
+      if (!at || at === document.body || el?.contains(at))
+        requestAnimationFrame(() => {
+          const active = document.activeElement;
+          if (!active || active === document.body || el?.contains(active)) returnFocus.current();
+        });
     };
   }, []);
   const r = p.result;
+  const ordered = findingOrder(r?.findings ?? []);
+  const numbers = new Map(ordered.map((f, index) => [f.id, index + 1]));
+  const filter = p.selection?.element ?? null;
+  const selected = selectedFinding(ordered, p.selection?.finding ?? picked, filter)?.id;
+  const filtered = filter ? ordered.filter((f) => f.elements.includes(filter)) : ordered;
   // The reasons for what's ignored, read once when that list is open.
   const reasons = new Map(
     foot === "ignored"
@@ -114,14 +132,22 @@ export function ChecksCard(p: ChecksCardProps) {
       : [],
   );
   const sims = p.simulations && <SimulationsBar host={{ ...p.simulations, name: p.state.name, reveal: p.reveal }} />;
-  const warnings = r?.findings.filter((f) => f.severity === "warning") ?? [];
-  const suggestions = r?.findings.filter((f) => f.severity === "suggestion") ?? [];
+  const warnings = filtered.filter((f) => f.severity === "warning");
+  const suggestions = filtered.filter((f) => f.severity === "suggestion");
   const group = (title: string, list: Finding[], id: string) =>
     list.length > 0 && (
       <div className="checks-group">
         <div role="list" aria-label={title} data-testid={`checks-group-${id}`}>
           {list.slice(0, shown).map((f) => (
-            <FindingRow key={f.id} finding={f} host={p} state={p.state} />
+            <FindingRow
+              key={f.id}
+              finding={f}
+              host={p}
+              state={p.state}
+              number={numbers.get(f.id)}
+              expanded={f.id === selected}
+              onSelect={() => (p.selection ? p.selection.select(f.id) : setPicked(f.id))}
+            />
           ))}
         </div>
         {list.length > shown && (
@@ -140,13 +166,19 @@ export function ChecksCard(p: ChecksCardProps) {
     // Esc closes the card from anywhere inside it (one level, per the Esc rule).
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <section
-      className="checks-card"
+      className={p.placement === "dock" ? "checks-card is-docked" : "checks-card"}
       data-testid="checks-card"
       data-check-scope
-      data-canvas-overlay
+      data-check-fallback-scope={p.placement === "dock" || undefined}
+      tabIndex={p.placement === "dock" ? -1 : undefined}
+      data-canvas-overlay={p.placement !== "dock" || undefined}
       aria-label="Checks"
       ref={self}
-      style={{ top: p.top, ["--checks-top" as string]: `${p.top}px`, ...(maxHeight ? { maxHeight } : {}) }}
+      style={
+        p.placement === "dock"
+          ? undefined
+          : { top: p.top, ["--checks-top" as string]: `${p.top}px`, ...(maxHeight ? { maxHeight } : {}) }
+      }
       onKeyDown={(e) => {
         if (e.key !== "Escape" || e.defaultPrevented) return;
         e.stopPropagation();
@@ -154,22 +186,24 @@ export function ChecksCard(p: ChecksCardProps) {
         if (!p.simulations?.stop()) p.onClose();
       }}
     >
-      <header className="checks-head">
-        <h2>
-          <Icon name="checklist" size={14} /> Checks
-        </h2>
-        <button
-          type="button"
-          className="icon-btn icon-btn-quiet"
-          aria-label="Close checks"
-          title="Close (Esc)"
-          data-testid="checks-close"
-          data-check-fallback
-          onClick={p.onClose}
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
+      {p.placement !== "dock" && (
+        <header className="checks-head">
+          <h2>
+            <Icon name="checklist" size={14} /> Checks
+          </h2>
+          <button
+            type="button"
+            className="icon-btn icon-btn-quiet"
+            aria-label="Close checks"
+            title="Close (Esc)"
+            data-testid="checks-close"
+            data-check-fallback
+            onClick={p.onClose}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </header>
+      )}
       {!r ? (
         <p className="checks-note" data-testid="checks-running">
           Checking…
@@ -196,6 +230,19 @@ export function ChecksCard(p: ChecksCardProps) {
       )}
       {/* One place in the tree, findings or none: a run that adds the first finding keeps focus on its link. */}
       {r && sims}
+      {filter && (
+        <div className="checks-filter" data-testid="checks-filter">
+          <strong>{p.state.name(filter) ?? filter}</strong>
+          <button
+            type="button"
+            className="link-btn"
+            data-testid="checks-clear-filter"
+            onClick={() => p.selection?.filter(null)}
+          >
+            {t("gallery.clearFilters")}
+          </button>
+        </div>
+      )}
       {r && r.findings.length > 0 && (
         // Arrow keys between the rows' heads (each row's head is a button).
         // eslint-disable-next-line jsx-a11y/no-static-element-interactions

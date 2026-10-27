@@ -1,3 +1,4 @@
+import { ModeSwitch, HistoryButtons } from "../components/ModeSwitch";
 import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LazyCanvasView as CanvasView } from "../canvas/loadCanvasView";
 import {
@@ -21,6 +22,7 @@ import { lazyComponent, loadOnce } from "../lib/lazyLoad";
 import { nextTutorial } from "./progress";
 import { createTutorialStart } from "./start";
 import { TopBar } from "../components/TopBar";
+import { ToolRail } from "../canvas/chrome/ToolRail";
 import { useInterop, useInteropCanvasActions } from "../interop/useInterop";
 import type { CanvasHandle } from "../canvas/CanvasView";
 import type { DiagramFile, Simulation } from "../model/types";
@@ -130,6 +132,7 @@ function Running({
     });
   });
   const [start] = useState(() => structuredClone(initial));
+  const [diagramTitle, setDiagramTitle] = useState(initial.title);
   const canvas = useRef<CanvasHandle | null>(null);
   const library = useLibrary();
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -213,6 +216,8 @@ function Running({
       {tutorial.chrome === "app" && !presenting && (
         <TopBar
           view="canvas"
+          diagramTitle={diagramTitle}
+          documentId={getDiagramIdentity(TUTORIAL_SLUG)}
           onView={tutorialRoute.openView}
           exampleOptions={[{ slug: TUTORIAL_SLUG, title: tutorial.title(), group: "yours" }]}
           example={TUTORIAL_SLUG}
@@ -232,6 +237,15 @@ function Running({
             {tutorial.title()}
           </span>
           <Progress tutorial={tutorial} snap={snap} />
+          {tutorial.chrome !== "app" && (
+            <>
+              <span className="sr-only" data-testid="diagram-title">
+                {diagramTitle}
+              </span>
+              <HistoryButtons />
+              <ModeSwitch />
+            </>
+          )}
           <div className="topbar-spacer" />
           <label className="tutorial-switch" title={t("tutorials.highlightsTitle")}>
             <input
@@ -256,9 +270,12 @@ function Running({
         <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} catalog={catalog} />
       </div>
       <div className="app-body">
+        {!presenting && <ToolRail view="canvas" onView={tutorialRoute.openView} />}
         <div className="app-main">
           <Suspense fallback={<div className="view-loading" data-testid="view-loading" />}>
             <CanvasView
+              bezel
+              onTitleChange={setDiagramTitle}
               ref={canvasRef}
               slug={TUTORIAL_SLUG}
               initial={start}

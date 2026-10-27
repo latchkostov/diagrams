@@ -178,7 +178,12 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       data-deny={deny ? "true" : undefined}
     >
       <path d={path} className="fe-halo" />
-      <path d={path} className="fe-path react-flow__edge-path" markerEnd={`url(#${marker})`} />
+      <path
+        data-testid={`connection-stroke-${id}`}
+        d={path}
+        className="fe-path react-flow__edge-path"
+        markerEnd={`url(#${marker})`}
+      />
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
       {title(deny ? Details?.denyTip : tip)}
       {deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />}

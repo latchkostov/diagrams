@@ -23,15 +23,17 @@ export function CallWaitFields({
   editor,
   edgeId,
   stencil,
+  readDiagram,
 }: {
   editor: EditorApi;
   edgeId: string;
   caller: unknown;
   stencil: string;
+  readDiagram?: () => import("../../model/types").DiagramFile;
 }) {
   const live = useSyncExternalStore(planningHost.subscribe, planningHost.get);
   useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
-  const effective = effectiveCallerPolicy(editor, edgeId, live);
+  const effective = effectiveCallerPolicy(editor, edgeId, live, readDiagram?.());
   if (!effective?.editable) return null;
   const { caller, policy, set, override, diagramCaller } = effective;
   const advanced = revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2");

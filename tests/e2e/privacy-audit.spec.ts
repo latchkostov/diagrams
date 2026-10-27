@@ -1,4 +1,5 @@
-import { currentDiagram, pauseClock } from "./fixtures";
+import { openDiagramProperties } from "./fixtures";
+import { toggleTheme, currentDiagram, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
@@ -126,6 +127,7 @@ test.describe("the address bar and history", () => {
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
 
     await importDiagram(page, work({ private: true }));
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await playSimulation(page);
     await expect.poll(() => new URL(page.url()).searchParams.get("live")).toBe("1");
@@ -142,6 +144,7 @@ test.describe("the address bar and history", () => {
     await page.keyboard.press(`${MOD}+k`);
     await page.getByTestId("command-input").fill("private");
     await page.getByTestId("command-item-action:file.private").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await expect.poll(() => page.url().toLowerCase()).not.toContain(WORD);
   });
@@ -181,6 +184,7 @@ test.describe("requests and third parties", () => {
     await page.keyboard.press("Escape");
 
     await importDiagram(page, work({ private: true }));
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("file-button").click();
     await expect(page.getByTestId("file-privacy")).toBeVisible();
@@ -210,6 +214,7 @@ test.describe("requests and third parties", () => {
     await page.keyboard.press(`${MOD}+k`);
     await page.getByTestId("command-input").fill("private");
     await page.getByTestId("command-item-action:file.private").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     release();
     // The module has run: what awaited it (the warm-up decision) ran in the same turn, before this check's task.
@@ -258,6 +263,7 @@ for (const byDefault of [false, true]) {
       await page.getByTestId("file-privacy").click();
       await page.getByTestId("privacy-diagram").click();
     }
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await pauseClock(page); // Keep the refusal observable; its expiry is not under test.
     release();
@@ -406,7 +412,7 @@ test.describe("this browser's storage", () => {
 
     // The late tab changes a setting (a write): it writes nothing, and starts over.
     const reloads = late.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() });
-    await late.getByTestId("theme-toggle").click();
+    await toggleTheme(late);
     await reloads;
     await expect(late.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
     expect(await page.evaluate((k) => localStorage.getItem(k), entry)).not.toBeNull();
@@ -494,11 +500,13 @@ test.describe("this browser's storage", () => {
     await page.keyboard.press(`${MOD}+k`);
     await page.getByTestId("command-input").fill("private");
     await page.getByTestId("command-item-action:file.private").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("private-clear-conversation").click();
     await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
     expect((await thread()).toLowerCase()).not.toContain(WORD);
     await page.getByTestId("private-clear-undo").click();
+    await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
     expect((await thread()).toLowerCase()).toContain(WORD);
     expectNoErrors(consoleErrors);

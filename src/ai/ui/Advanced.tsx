@@ -27,6 +27,7 @@ import { DictationField } from "./DictationField";
 const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
 
 export function Advanced({
+  active,
   open,
   onOpenChange,
   focusSeq,
@@ -36,6 +37,7 @@ export function Advanced({
   onDevice,
   privateDiagram = false,
 }: {
+  active: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Changes when something asks for the request box (Build with AI): it opens and takes focus. */
@@ -94,10 +96,10 @@ export function Advanced({
     cancelDictation.current = dictation.cancel;
   });
   useEffect(() => {
-    if (!open || privateDiagram) cancelDictation.current();
-  }, [open, privateDiagram]);
+    if (!active || !open || privateDiagram) cancelDictation.current();
+  }, [active, open, privateDiagram]);
   useEffect(() => {
-    if (!dictation.supported || !open || privateDiagram) return;
+    if (!active || !dictation.supported || !open || privateDiagram) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "m") {
         e.preventDefault();
@@ -107,7 +109,7 @@ export function Advanced({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dictation, open, privateDiagram]);
+  }, [active, dictation, open, privateDiagram]);
 
   const { parsed, pending } = useParsedReply(reply);
 

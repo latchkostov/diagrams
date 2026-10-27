@@ -11,6 +11,28 @@ import type { EdgeSimProps } from "../sim/types";
 import { commit, createHistory, present, redo, undo } from "./history";
 import { recommendedRetry } from "../sim/resiliencePresets";
 
+it("request controls read the current render before the imperative store catches up", () => {
+  const previous = waitingFixture();
+  const rendered = structuredClone(previous);
+  rendered.edges[1].props = { caller: { wait: "non-blocking", breaker: { failurePercent: 35 } } };
+  const editor = {
+    getDiagram: () => previous,
+    getEdge: (id: string) => previous.edges.find((e) => e.id === id),
+    getNode: (id: string) => previous.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn(),
+    setEdgeProps: vi.fn(),
+  };
+  const current = effectiveCallerPolicy(editor, "call", null, rendered)!;
+  expect(current.policy.blocking).toBe(false);
+  expect(current.caller.breaker).toEqual({ failurePercent: 35 });
+  current.set({ breaker: { ...current.caller.breaker, minimumCalls: 12 } });
+  expect(editor.setEdgeProps).toHaveBeenCalledWith(
+    "call",
+    { caller: { wait: "non-blocking", breaker: { failurePercent: 35, minimumCalls: 12 } } },
+    undefined,
+  );
+});
+
 it.each([false, true])("reselection preserves every tuned caller field without a write (saved=%s)", (saved) => {
   const diagram = waitingFixture();
   const caller = {

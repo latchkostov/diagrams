@@ -1,10 +1,10 @@
 {
   "smoothstep": {
-    "web-gw": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 300, 36], "path": "76b51f9b8a33", "label": [254, 36, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gw-orders": { "ok": true, "sides": ["right", "left"], "points": [520, 36, 567, 36, 567, 139, 640, 139], "path": "6dabf45d5ae2", "label": [567, 87.5, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "app-orders": { "ok": true, "sides": ["right", "left"], "points": [220, 256, 567, 256, 567, 153, 640, 153], "path": "d9c749e5aeba", "label": [394.5, 256, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "orders-db": { "ok": true, "sides": ["right", "left"], "points": [860, 146, 960, 146], "path": "5bbceaf30d54", "label": [904, 146, 53, 32], "mode": "wrap", "text": "Commit order", "lines": ["Commit", "order"] },
-    "billing-db": { "ok": true, "sides": ["top", "bottom"], "points": [1070, 400, 1070, 182], "path": "85989e017c0a", "label": [1070, 297, 119, 19], "mode": "full", "text": "Read order totals", "lines": ["Read order totals"] }
+    "web-gw": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 300, 36], "path": "76b51f9b8a33", "label": [254, 36, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gw-orders": { "ok": true, "sides": ["right", "left"], "points": [520, 36, 567, 36, 567, 139, 640, 139], "path": "6dabf45d5ae2", "label": [567, 117.5, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "app-orders": { "ok": true, "sides": ["right", "left"], "points": [220, 256, 567, 256, 567, 153, 640, 153], "path": "d9c749e5aeba", "label": [394.5, 256, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "orders-db": { "ok": true, "sides": ["right", "left"], "points": [860, 146, 960, 146], "path": "5bbceaf30d54", "label": [904, 146, 61.72, 38], "mode": "wrap", "text": "Commit order", "lines": ["Commit", "order"] },
+    "billing-db": { "ok": true, "sides": ["top", "bottom"], "points": [1070, 400, 1070, 182], "path": "85989e017c0a", "label": [1070, 297, 111.22999999999999, 22], "mode": "full", "text": "Read order totals", "lines": ["Read order totals"] }
   },
   "bezier": {
     "web-gw": {
@@ -55,7 +55,7 @@
         36
       ],
       "path": "bcded0c818b9",
-      "label": [258.3465, 36, 47, 19],
+      "label": [258.3465, 36, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -108,7 +108,7 @@
         139
       ],
       "path": "859f38d4fda3",
-      "label": [577.9808344512064, 83.650375, 59, 32],
+      "label": [577.9808344512064, 83.650375, 56.790000000000006, 38],
       "mode": "wrap",
       "text": "POST /orders",
       "lines": ["POST", "/orders"]
@@ -161,7 +161,7 @@
         153
       ],
       "path": "d9d5360a2610",
-      "label": [305.06711828450625, 247.51537500000003, 89, 19],
+      "label": [305.06711828450625, 247.51537500000003, 90.3, 22],
       "mode": "full",
       "text": "POST /orders",
       "lines": ["POST /orders"]
@@ -214,7 +214,7 @@
         146
       ],
       "path": "f607fa97213a",
-      "label": [907.8217500000001, 146, 53, 32],
+      "label": [907.8217500000001, 146, 61.72, 38],
       "mode": "wrap",
       "text": "Commit order",
       "lines": ["Commit", "order"]
@@ -267,17 +267,17 @@
         182
       ],
       "path": "a39c020022c9",
-      "label": [1070, 324.83523499999995, 119, 19],
+      "label": [1070, 324.83523499999995, 111.22999999999999, 22],
       "mode": "full",
       "text": "Read order totals",
       "lines": ["Read order totals"]
     }
   },
   "straight": {
-    "web-gw": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 300, 36], "path": "76b51f9b8a33", "label": [254, 36, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gw-orders": { "ok": true, "sides": ["right", "left"], "points": [520, 36, 640, 139], "path": "0eb9af521e37", "label": [575.4471396104846, 83.59212816566594, 59, 32], "mode": "wrap", "text": "POST /orders", "lines": ["POST", "/orders"] },
-    "app-orders": { "ok": true, "sides": ["right", "left"], "points": [220, 256, 640, 153], "path": "d6ed679af552", "label": [424.17267437328155, 205.92908223702858, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "orders-db": { "ok": true, "sides": ["right", "left"], "points": [860, 146, 960, 146], "path": "5bbceaf30d54", "label": [904, 146, 53, 32], "mode": "wrap", "text": "Commit order", "lines": ["Commit", "order"] },
-    "billing-db": { "ok": true, "sides": ["top", "bottom"], "points": [1070, 400, 1070, 182], "path": "85989e017c0a", "label": [1070, 297, 119, 19], "mode": "full", "text": "Read order totals", "lines": ["Read order totals"] }
+    "web-gw": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 300, 36], "path": "76b51f9b8a33", "label": [254, 36, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gw-orders": { "ok": true, "sides": ["right", "left"], "points": [520, 36, 640, 139], "path": "0eb9af521e37", "label": [575.4471396104846, 83.59212816566594, 56.790000000000006, 38], "mode": "wrap", "text": "POST /orders", "lines": ["POST", "/orders"] },
+    "app-orders": { "ok": true, "sides": ["right", "left"], "points": [220, 256, 640, 153], "path": "d6ed679af552", "label": [424.17267437328155, 205.92908223702858, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "orders-db": { "ok": true, "sides": ["right", "left"], "points": [860, 146, 960, 146], "path": "5bbceaf30d54", "label": [904, 146, 61.72, 38], "mode": "wrap", "text": "Commit order", "lines": ["Commit", "order"] },
+    "billing-db": { "ok": true, "sides": ["top", "bottom"], "points": [1070, 400, 1070, 182], "path": "85989e017c0a", "label": [1070, 297, 111.22999999999999, 22], "mode": "full", "text": "Read order totals", "lines": ["Read order totals"] }
   }
 }

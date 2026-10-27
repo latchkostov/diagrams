@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, pauseClock } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, pauseClock, openViewMenu } from "./fixtures";
 import en from "../../src/i18n/en";
 import { compile } from "../../src/i18n/icu";
 import { parse } from "../../src/i18n/icu";
@@ -82,7 +82,7 @@ for (const viewport of [
     for (const code of ["de", "ar", "en-XA"]) {
       test(`app language choice ${code} follows direct page links`, async ({ page, consoleErrors }, info) => {
         await gotoCanvas(page, "kafka-order-pipeline");
-        await page.getByTestId("view-button").click();
+        await openViewMenu(page);
         await page.getByTestId("view-language").click();
         await expect(page.getByTestId("language-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
         await page.getByTestId(`language-option-${code}`).click();

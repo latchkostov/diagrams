@@ -136,7 +136,24 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/editor/builtinActions.ts",
     stub: () => "export const builtinActions = () => []; export const quickAddMenu = () => [];",
   },
+  {
+    // The viewer keeps its weight-only Latin face to stay inside the fixed skill ZIP cap.
+    name: "the embedded canvas font",
+    path: "/src/live/canvasFonts.ts",
+    stub: () => "export const loadCanvasFonts = () => Promise.resolve();",
+  },
   { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
+  {
+    name: "the editor dock state",
+    path: "/src/canvas/inspector/dockState.ts",
+    stub: () =>
+      'const state = { value: "closed", last: "properties" }; export const useWorkbenchDock = () => state; export const workbenchDock = { get: () => state, show() {}, close() {}, back() {}, snap() {} };',
+  },
+  {
+    name: "the editor dock actions",
+    path: "/src/canvas/inspector/dockActions.ts",
+    stub: () => "export const activateDock = () => {}; export const closeWorkbenchDock = () => {};",
+  },
   // NodePlanning's hover readout loads planning/ui through the shared lazy barrel. That barrel also exports
   // these inspector-only editors: in a single-file viewer their dynamic imports would retain the editors too.
   {
@@ -171,9 +188,15 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     name: "the stencil rail",
     path: "/src/canvas/Palette.tsx",
     stub: (root) =>
-      `export const Palette = () => null;\nexport { STENCIL_DND_MIME } from ${JSON.stringify(
+      `export const Palette = () => null; export const AnnotateGroup = () => null; export const ANNOTATE = [];\nexport { STENCIL_DND_MIME } from ${JSON.stringify(
         resolve(root, "src/lib/canvasBridge.ts").replaceAll("\\", "/"),
       )};`,
+  },
+  {
+    name: "the editor tool rail bridge",
+    path: "/src/canvas/chrome/tools.ts",
+    stub: () =>
+      'export const useToolSurface = () => "closed"; export const tools = { open() {}, connect() { return () => {}; } };',
   },
   // Carried types on hovered and focused flow edges: the app shows them; a file stays within the skill's download
   // budget (src/ai/skill/skill.heavy.test.ts) without the message-type analysis they need.
@@ -217,6 +240,11 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
         'export const connectionAt = () => ({ target: { kind: "outside" }, at: { x: 0, y: 0 } });',
         "export const connectionMarks = () => ({ show() {}, clear() {} });",
       ].join("\n"),
+  },
+  {
+    name: "the editor frame detail",
+    path: "/src/canvas/FrameDetail.tsx",
+    stub: () => "export const FrameDetail = () => null;",
   },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {

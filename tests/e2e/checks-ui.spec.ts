@@ -1,3 +1,4 @@
+import { expectTheme } from "./fixtures";
 import {
   waitForChecks,
   waitForHistoryIdle,
@@ -12,6 +13,7 @@ import {
   currentDiagram,
   expectNoErrors,
   waitForStableViewport,
+  waitForCameraIdle,
   fitDiagram,
   STORAGE_KEYS,
   savedDiagram,
@@ -44,17 +46,19 @@ const row = (page: Page, id: string) => page.getByTestId(`check-row-${id}`);
 async function openFromCount(page: Page) {
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
+  // Checks now occupies the dock: finish its resize/refit before exercising actions.
+  await waitForCameraIdle(page);
 }
 
 test.describe("the count under the title", () => {
   test("shows warnings only, for an example with one, and nothing for a clean one", async ({ page, consoleErrors }) => {
     await openMissingDlq(page);
-    await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+    await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
     await gotoCanvas(page, CLEAN);
     await expect(page.getByTestId("node-api")).toBeVisible();
     // Checks have run (after the first idle) and found nothing: no "0 issues", no card.
     await waitForChecks(page);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     await expect(card(page)).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
@@ -64,13 +68,13 @@ test.describe("the count under the title", () => {
     await gotoCanvas(page, "outbox-saga-checkout");
     await expect(page.getByTestId("node-payments-dlq")).toBeVisible();
     await waitForChecks(page);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
 
     await openMissingDlq(page);
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toBeVisible();
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("checks-count")).toBeVisible();
   });
@@ -99,7 +103,7 @@ test("diagram diagnostics keep guidance and valid element ignores through reload
     { key: STORAGE_KEYS.autosavePrefix + "outbox-saga-checkout", diagram },
   );
   await gotoCanvas(page, "outbox-saga-checkout");
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await openFromCount(page);
   await expect(row(page, diagnostic)).toContainText("Timeline forwarding edits cannot be analyzed completely.");
   await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
@@ -125,7 +129,7 @@ test("diagram diagnostics keep guidance and valid element ignores through reload
   const checks = { ignore: [{ rule: "no-reader", target: "payments-dlq" }] };
   await expect.poll(async () => (await savedDiagram(page)).checks).toEqual(checks);
   await page.reload();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await openFromCount(page);
   await expect(row(page, diagnostic)).toBeVisible();
   await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
@@ -145,7 +149,7 @@ test.describe("the Checks card", () => {
     await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 2 suggestions");
     await expect(page.getByTestId("checks-group-warnings").getByRole("listitem")).toHaveCount(1);
     await expect(row(page, WARNING)).toContainText("Failed messages are dropped");
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
     await expect(card(page)).toHaveCount(0);
 
     // The canvas right-click, next to Auto-layout.
@@ -155,7 +159,7 @@ test.describe("the Checks card", () => {
     await wrap.click({ button: "right", position: { x: box.width / 2, y: 90 } });
     await page.getByTestId("context-menu-item-canvas.check-diagram").click();
     await expect(card(page)).toBeVisible();
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
 
     // Ctrl+K "Check diagram".
     await page.keyboard.press(`${MOD}+k`);
@@ -164,7 +168,7 @@ test.describe("the Checks card", () => {
     await expect(card(page)).toBeVisible();
 
     // Esc closes it (nothing selected), one level.
-    await page.getByTestId("checks-close").focus();
+    await page.getByTestId("dock-tab-checks").focus();
     await page.keyboard.press("Escape");
     await expect(card(page)).toHaveCount(0);
 
@@ -189,8 +193,8 @@ test.describe("the Checks card", () => {
     await expect(page.getByTestId("inspector-title")).toHaveText("2 selected");
     await page.getByTestId("check-element-worker").click();
     await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+    await page.getByTestId("dock-tab-properties").click();
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Ledger worker");
-    await page.getByTestId("checks-close").click();
     await expect(page.getByTestId("check-markers")).toHaveCount(0);
   });
 
@@ -202,12 +206,12 @@ test.describe("the Checks card", () => {
     await expect(page.getByTestId("toast")).toContainText("Added ledger-posting DLQ");
     await expect.poll(() => nodes.count()).toBe(before + 1);
     await expect(row(page, WARNING)).toHaveCount(0);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     // One step back: the queue and its route go, and the warning returns.
     await page.getByTestId("check-fix-undo").click();
     await expect.poll(() => nodes.count()).toBe(before);
     await expect(row(page, WARNING)).toBeVisible();
-    await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+    await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
     expectNoErrors(consoleErrors);
   });
 
@@ -230,7 +234,7 @@ test.describe("the Checks card", () => {
     await page.getByTestId(`check-turn-off-${WARNING}`).click();
     // dead-letter is off: its warning and its suggestion go; the DLQ suggestion (no-reader) stays.
     await expect(page.getByTestId("checks-summary")).toHaveText("1 suggestion");
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     await page.getByTestId("checks-off-toggle").click();
     await page.getByTestId("check-turn-on-dead-letter").click();
     await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 2 suggestions");
@@ -250,14 +254,14 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   await page.getByTestId(`check-ignore-reason-${WARNING}`).fill("The platform team owns its redrive");
   await page.getByTestId(`check-ignore-confirm-${WARNING}`).click();
   await expect(row(page, WARNING)).toHaveCount(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   await expect(page.getByTestId("checks-ignored-toggle")).toHaveText("1 ignored");
 
   // Saved with the diagram: a reload keeps it.
   await page.reload();
   await expect(page.getByTestId("node-posting-sub")).toBeVisible();
   await waitForChecks(page);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
 
   // Exported in the file, and imported back.
   await page.getByTestId("file-button").click();
@@ -278,7 +282,7 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   await expect(page.getByTestId("checks-ignored")).toContainText("The platform team owns its redrive");
   await page.getByTestId(`check-unignore-${WARNING}`).click();
   await expect(row(page, WARNING)).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   expectNoErrors(consoleErrors);
 });
 
@@ -353,9 +357,9 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
     b.y < cardBox.y + cardBox.height &&
     cardBox.y < b.y + b.height;
   const chrome = [
-    "diagram-card",
+    "example-picker",
     "live-toggle",
-    "inspector",
+    "inspector-toggle",
     "first-run-hint",
     // The canvas controls in the bottom-left corner.
     "fit-view-button",
@@ -367,8 +371,8 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
     const el = page.getByTestId(id);
     if (await el.count()) expect(overlaps(await el.first().boundingBox()), id).toBe(false);
   }
-  // Inside the canvas, and nothing in the card is cut off sideways.
-  const wrap = await boxOf(page.getByTestId("canvas-wrap"));
+  // The dock contains the card; its content remains inside the visible sheet.
+  const wrap = await boxOf(page.getByTestId("inspector-body"));
   expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(wrap.x + wrap.width);
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(wrap.y + wrap.height);
 });
@@ -380,3 +384,70 @@ performanceTest(
     await checksTyping(page, info);
   },
 );
+
+for (const theme of ["light", "dark"]) {
+  test(`numbered findings, aggregate counts and tags stay legible (${theme})`, async ({ page }) => {
+    await page.addInitScript(
+      (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
+      theme,
+    );
+    await gotoCanvas(page, "retry-storm");
+    await waitForChecks(page);
+    await expectTheme(page, theme);
+    await page.getByTestId("checks-count").click();
+    const heads = page.getByTestId(/^check-select-/);
+    await expect(heads.first()).toHaveAttribute("aria-expanded", "true");
+    expect(
+      await heads.evaluateAll((els) => els.filter((el) => el.getAttribute("aria-expanded") === "true").length),
+    ).toBe(1);
+    const first = await heads.first().getAttribute("data-testid");
+    if (!first) throw new Error("Missing first finding");
+    const id = first.slice("check-select-".length);
+    await expect(page.getByTestId(`check-number-${id}`)).toHaveText("1");
+    await expect(page.getByTestId("check-marker").first()).toHaveText("1");
+    const second = heads.nth(1);
+    await second.click();
+    await expect(heads.first()).toHaveAttribute("aria-expanded", "false");
+    await expect(second).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByTestId("check-marker").first()).toHaveText("2");
+    const counts = page.getByTestId(/^check-count-/);
+    await expect(counts.first()).toBeVisible();
+    const contrasts = await page.getByTestId("check-markers").evaluate((root) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Missing color context");
+      const rgb = (value: string) => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = value;
+        ctx.fillRect(0, 0, 1, 1);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+      };
+      const lum = (channels: number[]) =>
+        channels
+          .map((v) => {
+            const c = v / 255;
+            return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+      return [...root.querySelectorAll<HTMLElement>('[data-testid="check-marker"], [data-testid^="check-count-"]')].map(
+        (button) => {
+          const ink = getComputedStyle(button);
+          const child = button.firstElementChild;
+          if (!child) throw new Error("Missing badge ground");
+          const ground = getComputedStyle(child);
+          const a = lum(rgb(ink.color)),
+            b = lum(rgb(ground.backgroundColor));
+          return { ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), opacity: ink.opacity };
+        },
+      );
+    });
+    for (const sample of contrasts) {
+      expect(sample.ratio).toBeGreaterThanOrEqual(4.5);
+      expect(sample.opacity).toBe("1");
+    }
+    await page.getByTestId("check-count-payments").click();
+    await expect(page.getByTestId("checks-filter")).toContainText("Payments");
+    await page.getByTestId("checks-clear-filter").click();
+    await expect(page.getByTestId("checks-filter")).toHaveCount(0);
+  });
+}

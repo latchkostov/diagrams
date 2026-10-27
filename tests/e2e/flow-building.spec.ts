@@ -1,3 +1,4 @@
+import { openLibrary, pinLibrary } from "./fixtures";
 import {
   waitForHistoryIdle,
   waitForAutosave,
@@ -78,6 +79,7 @@ async function seed(page: Page, diagram = SEED) {
   const readyNode = diagram.nodes.some((node) => node.id === "hub") ? "hub" : diagram.nodes[0].id;
   await expect(page.getByTestId(`node-${readyNode}`)).toBeVisible();
   await waitForStableViewport(page);
+  await fitDiagram(page);
 }
 
 /** The diagram as autosaved (written 300 ms after the last edit). */
@@ -242,12 +244,14 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await select(page, "hub");
     await expect(chips).toHaveCount(1);
     // Two selected: no chip anywhere.
+    await fitDiagram(page);
     await page.keyboard.down("Shift");
     await page.getByTestId("node-api").click();
     await page.keyboard.up("Shift");
     await expect(chips).toHaveCount(0);
 
     await page.keyboard.press("Escape");
+    await fitDiagram(page);
     await select(page, "hub");
     // Selecting opens the inspector, which narrows the canvas: the chip (right of the hub) can end up under it.
     // Fit the diagram into what's left, and click once the chip is clear of the inspector (a layout race: the
@@ -482,6 +486,13 @@ test.describe("edges: reconnect and insert (D8)", () => {
     const end = page.getByTestId("reconnect-api-db-target");
     await expect(end).toBeVisible();
     await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
+    // At 100%, Focus can leave the far endpoint behind the dock. Pan it back
+    // into the canvas before starting the gesture; the selection stays intact.
+    const pane = await box(page.getByTestId("canvas-wrap"));
+    const targetPoint = centre(await box(end));
+    await page.mouse.move(pane.x + pane.width / 2, pane.y + pane.height / 2);
+    await page.mouse.wheel(Math.max(0, targetPoint.x - (pane.x + pane.width - 60)), 0);
+    await waitForStableViewport(page);
     const from = centre(await box(end));
     const to = centre(await box(page.getByTestId("node-billing")));
     await page.mouse.move(from.x, from.y);
@@ -719,12 +730,16 @@ test.describe("the stencil rail (D13)", () => {
       };
     });
     await seed(page);
+    await pinLibrary(page);
+    await fitDiagram(page);
     await expect(page.getByTestId("palette-search")).toBeVisible();
   });
 
   /** Finds a stencil in the rail. */
   async function railItem(page: Page, query: string, id: string) {
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill(query);
+    await openLibrary(page);
     const item = page.getByTestId(`palette-item-${id}`);
     await expect(item).toBeVisible();
     return item;
@@ -732,6 +747,7 @@ test.describe("the stencil rail (D13)", () => {
 
   test("dragging a stencil shows a node card, not the browser's picture of the row", async ({ page }) => {
     const item = await railItem(page, "redis cache", "redis.cache");
+    const source = must(await item.elementHandle(), "drag source");
     const dt = await page.evaluateHandle(() => new DataTransfer());
     await item.dispatchEvent("dragstart", { dataTransfer: dt });
     const preview = page.getByTestId("stencil-drag-preview");
@@ -746,7 +762,7 @@ test.describe("the stencil rail (D13)", () => {
     await page.getByTestId("canvas-wrap").dispatchEvent("dragover", { dataTransfer: dt, ...at });
     await expect(page.getByTestId("landing-outline")).toBeVisible();
     await page.getByTestId("canvas-wrap").dispatchEvent("drop", { dataTransfer: dt, ...at });
-    await item.dispatchEvent("dragend", { dataTransfer: dt });
+    await source.dispatchEvent("dragend", { dataTransfer: dt });
     await expect(preview).toHaveCount(0);
     await expect(page.getByTestId("landing-outline")).toHaveCount(0);
     await savedWhen(page, (s) => s.nodes.length === 6);
@@ -781,6 +797,7 @@ test.describe("the stencil rail (D13)", () => {
 
   test("a stencil held over an edge and dropped goes in between", async ({ page }) => {
     const item = await railItem(page, "redis cache", "redis.cache");
+    const source = must(await item.elementHandle(), "drag source");
     const dt = await page.evaluateHandle(() => new DataTransfer());
     await item.dispatchEvent("dragstart", { dataTransfer: dt });
     const mid = await edgeMiddle(page, "api-db");
@@ -789,7 +806,7 @@ test.describe("the stencil rail (D13)", () => {
     await page.getByTestId("canvas-wrap").dispatchEvent("dragover", { dataTransfer: dt, ...at });
     await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-insert", "1");
     await page.getByTestId("canvas-wrap").dispatchEvent("drop", { dataTransfer: dt, ...at });
-    await item.dispatchEvent("dragend", { dataTransfer: dt });
+    await source.dispatchEvent("dragend", { dataTransfer: dt });
     const d = await savedWhen(page, (s) => s.edges.length === 2);
     const made = must(
       d.nodes.find((n) => !SEED.nodes.some((s) => s.id === n.id)),
@@ -801,6 +818,7 @@ test.describe("the stencil rail (D13)", () => {
 
   test("a stencil dropped on a node goes after it, connected, clear of everything", async ({ page }) => {
     const item = await railItem(page, "redis cache", "redis.cache");
+    const source = must(await item.elementHandle(), "drag source");
     const dt = await page.evaluateHandle(() => new DataTransfer());
     await item.dispatchEvent("dragstart", { dataTransfer: dt });
     const at = centre(await box(page.getByTestId("node-api")));
@@ -809,7 +827,7 @@ test.describe("the stencil rail (D13)", () => {
     // Over a node: no outline (it won't land there), the node lights up instead.
     await expect(page.getByTestId("landing-outline")).toHaveCount(0);
     await page.getByTestId("canvas-wrap").dispatchEvent("drop", drop);
-    await item.dispatchEvent("dragend", { dataTransfer: dt });
+    await source.dispatchEvent("dragend", { dataTransfer: dt });
     const d = await savedWhen(page, (s) => s.nodes.length === 6);
     const made = must(
       d.nodes.find((n) => !SEED.nodes.some((s) => s.id === n.id)),
@@ -824,6 +842,7 @@ test.describe("the stencil rail (D13)", () => {
     consoleErrors,
   }) => {
     await select(page, "hub");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-after")).toContainText("Hub");
     const item = await railItem(page, "redis cache", "redis.cache");
     await item.click();
@@ -843,6 +862,7 @@ test.describe("the stencil rail (D13)", () => {
     await page.getByTestId("node-hub").click();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("palette-after")).toHaveCount(0);
+    await openLibrary(page);
     await page.getByTestId(`palette-item-redis.cache`).click();
     d = await savedWhen(page, (s) => s.nodes.length === 6);
     expect(d.edges).toHaveLength(1);
@@ -1180,7 +1200,12 @@ test("typing in another field during a cold rename stays there across commits an
   const panel = await holdEdgePanel(page);
   try {
     await seed(page);
-    await page.getByTestId("edge-label-api-db").click();
+    await pinLibrary(page);
+    await fitDiagram(page);
+    await page.getByTestId("node-api").click();
+    await waitForSelectionSettled(page);
+    // eslint-disable-next-line no-restricted-syntax -- Edge navigation uses literal Ctrl on every platform.
+    await page.keyboard.press("Control+Alt+]");
     await waitForSelectionSettled(page);
     await expect.poll(() => panel.requests).toBe(1);
     await page.keyboard.press("F2");
@@ -1423,7 +1448,10 @@ test("auto-pan keeps the connection's end and its plus under a still pointer, an
     const n = el.closest<HTMLElement>(".react-flow__node");
     return { width: n?.offsetWidth ?? 0, height: n?.offsetHeight ?? 0 };
   });
-  expect(apart({ x: at.x + size.width / 2, y: at.y + size.height / 2 }, drop)).toBeLessThanOrEqual(5.5);
+  expect(
+    apart({ x: at.x + size.width / 2, y: at.y + size.height / 2 }, drop),
+    JSON.stringify({ at, size, drop }),
+  ).toBeLessThanOrEqual(5.5);
 });
 
 test.describe("attach to a dot", () => {
@@ -1496,7 +1524,10 @@ test.describe("attach to a dot", () => {
       return { x: end.x, y: end.y };
     });
     const highlighted = centre(await box(page.getByTestId("handle-db-right")));
-    expect(Math.hypot(lineEnd.x - highlighted.x, lineEnd.y - highlighted.y)).toBeLessThanOrEqual(2);
+    expect(
+      Math.hypot(lineEnd.x - highlighted.x, lineEnd.y - highlighted.y),
+      JSON.stringify({ lineEnd, highlighted }),
+    ).toBeLessThanOrEqual(2);
     await page.mouse.up();
     const d = await savedWhen(page, (s) => s.edges.length === 1);
     expect(d.edges[0]).toMatchObject({ from: "api", to: "db", sourceSide: "bottom", targetSide: "right" });

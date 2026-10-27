@@ -156,9 +156,9 @@ test.describe("the canvas never scrolls", () => {
   const scale = async (page: Page) => Number(/scale\(([\d.]+)\)/.exec(await viewportTransform(page))?.[1]);
   const wrapperScroll = (page: Page) => page.getByTestId("rf__wrapper").evaluate((w) => [w.scrollLeft, w.scrollTop]);
 
-  /** Tab into the canvas from the last control before it (the palette's Shape): the browser moves focus there. */
+  /** Tab into the canvas from the last rail control: the browser moves focus there. */
   async function tabIn(page: Page) {
-    await page.getByTestId("palette-annotate-shape").focus();
+    await page.getByTestId("ai-rail-open").focus();
     await page.keyboard.press("Tab");
   }
 
@@ -199,8 +199,12 @@ test.describe("the canvas never scrolls", () => {
       // Past the left edge, brought in with the selection's margin alone it would land on the controls. Under
       // them, it's wholly in the pane: in view, yet covered.
       const width = (await boxOf(page, TAB_STOP)).width;
-      const x = where === "under the controls" ? controls.x + controls.width + width / 2 - 12 : wrap.x;
-      await centreAt(page, TAB_STOP, { x, y: controls.y + controls.height / 2 });
+      const x =
+        where === "under the controls"
+          ? Math.min(wrap.x + wrap.width - width / 2 - 1, controls.x + controls.width / 2)
+          : wrap.x + wrap.width;
+      const height = (await boxOf(page, TAB_STOP)).height;
+      await centreAt(page, TAB_STOP, { x, y: controls.y - height / 2 + 8 });
       const placed = await boxOf(page, TAB_STOP);
       expect(overlaps(placed, controls)).toBe(true);
       expect(within(placed, wrap)).toBe(where === "under the controls");

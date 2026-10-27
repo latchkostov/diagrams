@@ -16,6 +16,8 @@ import { createRunQueue, type RunRequest } from "../live/runQueue";
  */
 
 export interface CanvasHost {
+  canUndo?: boolean;
+  canRedo?: boolean;
   editor: EditorApi;
   /** The mounted editor, preserved when its first edit saves an example as an owned copy. */
   instanceId?: string;
@@ -43,6 +45,7 @@ export interface CanvasHost {
 }
 
 export interface LiveHost {
+  preload?(): void;
   toggle(): void;
   /** Turns live view on; already on (its session still loading, say), nothing changes. */
   goLive(): void;
@@ -127,13 +130,13 @@ export const paletteHost = {
 };
 
 /** Called by the live view's toggle owner. */
-export function useLiveHost(toggle: () => void, goLive: () => void, enabled: boolean) {
+export function useLiveHost(toggle: () => void, goLive: () => void, enabled: boolean, preload?: () => void) {
   useEffect(() => {
     if (!enabled) return;
-    const off = publish("live", { toggle, goLive });
+    const off = publish("live", { toggle, goLive, preload });
     paletteHost.activateRun();
     return off;
-  }, [toggle, goLive, enabled]);
+  }, [toggle, goLive, enabled, preload]);
 }
 
 /** Called by the running live session; also starts a simulation the palette asked for before going live. */

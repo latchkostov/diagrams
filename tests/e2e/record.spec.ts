@@ -151,7 +151,7 @@ test.describe("record video", () => {
     await expect.poll(() => rec(page, "framing")).toBeTruthy();
     await page.keyboard.press("Escape");
     await page.evaluate(() => (window as never as { __rec: { resolveFrame: () => void } }).__rec.resolveFrame());
-    await expect.poll(() => rec(page, "framedTo")).toBe("canvas-wrap");
+    await expect.poll(() => rec(page, "framedTo")).toBe("app");
     expect(await rec(page, "created")).toBe(0);
     expect(await rec(page, "stopped")).toBeGreaterThan(0);
     await expect(page.getByTestId("record-countdown")).toHaveCount(0);
@@ -243,7 +243,7 @@ test.describe("record video", () => {
     await expect(page.getByTestId("record-countdown")).toHaveCount(0);
     await expect.poll(() => rec(page, "started")).toBe(true);
     // Framed to the canvas area, in presentation view, with the live bar and top bar out of the way.
-    expect(await rec(page, "framedTo")).toBe("canvas-wrap");
+    expect(await rec(page, "framedTo")).toBe("app");
     expect(await rec(page, "mime")).toBe("video/webm;codecs=vp9");
     await expect(page).toHaveURL(/present=1/);
     await expect(page.getByTestId("topbar")).toHaveCount(0);

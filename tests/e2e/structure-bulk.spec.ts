@@ -411,12 +411,22 @@ test.describe("bulk edit and Select similar (D11)", () => {
   test("a mixed selection's panel fits one screen at 1280 × 800", async ({ page, consoleErrors }) => {
     await seed(page, { width: 1280, height: 800 });
     await page.getByTestId("node-api").click();
+    await fitDiagram(page);
     await page.getByTestId("node-worker").click({ modifiers: [MOD] });
+    await fitDiagram(page);
     await page.getByTestId("node-carrier").click({ modifiers: [MOD] });
-    await page.getByTestId("edge-label-a-w").click({ modifiers: [MOD] });
-    await page.getByTestId("edge-label-a-c").click({ modifiers: [MOD] });
+    await fitDiagram(page);
+    for (const id of ["a-w", "a-c"]) {
+      // Fold Properties to read the whole diagram, then add the connection
+      // through its label. Ctrl over the canvas itself starts box selection.
+      await page.getByTestId("inspector-toggle").click();
+      await fitDiagram(page);
+      await page.getByTestId(`edge-label-${id}`).click({ modifiers: [MOD] });
+      await waitForSelectionSettled(page);
+    }
+    await fitDiagram(page);
     await page.getByTestId("annotation-n1").click({ modifiers: [MOD] });
-    await page.getByTestId("group-label-ship").click({ modifiers: [MOD] });
+    await page.getByTestId("group-outline-ship").click({ modifiers: [MOD], position: { x: 0.5, y: 40 } });
     await expect(page.getByTestId("inspector-title")).toHaveText("7 selected");
     // Every kind's section: Arrange, the nodes', the edges', the annotation's and the boundary's colour.
     for (const id of [
@@ -524,11 +534,11 @@ test.describe("keyboard selection between nodes (D14)", () => {
     await expect.poll(() => focusedNode(page)).toBe("group:ship");
     await waitForInteractionIdle(page);
     expect((await interactionLog(page, mark)).filter((l) => !l.startsWith("selection.committed"))).toEqual([
-      "selection.changed:keyboard -> focus:node:worker@frame",
-      "selection.changed:keyboard -> focus:node:group:ship@frame",
-      "superseded: focus:node:worker@frame",
+      "selection.changed:keyboard -> focus:node:worker@measured",
+      "selection.changed:keyboard -> focus:node:group:ship@measured",
+      "superseded: focus:node:worker@measured",
       "focus.entered -> keep",
-      "focused: focus:node:group:ship@frame",
+      "focused: focus:node:group:ship@measured",
       "focus.ran -> keep",
     ]);
   });
@@ -650,8 +660,8 @@ test.describe("review follow-ups", () => {
     // The inspector opened and narrowed the canvas, keeping the first note in view: the second is past the edge.
     await fitDiagram(page);
     await page.getByTestId("annotation-n2").click({ modifiers: [MOD] });
-    await page.getByTestId("group-label-pay").click({ modifiers: [MOD] });
-    await page.getByTestId("group-label-ship").click({ modifiers: [MOD] });
+    await page.getByTestId("group-outline-pay").click({ modifiers: [MOD], position: { x: 0.5, y: 40 } });
+    await page.getByTestId("group-outline-ship").click({ modifiers: [MOD], position: { x: 0.5, y: 40 } });
     await expect(page.getByTestId("inspector-title")).toHaveText("4 selected");
     // Yellow (the default) and blue; azure and AWS.
     await expect(page.getByTestId("inspector-field-color-mixed")).toBeVisible();

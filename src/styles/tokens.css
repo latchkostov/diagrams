@@ -3,21 +3,46 @@
   --font-ui: "Mona Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
 
-  --bg: #f3f5f8;
-  --surface: #ffffff;
-  --surface-2: #f7f8fa;
-  --surface-3: #eef1f5;
-  --line: #e2e6ed;
-  --line-strong: #cdd3de;
-  --text: #131926;
-  --text-2: #566074;
+  /* Workbench frame. */
+  --dim-stroke: #6f7683;
+  --control-line: #858c99;
+  --note: #6d4fe0;
+  --tag: #e8a317;
+  --tag-line: #b77c06;
+  --board: #f6f7f9;
+  --bezel: #1f232b;
+  --bezel-ink: #e6e9ee;
+  --bezel-dim: #a3aab6;
+  --bezel-line: #2c313b;
+  --rail-bg: #eef0f3;
+  --rail-ink: #2a2f38;
+  --rail-dim: #5f6673;
+  --rail-on: #ffffff;
+  --panel: #ffffff;
+  --live: #11a35a;
+  --live-ink: #04140b;
+  --stretch-wide: 112%;
+  --stretch-legend: 86%;
+  --frame-rail-w: 72px;
+  --dock-w: 372px;
+  --transport-h: 56px;
+  --caption-h: 48px;
+
+  --bg: var(--board);
+  --surface: var(--panel);
+  --surface-2: #f4f5f8;
+  --surface-3: #eceef2;
+  --line: #e1e4ea;
+  --line-strong: #cbd0d9;
+  --text: #15181e;
+  --text-2: #5f6673;
   /* AA contrast across the light surfaces, including --surface-3. */
-  --text-3: #656d80;
+  --text-3: #646b78;
   /* Placeholder / disabled ink only; never for text people need to read. */
   --text-4: #9aa1b0;
-  --accent: #4b57d6;
+  --accent: #2f5bea;
   --accent-ink: #ffffff;
-  --accent-soft: rgb(75 87 214 / 0.1);
+  --accent-soft: rgb(47 91 234 / 0.09);
   --focus: rgb(75 87 214 / 0.45);
   /* Keyboard focus: a solid ring with a soft halo, used by :focus-visible everywhere. */
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgb(75 87 214 / 0.75);
@@ -57,7 +82,7 @@
   /* Elevation: 1 = resting cards, 2 = popovers and menus, 3 = drawers and dialogs. */
   --surface-raised: #ffffff;
   --shadow-1: 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -8px rgb(16 24 40 / 0.14);
-  --shadow-2: 0 1px 2px rgb(16 24 40 / 0.06), 0 18px 40px -14px rgb(16 24 40 / 0.32);
+  --shadow-2: 0 2px 4px rgb(16 24 40 / 0.06), 0 18px 40px -16px rgb(16 24 40 / 0.3);
   --shadow-3: 0 0 0 1px rgb(16 24 40 / 0.04), 0 24px 64px -16px rgb(16 24 40 / 0.3);
   --scrim: rgb(15 20 30 / 0.18);
 
@@ -78,7 +103,7 @@
   --sp-8: 40px;
   --sp-9: 48px;
 
-  --dot: #c5ccd8;
+  --dot: #d3d8e1;
   --edge: #97a0b3;
   --edge-strong: #556075;
   --edge-label-bg: #ffffff;
@@ -92,14 +117,14 @@
   --rel-depends: #556075;
 
   --node-bg: #ffffff;
-  --node-border: #dde2ea;
-  --node-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -8px rgb(16 24 40 / 0.14);
+  --node-border: #d8dde6;
+  --node-shadow: 0 1px 2px rgb(16 24 40 / 0.06);
   --node-shadow-hover: 0 1px 2px rgb(16 24 40 / 0.06), 0 10px 24px -10px rgb(16 24 40 / 0.22);
   /* Icon tiles stay light in both themes: brand marks (Kafka, Splunk...) are dark ink. */
   --tile-base: #ffffff;
   --tile-mix: 11%;
 
-  --stage-bg: #f6f7fa;
+  --stage-bg: var(--board);
   --radius-s: 6px;
   --radius-m: 10px;
   --radius-l: 14px;
@@ -107,20 +132,33 @@
 }
 
 [data-theme="dark"] {
-  --bg: #0e131d;
-  --surface: #141a26;
-  --surface-2: #181f2d;
-  --surface-3: #1e2637;
-  --line: #232b3c;
-  --line-strong: #313b51;
-  --text: #e8ecf4;
-  --text-2: #9ba5b9;
+  --dim-stroke: #848b99;
+  --control-line: #6b7280;
+  --note: #a48afb;
+  --tag-line: #e8a317;
+  --board: #121419;
+  --bezel: #07080a;
+  --bezel-line: #1b1f27;
+  --rail-bg: #0b0d10;
+  --rail-ink: #d6dbe4;
+  --rail-dim: #8d95a3;
+  --rail-on: #1f242d;
+  --panel: #16191f;
+  --live: #3ddc84;
+  --bg: var(--board);
+  --surface: var(--panel);
+  --surface-2: #1a1e25;
+  --surface-3: #20242d;
+  --line: #262b35;
+  --line-strong: #343a46;
+  --text: #e9ebef;
+  --text-2: #9aa1ae;
   /* AA contrast across the dark surfaces, including --surface-3. */
-  --text-3: #8992a9;
+  --text-3: #8b92a0;
   --text-4: #5b647a;
-  --accent: #8f9bff;
+  --accent: #7c9bff;
   --accent-ink: #0e131d;
-  --accent-soft: rgb(143 155 255 / 0.14);
+  --accent-soft: rgb(124 155 255 / 0.13);
   --focus: rgb(143 155 255 / 0.5);
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgb(143 155 255 / 0.8);
   --danger: #ff6b6f;
@@ -147,13 +185,13 @@
   --selection-text: #f4f6fb;
 
   /* Dark depth comes from lighter surfaces as things rise, not just darker shadows. */
-  --surface-raised: #1b2232;
+  --surface-raised: #1b1f27;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px -12px rgb(0 0 0 / 0.7);
   --shadow-2: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 20px 48px -12px rgb(0 0 0 / 0.75);
   --shadow-3: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.35), 0 28px 72px -16px rgb(0 0 0 / 0.8);
   --scrim: rgb(4 7 12 / 0.45);
 
-  --dot: #2e3850;
+  --dot: #262b36;
   --edge: #58637b;
   --edge-strong: #9aa5bc;
   --edge-label-bg: #182030;
@@ -164,12 +202,11 @@
   --rel-deploy: #6bbf87;
   --rel-depends: #9aa5bc;
 
-  --node-bg: #171e2c;
-  --node-border: #283149;
+  --node-bg: #1a1e26;
+  --node-border: #2b313d;
   --node-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px -12px rgb(0 0 0 / 0.7);
   --node-shadow-hover: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 14px 32px -12px rgb(0 0 0 / 0.8);
   --tile-base: #e9edf4;
   --tile-mix: 16%;
-
-  --stage-bg: #111724;
+  --stage-bg: var(--board);
 }

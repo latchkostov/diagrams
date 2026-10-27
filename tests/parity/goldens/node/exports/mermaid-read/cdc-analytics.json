@@ -6,19 +6,19 @@
     "direction": "LR",
     "groups": [
       { "id": "g_onprem", "label": "On-prem · retail datacenter", "tone": "onprem", "x": 40, "y": 160, "width": 300, "height": 176 },
-      { "id": "g_platform", "label": "Kubernetes · CDC platform", "tone": "k8s", "x": 436, "y": 40, "width": 1121, "height": 416 }
+      { "id": "g_platform", "label": "Kubernetes · CDC platform", "tone": "k8s", "x": 429, "y": 40, "width": 1107, "height": 416 }
     ],
     "nodes": [
       { "id": "sql", "stencil": "sqlserver", "label": "Retail SQL Server", "sublabel": "retail-prod · CDC enabled", "x": 80, "y": 224, "group": "g_onprem" },
-      { "id": "debezium", "stencil": "kafka.connect", "label": "Debezium SQL Server", "sublabel": "retail-cdc · snapshot then tail", "x": 476, "y": 224, "group": "g_platform" },
-      { "id": "orders_topic", "stencil": "generic.service", "label": "retail.dbo.orders", "sublabel": "CDC envelope · key: order_id", "x": 876, "y": 104, "group": "g_platform" },
-      { "id": "customers_topic", "stencil": "client.user", "label": "retail.dbo.customers", "sublabel": "CDC envelope · key: customer_id", "x": 876, "y": 224, "group": "g_platform" },
-      { "id": "processor", "stencil": "kafka.topic", "label": "Retail projections", "sublabel": "Kafka Streams · group: retail-projector", "x": 1297, "y": 164, "group": "g_platform" },
-      { "id": "s3_sink", "stencil": "aws.s3", "label": "S3 sink connector", "sublabel": "retail-raw-sink · Parquet", "x": 1297, "y": 284, "group": "g_platform" },
-      { "id": "registry", "stencil": "generic.service", "label": "CDC schemas", "sublabel": "Avro envelopes · compatibility checks", "x": 876, "y": 344, "group": "g_platform" },
-      { "id": "search", "stencil": "client.user", "label": "Retail search", "sublabel": "orders-v1 · customer-v1 indexes", "x": 1697, "y": 104 },
-      { "id": "warehouse", "stencil": "generic.database", "label": "Retail warehouse", "sublabel": "RETAIL_ANALYTICS · MERGE by key", "x": 1697, "y": 224 },
-      { "id": "lake", "stencil": "aws.s3", "label": "Retail raw lake", "sublabel": "s3://retail-cdc-raw/table/date/", "x": 1697, "y": 344 }
+      { "id": "debezium", "stencil": "kafka.connect", "label": "Debezium SQL Server", "sublabel": "retail-cdc · snapshot then tail", "x": 468.61, "y": 224, "group": "g_platform" },
+      { "id": "orders_topic", "stencil": "generic.service", "label": "retail.dbo.orders", "sublabel": "CDC envelope · key: order_id", "x": 868.61, "y": 104, "group": "g_platform" },
+      { "id": "customers_topic", "stencil": "client.user", "label": "retail.dbo.customers", "sublabel": "CDC envelope · key: customer_id", "x": 868.61, "y": 224, "group": "g_platform" },
+      { "id": "processor", "stencil": "kafka.topic", "label": "Retail projections", "sublabel": "Kafka Streams · group: retail-projector", "x": 1275.92, "y": 164, "group": "g_platform" },
+      { "id": "s3_sink", "stencil": "aws.s3", "label": "S3 sink connector", "sublabel": "retail-raw-sink · Parquet", "x": 1275.92, "y": 284, "group": "g_platform" },
+      { "id": "registry", "stencil": "generic.service", "label": "CDC schemas", "sublabel": "Avro envelopes · compatibility checks", "x": 868.61, "y": 344, "group": "g_platform" },
+      { "id": "search", "stencil": "client.user", "label": "Retail search", "sublabel": "orders-v1 · customer-v1 indexes", "x": 1677.72, "y": 104 },
+      { "id": "warehouse", "stencil": "generic.database", "label": "Retail warehouse", "sublabel": "RETAIL_ANALYTICS · MERGE by key", "x": 1677.72, "y": 224 },
+      { "id": "lake", "stencil": "aws.s3", "label": "Retail raw lake", "sublabel": "s3://retail-cdc-raw/table/date/", "x": 1677.72, "y": 344 }
     ],
     "edges": [
       { "id": "e1-sql-debezium", "from": "sql", "to": "debezium", "label": "CDC · transaction log", "kind": "async" },

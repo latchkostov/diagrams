@@ -1,25 +1,25 @@
 {
   "smoothstep": {
-    "billing-webhooks-to-webhook-receiver": { "ok": true, "sides": ["right", "left"], "points": [260, 116, 420, 116], "path": "0fe57e636d4a", "label": [334, 116, 101, 19], "mode": "full", "text": "HTTPS · signed", "lines": ["HTTPS · signed"] },
-    "storefront-to-checkout": { "ok": true, "sides": ["right", "left"], "points": [268, 236, 420, 236], "path": "82223ccdf9fb", "label": [338, 236, 101, 19], "mode": "full", "text": "POST /checkout", "lines": ["POST /checkout"] },
-    "accounts-db-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [287, 356, 420, 356], "path": "550e546e5f8d", "label": [347.5, 356, 35, 19], "mode": "full", "text": "WAL", "lines": ["WAL"] },
-    "webhook-receiver-to-billing-topic": { "ok": true, "sides": ["right", "left"], "points": [667, 116, 800, 116], "path": "da5048cbdb29", "label": [727.5, 116, 83, 19], "mode": "full", "text": "InvoicePaid", "lines": ["InvoicePaid"] },
-    "checkout-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [661, 236, 800, 236], "path": "dc631a7d5a8e", "label": [724.5, 236, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "debezium-to-accounts-topic": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 101, 19], "mode": "full", "text": "AccountChanged", "lines": ["AccountChanged"] },
+    "billing-webhooks-to-webhook-receiver": { "ok": true, "sides": ["right", "left"], "points": [260, 116, 420, 116], "path": "0fe57e636d4a", "label": [334, 116, 101.92, 22], "mode": "full", "text": "HTTPS · signed", "lines": ["HTTPS · signed"] },
+    "storefront-to-checkout": { "ok": true, "sides": ["right", "left"], "points": [268, 236, 420, 236], "path": "82223ccdf9fb", "label": [338, 236, 106.35999999999999, 22], "mode": "full", "text": "POST /checkout", "lines": ["POST /checkout"] },
+    "accounts-db-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [287, 356, 420, 356], "path": "550e546e5f8d", "label": [347.5, 356, 42.82000000000001, 22], "mode": "full", "text": "WAL", "lines": ["WAL"] },
+    "webhook-receiver-to-billing-topic": { "ok": true, "sides": ["right", "left"], "points": [667, 116, 800, 116], "path": "da5048cbdb29", "label": [727.5, 116, 80.64999999999999, 22], "mode": "full", "text": "InvoicePaid", "lines": ["InvoicePaid"] },
+    "checkout-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [661, 236, 800, 236], "path": "dc631a7d5a8e", "label": [724.5, 236, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "debezium-to-accounts-topic": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 113.30999999999999, 22], "mode": "full", "text": "AccountChanged", "lines": ["AccountChanged"] },
     "billing-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1026, 116, 1057, 116, 1057, 222, 1180, 222], "path": "e88a5b14d66e" },
-    "orders-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1020, 236, 1180, 236], "path": "31aad4fc36a2", "label": [1104, 236, 143, 19], "mode": "full", "text": "group: snowflake-sink", "lines": ["group: snowflake-sink"] },
+    "orders-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1020, 236, 1180, 236], "path": "31aad4fc36a2", "label": [1094, 236, 136.73, 22], "mode": "full", "text": "group: snowflake-sink", "lines": ["group: snowflake-sink"] },
     "accounts-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1041, 356, 1157, 356, 1157, 250, 1180, 250], "path": "9b01c523b499" },
-    "snowpipe-to-schema-registry": { "ok": true, "sides": ["top", "bottom"], "points": [1293, 200, 1293, 176, 1289.5, 176, 1289.5, 152], "path": "a5e15fd7e959", "label": [1293, 186, 105, 19], "mode": "full", "text": "Avro schemas", "lines": ["Avro schemas"], "glyph": true },
-    "snowpipe-to-raw": { "ok": true, "sides": ["right", "left"], "points": [1406, 236, 1560, 236], "path": "6ecf57b9199f", "label": [1477, 236, 77, 19], "mode": "full", "text": "insertRows", "lines": ["insertRows"] },
-    "raw-to-dbt": { "ok": true, "sides": ["right", "left"], "points": [1780, 236, 1920, 236, 1920, 349, 1940, 349], "path": "d01ea88f43d4", "label": [1851, 236, 65, 19], "mode": "full", "text": "New rows", "lines": ["New rows"] },
-    "airflow-to-dbt": { "ok": true, "sides": ["bottom", "top"], "points": [2049, 152, 2049, 236, 2050, 236, 2050, 320], "path": "b4c9e9c60df0", "label": [2049, 195, 87, 19], "mode": "full", "text": "dbt build", "lines": ["dbt build"], "glyph": true },
-    "dbt-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 363, 1872.5, 363, 1872.5, 469, 1813, 469], "path": "92345d224911", "label": [1872.5, 416, 89, 19], "mode": "full", "text": "MERGE models", "lines": ["MERGE models"] },
-    "bi-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 596, 1872.5, 596, 1872.5, 483, 1813, 483], "path": "6d5945c2ab0d", "label": [1872.5, 539.5, 89, 19], "mode": "full", "text": "Live queries", "lines": ["Live queries"] },
-    "marts-to-reverse-etl": { "ok": true, "sides": ["left", "right"], "points": [1560, 476, 1481, 476, 1481, 556, 1402, 556], "path": "5b0ba2375e7e", "label": [1481, 516, 113, 19], "mode": "full", "text": "Changed segments", "lines": ["Changed segments"] },
-    "reverse-etl-to-segments-topic": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1033, 556], "path": "da7a5242e1ee", "label": [1112.5, 556, 107, 19], "mode": "full", "text": "Segment changes", "lines": ["Segment changes"] },
-    "segments-topic-to-personalization": { "ok": true, "sides": ["left", "right"], "points": [800, 549, 738, 549, 738, 556, 676, 556], "path": "ce47c6a1be2e", "label": [738, 552.5, 107, 32], "mode": "wrap", "text": "group: personalization", "lines": ["group:", "personalization"] },
-    "segments-topic-to-marketing": { "ok": true, "sides": ["left", "right"], "points": [800, 563, 738, 563, 738, 676, 653, 676], "path": "e6cddf4e8720", "label": [738, 619.5, 143, 19], "mode": "full", "text": "group: marketing-sync", "lines": ["group: marketing-sync"] },
-    "personalization-to-segment-cache": { "ok": true, "sides": ["left", "right"], "points": [420, 556, 260, 556], "path": "622bfc2c55e8", "label": [346, 556, 89, 19], "mode": "full", "text": "SET segments", "lines": ["SET segments"] }
+    "snowpipe-to-schema-registry": { "ok": true, "sides": ["top", "bottom"], "points": [1293, 200, 1293, 176, 1289.5, 176, 1289.5, 152], "path": "a5e15fd7e959", "label": [1289.5, 169.755, 111.05, 22], "mode": "full", "text": "Avro schemas", "lines": ["Avro schemas"], "glyph": true },
+    "snowpipe-to-raw": { "ok": true, "sides": ["right", "left"], "points": [1406, 236, 1560, 236], "path": "6ecf57b9199f", "label": [1477, 236, 77.55000000000001, 22], "mode": "full", "text": "insertRows", "lines": ["insertRows"] },
+    "raw-to-dbt": { "ok": true, "sides": ["right", "left"], "points": [1780, 236, 1920, 236, 1920, 349, 1940, 349], "path": "d01ea88f43d4", "label": [1851, 236, 69.33, 22], "mode": "full", "text": "New rows", "lines": ["New rows"] },
+    "airflow-to-dbt": { "ok": true, "sides": ["bottom", "top"], "points": [2049, 152, 2049, 236, 2050, 236, 2050, 320], "path": "b4c9e9c60df0", "label": [2049, 195, 81.11, 22], "mode": "full", "text": "dbt build", "lines": ["dbt build"], "glyph": true },
+    "dbt-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 363, 1872.5, 363, 1872.5, 469, 1813, 469], "path": "92345d224911", "label": [1872.5, 416, 101.21, 22], "mode": "full", "text": "MERGE models", "lines": ["MERGE models"] },
+    "bi-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 596, 1872.5, 596, 1872.5, 483, 1813, 483], "path": "6d5945c2ab0d", "label": [1872.5, 539.5, 81.56, 22], "mode": "full", "text": "Live queries", "lines": ["Live queries"] },
+    "marts-to-reverse-etl": { "ok": true, "sides": ["left", "right"], "points": [1560, 476, 1481, 476, 1481, 556, 1402, 556], "path": "5b0ba2375e7e", "label": [1481, 516, 123.52, 22], "mode": "full", "text": "Changed segments", "lines": ["Changed segments"] },
+    "reverse-etl-to-segments-topic": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1033, 556], "path": "da7a5242e1ee", "label": [1112.5, 556, 115.75, 22], "mode": "full", "text": "Segment changes", "lines": ["Segment changes"] },
+    "segments-topic-to-personalization": { "ok": true, "sides": ["left", "right"], "points": [800, 549, 738, 549, 738, 556, 676, 556], "path": "ce47c6a1be2e", "label": [738, 552.5, 101.51999999999998, 38], "mode": "wrap", "text": "group: personalization", "lines": ["group:", "personalization"] },
+    "segments-topic-to-marketing": { "ok": true, "sides": ["left", "right"], "points": [800, 563, 738, 563, 738, 676, 653, 676], "path": "e6cddf4e8720", "label": [738, 619.5, 141.11999999999998, 22], "mode": "full", "text": "group: marketing-sync", "lines": ["group: marketing-sync"] },
+    "personalization-to-segment-cache": { "ok": true, "sides": ["left", "right"], "points": [420, 556, 260, 556], "path": "622bfc2c55e8", "label": [346, 556, 94.85, 22], "mode": "full", "text": "SET segments", "lines": ["SET segments"] }
   },
   "bezier": {
     "billing-webhooks-to-webhook-receiver": {
@@ -70,7 +70,7 @@
         116
       ],
       "path": "ed72f8751c41",
-      "label": [336.51480000000004, 116, 101, 19],
+      "label": [336.51480000000004, 116, 101.92, 22],
       "mode": "full",
       "text": "HTTPS · signed",
       "lines": ["HTTPS · signed"]
@@ -123,7 +123,7 @@
         236
       ],
       "path": "5f13227fbc74",
-      "label": [340.68906000000004, 236, 101, 19],
+      "label": [340.68906000000004, 236, 106.35999999999999, 22],
       "mode": "full",
       "text": "POST /checkout",
       "lines": ["POST /checkout"]
@@ -176,7 +176,7 @@
         356
       ],
       "path": "693e926cd381",
-      "label": [332.8574025, 356, 35, 19],
+      "label": [332.8574025, 356, 42.82000000000001, 22],
       "mode": "full",
       "text": "WAL",
       "lines": ["WAL"]
@@ -229,7 +229,7 @@
         116
       ],
       "path": "28da13130d90",
-      "label": [754.1425975, 115.99999999999999, 83, 19],
+      "label": [754.1425975, 115.99999999999999, 80.64999999999999, 22],
       "mode": "full",
       "text": "InvoicePaid",
       "lines": ["InvoicePaid"]
@@ -282,7 +282,7 @@
         236
       ],
       "path": "c94b204eeed6",
-      "label": [727.4722325, 236, 83, 19],
+      "label": [727.4722325, 236, 85.72, 22],
       "mode": "full",
       "text": "OrderPlaced",
       "lines": ["OrderPlaced"]
@@ -335,7 +335,7 @@
         356
       ],
       "path": "b5c4b37de303",
-      "label": [716.5148, 356, 101, 19],
+      "label": [716.5148, 356, 113.30999999999999, 22],
       "mode": "full",
       "text": "AccountChanged",
       "lines": ["AccountChanged"]
@@ -437,7 +437,7 @@
         236
       ],
       "path": "bb39383dea71",
-      "label": [1096.5148, 236, 143, 19],
+      "label": [1096.5148, 236, 136.73, 22],
       "mode": "full",
       "text": "group: snowflake-sink",
       "lines": ["group: snowflake-sink"]
@@ -539,7 +539,7 @@
         152
       ],
       "path": "6383a835a6f4",
-      "label": [1289.9747209372542, 168.73133519005177, 105, 19],
+      "label": [1289.9747209372542, 168.73133519005177, 111.05, 22],
       "mode": "full",
       "text": "Avro schemas",
       "lines": ["Avro schemas"],
@@ -593,7 +593,7 @@
         236
       ],
       "path": "d3495de26d67",
-      "label": [1479.6454950000002, 236, 77, 19],
+      "label": [1479.6454950000002, 236, 77.55000000000001, 22],
       "mode": "full",
       "text": "insertRows",
       "lines": ["insertRows"]
@@ -646,7 +646,7 @@
         349
       ],
       "path": "045eb516286e",
-      "label": [1857.0742599189093, 288.27662499999997, 65, 19],
+      "label": [1857.0742599189093, 288.27662499999997, 69.33, 22],
       "mode": "full",
       "text": "New rows",
       "lines": ["New rows"]
@@ -699,7 +699,7 @@
         320
       ],
       "path": "f7fa1dde2d5c",
-      "label": [2049.462625, 232.340586405839, 87, 19],
+      "label": [2049.462625, 232.340586405839, 81.11, 22],
       "mode": "full",
       "text": "dbt build",
       "lines": ["dbt build"],
@@ -753,7 +753,7 @@
         469
       ],
       "path": "44f701aa2ecd",
-      "label": [1874.3327440176631, 419.96175, 89, 19],
+      "label": [1874.3327440176631, 419.96175, 101.21, 22],
       "mode": "full",
       "text": "MERGE models",
       "lines": ["MERGE models"]
@@ -806,7 +806,7 @@
         483
       ],
       "path": "9f461e6ef797",
-      "label": [1874.4040082778247, 535.276625, 89, 19],
+      "label": [1874.4040082778247, 535.276625, 81.56, 22],
       "mode": "full",
       "text": "Live queries",
       "lines": ["Live queries"]
@@ -859,7 +859,7 @@
         556
       ],
       "path": "58bfc7d29101",
-      "label": [1477.856163701028, 518.99, 113, 19],
+      "label": [1477.856163701028, 518.99, 123.52, 22],
       "mode": "full",
       "text": "Changed segments",
       "lines": ["Changed segments"]
@@ -912,7 +912,7 @@
         556
       ],
       "path": "9356b51cea08",
-      "label": [1103.2979725, 556, 107, 19],
+      "label": [1103.2979725, 556, 115.75, 22],
       "mode": "full",
       "text": "Segment changes",
       "lines": ["Segment changes"]
@@ -965,7 +965,7 @@
         556
       ],
       "path": "8c8de7f567f4",
-      "label": [735.3020483256703, 552.761625, 107, 32],
+      "label": [735.3020483256703, 552.761625, 101.51999999999998, 38],
       "mode": "wrap",
       "text": "group: personalization",
       "lines": ["group:", "personalization"]
@@ -1018,7 +1018,7 @@
         676
       ],
       "path": "7161d2a12895",
-      "label": [723.896928019535, 623.7233749999999, 143, 19],
+      "label": [723.896928019535, 623.7233749999999, 141.11999999999998, 22],
       "mode": "full",
       "text": "group: marketing-sync",
       "lines": ["group: marketing-sync"]
@@ -1071,32 +1071,32 @@
         556
       ],
       "path": "c402531a1ad3",
-      "label": [343.4852, 556, 89, 19],
+      "label": [343.4852, 556, 94.85, 22],
       "mode": "full",
       "text": "SET segments",
       "lines": ["SET segments"]
     }
   },
   "straight": {
-    "billing-webhooks-to-webhook-receiver": { "ok": true, "sides": ["right", "left"], "points": [260, 116, 420, 116], "path": "0fe57e636d4a", "label": [334, 116, 101, 19], "mode": "full", "text": "HTTPS · signed", "lines": ["HTTPS · signed"] },
-    "storefront-to-checkout": { "ok": true, "sides": ["right", "left"], "points": [268, 236, 420, 236], "path": "82223ccdf9fb", "label": [338, 236, 101, 19], "mode": "full", "text": "POST /checkout", "lines": ["POST /checkout"] },
-    "accounts-db-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [287, 356, 420, 356], "path": "550e546e5f8d", "label": [347.5, 356, 35, 19], "mode": "full", "text": "WAL", "lines": ["WAL"] },
-    "webhook-receiver-to-billing-topic": { "ok": true, "sides": ["right", "left"], "points": [667, 116, 800, 116], "path": "da5048cbdb29", "label": [727.5, 116, 83, 19], "mode": "full", "text": "InvoicePaid", "lines": ["InvoicePaid"] },
-    "checkout-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [661, 236, 800, 236], "path": "dc631a7d5a8e", "label": [724.5, 236, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "debezium-to-accounts-topic": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 101, 19], "mode": "full", "text": "AccountChanged", "lines": ["AccountChanged"] },
+    "billing-webhooks-to-webhook-receiver": { "ok": true, "sides": ["right", "left"], "points": [260, 116, 420, 116], "path": "0fe57e636d4a", "label": [334, 116, 101.92, 22], "mode": "full", "text": "HTTPS · signed", "lines": ["HTTPS · signed"] },
+    "storefront-to-checkout": { "ok": true, "sides": ["right", "left"], "points": [268, 236, 420, 236], "path": "82223ccdf9fb", "label": [338, 236, 106.35999999999999, 22], "mode": "full", "text": "POST /checkout", "lines": ["POST /checkout"] },
+    "accounts-db-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [287, 356, 420, 356], "path": "550e546e5f8d", "label": [347.5, 356, 42.82000000000001, 22], "mode": "full", "text": "WAL", "lines": ["WAL"] },
+    "webhook-receiver-to-billing-topic": { "ok": true, "sides": ["right", "left"], "points": [667, 116, 800, 116], "path": "da5048cbdb29", "label": [727.5, 116, 80.64999999999999, 22], "mode": "full", "text": "InvoicePaid", "lines": ["InvoicePaid"] },
+    "checkout-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [661, 236, 800, 236], "path": "dc631a7d5a8e", "label": [724.5, 236, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "debezium-to-accounts-topic": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 113.30999999999999, 22], "mode": "full", "text": "AccountChanged", "lines": ["AccountChanged"] },
     "billing-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1026, 116, 1180, 222], "path": "11bb847ab892" },
-    "orders-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1020, 236, 1180, 236], "path": "31aad4fc36a2", "label": [1104, 236, 143, 19], "mode": "full", "text": "group: snowflake-sink", "lines": ["group: snowflake-sink"] },
+    "orders-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1020, 236, 1180, 236], "path": "31aad4fc36a2", "label": [1094, 236, 136.73, 22], "mode": "full", "text": "group: snowflake-sink", "lines": ["group: snowflake-sink"] },
     "accounts-topic-to-snowpipe": { "ok": true, "sides": ["right", "left"], "points": [1041, 356, 1180, 250], "path": "482630ebe358" },
-    "snowpipe-to-schema-registry": { "ok": true, "sides": ["top", "bottom"], "points": [1293, 200, 1289.5, 152], "path": "b2e7cd62a688", "label": [1291.4813820345134, 179.17323933046958, 105, 19], "mode": "full", "text": "Avro schemas", "lines": ["Avro schemas"], "glyph": true },
-    "snowpipe-to-raw": { "ok": true, "sides": ["right", "left"], "points": [1406, 236, 1560, 236], "path": "6ecf57b9199f", "label": [1477, 236, 77, 19], "mode": "full", "text": "insertRows", "lines": ["insertRows"] },
-    "raw-to-dbt": { "ok": true, "sides": ["right", "left"], "points": [1780, 236, 1940, 349], "path": "7d62a156d5fd", "label": [1855.099041863685, 289.03869831622745, 65, 19], "mode": "full", "text": "New rows", "lines": ["New rows"] },
-    "airflow-to-dbt": { "ok": true, "sides": ["bottom", "top"], "points": [2049, 152, 2050, 320], "path": "776447d5c5ab", "label": [2049.4642863469626, 230.00010628969255, 87, 19], "mode": "full", "text": "dbt build", "lines": ["dbt build"], "glyph": true },
-    "dbt-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 363, 1813, 469], "path": "41f2c0a3c2b2", "label": [1881.1063533052607, 412.1553271625384, 89, 19], "mode": "full", "text": "MERGE models", "lines": ["MERGE models"] },
-    "bi-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 596, 1813, 483], "path": "e8410e713a7d", "label": [1880.9825080479447, 543.488373302502, 89, 19], "mode": "full", "text": "Live queries", "lines": ["Live queries"] },
-    "marts-to-reverse-etl": { "ok": true, "sides": ["left", "right"], "points": [1560, 476, 1402, 556], "path": "eb530a7b1397", "label": [1486.3529429489313, 513.2896491397817, 113, 19], "mode": "full", "text": "Changed segments", "lines": ["Changed segments"] },
-    "reverse-etl-to-segments-topic": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1033, 556], "path": "da7a5242e1ee", "label": [1112.5, 556, 107, 19], "mode": "full", "text": "Segment changes", "lines": ["Segment changes"] },
-    "segments-topic-to-personalization": { "ok": true, "sides": ["left", "right"], "points": [800, 549, 676, 556], "path": "8240084fbbe6", "label": [734.0063583761467, 552.725447511024, 107, 32], "mode": "wrap", "text": "group: personalization", "lines": ["group:", "personalization"] },
-    "segments-topic-to-marketing": { "ok": true, "sides": ["left", "right"], "points": [800, 563, 653, 676], "path": "4b2cf5dc7cf3", "label": [731.2569466582152, 615.8432995076305, 143, 19], "mode": "full", "text": "group: marketing-sync", "lines": ["group: marketing-sync"] },
-    "personalization-to-segment-cache": { "ok": true, "sides": ["left", "right"], "points": [420, 556, 260, 556], "path": "622bfc2c55e8", "label": [346, 556, 89, 19], "mode": "full", "text": "SET segments", "lines": ["SET segments"] }
+    "snowpipe-to-schema-registry": { "ok": true, "sides": ["top", "bottom"], "points": [1293, 200, 1289.5, 152], "path": "b2e7cd62a688", "label": [1291.4813820345134, 179.17323933046958, 111.05, 22], "mode": "full", "text": "Avro schemas", "lines": ["Avro schemas"], "glyph": true },
+    "snowpipe-to-raw": { "ok": true, "sides": ["right", "left"], "points": [1406, 236, 1560, 236], "path": "6ecf57b9199f", "label": [1477, 236, 77.55000000000001, 22], "mode": "full", "text": "insertRows", "lines": ["insertRows"] },
+    "raw-to-dbt": { "ok": true, "sides": ["right", "left"], "points": [1780, 236, 1940, 349], "path": "7d62a156d5fd", "label": [1855.099041863685, 289.03869831622745, 69.33, 22], "mode": "full", "text": "New rows", "lines": ["New rows"] },
+    "airflow-to-dbt": { "ok": true, "sides": ["bottom", "top"], "points": [2049, 152, 2050, 320], "path": "776447d5c5ab", "label": [2049.4642863469626, 230.00010628969255, 81.11, 22], "mode": "full", "text": "dbt build", "lines": ["dbt build"], "glyph": true },
+    "dbt-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 363, 1813, 469], "path": "41f2c0a3c2b2", "label": [1881.1063533052607, 412.1553271625384, 101.21, 22], "mode": "full", "text": "MERGE models", "lines": ["MERGE models"] },
+    "bi-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 596, 1813, 483], "path": "e8410e713a7d", "label": [1880.9825080479447, 543.488373302502, 81.56, 22], "mode": "full", "text": "Live queries", "lines": ["Live queries"] },
+    "marts-to-reverse-etl": { "ok": true, "sides": ["left", "right"], "points": [1560, 476, 1402, 556], "path": "eb530a7b1397", "label": [1486.3529429489313, 513.2896491397817, 123.52, 22], "mode": "full", "text": "Changed segments", "lines": ["Changed segments"] },
+    "reverse-etl-to-segments-topic": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1033, 556], "path": "da7a5242e1ee", "label": [1112.5, 556, 115.75, 22], "mode": "full", "text": "Segment changes", "lines": ["Segment changes"] },
+    "segments-topic-to-personalization": { "ok": true, "sides": ["left", "right"], "points": [800, 549, 676, 556], "path": "8240084fbbe6", "label": [734.0063583761467, 552.725447511024, 101.51999999999998, 38], "mode": "wrap", "text": "group: personalization", "lines": ["group:", "personalization"] },
+    "segments-topic-to-marketing": { "ok": true, "sides": ["left", "right"], "points": [800, 563, 653, 676], "path": "4b2cf5dc7cf3", "label": [731.2569466582152, 615.8432995076305, 141.11999999999998, 22], "mode": "full", "text": "group: marketing-sync", "lines": ["group: marketing-sync"] },
+    "personalization-to-segment-cache": { "ok": true, "sides": ["left", "right"], "points": [420, 556, 260, 556], "path": "622bfc2c55e8", "label": [346, 556, 94.85, 22], "mode": "full", "text": "SET segments", "lines": ["SET segments"] }
   }
 }

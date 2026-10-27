@@ -21,7 +21,7 @@ test.describe("production build under a sub-path", () => {
 
   test("production tutorials keep the sub-path without exposing test hooks", async ({ page, consoleErrors }) => {
     await page.goto("./?view=tutorials");
-    await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByTestId("tutorials-view")).toBeVisible();
     await page.getByTestId("tutorial-open-mobile-api").click();
     await expect(page.getByTestId("tutorial-intro")).toBeVisible();

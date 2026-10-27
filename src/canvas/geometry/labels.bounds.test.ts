@@ -16,7 +16,7 @@ it("bounds imported label wrapping before splitting words or searching widths", 
   expect(ops(() => expect(wrapLines(manyWords, 3)).toBeNull(), LABEL.maxLineChars)).toBeGreaterThan(0);
 });
 
-it("keeps normal wrapping and retains the full text when a long imported label is truncated", () => {
+it("keeps normal wrapping and retains the full text when a long imported label becomes a hover dot", () => {
   expect(wrapLines("Authorize payment", 2)).toEqual(["Authorize", "payment"]);
   expect(wrapLines("Redrive after 5 failed receives", 2)).toEqual(["Redrive after 5", "failed receives"]);
   expect(wrapLines("single", 3)).toBeNull();
@@ -34,5 +34,5 @@ it("keeps normal wrapping and retains the full text when a long imported label i
     ],
     { nodes: [] },
   ).get("e");
-  expect(placed).toMatchObject({ mode: "truncate", text });
+  expect(placed).toMatchObject({ mode: "dot", text });
 });

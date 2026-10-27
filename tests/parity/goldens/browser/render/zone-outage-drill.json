@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(25px, 165.25px) scale(0.75)",
+  "viewport": "translate(12.8235px, 69.7059px) scale(0.958824)",
   "nodes": {
     "group:zone-a": { "kind": "group", "box": "translate(700px, 80px) 680×170", "text": "Zone a" },
     "group:zone-b": { "kind": "group", "box": "translate(700px, 440px) 680×170", "text": "Zone b" },
@@ -12,10 +12,10 @@
   },
   "edges": { "visitors-entry": "M240,326 L360,326", "entry-api-a": "M580,319 L637,319 Q647,319 647,309 L647,166 Q647,156 657,156 L740,156", "api-orders-a": "M960,156 L1100,156", "entry-api-b": "M580,333 L637,333 Q647,333 647,343 L647,506 Q647,516 657,516 L740,516", "api-orders-b": "M960,516 L1100,516" },
   "labels": {
-    "visitors-entry": { "style": "transform: translate(-50%, -50%) translate(294px, 326px); --fe-w: 65px; --fe-h: 19px;", "text": "Checkout" },
-    "entry-api-a": { "style": "transform: translate(-50%, -50%) translate(647px, 237.5px); --fe-w: 113px; --fe-h: 19px;", "text": "Healthy target a" },
-    "api-orders-a": { "style": "transform: translate(-50%, -50%) translate(1024px, 156px); --fe-w: 83px; --fe-h: 19px;", "text": "Local write" },
-    "entry-api-b": { "style": "transform: translate(-50%, -50%) translate(647px, 424.5px); --fe-w: 113px; --fe-h: 19px;", "text": "Healthy target b" },
-    "api-orders-b": { "style": "transform: translate(-50%, -50%) translate(1024px, 516px); --fe-w: 83px; --fe-h: 19px;", "text": "Local write" }
+    "visitors-entry": { "style": "transform: translate(-50%, -50%) translate(294px, 326px); --fe-w: 70.24px; --fe-h: 22px;", "text": "Checkout" },
+    "entry-api-a": { "style": "transform: translate(-50%, -50%) translate(647px, 237.5px); --fe-w: 105.31px; --fe-h: 22px;", "text": "Healthy target a" },
+    "api-orders-a": { "style": "transform: translate(-50%, -50%) translate(1024px, 156px); --fe-w: 75.92999999999999px; --fe-h: 22px;", "text": "Local write" },
+    "entry-api-b": { "style": "transform: translate(-50%, -50%) translate(647px, 424.5px); --fe-w: 105.31px; --fe-h: 22px;", "text": "Healthy target b" },
+    "api-orders-b": { "style": "transform: translate(-50%, -50%) translate(1024px, 516px); --fe-w: 75.92999999999999px; --fe-h: 22px;", "text": "Local write" }
   }
 }

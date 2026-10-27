@@ -168,7 +168,7 @@ export function useLiveRecording({
   /** The video is framed to the canvas area: the diagram, its title card and the live overlays. */
   const recordTarget = useCallback(() => {
     const root = store.getState().domNode;
-    return root?.closest(".canvas-wrap") ?? root ?? null;
+    return root?.closest(".app") ?? root?.closest(".canvas-view") ?? root ?? null;
   }, [store]);
   const recordTitle = useCallback(() => getDiagram().title, [getDiagram]);
 

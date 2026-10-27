@@ -1,4 +1,4 @@
-import { waitForStableViewport } from "./fixtures";
+import { waitForStableViewport, openDiagramProperties } from "./fixtures";
 import { TEXT_END } from "./fixtures";
 import { copyFileSync, readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
@@ -94,9 +94,11 @@ test.describe("round 4 polish", () => {
     const plain = size(await exportImage(page, "png", false, info.outputPath("plain.png")));
     expect(titled.width).toBe(plain.width);
     expect(titled.height - plain.height).toBeGreaterThan(2 * 60); // 2× pixels: the title, a line, the gap
-    // The header was only there for the shot: the description is on screen once (the diagram card).
+    // The export header stays out of the drawing; the description remains available in Diagram properties.
+    await openDiagramProperties(page);
     const count = (el: HTMLElement) => el.innerText.split("Order placement with independent").length - 1;
-    expect(await page.getByTestId("canvas-wrap").evaluate(count)).toBe(1);
+    expect(await page.getByTestId("diagram-description").evaluate(count)).toBe(1);
+    expect(await page.getByTestId("canvas-wrap").evaluate(count)).toBe(0);
   });
 
   test("at 1024 the gallery folds the families that don't fit into the Vendor menu", async ({ page }) => {
@@ -142,6 +144,8 @@ test.describe("round 4 polish", () => {
     const a = page.getByTestId("node-stock-db");
     const b = page.getByTestId("node-payment-db");
     await a.click();
+    await page.getByTestId("fit-view-button").click();
+    await waitForStableViewport(page);
     await b.click({ modifiers: ["ControlOrMeta"] });
     await openCanvasMenu(page);
     await page.getByTestId("context-menu-item-canvas.annotate").click();

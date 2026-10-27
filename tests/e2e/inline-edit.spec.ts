@@ -8,6 +8,7 @@ import {
   pauseClock,
   savedDiagram,
   STORAGE_KEYS,
+  openEditProperties,
 } from "./fixtures";
 import rateLimitExample from "../../src/examples/inline-rate-limit.json" with { type: "json" };
 import type { DiagramFile } from "../../src/model/types";
@@ -22,11 +23,14 @@ test("live: nodes, boundaries and connections open their property sheet", async 
     await waitForStableViewport(page);
     await page.getByTestId(target).dblclick();
     const label = page.getByTestId("inspector-field-label");
+    if (target === "node-order-events") {
+      await expect(page.getByTestId("rf__node-order-events")).toBeFocused();
+      await openEditProperties(page);
+    }
     await expect(label).toBeVisible();
     if (target === "node-order-events") {
       await expect(label).not.toBeFocused();
       expect(await label.evaluate((el: HTMLInputElement) => (el.selectionEnd ?? 0) - (el.selectionStart ?? 0))).toBe(0);
-      await expect(page.getByTestId("rf__node-order-events")).toBeFocused();
     } else {
       await expect(label).toBeFocused();
     }
@@ -66,6 +70,7 @@ test("P2 R-24e8f73492: Rate limit edits apply while Live traffic keeps running",
   await gotoLive(page, "./?view=canvas&example=inline-rate-limit&live=1");
   await waitForStableViewport(page);
   await page.getByTestId("node-limiter").dblclick();
+  await openEditProperties(page);
   await page.getByTestId("inspector-section-node-simulation").click();
   const rate = page.getByTestId("inspector-field-rate-limit");
   await expect(rate).toHaveValue("10");
@@ -122,6 +127,7 @@ test("Live Rate limit edits keep the same quota after each render", async ({ pag
   await gotoLive(page, "./?view=canvas&example=inline-rate-limit&live=1");
   await waitForStableViewport(page);
   await page.getByTestId("node-limiter").dblclick();
+  await openEditProperties(page);
   await page.getByTestId("inspector-section-node-simulation").click();
   const rate = page.getByTestId("inspector-field-rate-limit");
   const processed = () => page.getByTestId("node-badge-api").getAttribute("data-processed").then(Number);

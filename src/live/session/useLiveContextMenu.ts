@@ -62,10 +62,14 @@ export function useLiveContextMenu({
   }, [editor, locale]);
 
   // This is temporary visibility, not a persisted editor preference.
+  const liveSurfaceOpen = panel.open || (!!session.state.trace && motion.slow.state.status === "off");
   useEffect(() => {
-    onPanelChange?.(panel.open);
+    // A trace owns its floating readout too. Keep Properties from narrowing
+    // the canvas just because its context menu selected the trace's origin.
+    // Slow motion owns a separate camera and keeps the Inspector available for resize.
+    onPanelChange?.(liveSurfaceOpen);
     return () => onPanelChange?.(false);
-  }, [panel.open, onPanelChange]);
+  }, [liveSurfaceOpen, onPanelChange]);
 
   // Context-menu actions (canvas only).
   useEffect(() => {

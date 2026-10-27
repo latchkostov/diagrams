@@ -45,7 +45,7 @@ async function openChecks(page: Page) {
   await page.getByTestId("command-item-action:canvas.check-diagram").click();
   // First use downloads the card. Await its mount as setup (the test's hang backstop),
   // then assert visibility with the normal UI budget, as waitForLiveSession does.
-  await page.getByTestId("canvas-wrap").evaluate(
+  await page.getByTestId("canvas-view").evaluate(
     (root) =>
       new Promise<void>((resolve) => {
         const ready = () => {
@@ -145,7 +145,9 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   await importExample(page, "azure-service-bus-integration", "Invoices without a DLQ", (d) => {
     d.edges = d.edges.filter((e) => e.id !== "commands-to-dlq");
   });
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning", {
+    timeout: pageLoadTimeout(),
+  });
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
   const texts = await recordStatus(page);
@@ -160,7 +162,9 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   const evidence = page.getByTestId("check-evidence-dead-letter:commands");
   await expect(evidence).toHaveText("30 dropped in “Poison invoices”");
   // Evidence is never a warning of its own: the count under the title is the checks' own.
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning", {
+    timeout: pageLoadTimeout(),
+  });
   // Focus stayed on the one button, now Run again.
   await expect(page.getByTestId("checks-run-simulations")).toBeFocused();
   await expect(page.getByTestId("checks-run-simulations")).toHaveText("Run again");
@@ -177,14 +181,17 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
 
   // An edit it would see hides them, at once.
   await page.getByTestId("check-element-worker").first().click();
+  await page.getByTestId("dock-tab-properties").click();
   await page.getByTestId("inspector-field-label").fill("Ledger worker v2");
+  await openChecks(page);
   await expect(status(page)).toHaveText("The diagram changed since the simulations played.");
   await expect(evidence).toHaveCount(0);
   await expect(page.getByTestId("checks-run-simulations")).toHaveText("Run again");
   // Undo brings back the diagram they were played on, and with it the counts.
-  await page.getByTestId("inspector-field-label").blur();
   await page.getByTestId("undo-button").click();
+  await page.getByTestId("dock-tab-properties").click();
   await expect(page.getByTestId("inspector-field-label")).toHaveValue("Ledger worker");
+  await openChecks(page);
   await expect(status(page)).toHaveText("Played 2 simulations · counts on 1 finding");
   await expect(evidence).toBeVisible();
   expectNoErrors(consoleErrors);
@@ -200,9 +207,10 @@ test("a deliberate outage is on purpose, not a finding", async ({ page }) => {
       "On purpose: 245 dropped at Booking API, which “A bad deploy stays in one cell” makes fail.",
   );
   await expect(page.getByTestId("checks-empty")).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // Three load balancers share the name: the note's selects the one it means.
   await page.getByTestId("checks-planned-east-alb").click();
+  await page.getByTestId("dock-tab-properties").click();
   await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("us-east-1");
 });
 
@@ -252,7 +260,7 @@ test("Run simulations from Ctrl+K and the canvas right-click: opens the card and
   expect(await runStats(page)).toMatchObject({ started: 1, finished: 1 });
 
   // The canvas right-click, with the card closed again: the same.
-  await page.getByTestId("checks-close").click();
+  await page.getByTestId("dock-tab-properties").click();
   await expect(card(page)).toHaveCount(0);
   await canvasMenu(page);
   await expect(page.getByTestId(RUN_ITEM)).toHaveText(/Run simulations/);
@@ -390,7 +398,7 @@ test.describe("a long run", () => {
     await openChecks(page);
     await run.click();
     await expect(status(page)).toHaveText(/^Playing 1 of 3/);
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
     await expect.poll(async () => (await runStats(page)).stopped).toBe(3);
 
     // An edit a simulation would see stops it.
@@ -398,13 +406,16 @@ test.describe("a long run", () => {
     await run.click();
     await expect(status(page)).toHaveText(/^Playing 1 of 3/);
     await page.getByTestId("check-element-p0n2").first().click();
-    await page.getByTestId("inspector-field-label").fill("Renamed");
+    // Delete edits the simulated graph without leaving Checks for Properties first.
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("node-p0n2")).toHaveCount(0);
     await expect(status(page)).toHaveText("Stopped: the diagram changed.");
     expect(await runStats(page)).toMatchObject({ finished: 0, stopped: 4 });
   });
 
   test("Ctrl+K and the canvas right-click stop it the same way, and play it again", async ({ page }) => {
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
     await expect(card(page)).toHaveCount(0);
     // The right-click: the card opens and it plays; while it plays Stop simulations takes Run's place.
     await canvasMenu(page);

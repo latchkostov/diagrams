@@ -1,4 +1,5 @@
 import { defineLazySurface } from "../lib/lazySurface";
+import { useWorkbenchDock } from "../canvas/inspector/dockState";
 import { inHoverBridge } from "./hoverBridge";
 import { useReadoutFocus } from "./useReadoutFocus";
 import { DetailsLoading } from "./DetailsLoading";
@@ -98,8 +99,23 @@ export function NodeBadges({
   // No breakdown while a card is edited inline: the editor hangs where the breakdown would show, and
   // focus in the editor would otherwise count as hovering its node.
   const { editing } = useDiagram();
-  const pointed = useHoveredNode(nodes, state);
+  const dock = useWorkbenchDock();
+  const candidate = useHoveredNode(nodes, state);
+  const edgesSelected = useStore((s) => s.edges?.some((e) => e.selected) ?? false);
+  const singleNode = nodes.filter((n) => n.selected).length === 1 && !edgesSelected;
+  const pointed =
+    !presenting &&
+    ui.canEdit &&
+    dock.value === "properties" &&
+    singleNode &&
+    candidate?.kind === "node" &&
+    nodes.some((n) => n.selected && n.id === candidate.id)
+      ? null
+      : candidate;
   const focusClaim = useReadoutFocus(pointed);
+  useLayoutEffect(() => {
+    if (candidate?.kind === "node") ui.controller.runHistory.probe(candidate.id);
+  });
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
@@ -384,23 +400,28 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       )}
       {showOutageLoss && s.status === "down" && currentHealth(s).dropped > 0 && (
         <div
-          className="lv-alert mono"
+          className="lv-alert is-lost"
           title={t("fault.droppedCount", { count: currentHealth(s).dropped })}
           data-testid={`node-loss-${node.id}`}
         >
-          {formatCount(currentHealth(s).dropped)}
+          {`${t("hover.lost")} ${formatCount(currentHealth(s).dropped)}`}
         </div>
       )}
       {problems > 0 && s.status !== "down" && (
         <div
-          className="lv-alert mono"
+          className="lv-alert is-lost"
           title={t("threads.lostCount", { count: problems })}
           data-testid={`node-alert-${node.id}`}
         >
-          {formatCount(problems)}
+          {`${t("hover.lost")} ${formatCount(problems)}`}
         </div>
       )}
 
+      {s.status === "up" && problems === 0 && s.processed > 0 && (
+        <div className="lv-alert is-processed" title={t("hover.processed")} data-testid={`node-processed-${node.id}`}>
+          {formatCount(s.processed)}
+        </div>
+      )}
       {broker && (s.backlog > 0 || s.processed > 0) && (
         <div className={`lv-depth${unread ? " is-kept" : ""}`} aria-hidden>
           <i style={{ "--d": `${Math.min(100, (s.backlog / peak) * 100).toFixed(1)}%` } as CSSProperties} />
@@ -433,6 +454,9 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
               style={{ "--heat": unread ? "0" : heat.toFixed(3) } as CSSProperties}
               data-testid={`node-metric-${node.id}`}
             >
+              <span className="lv-pill-glyph" aria-hidden>
+                ◌
+              </span>
               {held!.lead && `${held!.lead} · `}
               <b className="mono">{formatCount(s.backlog)}</b> {held!.unit}
             </span>
@@ -488,6 +512,9 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           )}
           {s.fleet && (
             <span className="lv-metric" data-testid={`node-fleet-${node.id}`}>
+              <span className="lv-pill-glyph" aria-hidden>
+                ◷
+              </span>
               {s.fleet.starting
                 ? t("autoscaling.startingBadge", s.fleet)
                 : s.fleet.draining

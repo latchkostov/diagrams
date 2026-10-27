@@ -1,71 +1,71 @@
 {
   "smoothstep": {
-    "tv--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 456, 330, 456, 330, 549, 440, 549], "path": "092695c084bf", "label": [276, 456, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "phones--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 676, 330, 676, 330, 563, 440, 563], "path": "f503609cddae", "label": [330, 619.5, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gateway--home-api": { "ok": true, "sides": ["right", "left"], "points": [660, 549, 780, 549, 780, 476, 900, 476], "path": "b643aa732897", "label": [721, 549, 41, 19], "mode": "full", "text": "Home", "lines": ["Home"] },
-    "gateway--collector": { "ok": true, "sides": ["right", "left"], "points": [660, 563, 767, 563, 767, 1336, 900, 1336], "path": "e53ba418e9d5", "label": [767, 949.5, 53, 19], "mode": "full", "text": "Events", "lines": ["Events"] },
-    "home-api--profiles": { "ok": true, "sides": ["right", "left"], "points": [1120, 450, 1224.5, 450, 1224.5, 196, 1340, 196], "path": "a3e60bea3dca", "label": [1224.5, 313, 59, 19], "mode": "full", "text": "Profile", "lines": ["Profile"] },
+    "tv--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 456, 330, 456, 330, 549, 440, 549], "path": "092695c084bf", "label": [276, 456, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "phones--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 676, 330, 676, 330, 563, 440, 563], "path": "f503609cddae", "label": [330, 619.5, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gateway--home-api": { "ok": true, "sides": ["right", "left"], "points": [660, 549, 780, 549, 780, 476, 900, 476], "path": "b643aa732897", "label": [721, 549, 50, 22], "mode": "full", "text": "Home", "lines": ["Home"] },
+    "gateway--collector": { "ok": true, "sides": ["right", "left"], "points": [660, 563, 767, 563, 767, 1336, 900, 1336], "path": "e53ba418e9d5", "label": [767, 949.5, 53.9, 22], "mode": "full", "text": "Events", "lines": ["Events"] },
+    "home-api--profiles": { "ok": true, "sides": ["right", "left"], "points": [1120, 450, 1224.5, 450, 1224.5, 196, 1340, 196], "path": "a3e60bea3dca", "label": [1224.5, 323, 51.830000000000005, 22], "mode": "full", "text": "Profile", "lines": ["Profile"] },
     "profiles--profiles-db": { "ok": true, "sides": ["right", "left"], "points": [1574, 196, 2680, 196], "path": "ba03b2a0adfb" },
-    "home-api--metadata": { "ok": true, "sides": ["right", "left"], "points": [1120, 457.42857142857144, 1235.5, 457.42857142857144, 1235.5, 336, 1340, 336], "path": "0d7e1114efc0", "label": [1280.75, 336, 53, 19], "mode": "full", "text": "Titles", "lines": ["Titles"] },
+    "home-api--metadata": { "ok": true, "sides": ["right", "left"], "points": [1120, 457.42857142857144, 1235.5, 457.42857142857144, 1235.5, 336, 1340, 336], "path": "0d7e1114efc0", "label": [1280.75, 336, 46.46, 22], "mode": "full", "text": "Titles", "lines": ["Titles"] },
     "metadata--title-cache": { "ok": true, "sides": ["right", "left"], "points": [1560, 336, 2680, 336], "path": "d22c53ff1366" },
-    "home-api--artwork": { "ok": true, "sides": ["right", "left"], "points": [1120, 487.14285714285717, 1224.5, 487.14285714285717, 1224.5, 756, 1340, 756], "path": "c9f25ebf9e61", "label": [1285.25, 756, 59, 19], "mode": "full", "text": "Artwork", "lines": ["Artwork"] },
-    "home-api--bookmarks": { "ok": true, "sides": ["right", "left"], "points": [1120, 464.85714285714283, 1257.5, 464.85714285714283, 1257.5, 476, 1340, 476], "path": "290f0565d4d7", "label": [1291.75, 476, 77, 19], "mode": "full", "text": "Resume row", "lines": ["Resume row"] },
+    "home-api--artwork": { "ok": true, "sides": ["right", "left"], "points": [1120, 487.14285714285717, 1224.5, 487.14285714285717, 1224.5, 756, 1340, 756], "path": "c9f25ebf9e61", "label": [1285.25, 756, 60.43, 22], "mode": "full", "text": "Artwork", "lines": ["Artwork"] },
+    "home-api--bookmarks": { "ok": true, "sides": ["right", "left"], "points": [1120, 464.85714285714283, 1257.5, 464.85714285714283, 1257.5, 476, 1340, 476], "path": "290f0565d4d7", "label": [1291.75, 476, 84.33, 22], "mode": "full", "text": "Resume row", "lines": ["Resume row"] },
     "bookmarks--bookmarks-db": { "ok": true, "sides": ["right", "left"], "points": [1560, 476, 2121.5, 476, 2121.5, 469, 2680, 469], "path": "1cc5a2633960" },
     "play-events--bookmarks-writer": { "ok": true, "sides": ["right", "left"], "points": [1600, 1343, 1672.8, 1343, 1672.8, 1616, 1780, 1616], "path": "24c44b81fedf" },
-    "bookmarks-writer--bookmarks-db": { "ok": true, "sides": ["right", "left"], "points": [2008, 1616, 2126, 1616, 2126, 483, 2680, 483], "path": "c25cdf80643f", "label": [2126, 1059.5, 89, 19], "mode": "full", "text": "Resume point", "lines": ["Resume point"] },
-    "artwork--online-store": { "ok": true, "sides": ["right", "left"], "points": [1560, 756, 2545, 756, 2545, 735, 2680, 735], "path": "a0869208afc0", "label": [2053.5, 756, 71, 19], "mode": "full", "text": "Arm stats", "lines": ["Arm stats"] },
-    "home-api--candidates": { "ok": true, "sides": ["right", "left"], "points": [1120, 479.7142857142857, 1235.5, 479.7142857142857, 1235.5, 616, 1340, 616], "path": "7d46c25b1da9", "label": [1290.75, 616, 77, 19], "mode": "full", "text": "Candidates", "lines": ["Candidates"] },
-    "candidates--ann-index": { "ok": true, "sides": ["right", "left"], "points": [1573, 616, 2680, 616], "path": "fdda5a5efbf8", "label": [2070.5, 616, 101, 19], "mode": "full", "text": "Nearest titles", "lines": ["Nearest titles"] },
-    "home-api--ranking-router": { "ok": true, "sides": ["right", "left"], "points": [1120, 494.57142857142856, 1213.5, 494.57142857142856, 1213.5, 896, 1340, 896], "path": "6793acbc8769", "label": [1269.75, 896, 41, 19], "mode": "full", "text": "Rank", "lines": ["Rank"] },
-    "home-api--ranker-v9": { "ok": true, "sides": ["right", "left"], "points": [1120, 502, 1202.5, 502, 1202.5, 1036, 1340, 1036], "path": "134365268519", "label": [1202.5, 909, 77, 19], "mode": "full", "text": "Mirror 10%", "lines": ["Mirror 10%"] },
+    "bookmarks-writer--bookmarks-db": { "ok": true, "sides": ["right", "left"], "points": [2008, 1616, 2126, 1616, 2126, 483, 2680, 483], "path": "c25cdf80643f", "label": [2126, 1069.5, 92.52999999999999, 22], "mode": "full", "text": "Resume point", "lines": ["Resume point"] },
+    "artwork--online-store": { "ok": true, "sides": ["right", "left"], "points": [1560, 756, 2545, 756, 2545, 735, 2680, 735], "path": "a0869208afc0", "label": [2053.5, 756, 70.74, 22], "mode": "full", "text": "Arm stats", "lines": ["Arm stats"] },
+    "home-api--candidates": { "ok": true, "sides": ["right", "left"], "points": [1120, 479.7142857142857, 1235.5, 479.7142857142857, 1235.5, 616, 1340, 616], "path": "7d46c25b1da9", "label": [1290.75, 616, 80.52, 22], "mode": "full", "text": "Candidates", "lines": ["Candidates"] },
+    "candidates--ann-index": { "ok": true, "sides": ["right", "left"], "points": [1573, 616, 2680, 616], "path": "fdda5a5efbf8", "label": [2080.5, 616, 89.58999999999999, 22], "mode": "full", "text": "Nearest titles", "lines": ["Nearest titles"] },
+    "home-api--ranking-router": { "ok": true, "sides": ["right", "left"], "points": [1120, 494.57142857142856, 1213.5, 494.57142857142856, 1213.5, 896, 1340, 896], "path": "6793acbc8769", "label": [1269.75, 896, 45.81, 22], "mode": "full", "text": "Rank", "lines": ["Rank"] },
+    "home-api--ranker-v9": { "ok": true, "sides": ["right", "left"], "points": [1120, 502, 1202.5, 502, 1202.5, 1036, 1340, 1036], "path": "134365268519", "label": [1202.5, 909, 76.89000000000001, 22], "mode": "full", "text": "Mirror 10%", "lines": ["Mirror 10%"] },
     "ranking-router--ranker-v7": { "ok": true, "sides": ["right", "left"], "points": [1560, 889, 1780, 889], "path": "e6badcda1737" },
     "ranking-router--ranker-v8": { "ok": true, "sides": ["right", "left"], "points": [1560, 903, 1716.8, 903, 1716.8, 1029, 1780, 1029], "path": "e8821cd055a4" },
-    "ranker-v7--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2000, 903, 2108.5, 903, 2108.5, 882, 2220, 882], "path": "4c9a162bba4d", "label": [2167.25, 882, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
-    "ranker-v8--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2008, 1022, 2130.5, 1022, 2130.5, 910, 2220, 910], "path": "dcca44320158", "label": [2070.25, 1022, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
-    "ranker-v9--feature-server": { "ok": true, "sides": ["right", "left"], "points": [1593, 1036, 1639.8, 1036, 1639.8, 966, 2115, 966, 2115, 896, 2220, 896], "path": "e0cdf0848f71", "label": [1877.4, 966, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "ranker-v7--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2000, 903, 2108.5, 903, 2108.5, 882, 2220, 882], "path": "4c9a162bba4d", "label": [2167.25, 882, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "ranker-v8--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2008, 1022, 2130.5, 1022, 2130.5, 910, 2220, 910], "path": "dcca44320158", "label": [2070.25, 1022, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "ranker-v9--feature-server": { "ok": true, "sides": ["right", "left"], "points": [1593, 1036, 1639.8, 1036, 1639.8, 966, 2115, 966, 2115, 896, 2220, 896], "path": "e0cdf0848f71", "label": [1877.4, 966, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
     "feature-server--online-store": { "ok": true, "sides": ["right", "left"], "points": [2480, 882, 2556, 882, 2556, 749, 2680, 749], "path": "66356c9e4d06" },
-    "ranker-v7--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 903, 1727.8, 903, 1727.8, 1455, 1600, 1455], "path": "3e08ed42820e", "label": [1727.8, 1189, 53, 32], "mode": "wrap", "text": "Scored rows", "lines": ["Scored", "rows"] },
-    "ranker-v8--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 1043, 1694.8, 1043, 1694.8, 1469, 1600, 1469], "path": "7fecbfb2f87c", "label": [1694.8, 1256, 53, 32], "mode": "wrap", "text": "Scored rows", "lines": ["Scored", "rows"] },
-    "ranker-v9--predictions": { "ok": true, "sides": ["bottom", "top"], "points": [1466.5, 1072, 1466.5, 1186, 1302, 1186, 1302, 1406, 1470, 1406, 1470, 1440], "path": "bcf605cc84a9", "label": [1302, 1286, 95, 19], "mode": "full", "text": "Shadow scores", "lines": ["Shadow scores"] },
-    "collector--play-events": { "ok": true, "sides": ["right", "left"], "points": [1120, 1350, 1235.5, 1350, 1235.5, 1336, 1340, 1336], "path": "49554e9fd706", "label": [1178.75, 1350, 71, 19], "mode": "full", "text": "PlayEvent", "lines": ["PlayEvent"] },
+    "ranker-v7--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 903, 1727.8, 903, 1727.8, 1455, 1600, 1455], "path": "3e08ed42820e", "label": [1727.8, 1189, 55.55, 38], "mode": "wrap", "text": "Scored rows", "lines": ["Scored", "rows"] },
+    "ranker-v8--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 1043, 1694.8, 1043, 1694.8, 1469, 1600, 1469], "path": "7fecbfb2f87c", "label": [1694.8, 1256, 55.55, 38], "mode": "wrap", "text": "Scored rows", "lines": ["Scored", "rows"] },
+    "ranker-v9--predictions": { "ok": true, "sides": ["bottom", "top"], "points": [1466.5, 1072, 1466.5, 1186, 1302, 1186, 1302, 1406, 1470, 1406, 1470, 1440], "path": "bcf605cc84a9", "label": [1302, 1276, 99.68, 22], "mode": "full", "text": "Shadow scores", "lines": ["Shadow scores"] },
+    "collector--play-events": { "ok": true, "sides": ["right", "left"], "points": [1120, 1350, 1235.5, 1350, 1235.5, 1336, 1340, 1336], "path": "49554e9fd706", "label": [1178.75, 1350, 71.69999999999999, 22], "mode": "full", "text": "PlayEvent", "lines": ["PlayEvent"] },
     "play-events--sessionizer": { "ok": true, "sides": ["right", "left"], "points": [1600, 1315, 1705.8, 1315, 1705.8, 1336, 1780, 1336], "path": "129a790ea0ef" },
     "play-events--trending": { "ok": true, "sides": ["right", "left"], "points": [1600, 1329, 1738.8, 1329, 1738.8, 1476, 1780, 1476], "path": "cf71e347d62c" },
     "play-events--lake-sink": { "ok": true, "sides": ["right", "left"], "points": [1600, 1357, 1661.8, 1357, 1661.8, 1749, 1780, 1749], "path": "fea86599a685" },
-    "sessionizer--online-store": { "ok": true, "sides": ["right", "left"], "points": [2027, 1329, 2572.1666666666665, 1329, 2572.1666666666665, 763, 2680, 763], "path": "aa32fcff638f", "label": [2300.583333333333, 1329, 53, 19], "mode": "full", "text": "Update", "lines": ["Update"] },
-    "trending--online-store": { "ok": true, "sides": ["right", "left"], "points": [2040, 1476, 2594.1666666666665, 1476, 2594.1666666666665, 777, 2680, 777], "path": "6c341045eab4", "label": [2594.1666666666665, 1356.5, 53, 19], "mode": "full", "text": "Update", "lines": ["Update"] },
-    "lake-sink--offline-store": { "ok": true, "sides": ["right", "left"], "points": [2000, 1756, 2560.5, 1756, 2560.5, 896, 2680, 896], "path": "715757bacd37", "label": [2560.5, 1386, 53, 19], "mode": "full", "text": "Append", "lines": ["Append"] },
+    "sessionizer--online-store": { "ok": true, "sides": ["right", "left"], "points": [2027, 1329, 2572.1666666666665, 1329, 2572.1666666666665, 763, 2680, 763], "path": "aa32fcff638f", "label": [2300.583333333333, 1329, 57.17999999999999, 22], "mode": "full", "text": "Update", "lines": ["Update"] },
+    "trending--online-store": { "ok": true, "sides": ["right", "left"], "points": [2040, 1476, 2594.1666666666665, 1476, 2594.1666666666665, 777, 2680, 777], "path": "6c341045eab4", "label": [2594.1666666666665, 1356.5, 57.17999999999999, 22], "mode": "full", "text": "Update", "lines": ["Update"] },
+    "lake-sink--offline-store": { "ok": true, "sides": ["right", "left"], "points": [2000, 1756, 2560.5, 1756, 2560.5, 896, 2680, 896], "path": "715757bacd37", "label": [2560.5, 1386, 59.76, 22], "mode": "full", "text": "Append", "lines": ["Append"] },
     "predictions--drift": { "ok": true, "sides": ["right", "left"], "points": [1600, 1483, 1683.8, 1483, 1683.8, 1546, 2132.5, 1546, 2132.5, 1616, 2240, 1616], "path": "2cf3fd045f5a" },
     "predictions--lake-sink": { "ok": true, "sides": ["right", "left"], "points": [1600, 1497, 1650.8, 1497, 1650.8, 1763, 1780, 1763], "path": "77bc26fd6663" },
-    "drift--quality": { "ok": true, "sides": ["right", "left"], "points": [2468, 1623, 2593.5, 1623, 2593.5, 1756, 2680, 1756], "path": "e5cbb707a59e", "label": [2593.5, 1689.5, 59, 19], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
-    "drift--alerts": { "ok": true, "sides": ["right", "left"], "points": [2468, 1609, 2571.5, 1609, 2571.5, 1616, 2680, 1616], "path": "85f5b9b177a5", "label": [2520.75, 1609, 95, 19], "mode": "full", "text": "DriftDetected", "lines": ["DriftDetected"] },
-    "alerts--slack": { "ok": true, "sides": ["right", "left"], "points": [2900, 1616, 5000, 1616], "path": "98a3892198bd", "label": [3944, 1616, 41, 19], "mode": "full", "text": "Page", "lines": ["Page"] },
-    "picks-schedule--pick-requests": { "ok": true, "sides": ["right", "left"], "points": [3420, 1336, 3640, 1336], "path": "8ffbe2eca18b", "label": [3524, 1336, 101, 19], "mode": "full", "text": "One per member", "lines": ["One per member"] },
+    "drift--quality": { "ok": true, "sides": ["right", "left"], "points": [2468, 1623, 2593.5, 1623, 2593.5, 1756, 2680, 1756], "path": "e5cbb707a59e", "label": [2593.5, 1689.5, 57.68000000000001, 22], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
+    "drift--alerts": { "ok": true, "sides": ["right", "left"], "points": [2468, 1609, 2571.5, 1609, 2571.5, 1616, 2680, 1616], "path": "85f5b9b177a5", "label": [2520.75, 1609, 90.6, 22], "mode": "full", "text": "DriftDetected", "lines": ["DriftDetected"] },
+    "alerts--slack": { "ok": true, "sides": ["right", "left"], "points": [2900, 1616, 5000, 1616], "path": "98a3892198bd", "label": [3944, 1616, 44.86, 22], "mode": "full", "text": "Page", "lines": ["Page"] },
+    "picks-schedule--pick-requests": { "ok": true, "sides": ["right", "left"], "points": [3420, 1336, 3640, 1336], "path": "8ffbe2eca18b", "label": [3524, 1336, 108.65999999999998, 22], "mode": "full", "text": "One per member", "lines": ["One per member"] },
     "pick-requests--batch-scorer": { "ok": true, "sides": ["right", "left"], "points": [3900, 1336, 3973.5, 1336, 3973.5, 1343, 4080, 1343], "path": "d7046f00c301" },
-    "batch-scorer--feature-server": { "ok": true, "sides": ["left", "right"], "points": [4080, 1329, 3995.5, 1329, 3995.5, 1140, 2583.1666666666665, 1140, 2583.1666666666665, 910, 2480, 910], "path": "b2a05c20a518", "label": [3289.333333333333, 1140, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
-    "batch-scorer--picks-db": { "ok": true, "sides": ["right", "left"], "points": [4333, 1329, 4426.5, 1329, 4426.5, 1336, 4520, 1336], "path": "0807a55923ee", "label": [4380.75, 1329, 83, 19], "mode": "full", "text": "Write picks", "lines": ["Write picks"] },
-    "batch-scorer--picks-mailer": { "ok": true, "sides": ["right", "left"], "points": [4333, 1343, 4415.5, 1343, 4415.5, 1490, 4520, 1490], "path": "60ec560cf725", "label": [4460.75, 1490, 77, 19], "mode": "full", "text": "PicksReady", "lines": ["PicksReady"] },
-    "picks-mailer--esp": { "ok": true, "sides": ["right", "left"], "points": [4740, 1476, 5000, 1476], "path": "0cb2fd32ebb5", "label": [4864, 1476, 41, 19], "mode": "full", "text": "Send", "lines": ["Send"] },
-    "dags--backfill": { "ok": true, "sides": ["right", "left"], "points": [3420, 182, 3541, 182, 3541, 189, 3640, 189], "path": "7c6b526b60cd", "label": [3481.5, 182, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "backfill--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 203, 3524.5, 203, 3524.5, 728, 2999.5, 728, 2999.5, 882, 2902, 882], "path": "1c538f6e97bc", "label": [3262, 728, 101, 19], "mode": "full", "text": "Write features", "lines": ["Write features"] },
-    "dags--materialize": { "ok": true, "sides": ["right", "left"], "points": [3420, 196, 3519, 196, 3519, 322, 3640, 322], "path": "d5f9084f9b85", "label": [3572.5, 322, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "materialize--online-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 336, 2918, 336, 2918, 756, 2900, 756], "path": "bded194cf674", "label": [3278, 336, 71, 19], "mode": "full", "text": "Bulk load", "lines": ["Bulk load"] },
-    "dags--train": { "ok": true, "sides": ["right", "left"], "points": [3420, 210, 3535.5, 210, 3535.5, 469, 3640, 469], "path": "d20fa3ea1d31", "label": [3478.75, 210, 59, 19], "mode": "full", "text": "Nightly", "lines": ["Nightly"] },
-    "train--eval": { "ok": true, "sides": ["right", "left"], "points": [3860, 476, 4080, 476], "path": "c38269a3e8d6", "label": [3964, 476, 107, 19], "mode": "full", "text": "Candidate model", "lines": ["Candidate model"] },
-    "eval--registry": { "ok": true, "sides": ["right", "left"], "points": [4333, 476, 4421, 476, 4421, 462, 4520, 462], "path": "eedc6e2522b3", "label": [4453.5, 462, 119, 19], "mode": "full", "text": "Publish if better", "lines": ["Publish if better"] },
-    "train--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 483, 3065.5, 483, 3065.5, 910, 2902, 910], "path": "d7ef66a5f4bf", "label": [3351.75, 483, 111, 19], "mode": "full", "text": "Training sets", "lines": ["Training sets"], "glyph": true },
-    "materialize--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 350, 3054.5, 350, 3054.5, 896, 2902, 896], "path": "3cf25f02381f", "label": [3356.25, 350, 63, 19], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
-    "ranker-v7--registry": { "ok": true, "sides": ["right", "left"], "points": [2000, 889, 2097.5, 889, 2097.5, 686, 4423.75, 686, 4423.75, 476, 4520, 476], "path": "9bbed7b2506e", "label": [3260.625, 686, 81, 19], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
-    "ranker-v8--registry": { "ok": true, "sides": ["right", "left"], "points": [2008, 1036, 3076.5, 1036, 3076.5, 564, 4434.75, 564, 4434.75, 490, 4520, 490], "path": "19c364f6378d", "label": [3755.625, 564, 81, 19], "mode": "full", "text": "Loads v8", "lines": ["Loads v8"], "glyph": true },
-    "argocd--ranker-v8": { "ok": true, "sides": ["left", "right"], "points": [3200, 856, 3010.5, 856, 3010.5, 1050, 2008, 1050], "path": "f09e59a52f0c", "label": [2516.25, 1050, 69, 19], "mode": "full", "text": "Canary", "lines": ["Canary"], "glyph": true },
+    "batch-scorer--feature-server": { "ok": true, "sides": ["left", "right"], "points": [4080, 1329, 3995.5, 1329, 3995.5, 1140, 2583.1666666666665, 1140, 2583.1666666666665, 910, 2480, 910], "path": "b2a05c20a518", "label": [3289.333333333333, 1140, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "batch-scorer--picks-db": { "ok": true, "sides": ["right", "left"], "points": [4333, 1329, 4426.5, 1329, 4426.5, 1336, 4520, 1336], "path": "0807a55923ee", "label": [4380.75, 1329, 78.05000000000001, 22], "mode": "full", "text": "Write picks", "lines": ["Write picks"] },
+    "batch-scorer--picks-mailer": { "ok": true, "sides": ["right", "left"], "points": [4333, 1343, 4415.5, 1343, 4415.5, 1490, 4520, 1490], "path": "60ec560cf725", "label": [4460.75, 1490, 81.32, 22], "mode": "full", "text": "PicksReady", "lines": ["PicksReady"] },
+    "picks-mailer--esp": { "ok": true, "sides": ["right", "left"], "points": [4740, 1476, 5000, 1476], "path": "0cb2fd32ebb5", "label": [4864, 1476, 44.88, 22], "mode": "full", "text": "Send", "lines": ["Send"] },
+    "dags--backfill": { "ok": true, "sides": ["right", "left"], "points": [3420, 182, 3541, 182, 3541, 189, 3640, 189], "path": "7c6b526b60cd", "label": [3481.5, 182, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "backfill--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 203, 3524.5, 203, 3524.5, 728, 2999.5, 728, 2999.5, 882, 2902, 882], "path": "1c538f6e97bc", "label": [3262, 728, 94.3, 22], "mode": "full", "text": "Write features", "lines": ["Write features"] },
+    "dags--materialize": { "ok": true, "sides": ["right", "left"], "points": [3420, 196, 3519, 196, 3519, 322, 3640, 322], "path": "d5f9084f9b85", "label": [3572.5, 322, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "materialize--online-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 336, 2918, 336, 2918, 756, 2900, 756], "path": "bded194cf674", "label": [3278, 336, 67.97, 22], "mode": "full", "text": "Bulk load", "lines": ["Bulk load"] },
+    "dags--train": { "ok": true, "sides": ["right", "left"], "points": [3420, 210, 3535.5, 210, 3535.5, 469, 3640, 469], "path": "d20fa3ea1d31", "label": [3478.75, 210, 56.04, 22], "mode": "full", "text": "Nightly", "lines": ["Nightly"] },
+    "train--eval": { "ok": true, "sides": ["right", "left"], "points": [3860, 476, 4080, 476], "path": "c38269a3e8d6", "label": [3964, 476, 111.36999999999999, 22], "mode": "full", "text": "Candidate model", "lines": ["Candidate model"] },
+    "eval--registry": { "ok": true, "sides": ["right", "left"], "points": [4333, 476, 4421, 476, 4421, 462, 4520, 462], "path": "eedc6e2522b3", "label": [4463.5, 462, 102.25, 22], "mode": "full", "text": "Publish if better", "lines": ["Publish if better"] },
+    "train--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 483, 3065.5, 483, 3065.5, 910, 2902, 910], "path": "d7ef66a5f4bf", "label": [3351.75, 483, 103.42, 22], "mode": "full", "text": "Training sets", "lines": ["Training sets"], "glyph": true },
+    "materialize--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 350, 3054.5, 350, 3054.5, 896, 2902, 896], "path": "3cf25f02381f", "label": [3356.25, 350, 67.55000000000001, 22], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
+    "ranker-v7--registry": { "ok": true, "sides": ["right", "left"], "points": [2000, 889, 2097.5, 889, 2097.5, 686, 4423.75, 686, 4423.75, 476, 4520, 476], "path": "9bbed7b2506e", "label": [3260.625, 686, 82.15, 22], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
+    "ranker-v8--registry": { "ok": true, "sides": ["right", "left"], "points": [2008, 1036, 3076.5, 1036, 3076.5, 564, 4434.75, 564, 4434.75, 490, 4520, 490], "path": "19c364f6378d", "label": [3755.625, 564, 82.15, 22], "mode": "full", "text": "Loads v8", "lines": ["Loads v8"], "glyph": true },
+    "argocd--ranker-v8": { "ok": true, "sides": ["left", "right"], "points": [3200, 856, 3010.5, 856, 3010.5, 1050, 2008, 1050], "path": "f09e59a52f0c", "label": [2516.25, 1050, 73.42, 22], "mode": "full", "text": "Canary", "lines": ["Canary"], "glyph": true },
     "feature-server--roles": { "ok": true, "sides": ["right", "left"], "points": [2480, 896, 2567, 896, 2567, 820.5, 3043.5, 820.5, 3043.5, 920.5, 3535.5, 920.5, 3535.5, 849, 3640, 849], "path": "3c26fea5d28f", "label": [3289.5, 920.5, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "home-api--experiments": { "ok": true, "sides": ["right", "left"], "points": [1120, 472.2857142857143, 1246.5, 472.2857142857143, 1246.5, 831.5, 3032.5, 831.5, 3032.5, 996, 3200, 996], "path": "22c3314a7e2f", "label": [2169.5, 831.5, 75, 19], "mode": "full", "text": "Variant", "lines": ["Variant"], "glyph": true },
-    "feature-server--feature-registry": { "ok": true, "sides": ["bottom", "left"], "points": [2350, 932, 2350, 989, 3021.5, 989, 3021.5, 931.5, 3524.5, 931.5, 3524.5, 989, 3640, 989], "path": "b3fb9bd9b6e0", "label": [2685.75, 989, 99, 19], "mode": "full", "text": "Definitions", "lines": ["Definitions"], "glyph": true },
+    "home-api--experiments": { "ok": true, "sides": ["right", "left"], "points": [1120, 472.2857142857143, 1246.5, 472.2857142857143, 1246.5, 831.5, 3032.5, 831.5, 3032.5, 996, 3200, 996], "path": "22c3314a7e2f", "label": [2169.5, 831.5, 74.05, 22], "mode": "full", "text": "Variant", "lines": ["Variant"], "glyph": true },
+    "feature-server--feature-registry": { "ok": true, "sides": ["bottom", "left"], "points": [2350, 932, 2350, 989, 3021.5, 989, 3021.5, 931.5, 3524.5, 931.5, 3524.5, 989, 3640, 989], "path": "b3fb9bd9b6e0", "label": [2685.75, 989, 91.56, 22], "mode": "full", "text": "Definitions", "lines": ["Definitions"], "glyph": true },
     "sessionizer--feature-registry": { "ok": true, "sides": ["right", "left"], "points": [2027, 1343, 3038, 1343, 3038, 1088, 3546.5, 1088, 3546.5, 1003, 3640, 1003], "path": "77891fc3e8ef", "label": [2533.5, 1343, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "backfill--feature-registry": { "ok": true, "sides": ["bottom", "top"], "points": [3763.5, 232, 3763.5, 266, 3889.5, 266, 3889.5, 926, 3763.5, 926, 3763.5, 960], "path": "c58020892f92", "label": [3889.5, 596, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "collector--secrets": { "ok": true, "sides": ["right", "left"], "points": [1120, 1336, 1232.75, 1336, 1232.75, 1165.5, 4006.5, 1165.5, 4006.5, 856, 4080, 856], "path": "b3625aa52e7f", "label": [2649.625, 1165.5, 99, 19], "mode": "full", "text": "Signing key", "lines": ["Signing key"], "glyph": true },
+    "collector--secrets": { "ok": true, "sides": ["right", "left"], "points": [1120, 1336, 1232.75, 1336, 1232.75, 1165.5, 4006.5, 1165.5, 4006.5, 856, 4080, 856], "path": "b3625aa52e7f", "label": [2649.625, 1165.5, 95.9, 22], "mode": "full", "text": "Signing key", "lines": ["Signing key"], "glyph": true },
     "collector--roles": { "ok": true, "sides": ["right", "left"], "points": [1120, 1322, 1221.75, 1322, 1221.75, 1154.5, 3513.5, 1154.5, 3513.5, 863, 3640, 863], "path": "ae31b2f09ee7", "label": [2367.625, 1154.5, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "batch-scorer--registry": { "ok": true, "sides": ["top", "bottom"], "points": [4206.5, 1300, 4206.5, 1096, 4630, 1096, 4630, 512], "path": "1c15167393d1", "label": [4630, 811, 81, 19], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
-    "picks-mailer--secrets": { "ok": true, "sides": ["left", "right"], "points": [4520, 1462, 4437.5, 1462, 4437.5, 856, 4300, 856], "path": "6cf8e194d5c9", "label": [4437.5, 1159, 105, 19], "mode": "full", "text": "Provider key", "lines": ["Provider key"], "glyph": true },
+    "batch-scorer--registry": { "ok": true, "sides": ["top", "bottom"], "points": [4206.5, 1300, 4206.5, 1096, 4630, 1096, 4630, 512], "path": "1c15167393d1", "label": [4630, 811, 82.15, 22], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
+    "picks-mailer--secrets": { "ok": true, "sides": ["left", "right"], "points": [4520, 1462, 4437.5, 1462, 4437.5, 856, 4300, 856], "path": "6cf8e194d5c9", "label": [4437.5, 1159, 100.57000000000001, 22], "mode": "full", "text": "Provider key", "lines": ["Provider key"], "glyph": true },
     "picks-mailer--roles": { "ok": true, "sides": ["left", "right"], "points": [4520, 1476, 3984.5, 1476, 3984.5, 856, 3860, 856], "path": "fbf756e02834", "label": [3984.5, 1176, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   },
   "bezier": {
@@ -117,7 +117,7 @@
         549
       ],
       "path": "50795b9dceea",
-      "label": [325.50175809833405, 499.0241250000001, 47, 19],
+      "label": [325.50175809833405, 499.0241250000001, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -170,7 +170,7 @@
         563
       ],
       "path": "85a400659a38",
-      "label": [325.63389439564423, 623.723375, 47, 19],
+      "label": [325.63389439564423, 623.723375, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -223,7 +223,7 @@
         476
       ],
       "path": "62ecc88efca1",
-      "label": [774.9414804861788, 515.228375, 41, 19],
+      "label": [774.9414804861788, 515.228375, 50, 22],
       "mode": "full",
       "text": "Home",
       "lines": ["Home"]
@@ -276,7 +276,7 @@
         1336
       ],
       "path": "f67eeebd85d9",
-      "label": [779.1975000000001, 920.6091250000001, 53, 19],
+      "label": [779.1975000000001, 920.6091250000001, 53.9, 22],
       "mode": "full",
       "text": "Events",
       "lines": ["Events"]
@@ -329,7 +329,7 @@
         196
       ],
       "path": "68518a698204",
-      "label": [1227.0170440419492, 332.49325, 59, 19],
+      "label": [1227.0170440419492, 332.49325, 51.830000000000005, 22],
       "mode": "full",
       "text": "Profile",
       "lines": ["Profile"]
@@ -431,7 +431,7 @@
         336
       ],
       "path": "6216e32ec74a",
-      "label": [1242.9854121383432, 383.19017857142865, 53, 19],
+      "label": [1234.3043154697457, 392.17589285714286, 46.46, 22],
       "mode": "full",
       "text": "Titles",
       "lines": ["Titles"]
@@ -533,7 +533,7 @@
         756
       ],
       "path": "dd0304af4c03",
-      "label": [1269.8438822786802, 721.0149642857143, 59, 19],
+      "label": [1269.8438822786802, 721.0149642857143, 60.43, 22],
       "mode": "full",
       "text": "Artwork",
       "lines": ["Artwork"]
@@ -586,7 +586,7 @@
         476
       ],
       "path": "e2f6afa99448",
-      "label": [1264.1186004504605, 473.2268214285714, 77, 19],
+      "label": [1264.1186004504605, 473.2268214285714, 84.33, 22],
       "mode": "full",
       "text": "Resume row",
       "lines": ["Resume row"]
@@ -737,7 +737,7 @@
         483
       ],
       "path": "a565dad42da4",
-      "label": [2462.5134999999996, 764.9753749999999, 89, 19],
+      "label": [2462.5134999999996, 764.9753749999999, 92.52999999999999, 22],
       "mode": "full",
       "text": "Resume point",
       "lines": ["Resume point"]
@@ -790,7 +790,7 @@
         735
       ],
       "path": "36fc74d8b24a",
-      "label": [2086.3075, 746.284875, 71, 19],
+      "label": [2086.3075, 746.284875, 70.74, 22],
       "mode": "full",
       "text": "Arm stats",
       "lines": ["Arm stats"]
@@ -843,7 +843,7 @@
         616
       ],
       "path": "0a915a5b9957",
-      "label": [1260.424726301303, 582.0818928571429, 77, 19],
+      "label": [1270.0722174059547, 590.6338214285714, 80.52, 22],
       "mode": "full",
       "text": "Candidates",
       "lines": ["Candidates"]
@@ -896,7 +896,7 @@
         616
       ],
       "path": "565c746ba318",
-      "label": [2093.293375, 616, 101, 19],
+      "label": [2093.293375, 616, 89.58999999999999, 22],
       "mode": "full",
       "text": "Nearest titles",
       "lines": ["Nearest titles"]
@@ -949,7 +949,7 @@
         896
       ],
       "path": "e02b679db679",
-      "label": [1256.650636363304, 843.7641071428571, 41, 19],
+      "label": [1256.650636363304, 843.7641071428571, 45.81, 22],
       "mode": "full",
       "text": "Rank",
       "lines": ["Rank"]
@@ -1002,7 +1002,7 @@
         1036
       ],
       "path": "4b248c79f6fa",
-      "label": [1232.481270111789, 876.773266190719, 77, 19],
+      "label": [1235.0049999999999, 903.10075, 76.89000000000001, 22],
       "mode": "full",
       "text": "Mirror 10%",
       "lines": ["Mirror 10%"]
@@ -1153,7 +1153,7 @@
         882
       ],
       "path": "41c123ffd803",
-      "label": [2075.9502675, 897.7736249999998, 65, 19],
+      "label": [2055.0463925000004, 900.2673750000001, 65.37, 22],
       "mode": "full",
       "text": "Features",
       "lines": ["Features"]
@@ -1206,7 +1206,7 @@
         910
       ],
       "path": "7851a7df751a",
-      "label": [2109.815059979685, 970.186, 65, 19],
+      "label": [2109.815059979685, 970.186, 65.37, 22],
       "mode": "full",
       "text": "Features",
       "lines": ["Features"]
@@ -1259,7 +1259,7 @@
         896
       ],
       "path": "c3c26efb68ea",
-      "label": [1891.2333750000003, 971.2325000000001, 65, 19],
+      "label": [1891.2333750000003, 971.2325000000001, 65.37, 22],
       "mode": "full",
       "text": "Features",
       "lines": ["Features"]
@@ -1361,7 +1361,7 @@
         1455
       ],
       "path": "a5a256c3798b",
-      "label": [1718.8, 927.4950000000001, 83, 19],
+      "label": [1718.8, 927.4950000000001, 84.04, 22],
       "mode": "full",
       "text": "Scored rows",
       "lines": ["Scored rows"]
@@ -1414,7 +1414,7 @@
         1469
       ],
       "path": "bd3f3f8ce89b",
-      "label": [1743.3945829937243, 1050.5082499999999, 53, 32],
+      "label": [1743.3945829937243, 1050.5082499999999, 55.55, 38],
       "mode": "wrap",
       "text": "Scored rows",
       "lines": ["Scored", "rows"]
@@ -1467,7 +1467,7 @@
         1440
       ],
       "path": "9835e12be7e8",
-      "label": [1466.9554375000002, 1163.8796296229762, 95, 19],
+      "label": [1466.9554375000002, 1163.8796296229762, 99.68, 22],
       "mode": "full",
       "text": "Shadow scores",
       "lines": ["Shadow scores"]
@@ -1520,7 +1520,7 @@
         1336
       ],
       "path": "c899208163e6",
-      "label": [1264.1029662828303, 1339.48425, 71, 19],
+      "label": [1264.1029662828303, 1339.48425, 71.69999999999999, 22],
       "mode": "full",
       "text": "PlayEvent",
       "lines": ["PlayEvent"]
@@ -1720,7 +1720,7 @@
         763
       ],
       "path": "2d62d9323190",
-      "label": [2239.7578750000002, 1188.13675, 53, 19],
+      "label": [2239.7578750000002, 1188.13675, 57.17999999999999, 22],
       "mode": "full",
       "text": "Update",
       "lines": ["Update"]
@@ -1773,7 +1773,7 @@
         777
       ],
       "path": "fed3215502a2",
-      "label": [2339.0838931537646, 1161.1888370653085, 53, 19],
+      "label": [2339.0838931537646, 1161.1888370653085, 57.17999999999999, 22],
       "mode": "full",
       "text": "Update",
       "lines": ["Update"]
@@ -1826,7 +1826,7 @@
         896
       ],
       "path": "7ca2a01ade5b",
-      "label": [2322.7525, 1358.1425000000002, 53, 19],
+      "label": [2322.7525, 1358.1425000000002, 59.76, 22],
       "mode": "full",
       "text": "Append",
       "lines": ["Append"]
@@ -1977,7 +1977,7 @@
         1756
       ],
       "path": "e4faf2acc1c4",
-      "label": [2569.978770400819, 1684.529125, 59, 19],
+      "label": [2569.978770400819, 1684.529125, 57.68000000000001, 22],
       "mode": "full",
       "text": "Metrics",
       "lines": ["Metrics"]
@@ -2030,7 +2030,7 @@
         1616
       ],
       "path": "7944c5548f8e",
-      "label": [2616.7882721515766, 1614.697125, 95, 19],
+      "label": [2616.7882721515766, 1614.697125, 90.6, 22],
       "mode": "full",
       "text": "DriftDetected",
       "lines": ["DriftDetected"]
@@ -2083,7 +2083,7 @@
         1616
       ],
       "path": "48f1824dc39e",
-      "label": [3879.6800000000003, 1616, 41, 19],
+      "label": [3879.6800000000003, 1616, 44.86, 22],
       "mode": "full",
       "text": "Page",
       "lines": ["Page"]
@@ -2136,7 +2136,7 @@
         1336
       ],
       "path": "93d91b85318c",
-      "label": [3564.14565, 1336, 101, 19],
+      "label": [3564.14565, 1336, 108.65999999999998, 22],
       "mode": "full",
       "text": "One per member",
       "lines": ["One per member"]
@@ -2238,7 +2238,7 @@
         910
       ],
       "path": "0d8178251945",
-      "label": [3228.3675000000003, 1103.8398750000001, 65, 19],
+      "label": [3228.3675000000003, 1103.8398750000001, 65.37, 22],
       "mode": "full",
       "text": "Features",
       "lines": ["Features"]
@@ -2291,7 +2291,7 @@
         1336
       ],
       "path": "e6acf7dd44b8",
-      "label": [4464.23923113197, 1334.697125, 83, 19],
+      "label": [4464.23923113197, 1334.697125, 78.05000000000001, 22],
       "mode": "full",
       "text": "Write picks",
       "lines": ["Write picks"]
@@ -2344,7 +2344,7 @@
         1490
       ],
       "path": "756f3f7b20a0",
-      "label": [4376.164323151157, 1355.1091250000002, 77, 19],
+      "label": [4402.3546866384, 1379.584625, 81.32, 22],
       "mode": "full",
       "text": "PicksReady",
       "lines": ["PicksReady"]
@@ -2397,7 +2397,7 @@
         1476
       ],
       "path": "0fd1c4748ba8",
-      "label": [4777.95025, 1476, 41, 19],
+      "label": [4777.95025, 1476, 44.88, 22],
       "mode": "full",
       "text": "Send",
       "lines": ["Send"]
@@ -2450,7 +2450,7 @@
         189
       ],
       "path": "0f173ded388b",
-      "label": [3564.134970980576, 187.257875, 35, 19],
+      "label": [3564.134970980576, 187.257875, 39.12, 22],
       "mode": "full",
       "text": "Run",
       "lines": ["Run"]
@@ -2503,7 +2503,7 @@
         882
       ],
       "path": "cf6bd26a3f27",
-      "label": [3367.78375, 418.1581249999999, 101, 19],
+      "label": [3367.78375, 418.1581249999999, 94.3, 22],
       "mode": "full",
       "text": "Write features",
       "lines": ["Write features"]
@@ -2556,7 +2556,7 @@
         322
       ],
       "path": "6790d2ab1f28",
-      "label": [3616.2301156991994, 319.485204919928, 35, 19],
+      "label": [3616.2301156991994, 319.485204919928, 39.12, 22],
       "mode": "full",
       "text": "Run",
       "lines": ["Run"]
@@ -2609,7 +2609,7 @@
         756
       ],
       "path": "593013e980cc",
-      "label": [3375.0963516325914, 463.0166272677471, 71, 19],
+      "label": [3375.0963516325914, 463.0166272677471, 67.97, 22],
       "mode": "full",
       "text": "Bulk load",
       "lines": ["Bulk load"]
@@ -2662,7 +2662,7 @@
         469
       ],
       "path": "14b9914cd733",
-      "label": [3527.076220609903, 329.819875, 59, 19],
+      "label": [3527.076220609903, 329.819875, 56.04, 22],
       "mode": "full",
       "text": "Nightly",
       "lines": ["Nightly"]
@@ -2715,7 +2715,7 @@
         476
       ],
       "path": "93fe0a9f29c0",
-      "label": [4004.1456499999995, 476, 107, 19],
+      "label": [4004.1456499999995, 476, 111.36999999999999, 22],
       "mode": "full",
       "text": "Candidate model",
       "lines": ["Candidate model"]
@@ -2768,7 +2768,7 @@
         462
       ],
       "path": "0e0650ae0a2c",
-      "label": [4438.7324618915345, 467.44075000000004, 119, 19],
+      "label": [4455.473605814241, 465.4842499999999, 102.25, 22],
       "mode": "full",
       "text": "Publish if better",
       "lines": ["Publish if better"]
@@ -2821,7 +2821,7 @@
         910
       ],
       "path": "49ed12954104",
-      "label": [3251.58475, 712.459125, 111, 19],
+      "label": [3251.58475, 712.459125, 103.42, 22],
       "mode": "full",
       "text": "Training sets",
       "lines": ["Training sets"],
@@ -2875,7 +2875,7 @@
         896
       ],
       "path": "89fc79552750",
-      "label": [3251.5847500000004, 643.40675, 63, 19],
+      "label": [3251.5847500000004, 643.40675, 67.55000000000001, 22],
       "mode": "full",
       "text": "Reads",
       "lines": ["Reads"],
@@ -2929,7 +2929,7 @@
         476
       ],
       "path": "ae0eeaf2c8a5",
-      "label": [3365.70305001595, 663.5315451255274, 81, 19],
+      "label": [3375.5458250239253, 661.765255188291, 82.15, 22],
       "mode": "full",
       "text": "Loads v7",
       "lines": ["Loads v7"],
@@ -2983,7 +2983,7 @@
         490
       ],
       "path": "3c66585a20aa",
-      "label": [3349.7185000000004, 742.59325, 81, 19],
+      "label": [3349.7185000000004, 742.59325, 82.15, 22],
       "mode": "full",
       "text": "Loads v8",
       "lines": ["Loads v8"],
@@ -3037,7 +3037,7 @@
         1050
       ],
       "path": "ff009e7cfbb1",
-      "label": [2495.2485, 974.6067499999999, 69, 19],
+      "label": [2505.059082489821, 972.6696203681919, 73.42, 22],
       "mode": "full",
       "text": "Canary",
       "lines": ["Canary"],
@@ -3145,7 +3145,7 @@
         996
       ],
       "path": "937df269acd1",
-      "label": [2090.4275, 714.5690357142856, 75, 19],
+      "label": [2090.4275, 714.5690357142856, 74.05, 22],
       "mode": "full",
       "text": "Variant",
       "lines": ["Variant"],
@@ -3199,7 +3199,7 @@
         989
       ],
       "path": "4022e47f7e04",
-      "label": [3076.165625755758, 1033.2801303721394, 99, 19],
+      "label": [3134.9125, 1028.8943749999999, 91.56, 22],
       "mode": "full",
       "text": "Definitions",
       "lines": ["Definitions"],
@@ -3361,7 +3361,7 @@
         856
       ],
       "path": "c6cd3dfedbdd",
-      "label": [2517.237813405577, 1110.490702720546, 99, 19],
+      "label": [2517.237813405577, 1110.490702720546, 95.9, 22],
       "mode": "full",
       "text": "Signing key",
       "lines": ["Signing key"],
@@ -3469,7 +3469,7 @@
         512
       ],
       "path": "2ee1c9cee712",
-      "label": [4434.0783125, 884.716, 81, 19],
+      "label": [4434.0783125, 884.716, 82.15, 22],
       "mode": "full",
       "text": "Loads v7",
       "lines": ["Loads v7"],
@@ -3523,7 +3523,7 @@
         856
       ],
       "path": "6b5a9200c61a",
-      "label": [4409.945, 1136.35075, 105, 19],
+      "label": [4409.945, 1136.35075, 100.57000000000001, 22],
       "mode": "full",
       "text": "Provider key",
       "lines": ["Provider key"],
@@ -3585,72 +3585,72 @@
     }
   },
   "straight": {
-    "tv--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 456, 440, 549], "path": "02b472f7ea28", "label": [324.4735033242709, 500.1637991325327, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "phones--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 676, 440, 563], "path": "2c2f42767bd1", "label": [324.66286435245127, 622.2413469462409, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gateway--home-api": { "ok": true, "sides": ["right", "left"], "points": [660, 549, 900, 476], "path": "672060b93483", "label": [774.259667131323, 514.2460179142226, 41, 19], "mode": "full", "text": "Home", "lines": ["Home"] },
-    "gateway--collector": { "ok": true, "sides": ["right", "left"], "points": [660, 563, 900, 1336], "path": "8e0e1d2540a8", "label": [778.2209052426157, 943.7698323022578, 53, 19], "mode": "full", "text": "Events", "lines": ["Events"] },
-    "home-api--profiles": { "ok": true, "sides": ["right", "left"], "points": [1120, 450, 1340, 196], "path": "7cc3dcfeba57", "label": [1226.0717765066552, 327.53531257868, 59, 19], "mode": "full", "text": "Profile", "lines": ["Profile"] },
+    "tv--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 456, 440, 549], "path": "02b472f7ea28", "label": [324.4735033242709, 500.1637991325327, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "phones--gateway": { "ok": true, "sides": ["right", "left"], "points": [220, 676, 440, 563], "path": "2c2f42767bd1", "label": [324.66286435245127, 622.2413469462409, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gateway--home-api": { "ok": true, "sides": ["right", "left"], "points": [660, 549, 900, 476], "path": "672060b93483", "label": [774.259667131323, 514.2460179142226, 50, 22], "mode": "full", "text": "Home", "lines": ["Home"] },
+    "gateway--collector": { "ok": true, "sides": ["right", "left"], "points": [660, 563, 900, 1336], "path": "8e0e1d2540a8", "label": [778.2209052426157, 943.7698323022578, 53.9, 22], "mode": "full", "text": "Events", "lines": ["Events"] },
+    "home-api--profiles": { "ok": true, "sides": ["right", "left"], "points": [1120, 450, 1340, 196], "path": "7cc3dcfeba57", "label": [1226.0717765066552, 327.53531257868, 51.830000000000005, 22], "mode": "full", "text": "Profile", "lines": ["Profile"] },
     "profiles--profiles-db": { "ok": true, "sides": ["right", "left"], "points": [1574, 196, 2680, 196], "path": "ba03b2a0adfb" },
-    "home-api--metadata": { "ok": true, "sides": ["right", "left"], "points": [1120, 457.42857142857144, 1340, 336], "path": "b7ca21c8c507", "label": [1224.7470314782076, 399.6136514568334, 53, 19], "mode": "full", "text": "Titles", "lines": ["Titles"] },
+    "home-api--metadata": { "ok": true, "sides": ["right", "left"], "points": [1120, 457.42857142857144, 1340, 336], "path": "b7ca21c8c507", "label": [1224.7470314782076, 399.6136514568334, 46.46, 22], "mode": "full", "text": "Titles", "lines": ["Titles"] },
     "metadata--title-cache": { "ok": true, "sides": ["right", "left"], "points": [1560, 336, 2680, 336], "path": "d22c53ff1366" },
-    "home-api--artwork": { "ok": true, "sides": ["right", "left"], "points": [1120, 487.14285714285717, 1340, 756], "path": "1dd2bc02e1fa", "label": [1226.2003045451959, 616.9279046454926, 59, 19], "mode": "full", "text": "Artwork", "lines": ["Artwork"] },
-    "home-api--bookmarks": { "ok": true, "sides": ["right", "left"], "points": [1120, 464.85714285714283, 1340, 476], "path": "4c023ebf5bed", "label": [1224.007681294374, 470.1250643772475, 77, 19], "mode": "full", "text": "Resume row", "lines": ["Resume row"] },
+    "home-api--artwork": { "ok": true, "sides": ["right", "left"], "points": [1120, 487.14285714285717, 1340, 756], "path": "1dd2bc02e1fa", "label": [1226.2003045451959, 616.9279046454926, 60.43, 22], "mode": "full", "text": "Artwork", "lines": ["Artwork"] },
+    "home-api--bookmarks": { "ok": true, "sides": ["right", "left"], "points": [1120, 464.85714285714283, 1340, 476], "path": "4c023ebf5bed", "label": [1224.007681294374, 470.1250643772475, 84.33, 22], "mode": "full", "text": "Resume row", "lines": ["Resume row"] },
     "bookmarks--bookmarks-db": { "ok": true, "sides": ["right", "left"], "points": [1560, 476, 2680, 469], "path": "27005284de93" },
     "play-events--bookmarks-writer": { "ok": true, "sides": ["right", "left"], "points": [1600, 1343, 1780, 1616], "path": "f90c014d4543" },
-    "bookmarks-writer--bookmarks-db": { "ok": true, "sides": ["right", "left"], "points": [2008, 1616, 2680, 483], "path": "c14c3d85cca5", "label": [2468.4730108361828, 839.637021908638, 89, 19], "mode": "full", "text": "Resume point", "lines": ["Resume point"] },
-    "artwork--online-store": { "ok": true, "sides": ["right", "left"], "points": [1560, 756, 2680, 735], "path": "2d4c0f1f1122", "label": [2114.0010544094903, 745.612480229822, 71, 19], "mode": "full", "text": "Arm stats", "lines": ["Arm stats"] },
-    "home-api--candidates": { "ok": true, "sides": ["right", "left"], "points": [1120, 479.7142857142857, 1340, 616], "path": "6634756d5659", "label": [1224.8993975638327, 544.6974190103224, 77, 19], "mode": "full", "text": "Candidates", "lines": ["Candidates"] },
-    "candidates--ann-index": { "ok": true, "sides": ["right", "left"], "points": [1573, 616, 2680, 616], "path": "fdda5a5efbf8", "label": [2120.5, 616, 101, 19], "mode": "full", "text": "Nearest titles", "lines": ["Nearest titles"] },
-    "home-api--ranking-router": { "ok": true, "sides": ["right", "left"], "points": [1120, 494.57142857142856, 1340, 896], "path": "e7582b31b1b4", "label": [1227.1163975509382, 690.0240760507379, 41, 19], "mode": "full", "text": "Rank", "lines": ["Rank"] },
-    "home-api--ranker-v9": { "ok": true, "sides": ["right", "left"], "points": [1120, 502, 1340, 1036], "path": "c4558b7ea328", "label": [1242.9514149901713, 800.436616385234, 77, 19], "mode": "full", "text": "Mirror 10%", "lines": ["Mirror 10%"] },
+    "bookmarks-writer--bookmarks-db": { "ok": true, "sides": ["right", "left"], "points": [2008, 1616, 2680, 483], "path": "c14c3d85cca5", "label": [2468.4730108361828, 839.637021908638, 92.52999999999999, 22], "mode": "full", "text": "Resume point", "lines": ["Resume point"] },
+    "artwork--online-store": { "ok": true, "sides": ["right", "left"], "points": [1560, 756, 2680, 735], "path": "2d4c0f1f1122", "label": [2114.0010544094903, 745.612480229822, 70.74, 22], "mode": "full", "text": "Arm stats", "lines": ["Arm stats"] },
+    "home-api--candidates": { "ok": true, "sides": ["right", "left"], "points": [1120, 479.7142857142857, 1340, 616], "path": "6634756d5659", "label": [1224.8993975638327, 544.6974190103224, 80.52, 22], "mode": "full", "text": "Candidates", "lines": ["Candidates"] },
+    "candidates--ann-index": { "ok": true, "sides": ["right", "left"], "points": [1573, 616, 2680, 616], "path": "fdda5a5efbf8", "label": [2120.5, 616, 89.58999999999999, 22], "mode": "full", "text": "Nearest titles", "lines": ["Nearest titles"] },
+    "home-api--ranking-router": { "ok": true, "sides": ["right", "left"], "points": [1120, 494.57142857142856, 1340, 896], "path": "e7582b31b1b4", "label": [1227.1163975509382, 690.0240760507379, 45.81, 22], "mode": "full", "text": "Rank", "lines": ["Rank"] },
+    "home-api--ranker-v9": { "ok": true, "sides": ["right", "left"], "points": [1120, 502, 1340, 1036], "path": "c4558b7ea328", "label": [1242.9514149901713, 800.436616385234, 76.89000000000001, 22], "mode": "full", "text": "Mirror 10%", "lines": ["Mirror 10%"] },
     "ranking-router--ranker-v7": { "ok": true, "sides": ["right", "left"], "points": [1560, 889, 1780, 889], "path": "e6badcda1737" },
     "ranking-router--ranker-v8": { "ok": true, "sides": ["right", "left"], "points": [1560, 903, 1780, 1029], "path": "19e2eb8cbf06" },
-    "ranker-v7--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2000, 903, 2220, 882], "path": "3eab4a9d2107", "label": [2104.0271493212667, 893.0701357466063, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
-    "ranker-v8--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2008, 1022, 2220, 910], "path": "b8ed4de2070f", "label": [2108.6948396955577, 968.8027261985733, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
-    "ranker-v9--feature-server": { "ok": true, "sides": ["right", "left"], "points": [1593, 1036, 2220, 896], "path": "201747dce5aa", "label": [1900.6441991469596, 967.3075153419867, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "ranker-v7--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2000, 903, 2220, 882], "path": "3eab4a9d2107", "label": [2104.0271493212667, 893.0701357466063, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "ranker-v8--feature-server": { "ok": true, "sides": ["right", "left"], "points": [2008, 1022, 2220, 910], "path": "b8ed4de2070f", "label": [2108.6948396955577, 968.8027261985733, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "ranker-v9--feature-server": { "ok": true, "sides": ["right", "left"], "points": [1593, 1036, 2220, 896], "path": "201747dce5aa", "label": [1900.6441991469596, 967.3075153419867, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
     "feature-server--online-store": { "ok": true, "sides": ["right", "left"], "points": [2480, 882, 2680, 749], "path": "3d935764bd69" },
-    "ranker-v7--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 903, 1600, 1455], "path": "82a7bac3b3fb", "label": [1756.9644495634782, 973.6423546720006, 83, 19], "mode": "full", "text": "Scored rows", "lines": ["Scored rows"] },
-    "ranker-v8--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 1043, 1600, 1469], "path": "73a996fec015", "label": [1719.5804700443684, 1185.992887561661, 53, 32], "mode": "wrap", "text": "Scored rows", "lines": ["Scored", "rows"] },
-    "ranker-v9--predictions": { "ok": true, "sides": ["bottom", "top"], "points": [1466.5, 1072, 1470, 1440], "path": "1d73c5a6611b", "label": [1468.0978329690602, 1240.0007236040283, 95, 19], "mode": "full", "text": "Shadow scores", "lines": ["Shadow scores"] },
-    "collector--play-events": { "ok": true, "sides": ["right", "left"], "points": [1120, 1350, 1340, 1336], "path": "cd9438d78025", "label": [1224.012111986315, 1343.3810474190527, 71, 19], "mode": "full", "text": "PlayEvent", "lines": ["PlayEvent"] },
+    "ranker-v7--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 903, 1600, 1455], "path": "82a7bac3b3fb", "label": [1756.9644495634782, 973.6423546720006, 84.04, 22], "mode": "full", "text": "Scored rows", "lines": ["Scored rows"] },
+    "ranker-v8--predictions": { "ok": true, "sides": ["left", "right"], "points": [1780, 1043, 1600, 1469], "path": "73a996fec015", "label": [1731.2569713776718, 1158.3585010728432, 55.55, 38], "mode": "wrap", "text": "Scored rows", "lines": ["Scored", "rows"] },
+    "ranker-v9--predictions": { "ok": true, "sides": ["bottom", "top"], "points": [1466.5, 1072, 1470, 1440], "path": "1d73c5a6611b", "label": [1468.0027285747226, 1230.001175856546, 99.68, 22], "mode": "full", "text": "Shadow scores", "lines": ["Shadow scores"] },
+    "collector--play-events": { "ok": true, "sides": ["right", "left"], "points": [1120, 1350, 1340, 1336], "path": "cd9438d78025", "label": [1224.012111986315, 1343.3810474190527, 71.69999999999999, 22], "mode": "full", "text": "PlayEvent", "lines": ["PlayEvent"] },
     "play-events--sessionizer": { "ok": true, "sides": ["right", "left"], "points": [1600, 1315, 1780, 1336], "path": "05f1fc522361" },
     "play-events--trending": { "ok": true, "sides": ["right", "left"], "points": [1600, 1329, 1780, 1476], "path": "ee1322a94b5e" },
     "play-events--lake-sink": { "ok": true, "sides": ["right", "left"], "points": [1600, 1357, 1780, 1749], "path": "d542074a0426" },
-    "sessionizer--online-store": { "ok": true, "sides": ["right", "left"], "points": [2027, 1329, 2680, 763], "path": "3a6675265987", "label": [2250.7314776251455, 1135.0765446618188, 53, 19], "mode": "full", "text": "Update", "lines": ["Update"] },
-    "trending--online-store": { "ok": true, "sides": ["right", "left"], "points": [2040, 1476, 2680, 777], "path": "c0efdd595733", "label": [2369.45412287549, 1116.1743251719254, 53, 19], "mode": "full", "text": "Update", "lines": ["Update"] },
-    "lake-sink--offline-store": { "ok": true, "sides": ["right", "left"], "points": [2000, 1756, 2680, 896], "path": "7e64d365f157", "label": [2336.278586495803, 1330.7064935494254, 53, 19], "mode": "full", "text": "Append", "lines": ["Append"] },
+    "sessionizer--online-store": { "ok": true, "sides": ["right", "left"], "points": [2027, 1329, 2680, 763], "path": "3a6675265987", "label": [2250.7314776251455, 1135.0765446618188, 57.17999999999999, 22], "mode": "full", "text": "Update", "lines": ["Update"] },
+    "trending--online-store": { "ok": true, "sides": ["right", "left"], "points": [2040, 1476, 2680, 777], "path": "c0efdd595733", "label": [2369.45412287549, 1116.1743251719254, 57.17999999999999, 22], "mode": "full", "text": "Update", "lines": ["Update"] },
+    "lake-sink--offline-store": { "ok": true, "sides": ["right", "left"], "points": [2000, 1756, 2680, 896], "path": "7e64d365f157", "label": [2336.278586495803, 1330.7064935494254, 59.76, 22], "mode": "full", "text": "Append", "lines": ["Append"] },
     "predictions--drift": { "ok": true, "sides": ["right", "left"], "points": [1600, 1483, 2240, 1616], "path": "d79b67c5bee3" },
     "predictions--lake-sink": { "ok": true, "sides": ["right", "left"], "points": [1600, 1497, 1780, 1763], "path": "afd5c2e29ed5" },
-    "drift--quality": { "ok": true, "sides": ["right", "left"], "points": [2468, 1623, 2680, 1756], "path": "5345e5d61d9c", "label": [2568.917405007137, 1686.3113908771188, 59, 19], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
-    "drift--alerts": { "ok": true, "sides": ["right", "left"], "points": [2468, 1609, 2680, 1616], "path": "b241b70695bd", "label": [2568.0032680649147, 1612.3019947002565, 95, 19], "mode": "full", "text": "DriftDetected", "lines": ["DriftDetected"] },
-    "alerts--slack": { "ok": true, "sides": ["right", "left"], "points": [2900, 1616, 5000, 1616], "path": "98a3892198bd", "label": [3944, 1616, 41, 19], "mode": "full", "text": "Page", "lines": ["Page"] },
-    "picks-schedule--pick-requests": { "ok": true, "sides": ["right", "left"], "points": [3420, 1336, 3640, 1336], "path": "8ffbe2eca18b", "label": [3524, 1336, 101, 19], "mode": "full", "text": "One per member", "lines": ["One per member"] },
+    "drift--quality": { "ok": true, "sides": ["right", "left"], "points": [2468, 1623, 2680, 1756], "path": "5345e5d61d9c", "label": [2568.917405007137, 1686.3113908771188, 57.68000000000001, 22], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
+    "drift--alerts": { "ok": true, "sides": ["right", "left"], "points": [2468, 1609, 2680, 1616], "path": "b241b70695bd", "label": [2568.0032680649147, 1612.3019947002565, 90.6, 22], "mode": "full", "text": "DriftDetected", "lines": ["DriftDetected"] },
+    "alerts--slack": { "ok": true, "sides": ["right", "left"], "points": [2900, 1616, 5000, 1616], "path": "98a3892198bd", "label": [3944, 1616, 44.86, 22], "mode": "full", "text": "Page", "lines": ["Page"] },
+    "picks-schedule--pick-requests": { "ok": true, "sides": ["right", "left"], "points": [3420, 1336, 3640, 1336], "path": "8ffbe2eca18b", "label": [3524, 1336, 108.65999999999998, 22], "mode": "full", "text": "One per member", "lines": ["One per member"] },
     "pick-requests--batch-scorer": { "ok": true, "sides": ["right", "left"], "points": [3900, 1336, 4080, 1343], "path": "63b7aead5aeb" },
-    "batch-scorer--feature-server": { "ok": true, "sides": ["left", "right"], "points": [4080, 1329, 2480, 910], "path": "41a7e4c0d663", "label": [3285.804275676911, 1121.019994692891, 65, 19], "mode": "full", "text": "Features", "lines": ["Features"] },
-    "batch-scorer--picks-db": { "ok": true, "sides": ["right", "left"], "points": [4333, 1329, 4520, 1336], "path": "6f8a19ffe7c4", "label": [4420.504199310628, 1332.2755582629648, 83, 19], "mode": "full", "text": "Write picks", "lines": ["Write picks"] },
-    "batch-scorer--picks-mailer": { "ok": true, "sides": ["right", "left"], "points": [4333, 1343, 4520, 1490], "path": "b488de1dfd9c", "label": [4421.782965406551, 1412.7919567634387, 77, 19], "mode": "full", "text": "PicksReady", "lines": ["PicksReady"] },
-    "picks-mailer--esp": { "ok": true, "sides": ["right", "left"], "points": [4740, 1476, 5000, 1476], "path": "0cb2fd32ebb5", "label": [4864, 1476, 41, 19], "mode": "full", "text": "Send", "lines": ["Send"] },
-    "dags--backfill": { "ok": true, "sides": ["right", "left"], "points": [3420, 182, 3640, 189], "path": "ec505b00f5b6", "label": [3524.0030348858954, 185.30918747364214, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "backfill--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 203, 2902, 882], "path": "e97a63081eb3", "label": [3371.0839146566695, 450.4173739134438, 101, 19], "mode": "full", "text": "Write features", "lines": ["Write features"] },
-    "dags--materialize": { "ok": true, "sides": ["right", "left"], "points": [3420, 196, 3640, 322], "path": "5e3c5e757d9e", "label": [3524.793456392715, 256.0180704794642, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "materialize--online-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 336, 2900, 756], "path": "49d1aa4be2fc", "label": [3388.2772844721226, 478.86964935366007, 71, 19], "mode": "full", "text": "Bulk load", "lines": ["Bulk load"] },
-    "dags--train": { "ok": true, "sides": ["right", "left"], "points": [3420, 210, 3640, 469], "path": "8b651f518be2", "label": [3532.589568503453, 342.54862837451947, 59, 19], "mode": "full", "text": "Nightly", "lines": ["Nightly"] },
-    "train--eval": { "ok": true, "sides": ["right", "left"], "points": [3860, 476, 4080, 476], "path": "c38269a3e8d6", "label": [3964, 476, 107, 19], "mode": "full", "text": "Candidate model", "lines": ["Candidate model"] },
-    "eval--registry": { "ok": true, "sides": ["right", "left"], "points": [4333, 476, 4520, 462], "path": "3635d58586ae", "label": [4420.516744536579, 469.4479442592936, 119, 19], "mode": "full", "text": "Publish if better", "lines": ["Publish if better"] },
-    "train--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 483, 2902, 910], "path": "0ebe318b1c6a", "label": [3258.882158802399, 703.5112712620266, 111, 19], "mode": "full", "text": "Training sets", "lines": ["Training sets"], "glyph": true },
-    "materialize--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 350, 2902, 896], "path": "1dd49d30473e", "label": [3275.8234263878235, 619.4314487699842, 63, 19], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
-    "ranker-v7--registry": { "ok": true, "sides": ["right", "left"], "points": [2000, 889, 4520, 476], "path": "bda0818a62fd", "label": [3392.2358683180028, 660.8280104701051, 81, 19], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
-    "ranker-v8--registry": { "ok": true, "sides": ["right", "left"], "points": [2008, 1036, 4520, 490], "path": "4162cb2930cd", "label": [3297.2242350954457, 755.7784903017065, 81, 19], "mode": "full", "text": "Loads v8", "lines": ["Loads v8"], "glyph": true },
-    "argocd--ranker-v8": { "ok": true, "sides": ["left", "right"], "points": [3200, 856, 2008, 1050], "path": "7a496ffa235c", "label": [2580.3116789536734, 956.8553139957947, 69, 19], "mode": "full", "text": "Canary", "lines": ["Canary"], "glyph": true },
+    "batch-scorer--feature-server": { "ok": true, "sides": ["left", "right"], "points": [4080, 1329, 2480, 910], "path": "41a7e4c0d663", "label": [3285.804275676911, 1121.019994692891, 65.37, 22], "mode": "full", "text": "Features", "lines": ["Features"] },
+    "batch-scorer--picks-db": { "ok": true, "sides": ["right", "left"], "points": [4333, 1329, 4520, 1336], "path": "6f8a19ffe7c4", "label": [4420.504199310628, 1332.2755582629648, 78.05000000000001, 22], "mode": "full", "text": "Write picks", "lines": ["Write picks"] },
+    "batch-scorer--picks-mailer": { "ok": true, "sides": ["right", "left"], "points": [4333, 1343, 4520, 1490], "path": "b488de1dfd9c", "label": [4421.782965406551, 1412.7919567634387, 81.32, 22], "mode": "full", "text": "PicksReady", "lines": ["PicksReady"] },
+    "picks-mailer--esp": { "ok": true, "sides": ["right", "left"], "points": [4740, 1476, 5000, 1476], "path": "0cb2fd32ebb5", "label": [4864, 1476, 44.88, 22], "mode": "full", "text": "Send", "lines": ["Send"] },
+    "dags--backfill": { "ok": true, "sides": ["right", "left"], "points": [3420, 182, 3640, 189], "path": "ec505b00f5b6", "label": [3524.0030348858954, 185.30918747364214, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "backfill--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 203, 2902, 882], "path": "e97a63081eb3", "label": [3371.0839146566695, 450.4173739134438, 94.3, 22], "mode": "full", "text": "Write features", "lines": ["Write features"] },
+    "dags--materialize": { "ok": true, "sides": ["right", "left"], "points": [3420, 196, 3640, 322], "path": "5e3c5e757d9e", "label": [3524.793456392715, 256.0180704794642, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "materialize--online-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 336, 2900, 756], "path": "49d1aa4be2fc", "label": [3388.2772844721226, 478.86964935366007, 67.97, 22], "mode": "full", "text": "Bulk load", "lines": ["Bulk load"] },
+    "dags--train": { "ok": true, "sides": ["right", "left"], "points": [3420, 210, 3640, 469], "path": "8b651f518be2", "label": [3532.589568503453, 342.54862837451947, 56.04, 22], "mode": "full", "text": "Nightly", "lines": ["Nightly"] },
+    "train--eval": { "ok": true, "sides": ["right", "left"], "points": [3860, 476, 4080, 476], "path": "c38269a3e8d6", "label": [3964, 476, 111.36999999999999, 22], "mode": "full", "text": "Candidate model", "lines": ["Candidate model"] },
+    "eval--registry": { "ok": true, "sides": ["right", "left"], "points": [4333, 476, 4520, 462], "path": "3635d58586ae", "label": [4420.516744536579, 469.4479442592936, 102.25, 22], "mode": "full", "text": "Publish if better", "lines": ["Publish if better"] },
+    "train--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 483, 2902, 910], "path": "0ebe318b1c6a", "label": [3258.882158802399, 703.5112712620266, 103.42, 22], "mode": "full", "text": "Training sets", "lines": ["Training sets"], "glyph": true },
+    "materialize--offline-store": { "ok": true, "sides": ["left", "right"], "points": [3640, 350, 2902, 896], "path": "1dd49d30473e", "label": [3275.8234263878235, 619.4314487699842, 67.55000000000001, 22], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true },
+    "ranker-v7--registry": { "ok": true, "sides": ["right", "left"], "points": [2000, 889, 4520, 476], "path": "bda0818a62fd", "label": [3402.104216699943, 659.2106978186205, 82.15, 22], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
+    "ranker-v8--registry": { "ok": true, "sides": ["right", "left"], "points": [2008, 1036, 4520, 490], "path": "4162cb2930cd", "label": [3306.9960689470477, 753.6545168610319, 82.15, 22], "mode": "full", "text": "Loads v8", "lines": ["Loads v8"], "glyph": true },
+    "argocd--ranker-v8": { "ok": true, "sides": ["left", "right"], "points": [3200, 856, 2008, 1050], "path": "7a496ffa235c", "label": [2570.441545184371, 958.4616948273758, 73.42, 22], "mode": "full", "text": "Canary", "lines": ["Canary"], "glyph": true },
     "feature-server--roles": { "ok": true, "sides": ["right", "left"], "points": [2480, 896, 3640, 849], "path": "7b7bbd22af4a", "label": [3014.0377114522084, 874.3622651394364, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "home-api--experiments": { "ok": true, "sides": ["right", "left"], "points": [1120, 472.2857142857143, 3200, 996], "path": "fdf452f93cc2", "label": [2115.3922507194557, 722.9112631275772, 75, 19], "mode": "full", "text": "Variant", "lines": ["Variant"], "glyph": true },
-    "feature-server--feature-registry": { "ok": true, "sides": ["bottom", "left"], "points": [2350, 932, 3640, 989], "path": "21b955380967", "label": [2959.0350919437565, 958.9108528998404, 99, 19], "mode": "full", "text": "Definitions", "lines": ["Definitions"], "glyph": true },
+    "home-api--experiments": { "ok": true, "sides": ["right", "left"], "points": [1120, 472.2857142857143, 3200, 996], "path": "fdf452f93cc2", "label": [2105.694913919337, 720.4696122546902, 74.05, 22], "mode": "full", "text": "Variant", "lines": ["Variant"], "glyph": true },
+    "feature-server--feature-registry": { "ok": true, "sides": ["bottom", "left"], "points": [2350, 932, 3640, 989], "path": "21b955380967", "label": [2959.0350919437565, 958.9108528998404, 91.56, 22], "mode": "full", "text": "Definitions", "lines": ["Definitions"], "glyph": true },
     "sessionizer--feature-registry": { "ok": true, "sides": ["right", "left"], "points": [2027, 1343, 3640, 1003], "path": "8f2faa91ba7c", "label": [2827.629010421607, 1174.2375303513043, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "backfill--feature-registry": { "ok": true, "sides": ["bottom", "top"], "points": [3763.5, 232, 3763.5, 960], "path": "41b80d1cc8ac", "label": [3763.5, 580, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "collector--secrets": { "ok": true, "sides": ["right", "left"], "points": [1120, 1336, 4080, 856], "path": "fadb962401d4", "label": [2594.0773671335146, 1096.960426951322, 99, 19], "mode": "full", "text": "Signing key", "lines": ["Signing key"], "glyph": true },
+    "collector--secrets": { "ok": true, "sides": ["right", "left"], "points": [1120, 1336, 4080, 856], "path": "fadb962401d4", "label": [2594.0773671335146, 1096.960426951322, 95.9, 22], "mode": "full", "text": "Signing key", "lines": ["Signing key"], "glyph": true },
     "collector--roles": { "ok": true, "sides": ["right", "left"], "points": [1120, 1322, 3640, 863], "path": "c810844e9e27", "label": [2423.2878003180413, 1084.6154363706426, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "batch-scorer--registry": { "ok": true, "sides": ["top", "bottom"], "points": [4206.5, 1300, 4630, 512], "path": "c5b7ea2f48cf", "label": [4415.409601503441, 911.2850862226408, 81, 19], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
-    "picks-mailer--secrets": { "ok": true, "sides": ["left", "right"], "points": [4520, 1462, 4300, 856], "path": "b8ebadb0290d", "label": [4412.047469084481, 1164.6398466599805, 105, 19], "mode": "full", "text": "Provider key", "lines": ["Provider key"], "glyph": true },
+    "batch-scorer--registry": { "ok": true, "sides": ["top", "bottom"], "points": [4206.5, 1300, 4630, 512], "path": "c5b7ea2f48cf", "label": [4415.409601503441, 911.2850862226408, 82.15, 22], "mode": "full", "text": "Loads v7", "lines": ["Loads v7"], "glyph": true },
+    "picks-mailer--secrets": { "ok": true, "sides": ["left", "right"], "points": [4520, 1462, 4300, 856], "path": "b8ebadb0290d", "label": [4412.047469084481, 1164.6398466599805, 100.57000000000001, 22], "mode": "full", "text": "Provider key", "lines": ["Provider key"], "glyph": true },
     "picks-mailer--roles": { "ok": true, "sides": ["left", "right"], "points": [4520, 1476, 3860, 856], "path": "076ea31facb3", "label": [4194.373088432564, 1170.1080527699842, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   }
 }

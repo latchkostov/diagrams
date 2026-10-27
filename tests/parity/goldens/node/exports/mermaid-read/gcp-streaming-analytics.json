@@ -5,17 +5,17 @@
     "title": "GCP streaming analytics",
     "direction": "LR",
     "groups": [
-      { "id": "g_gcp", "label": "Google Cloud · analytics project", "tone": "gcp", "x": 40, "y": 40, "width": 2155, "height": 296 }
+      { "id": "g_gcp", "label": "Google Cloud · analytics project", "tone": "gcp", "x": 40, "y": 40, "width": 2162, "height": 296 }
     ],
     "nodes": [
-      { "id": "collector", "stencil": "generic.service", "label": "Event collector", "sublabel": "Validate · batch publish", "x": 449, "y": 164, "group": "g_gcp" },
-      { "id": "pubsub_topic", "stencil": "generic.topic", "label": "clickstream", "sublabel": "Topic · 7-day retention", "x": 823, "y": 164, "group": "g_gcp" },
-      { "id": "dataflow", "stencil": "generic.scheduler", "label": "Sessionize job", "sublabel": "Streaming · 1-min windows", "x": 1194, "y": 104, "group": "g_gcp" },
-      { "id": "raw_archive", "stencil": "generic.database", "label": "Raw archive", "sublabel": "Avro · by hour", "x": 1194, "y": 224, "group": "g_gcp" },
-      { "id": "bigquery", "stencil": "generic.database", "label": "Analytics dataset", "sublabel": "Storage Write API", "x": 1575, "y": 104, "group": "g_gcp" },
+      { "id": "collector", "stencil": "generic.service", "label": "Event collector", "sublabel": "Validate · batch publish", "x": 455.55, "y": 164, "group": "g_gcp" },
+      { "id": "pubsub_topic", "stencil": "generic.topic", "label": "clickstream", "sublabel": "Topic · 7-day retention", "x": 829.55, "y": 164, "group": "g_gcp" },
+      { "id": "dataflow", "stencil": "generic.scheduler", "label": "Sessionize job", "sublabel": "Streaming · 1-min windows", "x": 1200.8899999999999, "y": 104, "group": "g_gcp" },
+      { "id": "raw_archive", "stencil": "generic.database", "label": "Raw archive", "sublabel": "Avro · by hour", "x": 1200.8899999999999, "y": 224, "group": "g_gcp" },
+      { "id": "bigquery", "stencil": "generic.database", "label": "Analytics dataset", "sublabel": "Storage Write API", "x": 1581.8899999999999, "y": 104, "group": "g_gcp" },
       { "id": "looker", "stencil": "generic.service", "label": "Product dashboards", "sublabel": "Funnels · retention", "x": 80, "y": 224, "group": "g_gcp" },
-      { "id": "dead_letters", "stencil": "generic.topic", "label": "clickstream-dlq", "sublabel": "Unparseable events", "x": 1575, "y": 224, "group": "g_gcp" },
-      { "id": "dead_bucket", "stencil": "generic.database", "label": "Dead letters", "sublabel": "Inspect · replay", "x": 1935, "y": 164, "group": "g_gcp" },
+      { "id": "dead_letters", "stencil": "generic.topic", "label": "clickstream-dlq", "sublabel": "Unparseable events", "x": 1581.8899999999999, "y": 224, "group": "g_gcp" },
+      { "id": "dead_bucket", "stencil": "generic.database", "label": "Dead letters", "sublabel": "Inspect · replay", "x": 1941.8899999999999, "y": 164, "group": "g_gcp" },
       { "id": "app", "stencil": "azure.app-service", "label": "Mobile and web apps", "sublabel": "Clickstream SDK", "x": 80, "y": 104 }
     ],
     "edges": [

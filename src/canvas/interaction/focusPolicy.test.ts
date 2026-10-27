@@ -44,6 +44,20 @@ function run(start: FocusState, events: readonly FocusEvent[]) {
 }
 
 describe("focusPolicy: the rules, row by row", () => {
+  it("T1 opens the library when ready and returns Escape to its rail opener", () => {
+    expect(focusPolicy(state(), { type: "tool.focus", cause: "library" }).command).toMatchObject({
+      target: { kind: "paletteSearch" },
+      when: "ready",
+    });
+    expect(focusPolicy(state(), { type: "tool.focus", cause: "escape", target: opener }).command).toMatchObject({
+      target: { kind: "element", handle: opener },
+      when: "now",
+    });
+    expect(focusPolicy(state(), { type: "tool.focus", cause: "select" }).command).toMatchObject({
+      target: { kind: "canvas" },
+      when: "now",
+    });
+  });
   it.each<[string, FocusState, FocusEvent[], string[]]>([
     [
       "I7 picker navigation focuses its mounted control now",
@@ -78,13 +92,13 @@ describe("focusPolicy: the rules, row by row", () => {
       "K1 Tab to a node: focus it next frame",
       state(),
       [selected("keyboard", { target: { kind: "node", id: "a" } })],
-      ["focus:node:a@frame"],
+      ["focus:node:a@measured"],
     ],
     [
       "K2 Ctrl+Alt+] to a connection: focus it next frame",
       state(),
       [selected("keyboard", { target: { kind: "edge", id: "e1" } })],
-      ["focus:edge:e1@frame"],
+      ["focus:edge:e1@measured"],
     ],
     [
       "H1 Undo from the canvas: focus what it selected, once drawn",
@@ -111,10 +125,10 @@ describe("focusPolicy: the rules, row by row", () => {
       ["focus:node:n@measured"],
     ],
     [
-      "P2 the palette goes to a node: focus it now",
+      "P2 the palette goes to a node: focus it when visible",
       state(),
       [selected("palette", { target: { kind: "node", id: "n" } })],
-      ["focus:node:n@now"],
+      ["focus:node:n@ready"],
     ],
     ["S1 a click selects: focus stays", state(), [selected("click")], ["keep"]],
     ["S1 the selection box: focus stays", state(), [selected("box")], ["keep"]],
@@ -143,13 +157,13 @@ describe("focusPolicy: the rules, row by row", () => {
       ["focus:field:label@ready", "keep", "keep"],
     ],
     [
-      "I3 the Inspector opened by its control or with the selection: keep",
+      "I3 the Inspector control follows its replacement; selection keeps focus",
       state(),
       [
         { type: "inspector.toggled", cause: "panel" },
         { type: "inspector.toggled", cause: "selection" },
       ],
-      ["keep", "keep"],
+      ["focus:inspectorToggle@commit", "keep"],
     ],
     [
       "I4 a field request abandoned (Esc in its pending rename): nothing pending, focus stays",

@@ -1,9 +1,9 @@
 {
   "smoothstep": {
-    "submit": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 150, 156, 170, 156, 170, 200], "path": "ba4415c05692", "label": [150, 135, 47, 19], "mode": "full", "text": "Order", "lines": ["Order"] },
-    "queue-payment": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 170, 316, 166.5, 316, 166.5, 360], "path": "17e580bc25f8", "label": [170, 295, 83, 19], "mode": "full", "text": "Payment job", "lines": ["Payment job"] },
-    "pay": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 432, 166.5, 520], "path": "c2efe91aceb7", "label": [166.5, 470, 59, 19], "mode": "full", "text": "Workers", "lines": ["Workers"] },
-    "record": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 592, 166.5, 636, 150, 636, 150, 680], "path": "cb24aedc9220", "label": [166.5, 615, 53, 19], "mode": "full", "text": "Record", "lines": ["Record"] }
+    "submit": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 150, 156, 170, 156, 170, 200], "path": "ba4415c05692", "label": [150, 135, 48.260000000000005, 22], "mode": "full", "text": "Order", "lines": ["Order"] },
+    "queue-payment": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 170, 316, 166.5, 316, 166.5, 360], "path": "17e580bc25f8", "label": [170, 295, 85.92999999999999, 22], "mode": "full", "text": "Payment job", "lines": ["Payment job"] },
+    "pay": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 432, 166.5, 520], "path": "c2efe91aceb7", "label": [166.5, 470, 62.95, 22], "mode": "full", "text": "Workers", "lines": ["Workers"] },
+    "record": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 592, 166.5, 636, 150, 636, 150, 680], "path": "cb24aedc9220", "label": [166.5, 615, 56.209999999999994, 22], "mode": "full", "text": "Record", "lines": ["Record"] }
   },
   "bezier": {
     "submit": {
@@ -54,7 +54,7 @@
         200
       ],
       "path": "f738015afc2b",
-      "label": [159.2525, 154.1181313378999, 47, 19],
+      "label": [159.2525, 154.1181313378999, 48.260000000000005, 22],
       "mode": "full",
       "text": "Order",
       "lines": ["Order"]
@@ -107,7 +107,7 @@
         360
       ],
       "path": "aef489606045",
-      "label": [168.38081250000002, 314.0842248445863, 83, 19],
+      "label": [168.38081250000002, 314.0842248445863, 85.92999999999999, 22],
       "mode": "full",
       "text": "Payment job",
       "lines": ["Payment job"]
@@ -160,7 +160,7 @@
         520
       ],
       "path": "a6be463ec3f4",
-      "label": [166.5, 474.08314, 59, 19],
+      "label": [166.5, 474.08314, 62.95, 22],
       "mode": "full",
       "text": "Workers",
       "lines": ["Workers"]
@@ -213,16 +213,16 @@
         680
       ],
       "path": "09c1ea35cc46",
-      "label": [158.8666875, 634.1070513057958, 53, 19],
+      "label": [158.8666875, 634.1070513057958, 56.209999999999994, 22],
       "mode": "full",
       "text": "Record",
       "lines": ["Record"]
     }
   },
   "straight": {
-    "submit": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 170, 200], "path": "0e235fe3ba72", "label": [158.6702733784662, 150.14920286525125, 47, 19], "mode": "full", "text": "Order", "lines": ["Order"] },
-    "queue-payment": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 166.5, 360], "path": "d36a3091faf7", "label": [168.48844784143753, 310.00473998671333, 83, 19], "mode": "full", "text": "Payment job", "lines": ["Payment job"] },
-    "pay": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 432, 166.5, 520], "path": "c2efe91aceb7", "label": [166.5, 470, 59, 19], "mode": "full", "text": "Workers", "lines": ["Workers"] },
-    "record": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 592, 150, 680], "path": "4057a7cb914c", "label": [159.35573121030112, 630.102766878394, 53, 19], "mode": "full", "text": "Record", "lines": ["Record"] }
+    "submit": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 170, 200], "path": "0e235fe3ba72", "label": [158.6702733784662, 150.14920286525125, 48.260000000000005, 22], "mode": "full", "text": "Order", "lines": ["Order"] },
+    "queue-payment": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 166.5, 360], "path": "d36a3091faf7", "label": [168.48844784143753, 310.00473998671333, 85.92999999999999, 22], "mode": "full", "text": "Payment job", "lines": ["Payment job"] },
+    "pay": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 432, 166.5, 520], "path": "c2efe91aceb7", "label": [166.5, 470, 62.95, 22], "mode": "full", "text": "Workers", "lines": ["Workers"] },
+    "record": { "ok": true, "sides": ["bottom", "top"], "points": [166.5, 592, 150, 680], "path": "4057a7cb914c", "label": [159.35573121030112, 630.102766878394, 56.209999999999994, 22], "mode": "full", "text": "Record", "lines": ["Record"] }
   }
 }

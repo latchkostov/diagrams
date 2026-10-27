@@ -14,6 +14,8 @@ export interface Settings {
   nodeVariant: NodeVariantId;
   edgeStyle: EdgeStyle;
   theme: Theme;
+  themePreference?: Theme | "system";
+  libraryPinned?: boolean;
 }
 
 interface SettingsApi extends Settings {
@@ -28,15 +30,19 @@ export function initialSettings(): Settings {
     nodeVariant: DEFAULT_NODE_VARIANT,
     edgeStyle: DEFAULT_EDGE_STYLE,
     theme: prefersDark ? "dark" : "light",
+    themePreference: "system",
   };
   try {
     const raw = safeStorage.getItem(STORAGE_KEY);
     if (!raw) return fallback;
     const saved = JSON.parse(raw) as Partial<Settings>;
+    const preference = saved.themePreference ?? saved.theme ?? "system";
     return {
       nodeVariant: isNodeVariantId(saved.nodeVariant) ? saved.nodeVariant : fallback.nodeVariant,
       edgeStyle: isEdgeStyle(saved.edgeStyle) ? saved.edgeStyle : fallback.edgeStyle,
-      theme: saved.theme === "dark" || saved.theme === "light" ? saved.theme : fallback.theme,
+      theme: preference === "dark" || preference === "light" ? preference : fallback.theme,
+      themePreference: preference === "dark" || preference === "light" ? preference : "system",
+      libraryPinned: saved.libraryPinned === true,
     };
   } catch {
     return fallback;

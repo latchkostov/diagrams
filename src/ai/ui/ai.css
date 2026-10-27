@@ -130,7 +130,7 @@
 /* The on-device box, the status line and Advanced: at most 60% of the panel, so the conversation keeps the rest
    (Advanced open under the on-device box once left it 58 px at 1280 × 800). */
 .ai-foot {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   max-height: 60%;
   overflow-y: auto;
@@ -140,6 +140,15 @@
 
 .ai-foot > * {
   flex: none;
+}
+
+/* Lazy on-device controls can overflow a short sheet. Keep the collapsed
+   Advanced entry reachable while the rest of the footer scrolls. */
+.ai-foot > .ai-advanced:not(.is-open) {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  background: var(--panel);
 }
 
 /* ---------- empty state ---------- */

@@ -23,6 +23,7 @@ export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedU
   };
   return tutorial.steps[snap.state.index].solution.map((s): ResolvedUiStep => {
     if ("click" in s) return { click: at(s.click) };
+    if ("open" in s) return { open: at(s.open) };
     if ("modClick" in s) return { modClick: at(s.modClick), modifiers: s.modifiers };
     if ("rightclick" in s) return { rightclick: at(s.rightclick) };
     if ("boxSelect" in s) return { boxSelect: at(s.boxSelect), around: s.around.map(at) };

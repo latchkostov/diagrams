@@ -233,7 +233,13 @@ export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: Inspec
       {(fanOut || requestWait || (flow && revisionAtLeast(meta.planning?.revision, "p3-w2"))) && (
         <Disclosure id="edge-simulation" title={t("inspector.simulation")} summary={callSummary}>
           {requestWait && (
-            <CallWaitFields editor={editor} edgeId={edge.id} caller={props.caller} stencil={sourceStencil ?? ""} />
+            <CallWaitFields
+              editor={editor}
+              edgeId={edge.id}
+              caller={props.caller}
+              stencil={sourceStencil ?? ""}
+              readDiagram={readDiagram}
+            />
           )}
           {flow && revisionAtLeast(meta.planning?.revision, "p3-w2") && (
             <EdgePriorityField editor={editor} edgeId={edge.id} />

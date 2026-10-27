@@ -63,3 +63,23 @@ it("clicking the consumer alias activates the existing action", () => {
     host.remove();
   }
 });
+
+it("a floating status strip uses no obstacle placement or inline translation", () => {
+  const html = renderToStaticMarkup(
+    <TroubleCallout
+      floating
+      onDismiss={() => {}}
+      trouble={{
+        key: "lag:orders",
+        kind: "lag",
+        node: "orders",
+        headline: "Orders lag is rising",
+        announce: "Orders lag is rising",
+        detail: "Messages wait for a reader.",
+        action: { kind: "events", node: "orders" },
+      }}
+    />,
+  );
+  expect(html).toContain("is-status-strip");
+  expect(html).not.toContain("style=");
+});

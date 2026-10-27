@@ -1,9 +1,9 @@
 {
   "autoLayout": {
-    "LR": { "looker": [40, 40], "app": [40, 160], "collector": [409, 100], "pubsub-topic": [783, 100], "dataflow": [1154, 40], "raw-archive": [1154, 160], "bigquery": [1535, 40], "dead-letters": [1535, 160], "dead-bucket": [1895, 100] },
+    "LR": { "looker": [40, 40], "app": [40, 160], "collector": [415.55, 100], "pubsub-topic": [789.55, 100], "dataflow": [1160.8899999999999, 40], "raw-archive": [1160.8899999999999, 160], "bigquery": [1541.8899999999999, 40], "dead-letters": [1541.8899999999999, 160], "dead-bucket": [1901.8899999999999, 100] },
     "TB": { "app": [40, 40], "looker": [340, 40], "collector": [190, 200], "pubsub-topic": [190, 360], "dataflow": [40, 520], "raw-archive": [340, 520], "dead-letters": [40, 680], "bigquery": [340, 680], "dead-bucket": [190, 840] }
   },
-  "tidy": { "app": [40, 240], "collector": [409, 180], "pubsub-topic": [783, 180], "dataflow": [1154, 120], "raw-archive": [1154, 240], "bigquery": [1535, 120], "looker": [40, 120], "dead-letters": [1535, 240], "dead-bucket": [1895, 180] },
+  "tidy": { "app": [40, 240], "collector": [416, 180], "pubsub-topic": [790, 180], "dataflow": [1161, 120], "raw-archive": [1161, 240], "bigquery": [1542, 120], "looker": [40, 120], "dead-letters": [1542, 240], "dead-bucket": [1902, 180] },
   "arrange": {
     "alignLeft": { "app": [40, 240], "collector": [40, 240], "pubsub-topic": [40, 240], "dataflow": [40, 120], "raw-archive": [40, 360], "bigquery": [40, 120], "looker": [40, 120], "dead-letters": [40, 240], "dead-bucket": [40, 240] },
     "alignMiddle": { "app": [40, 240], "collector": [420, 240], "pubsub-topic": [800, 240], "dataflow": [1180, 240], "raw-archive": [1180, 240], "bigquery": [1560, 240], "looker": [1940, 240], "dead-letters": [1560, 240], "dead-bucket": [1940, 240] },
@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": ["gcp"],
     "placedNotes": [],
-    "nodes": { "app": [40, 320], "collector": [409, 100], "pubsub-topic": [783, 100], "dataflow": [1154, 40], "raw-archive": [1154, 160], "bigquery": [1535, 40], "looker": [40, 40], "dead-letters": [1535, 160], "dead-bucket": [1895, 100] },
-    "groups": { "gcp": [0, -24, 2155, 296] }
+    "nodes": { "app": [40, 320], "collector": [415.55, 100], "pubsub-topic": [789.55, 100], "dataflow": [1160.8899999999999, 40], "raw-archive": [1160.8899999999999, 160], "bigquery": [1541.8899999999999, 40], "looker": [40, 40], "dead-letters": [1541.8899999999999, 160], "dead-bucket": [1901.8899999999999, 100] },
+    "groups": { "gcp": [0, -24, 2162, 296] }
   }
 }

@@ -10,6 +10,7 @@ import {
   waitForCameraIdle,
   expectNoErrors,
   openLiveNodeDetails,
+  openEditProperties,
 } from "./fixtures";
 
 async function open(page: Page, simulation = false) {
@@ -28,6 +29,7 @@ test("queue fields at 1024 px edit the effective saved simulation and undo as on
   await open(page, true);
   await waitForCameraIdle(page);
   await page.getByTestId("node-partner").dblclick();
+  await openEditProperties(page);
   await page.getByTestId("inspector-section-node-simulation").click();
   await page.getByTestId("inspector-section-queue-details").click();
   const limit = page.getByTestId("inspector-field-queue-limit");

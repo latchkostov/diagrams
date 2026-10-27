@@ -1,0 +1,144 @@
+/* Presentation detail belongs to the editor frame, never to an exported viewport. */
+[data-detail-view] [data-detail-hidden],
+[data-detail-view] [data-detail-text-hidden] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+[data-detail-view] [data-detail-no-arrow] .fe-path {
+  marker-end: none;
+}
+[data-detail-view] .react-flow__node:not([data-detail-expanded]):not(.selected) .nb-sub,
+[data-detail-view] .nb-kind {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-detail-view="follow"] .react-flow__renderer,
+[data-detail-view="focus"] .react-flow__renderer {
+  mask-image:
+    linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent),
+    linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  mask-composite: intersect;
+}
+.frame-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  direction: ltr;
+}
+.frame-pin,
+.detail-group-chip,
+.detail-title-chip,
+.overview-dig-hint {
+  position: absolute;
+  pointer-events: auto;
+  color: var(--text-2);
+  background: var(--panel);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 18px;
+}
+.frame-pin {
+  height: 28px;
+  border: 1px solid var(--control-line);
+  border-radius: 6px;
+  padding: 0 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.frame-pin.is-spotlit,
+.detail-title-chip {
+  border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--line));
+}
+.frame-pin:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.frame-pin-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: var(--text-2);
+  stroke-width: 1;
+}
+.detail-group-chip {
+  border: 0;
+  background: color-mix(in oklab, var(--board) 90%, transparent);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.detail-title-chip {
+  transform: translate(-50%, -100%);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.overview-dig-hint {
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+[data-detail-far] .react-flow__node-diagram .nb {
+  background: var(--surface-3);
+  border-color: var(--dim-stroke);
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
+  box-shadow: none;
+}
+[data-detail-far] .nb-tile {
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
+  opacity: 1;
+}
+[data-detail-far] .grp {
+  border-color: var(--dim-stroke);
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
+}
+[data-detail-far] .react-flow__edge .fe-path {
+  stroke: var(--dim-stroke);
+  stroke-width: calc(1px / var(--rf-zoom));
+  opacity: 0.7;
+}
+[data-detail-far] .react-flow__edge[data-live-near] .fe-path {
+  stroke-width: calc(1.5px / var(--rf-zoom));
+  opacity: 1;
+}
+
+[data-detail-far] .react-flow__edge[data-live-main] .fe-path {
+  stroke-width: calc(1.5px / var(--rf-zoom));
+  opacity: 1;
+}
+
+[data-detail-far] .react-flow__node-diagram .nb-tile {
+  visibility: hidden;
+}
+[data-detail-far] .react-flow__node-diagram[data-live-dim] .nb {
+  border-color: var(--dim-stroke);
+  background: var(--surface-3);
+}
+[data-detail-far] .react-flow__edge[data-live-near] .fe-path,
+[data-detail-far] .react-flow__edge[data-live-main] .fe-path {
+  stroke: var(--text-2);
+  opacity: 1;
+}
+
+[data-detail-far] .react-flow[data-live-spotlight] .react-flow__node-diagram[data-live-dim] .nb {
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
+  background: var(--surface-3);
+}
+[data-detail-far] .react-flow[data-live] .react-flow__edge[data-live-main] .fe-path,
+[data-detail-far] .react-flow[data-live] .react-flow__edge[data-live-near] .fe-path {
+  stroke: var(--text-2);
+  stroke-width: calc(1.5px / var(--rf-zoom));
+  opacity: 1;
+}

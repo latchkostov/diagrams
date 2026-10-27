@@ -153,6 +153,7 @@ export type FocusTarget =
   | { kind: "field"; name: string; owner?: string }
   /** The stencil rail's search. */
   | { kind: "paletteSearch" }
+  | { kind: "inspectorToggle" }
   /** The Live bar's control that opens its side panels ("⋯", data-live-panel-opener). */
   | { kind: "panelOpener" }
   /** A field (by test id) in one of Live's side panels: waits while the panel is open and the field isn't yet. */
@@ -214,6 +215,7 @@ export type FocusCommand =
 
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
+  | { type: "tool.focus"; cause: "library" | "select" | "escape"; target?: ElementHandle }
   | { type: "gesture.ended"; kind: GestureKind; reason: GestureEndReason; edge?: string }
   /**
    * A Live readout closed. `pinned` records pin state; `hadFocus` records keyboard focus inside the closing card. Esc gives focus back to

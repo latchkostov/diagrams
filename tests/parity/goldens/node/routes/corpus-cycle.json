@@ -3,7 +3,7 @@
     "r1": { "ok": true, "sides": ["bottom", "top"], "points": [377, 178, 377, 219, 590, 219, 590, 260], "path": "63fac585a28a" },
     "r2": { "ok": true, "sides": ["bottom", "top"], "points": [590, 332, 590, 373, 377, 373, 377, 414], "path": "ecdd7ae7ee0a" },
     "r3": { "ok": true, "sides": ["top", "bottom"], "points": [363, 414, 363, 373, 150, 373, 150, 332], "path": "8bca355b9117" },
-    "r4": { "ok": true, "sides": ["top", "bottom"], "points": [150, 260, 150, 219, 363, 219, 363, 178], "path": "a93e2f0104ab", "label": [256.5, 219, 95, 19], "mode": "full", "text": "back to start", "lines": ["back to start"] }
+    "r4": { "ok": true, "sides": ["top", "bottom"], "points": [150, 260, 150, 219, 363, 219, 363, 178], "path": "a93e2f0104ab", "label": [256.5, 219, 86.58999999999999, 22], "mode": "full", "text": "back to start", "lines": ["back to start"] }
   },
   "bezier": {
     "r1": {
@@ -201,7 +201,7 @@
         178
       ],
       "path": "704d18ff718d",
-      "label": [264.460875, 219.49406520287738, 95, 19],
+      "label": [264.460875, 219.49406520287738, 86.58999999999999, 22],
       "mode": "full",
       "text": "back to start",
       "lines": ["back to start"]
@@ -211,6 +211,6 @@
     "r1": { "ok": true, "sides": ["bottom", "top"], "points": [377, 178, 590, 260], "path": "592af2b7aeed" },
     "r2": { "ok": true, "sides": ["bottom", "top"], "points": [590, 332, 377, 414], "path": "5de11a6d7080" },
     "r3": { "ok": true, "sides": ["top", "bottom"], "points": [363, 414, 150, 332], "path": "61ca216e55f3" },
-    "r4": { "ok": true, "sides": ["top", "bottom"], "points": [150, 260, 363, 178], "path": "766a60e2ac3c", "label": [250.90060417189173, 221.15563595260505, 95, 19], "mode": "full", "text": "back to start", "lines": ["back to start"] }
+    "r4": { "ok": true, "sides": ["top", "bottom"], "points": [150, 260, 363, 178], "path": "766a60e2ac3c", "label": [250.90060417189173, 221.15563595260505, 86.58999999999999, 22], "mode": "full", "text": "back to start", "lines": ["back to start"] }
   }
 }

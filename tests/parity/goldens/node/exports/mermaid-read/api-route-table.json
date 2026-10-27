@@ -8,11 +8,11 @@
       { "id": "app", "stencil": "generic.service", "label": "Parcelpoint app", "sublabel": "40 req/s · 4 routes", "x": 40, "y": 220 },
       { "id": "carriers", "stencil": "generic.topic", "label": "Carrier webhooks", "sublabel": "30 events/s", "x": 40, "y": 340 },
       { "id": "gateway", "stencil": "aws.api-gateway", "label": "API gateway", "sublabel": "Route table · 4 rules", "x": 400, "y": 280 },
-      { "id": "tracking", "stencil": "generic.service", "label": "Tracking", "sublabel": "GET /v1/parcels/{id}", "x": 763, "y": 40 },
-      { "id": "pricing", "stencil": "generic.service", "label": "Pricing", "sublabel": "POST /v1/quotes · 90%", "x": 763, "y": 160 },
-      { "id": "pricing_canary", "stencil": "generic.service", "label": "Pricing canary", "sublabel": "10% of quotes", "x": 763, "y": 280 },
-      { "id": "labels", "stencil": "generic.service", "label": "Labels", "sublabel": "POST /v1/labels", "x": 763, "y": 400 },
-      { "id": "events", "stencil": "generic.topic", "label": "Carrier events", "sublabel": "1 × 4 slots · 200 ms", "x": 763, "y": 520 }
+      { "id": "tracking", "stencil": "generic.service", "label": "Tracking", "sublabel": "GET /v1/parcels/{id}", "x": 760, "y": 40 },
+      { "id": "pricing", "stencil": "generic.service", "label": "Pricing", "sublabel": "POST /v1/quotes · 90%", "x": 760, "y": 160 },
+      { "id": "pricing_canary", "stencil": "generic.service", "label": "Pricing canary", "sublabel": "10% of quotes", "x": 760, "y": 280 },
+      { "id": "labels", "stencil": "generic.service", "label": "Labels", "sublabel": "POST /v1/labels", "x": 760, "y": 400 },
+      { "id": "events", "stencil": "generic.topic", "label": "Carrier events", "sublabel": "1 × 4 slots · 200 ms", "x": 760, "y": 520 }
     ],
     "edges": [
       { "id": "e1-app-gateway", "from": "app", "to": "gateway", "label": "HTTPS", "kind": "sync" },

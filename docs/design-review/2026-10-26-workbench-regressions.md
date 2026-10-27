@@ -1,0 +1,110 @@
+## Workbench regression review for PR 358
+
+Reviewed the shared dock, phone playback, Overview silhouettes, connection gestures, captions, trace framing and recording against the UX principles. The fixes use existing menus and dock disclosures; they add no permanent toolbar row. Inputs and AI remain reachable on phones, tab changes preserve unfinished work, and transient callouts yield space to the diagram.
+
+The clean council-fix revision reproduced 195 failures in Linux: 2,498 passed, 195 failed, zero flaky and one skipped. Counts below assign each failed case one primary cause; some fixes address more than one cause.
+
+| Cause                                      | Cases | Fix type         | Principal files                                                        |
+| ------------------------------------------ | ----: | ---------------- | ---------------------------------------------------------------------- |
+| Moved controls and progressive disclosure  |    86 | Flow             | `tests/e2e/fixtures.ts`, library, Checks, i18n and inspector specs     |
+| Phone controls and badge reveal            |    20 | Product and flow | `ControlBar.tsx`, `TopBar.tsx`, `showcase-examples.spec.ts`            |
+| Navigation after dock resizing             |    18 | Product and flow | camera geometry, trace handoff, flow-building and bulk-selection specs |
+| Gesture geometry and measurement           |    15 | Product          | node/edge handle CSS, connection placement, settled selection          |
+| Focus handoff and redundant renders        |    13 | Product and flow | `CanvasView.tsx`, `Inspector.tsx`, `domPort.ts`, `focusPolicy.ts`      |
+| Follow subject and pin navigation          |    11 | Flow             | large-showcase narration pin navigation                                |
+| Frame culling and readable navigation      |    10 | Product and flow | `FrameDetail.tsx`, `liveScene.ts`, canvas and navigation specs         |
+| Chrome and overlay overlap                 |    10 | Product          | callout placement, narration, Live and inspector CSS                   |
+| Presentation, capture and generated viewer |    10 | Product and flow | `LiveSession.tsx`, capture specs, regenerated skill viewer             |
+| Theme tokens and moved theme control       |     2 | Flow             | shared View helper and Forge theme assertions                          |
+| Total                                      |   195 |                  |                                                                        |
+
+The two failed CI benchmark cases, `render counts pipeline@100` and `render counts pipeline@500`, stopped while preparing click targets. Existing numeric gates in that run passed. The corrected setup chooses three distinct exposed nodes before counting begins. Investigation also found redundant settled-selection and Inspector renders; these were fixed with no budget or baseline changes.
+
+Rejected raising budgets, increasing timeouts, disabling culling wholesale, and restoring old toolbar surfaces solely for tests. Suppressing library notifications was rejected because it left import-report metadata stale. Content consumers retain every notification; the picker alone filters content-only saves, as described below.
+
+Regression tests include temporarily reverted unit fixes for absolute search coordinates, transport overlap, palette focus readiness and settled-selection render counts. The existing Live-scene and DOM-visibility regressions were also checked without their fixes. The 14 selected browser regression cases all failed with the product changes temporarily reverted. After restoring the changes, targeted cases pass. Standalone export parity checks 50 goldens with zero changes. The 24 selected-layout and one handle-transform golden changes are explained individually in the release fragment. The full benchmark run passed all 95 gates; the final targeted render/bundle check passed all 40 gates after the export-scoping correction. Full parity checked 3,178 goldens with no remaining differences. Ten final targeted UI cases pass, including all three slow-motion Inspector camera cases. An intermediate bind-mount Linux rerun was discarded after a native build overwrote its shared output directory; final Linux verification uses an immutable archive. A native full unit attempt reported timing failures and stalled after a worker termination timeout; isolated platform, locale, bundle-baseline and sync checks subsequently passed. Full Linux gate validation remains pending.
+
+## Follow contract and autosave renders
+
+The existing `docs/release-notes/2026-10-26-workbench-camera.md` specifies a readable subject and off-frame pins, and the council review already applies that contract to narration resize checks. This resolves the earlier question without a new product decision. The eighteen desktop/phone narration paths retain all card bounds, note clearance, transport clearance and width assertions; they reach distant cards through pins and explicitly resume Follow between visits. They also assert the initial automatic Follow mode and zoom floor. A standalone production diagnostic passed all eighteen pin paths.
+
+A later exact-SHA benchmark found 4.83 commits per typed key at 500 nodes against the unchanged 4.5 limit. Autosave notifications still reach content consumers such as Import report; only the library picker avoids a refresh when its title, count and privacy metadata are unchanged. Explicit opening and cross-tab events still refresh its latest thumbnail and timestamp. The integrated hook/storage regression passes and fails when the fix is temporarily reverted.
+
+The first signed checkpoint also exposed three extra startup chunks in both deployment configurations. Restored Lab history buttons had imported the top-bar history module, extracting its shared dependencies into eager requests. The Lab now uses its existing editor API directly. The unchanged bundle-split suite passes all 26 checks, including the original 19-chunk startup list with collaboration both off and on.
+
+## Linux stress follow-up
+
+The complete benchmark run on `ca65d3eae` passed all 95 gates. Its first Linux stress pass exposed five additional cases: three request-policy edits read the imperative store's previous document, one dock history accumulated publication delay and retained nine samples, and one explicit Properties command remained hidden behind a floating trace. Request fields now read the current rendered document, history samples simulation-second boundaries, and an explicit Properties command overrides temporary trace folding. The inspector scenario pauses slow motion before checking its disabled fix. Both new unit regressions fail with their product fixes temporarily reverted; the existing policy and throughput browser assertions pass unchanged. No timeout, assertion, numeric budget or ZIP cap was raised.
+
+The full Linux gate on `92a731e96` passed 13,037 regular units, the heavy checks, build, size and all 3,178 parity goldens; all 95 benchmark gates also passed on that revision. Its e2e run exposed five Lab collaboration cases sharing stale Undo availability. Lab history now receives the current render's history flags, with those flags included in its memoized controls. The ordinary Workbench keeps the same memoized controls when Lab history is absent. All five original collaboration assertions pass with this fix; the archived full run supplies their failing-before evidence.
+
+## Complete diagnostic run and frame cost
+
+The completed e2e pass on `92a731e96` recorded 2,672 passed, 23 failed, zero flaky and one existing skip. Its second pass was stopped because the first had identified fixes still needed. The five Lab history failures above are included in those 23. Other causes included late on-device content clipping Advanced, an unrelated trace branch defeating dimming through stylesheet order, a completion caption covering a zoomed card in a short presentation, and the single-card subtitle expansion contract. Native targeted runs retain the original bounds, scrolling, recording, history and render-count assertions.
+
+The frame loop alternated card-width resets with layout reads, searched the whole frame for each edge label, rewrote unchanged SVG paths, and remeasured cards even when a selection changed no dimensions. Batched reads/writes, indexed labels, unchanged-path checks and dimension-based remeasurement remove that work. Traffic intensity no longer invalidates geometry. The new operation-count tests pass and fail when the frame changes are temporarily reverted; the strict interaction guard likewise fails at 18 wrappers against its unchanged limit of fewer than 16 without the remeasurement fix. Large-editor typing checks and both large Follow contrast cases pass in targeted runs after these changes. Load verification remains necessary for the intermittent camera, tutorial and recording failures.
+
+Nine of eleven initial browser mutation cases failed with the latest product changes reverted. The two intermittent cases were given deterministic coverage: the trace test reapplies the existing frame rules last, and a pure caption-placement test supplies the narrow free strip. Both regressions fail without their respective fixes. The footer regression holds the lazy on-device module until the panel is mounted, then checks exposure after it arrives. It preserves the footer's existing height share.
+
+The privacy flow now observes each nested menu dismissal before reaching the moved badge. Performance setup waits for initial Checks and camera work, uses a readable Custom view for its two click targets, and navigates to its later drag target before measuring. No render limit or timing timeout changed. Two overlapping native test commands collided in their shared results directory; their replacements run serially with separate output directories.
+
+The subtitle diagnostic initially changed thirteen Tidy goldens unintentionally. Selection styling now updates synchronously, and extra subtitle padding applies only to a single selected card. Multi-selection retains its existing compact measurements; all 3,178 goldens match without further recording. The full parity run also exposed an Undo flow racing measurement-held Auto-layout: Undo is explicitly defined and unit-tested to cancel that pending operation. The selection parity flow now waits for layout completion before asserting the completed history step's unchanged selection contract. All ten interaction-render cases and the four focused subtitle, trace and frame-operation cases pass natively.
+
+## Loaded clock and menu follow-up
+
+All 95 benchmark gates passed on `5c80253a0`. Its first 604-case Linux load repeat (12 workers, 8 CPUs) completed with 590 passed, thirteen failed, zero flaky and one existing skip; remaining repeats were stopped to address those failures. Counts here are a separate diagnostic checkpoint, not additions to the initial 195-case table.
+
+| Cause                                                                 | Cases | Fix type | Files                                 |
+| --------------------------------------------------------------------- | ----: | -------- | ------------------------------------- |
+| Pending hover reopens an escaped submenu                              |     1 | Product  | `Menu.tsx`, `sharing-privacy.spec.ts` |
+| Camera polling advances too little fake time                          |     4 | Flow     | `showcase-examples.spec.ts`           |
+| Tutorial replays compete with wall-clock deadlines                    |     3 | Flow     | `tutorials.spec.ts`                   |
+| Serial node-bound measurements exhaust the predicate deadline         |     1 | Flow     | `round7-polish.spec.ts`               |
+| Sequential independent editor startup consumes export-test setup time |     1 | Flow     | `collab-c1a.spec.ts`                  |
+| Recorded replay length exceeds the end-state polling window           |     3 | Flow     | `viewer-bundle.spec.ts`               |
+
+The new menu regression freezes hover intent, dismisses the submenu, then advances the clock. It fails against the previous product because the submenu reopens, and passes after explicit clicks, keys and submenu dismissal cancel the pending hover. The camera trace advanced only 512 ms during a 700 ms move before its real assertion deadline expired. The helper now completes a full animation-clock duration before polling the same idle assertion. Study replay flows use a controlled clock while retaining every step, repaired-input and persistence assertion. Node-bound reads are batched into one browser turn with the same visibility and containment rules. Collaboration setup opens independent pages concurrently. Video tests still require changed decoded pixels, natural completion and the paused end state; they play the full recording at 4x. Every existing assertion retains its meaning; no timeout, render limit, benchmark baseline or ZIP cap changed. Targeted production verification passes all 32 cases, including the eighteen narration paths and three recorded viewers.
+
+## Tutorial repair acknowledgement
+
+The next loaded repeat on `93a3271da` completed 605 cases: 597 passed, seven failed, zero flaky and one existing skip. Both large camera cases passed their rendered contrast checks but spent most of their remaining time drawing the final readout-only moves. Four study flows still coupled simulated time to rendering every intermediate frame; one rate-limit flow paused before its first simulation tick. The camera's initial contrast sample retains its full frame progression; its final view-readout checks now advance to completion and additionally assert idle. The rate-limit flow observes a first tick before pausing and retains its exact 10,000 ms assertion.
+
+Using the frame clock's one-second catch-up batches for study checks exposed a product race: a reference replay could begin while Live still had the earlier capacity and retain 25 rejections after the repair arrived. Repairs now wait for Live's applied document before proceeding. While waiting, presenting the same target on every acknowledgement caused repeated selection and Properties commits; presentation now happens once per demo. The node/connection acknowledgement tests and once-only presentation test all fail with their respective product changes temporarily reverted. Restoring both fixes passes 73 unit cases and all twelve focused browser cases, including checkout Skip/Continue and both large-camera contrast cases. The complete tutorial-completion spec also passes all 1,862 cases. Temporary diagnostic instrumentation was removed.
+
+All 95 benchmark gates passed on `93a3271da`; later tutorial changes still require final verification. Its bundle report warned at 5,130 B of canvas-first-view headroom and 216 B of Live headroom, within the unchanged caps. Dedicated trim ownership remains in the existing P-05 backlog; this correctness batch does not broaden into that work.
+
+## Legacy Skip clock follow-up
+
+All 95 benchmark gates also passed on `c8cd6b2b2`. Its loaded repeat completed 605 cases with 603 passed, one failed, zero flaky and one existing skip. Every earlier failure case passed; the remaining failure was the legacy `timeouts-pools` Skip-all path waiting for real-time playback. All generated Skip-all paths now use the same controlled clock as the design studies, retaining every step-transition, completion, error and no-save assertion. All 49 generated cases pass at eight browser workers. This follow-up changes only test flow and this review; the product remains the benchmarked revision.
+
+## Recording setup clock
+
+The first loaded repeat on `1cfd0de89` passed 604 cases with zero failed, zero flaky and one existing skip. The second passed 603 with one bundle-recording timeout, zero flaky and the same skip. Its trace spent substantial test time rendering the two pre-capture 1,500 ms setup intervals and the countdown. Setup now advances the same simulation time in catch-up batches; this recording test also opts into countdown ticks, retaining all three numeric countdown assertions. Other recording callers retain full-frame countdown advancement. Every clock advance during capture, changed decoded-pixel assertion, natural-end assertion and paused-end assertion remains intact. All 26 recording/viewer cases and all thirteen CSP cases pass in the targeted production runs. The load repeat will include recording and CSP neighbours as well.
+
+## Card geometry handoff
+
+The first loaded repeat on `4df7fb0b6` passed 631 cases with zero failed, zero flaky and the existing skip; the second was stopped without a reported failure after the preceding checkpoint's CI exposed two cases outside that set. The latest CI had four E2E shards green and one failure each in the other two: the pending-fit press box and traced-label/card overlap. Its benchmark workflow passed.
+
+Both browser cases reproduced with their original assertions. Single-line subtitles now retain their measured box on selection; a subtitle that needs two lines at its original font size still grows and is remeasured. Counter-scaling alone no longer turns a short subtitle into a growing card. Text scaling and wrap decisions precede geometry sampling.
+
+Trace obstacles invalidate when a card's measurements or detail styling change. While a worker frame computed against old card geometry is outstanding, its stale overlay waits for a repaint using the current geometry. A stale acknowledgement or font repaint cannot restore it. Geometry probes omit the same hidden overlay until its current frame is drawn. This preserves the no-overlap assertion rather than adding a sampling delay. Two cache regressions and the delayed-worker regression fail when their respective fixes are temporarily reverted.
+
+The restored unit set passes all 42 cases. All 54 browser cases across fit/refinement, tracing, typography and frame-cost probes pass with the original assertions, including both CI failures. The additional per-frame probe publication was removed because the geometry handoff makes it unnecessary; retaining the existing publication cadence avoids extra serialization work.
+
+The minimal fix also passes the original no-overlap browser case with the existing probe cadence restored. Full parity passes all 110 browser cases and checks 3,178 goldens with zero changed, added, missing or stale. No additional golden update is needed for this follow-up.
+
+## Overlay bundle size
+
+The complete benchmark recheck on `b6bce9769` passed both originally failing render-count cases, the Live gate and all four memory cases. It passed 94 of 95 numeric gates: Live's gzip bundle was 135,011 bytes against its unchanged 135,000-byte cap. Removing duplicate pending flags recovered eight bytes; using the canvas's native `hidden` state and keeping the worker-only revision in the worker renderer recovered the rest. The final targeted bundle check passes all four gates, with 24 bytes of Live headroom and the original 19 startup chunks in the enabled configuration. All 42 related unit cases still pass, and the original browser no-overlap case passes with native `hidden`. The existing P05 bundle-trim follow-up remains applicable; no cap, timeout or baseline changed.
+
+## Resize measurement ownership
+
+All 95 benchmark gates passed on `4bb1a73ac`. Its first loaded repeat completed 679 cases with 677 passed, one failed, zero flaky and the existing skip. Every earlier failing case passed; selection rendered 16 node wrappers against the unchanged fewer-than-16 guard. React Flow already measures wrapper size changes in its ResizeObserver. Frame Detail also read those wrappers and scheduled a forced update, duplicating that work. The frame now leaves size measurement to the observer.
+
+All ten development performance cases and all 55 production fit, trace, typography and frame cases pass. A new operation-count regression confirms positive observer measurements during subtitle growth and zero forced wrapper-height reads. Temporarily restoring the old frame produces one forbidden forced read and fails the regression; the fixed source was restored afterward. Card growth and its existing remeasurement assertions remain intact. No render budget or assertion was loosened.
+
+## Completed download inspection
+
+Two loaded repeats on `eba72910d` each passed 679 cases with zero failed, zero flaky and the existing skip. The third exposed one sharing-case deadline while Playwright's `download.saveAs()` was pending: every preceding privacy, focus, filename and dialog assertion had passed. The diagnostic sharing run passed all 84 cases (twelve copies of the seven-case spec), so it did not establish a runtime download defect. The test now reads the browser's completed download directly through `download.path()` instead of making an unnecessary report copy. Completion, filename, full payload, privacy and error assertions remain intact; an incomplete or canceled browser download still fails. The revised flow also passes all 84 Linux cases at twelve workers and eight CPUs. No runtime code changed; the 95 benchmark gates passed on that unchanged product revision.
+
+An encoding error interrupted the first local test-file edit. The complete spec was restored immediately, and the verification launched during that edit was discarded. The retained diff changes only artifact inspection and this review, with no removed test or assertion.

@@ -2,8 +2,8 @@
   "layout": {
     "status": 0,
     "stdout": "<tmp>/laid.json: placed 13 nodes, fitted 1 boundary.\n",
-    "nodes": { "partners": [40, 100], "edge": [421, 160], "raw": [1158, -80], "receiver": [796, 160], "exchange": [1158, 160], "replay": [2267, 280], "queue": [1526, 160], "dlq": [1907, 220], "workers": [1907, 100], "dedupe": [2267, -80], "integration-db": [2267, 440], "operator": [40, 220], "vault": [1158, 280] },
-    "groups": { "k8s": [756, 36, 1771, 356] }
+    "nodes": { "partners": [40, 100], "edge": [421, 160], "raw": [1154, -80], "receiver": [791.76, 160], "exchange": [1153.76, 160], "replay": [2262.76, 280], "queue": [1521.76, 160], "dlq": [1902.76, 220], "workers": [1902.76, 100], "dedupe": [2263, -80], "integration-db": [2263, 440], "operator": [40, 220], "vault": [1153.76, 280] },
+    "groups": { "k8s": [752, 36, 1771, 356] }
   },
   "shareLink": {
     "status": 0,

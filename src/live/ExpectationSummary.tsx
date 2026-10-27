@@ -1,4 +1,5 @@
-import { memo, useEffect, useRef } from "react";
+import { t, useLocale } from "../i18n";
+import { useEffect, useRef } from "react";
 import type { ExpectationState } from "../sim/types";
 import { formatCount } from "./format";
 import { LiveIcon } from "./icons";
@@ -19,6 +20,7 @@ function ExpectationSummary({
   failed: boolean;
   done: boolean;
 }) {
+  useLocale();
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   // Esc gives focus back to the summary button (focus policy row M5).
@@ -51,35 +53,46 @@ function ExpectationSummary({
         data-testid="live-expectations-summary"
       >
         <LiveIcon name={failed ? "x" : "check"} size={11} />
-        <span className="mono">
-          {passed}/{expectations.length}
-        </span>
+        <span>{t("workbench.expectations", { passed, total: expectations.length })}</span>
       </button>
-      {open && (
-        <div className="lv-checks-pop" role="dialog" aria-label="Expectations" data-testid="live-expectations-list">
-          <ul>
-            {expectations.map((e) => {
-              const value = Number.isInteger(e.value) ? formatCount(e.value) : e.value.toFixed(1);
-              const word = e.status === "pass" ? "holds" : e.status === "fail" ? "failed" : "pending";
-              return (
-                <li key={e.id} className={`is-${e.status}`} data-testid={`expectation-row-${e.id}`}>
-                  <span className={`lv-exp is-${e.status}`} aria-hidden>
-                    {e.status === "pass" ? (
-                      <LiveIcon name="check" size={10} />
-                    ) : e.status === "fail" ? (
-                      <LiveIcon name="x" size={10} />
-                    ) : null}
-                  </span>
-                  <b>{e.label}</b>
-                  <span>
-                    {word} · now <span className="mono">{value}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      <div
+        className={open ? "lv-checks-pop" : undefined}
+        role={open ? "dialog" : undefined}
+        aria-label={open ? "Expectations" : undefined}
+        data-testid={open ? "live-expectations-list" : undefined}
+        hidden={!open}
+      >
+        <ul data-testid="live-expectations">
+          {expectations.map((e) => {
+            const value = Number.isInteger(e.value) ? formatCount(e.value) : e.value.toFixed(1);
+            const word = e.status === "pass" ? "holds" : e.status === "fail" ? "failed" : "pending";
+            return (
+              <li key={e.id} className={`is-${e.status}`} data-testid={`expectation-row-${e.id}`}>
+                <span
+                  className={`lv-exp is-${e.status}`}
+                  role="img"
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users can focus each informational verdict and read its accessible name.
+                  tabIndex={0}
+                  aria-label={`${e.label}: ${word}, now ${value}`}
+                  data-testid={`expectation-${e.id}`}
+                  data-status={e.status}
+                  data-value={e.value}
+                >
+                  {e.status === "pass" ? (
+                    <LiveIcon name="check" size={10} />
+                  ) : e.status === "fail" ? (
+                    <LiveIcon name="x" size={10} />
+                  ) : null}
+                </span>
+                <b>{e.label}</b>
+                <span>
+                  {word} · now <span className="mono">{value}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -95,46 +108,5 @@ export function SimulationExpectations({
   failed: boolean;
   done: boolean;
 }) {
-  return (
-    <>
-      <div
-        className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}
-        data-testid="live-expectations"
-        title={`${passed} of ${expectations.length} expectations hold`}
-      >
-        {expectations.map((e) => (
-          <ExpectationDot key={e.id} e={e} />
-        ))}
-      </div>
-      <ExpectationSummary expectations={expectations} passed={passed} failed={failed} done={done} />
-    </>
-  );
+  return <ExpectationSummary expectations={expectations} passed={passed} failed={failed} done={done} />;
 }
-
-const ExpectationDot = memo(function ExpectationDot({ e }: { e: ExpectationState }) {
-  const value = Number.isInteger(e.value) ? formatCount(e.value) : e.value.toFixed(1);
-  const word = e.status === "pass" ? "holds" : e.status === "fail" ? "failed" : "pending";
-  return (
-    <span
-      className={`lv-exp is-${e.status}`}
-      data-testid={`expectation-${e.id}`}
-      data-status={e.status}
-      data-value={e.value}
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Focus exposes an informational tooltip to keyboard users; it has no button action.
-      tabIndex={0}
-      aria-label={`${e.label}: ${word}, now ${value}`}
-    >
-      {e.status === "pass" ? (
-        <LiveIcon name="check" size={10} />
-      ) : e.status === "fail" ? (
-        <LiveIcon name="x" size={10} />
-      ) : null}
-      <span className="lv-exp-tip" role="tooltip">
-        <b>{e.label}</b>
-        <span>
-          {word} · now <span className="mono">{value}</span>
-        </span>
-      </span>
-    </span>
-  );
-});

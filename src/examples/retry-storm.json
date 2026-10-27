@@ -14,7 +14,7 @@
     ]
   },
   "title": "A retry storm",
-  "description": "Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run.",
+  "description": "Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run. Select Payments before playing to compare Throughput and Queue in This run during the first ten seconds.",
   "nodes": [
     {
       "id": "shop",

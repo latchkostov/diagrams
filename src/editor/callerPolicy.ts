@@ -3,6 +3,7 @@ import type { EdgeSimProps } from "../sim/types";
 import type { LiveUi } from "../live/context";
 import { planningHost } from "../live/planningHost";
 import { callPolicy } from "../sim/callPolicy";
+import type { DiagramFile } from "../model/types";
 
 /** All connection controls edit the policy playback sees, with one document-history operation. */
 export function effectiveCallerPolicy(
@@ -12,14 +13,16 @@ export function effectiveCallerPolicy(
     controller: Pick<LiveUi["controller"], "getState" | "setBase">;
     slowmo: Pick<LiveUi["slowmo"], "active">;
   } | null = planningHost.get(),
+  rendered?: DiagramFile,
 ) {
-  const edge = editor.getEdge(edgeId);
+  // Controlled canvas props can commit before React Flow's imperative store.
+  const edge = rendered ? rendered.edges.find((e) => e.id === edgeId) : editor.getEdge(edgeId);
   if (!edge) return undefined;
   const state = live?.controller.getState();
   const active = state?.running;
   const override = active?.setup?.edges?.[edgeId];
   const caller = { ...(edge.props?.caller as EdgeSimProps["caller"]), ...override?.caller };
-  const saved = editor.getDiagram().simulations?.find((s) => s.id === state?.simulation?.id);
+  const saved = (rendered ?? editor.getDiagram()).simulations?.find((s) => s.id === state?.simulation?.id);
   const draft = !!state?.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved));
   // An unsaved draft owns its overrides; a base-only edit cannot change that run.
   const editable = !live?.slowmo.active && !draft;
@@ -28,7 +31,10 @@ export function effectiveCallerPolicy(
     diagramCaller: edge.props?.caller as EdgeSimProps["caller"],
     override: override?.caller,
     simulation: saved?.title,
-    policy: callPolicy(editor.getNode(edge.from)?.stencil ?? "", caller),
+    policy: callPolicy(
+      (rendered ? rendered.nodes.find((n) => n.id === edge.from) : editor.getNode(edge.from))?.stencil ?? "",
+      caller,
+    ),
     editable,
     // A caller may opt into merging split writes; ordinary edits keep their own Undo steps.
     set(patch: EdgeSimProps["caller"], options?: EditOptions) {

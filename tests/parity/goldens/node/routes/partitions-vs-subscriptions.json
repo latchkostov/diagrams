@@ -1,10 +1,10 @@
 {
   "smoothstep": {
-    "publish-log": { "ok": true, "sides": ["bottom", "top"], "points": [476.5, 112, 476.5, 156, 310, 156, 310, 200], "path": "6bb6022f01e2", "label": [393.25, 156, 53, 19], "mode": "full", "text": "Append", "lines": ["Append"] },
-    "publish-fanout": { "ok": true, "sides": ["bottom", "top"], "points": [490.5, 112, 490.5, 156, 640.5, 156, 640.5, 200], "path": "592f52cd4f72", "label": [565.5, 156, 59, 19], "mode": "full", "text": "Publish", "lines": ["Publish"] },
-    "read-log": { "ok": true, "sides": ["bottom", "top"], "points": [310, 272, 310, 316, 169.5, 316, 169.5, 360], "path": "8a6a35894773", "label": [239.75, 316, 89, 19], "mode": "full", "text": "orders group", "lines": ["orders group"] },
-    "read-receipts": { "ok": true, "sides": ["bottom", "top"], "points": [633.5, 272, 633.5, 316, 483.5, 316, 483.5, 360], "path": "243ffa4f8db5", "label": [558.5, 316, 65, 19], "mode": "full", "text": "receipts", "lines": ["receipts"] },
-    "read-audit": { "ok": true, "sides": ["bottom", "top"], "points": [647.5, 272, 647.5, 316, 810, 316, 810, 360], "path": "4ed859c08c70", "label": [728.75, 316, 47, 19], "mode": "full", "text": "audit", "lines": ["audit"] }
+    "publish-log": { "ok": true, "sides": ["bottom", "top"], "points": [476.5, 112, 476.5, 156, 310, 156, 310, 200], "path": "6bb6022f01e2", "label": [393.25, 156, 59.76, 22], "mode": "full", "text": "Append", "lines": ["Append"] },
+    "publish-fanout": { "ok": true, "sides": ["bottom", "top"], "points": [490.5, 112, 490.5, 156, 640.5, 156, 640.5, 200], "path": "592f52cd4f72", "label": [565.5, 156, 57.480000000000004, 22], "mode": "full", "text": "Publish", "lines": ["Publish"] },
+    "read-log": { "ok": true, "sides": ["bottom", "top"], "points": [310, 272, 310, 316, 169.5, 316, 169.5, 360], "path": "8a6a35894773", "label": [239.75, 316, 86.82, 22], "mode": "full", "text": "orders group", "lines": ["orders group"] },
+    "read-receipts": { "ok": true, "sides": ["bottom", "top"], "points": [633.5, 272, 633.5, 316, 483.5, 316, 483.5, 360], "path": "243ffa4f8db5", "label": [558.5, 316, 60.87, 22], "mode": "full", "text": "receipts", "lines": ["receipts"] },
+    "read-audit": { "ok": true, "sides": ["bottom", "top"], "points": [647.5, 272, 647.5, 316, 810, 316, 810, 360], "path": "4ed859c08c70", "label": [728.75, 316, 45.42, 22], "mode": "full", "text": "audit", "lines": ["audit"] }
   },
   "bezier": {
     "publish-log": {
@@ -55,7 +55,7 @@
         200
       ],
       "path": "6e81dbedb45c",
-      "label": [387.0270625, 156.35254474025626, 53, 19],
+      "label": [387.0270625, 156.35254474025626, 59.76, 22],
       "mode": "full",
       "text": "Append",
       "lines": ["Append"]
@@ -108,7 +108,7 @@
         200
       ],
       "path": "73588b159a00",
-      "label": [559.8937500000001, 155.4226608278369, 59, 19],
+      "label": [559.8937500000001, 155.4226608278369, 57.480000000000004, 22],
       "mode": "full",
       "text": "Publish",
       "lines": ["Publish"]
@@ -161,7 +161,7 @@
         360
       ],
       "path": "14d546513c95",
-      "label": [234.4988125, 316.7040169610829, 89, 19],
+      "label": [234.4988125, 316.7040169610829, 86.82, 22],
       "mode": "full",
       "text": "orders group",
       "lines": ["orders group"]
@@ -214,7 +214,7 @@
         360
       ],
       "path": "730de048006b",
-      "label": [564.10625, 315.4226608278369, 65, 19],
+      "label": [564.10625, 315.4226608278369, 60.87, 22],
       "mode": "full",
       "text": "receipts",
       "lines": ["receipts"]
@@ -267,17 +267,17 @@
         360
       ],
       "path": "d489f74bb416",
-      "label": [722.6765625, 315.5924606716823, 47, 19],
+      "label": [722.6765625, 315.5924606716823, 45.42, 22],
       "mode": "full",
       "text": "audit",
       "lines": ["audit"]
     }
   },
   "straight": {
-    "publish-log": { "ok": true, "sides": ["bottom", "top"], "points": [476.5, 112, 310, 200], "path": "612e7eef6399", "label": [398.5546636581003, 153.1963339224455, 53, 19], "mode": "full", "text": "Append", "lines": ["Append"] },
-    "publish-fanout": { "ok": true, "sides": ["bottom", "top"], "points": [490.5, 112, 640.5, 200], "path": "1b59dfb8dcf0", "label": [560.3248505654026, 152.96391233170286, 59, 19], "mode": "full", "text": "Publish", "lines": ["Publish"] },
-    "read-log": { "ok": true, "sides": ["bottom", "top"], "points": [310, 272, 169.5, 360], "path": "25c0bc1aa38c", "label": [244.83493761936114, 312.81512803911903, 89, 19], "mode": "full", "text": "orders group", "lines": ["orders group"] },
-    "read-receipts": { "ok": true, "sides": ["bottom", "top"], "points": [633.5, 272, 483.5, 360], "path": "01219f1be3ba", "label": [563.6751494345974, 312.96391233170283, 65, 19], "mode": "full", "text": "receipts", "lines": ["receipts"] },
-    "read-audit": { "ok": true, "sides": ["bottom", "top"], "points": [647.5, 272, 810, 360], "path": "d65b4604d184", "label": [723.4739649496503, 313.14282409581057, 47, 19], "mode": "full", "text": "audit", "lines": ["audit"] }
+    "publish-log": { "ok": true, "sides": ["bottom", "top"], "points": [476.5, 112, 310, 200], "path": "612e7eef6399", "label": [398.5546636581003, 153.1963339224455, 59.76, 22], "mode": "full", "text": "Append", "lines": ["Append"] },
+    "publish-fanout": { "ok": true, "sides": ["bottom", "top"], "points": [490.5, 112, 640.5, 200], "path": "1b59dfb8dcf0", "label": [560.3248505654026, 152.96391233170286, 57.480000000000004, 22], "mode": "full", "text": "Publish", "lines": ["Publish"] },
+    "read-log": { "ok": true, "sides": ["bottom", "top"], "points": [310, 272, 169.5, 360], "path": "25c0bc1aa38c", "label": [244.83493761936114, 312.81512803911903, 86.82, 22], "mode": "full", "text": "orders group", "lines": ["orders group"] },
+    "read-receipts": { "ok": true, "sides": ["bottom", "top"], "points": [633.5, 272, 483.5, 360], "path": "01219f1be3ba", "label": [563.6751494345974, 312.96391233170283, 60.87, 22], "mode": "full", "text": "receipts", "lines": ["receipts"] },
+    "read-audit": { "ok": true, "sides": ["bottom", "top"], "points": [647.5, 272, 810, 360], "path": "d65b4604d184", "label": [723.4739649496503, 313.14282409581057, 45.42, 22], "mode": "full", "text": "audit", "lines": ["audit"] }
   }
 }

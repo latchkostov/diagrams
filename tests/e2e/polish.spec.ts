@@ -122,7 +122,7 @@ test.describe("polish", () => {
     await expect(page.getByTestId("live-canvas")).toBeAttached();
     // Live, in one stacking context: particles, then label pills (readable on busy edges), then the
     // overlay (dimmed dots behind a pill, the traced message), then the metric badges.
-    expect(await z()).toEqual({ labels: "1", particles: "auto", overlay: "2", badges: "3" });
+    expect(await z()).toEqual({ labels: "2", particles: "auto", overlay: "2", badges: "3" });
   });
 
   test("viewport animations respect prefers-reduced-motion", async ({ page }) => {
@@ -139,13 +139,12 @@ test.describe("polish", () => {
     await waitForCameraIdle(page);
     const collapse = page.getByTestId("collapse-toolbar-button");
     const tools = [
-      "zoom-in-button",
-      "zoom-out-button",
       "fit-view-button",
+      "view-focus",
+      "zoom-out-button",
+      "zoom-100",
+      "zoom-in-button",
       "view-tools-menu-button",
-      "undo-button",
-      "redo-button",
-      "shortcuts-button",
     ];
     await collapse.click();
     await expect(collapse).toHaveAttribute("aria-expanded", "false");
@@ -187,9 +186,10 @@ test.describe("polish", () => {
     expect(target.width).toBeGreaterThanOrEqual(24);
     expect(target.height).toBeGreaterThanOrEqual(24);
     expect(overlaps(target, await box(fit))).toBe(false);
-    for (const divider of ["history", "shortcuts", "collapse"]) {
-      await expect(page.getByTestId(`toolbar-divider-${divider}`)).toBeVisible();
-    }
+    await expect(page.getByTestId("collapse-toolbar-button")).toBeVisible();
+    await expect(page.getByTestId("topbar").getByTestId("undo-button")).toBeVisible();
+    await expect(page.getByTestId("topbar").getByTestId("redo-button")).toBeVisible();
+    await expect(page.getByTestId("tool-rail").getByTestId("shortcuts-button")).toBeVisible();
     const menu = page.getByTestId("view-tools-menu");
     const zoom100 = page.getByTestId("context-menu-item-toolbar-view:zoom-100");
     const zoomSelection = page.getByTestId("context-menu-item-toolbar-view:zoom-selection");
@@ -255,7 +255,7 @@ test.describe("polish", () => {
     for (const width of [1440, 1024]) {
       await page.setViewportSize({ width, height: 900 });
       await gotoCanvas(page, KAFKA);
-      const credit = page.getByTestId("canvas-attribution");
+      const credit = page.getByTestId("react-flow-credit");
       await expect(credit).toBeVisible();
       const hint = page.getByTestId("first-run-hint");
       if (await hint.count()) expect(overlaps(await box(credit), await box(hint))).toBe(false);

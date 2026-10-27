@@ -1,3 +1,4 @@
+import { openLibrary, fitDiagram, emptyCanvasPoint } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, publicExamples, waitForStableBox, pageLoadTimeout } from "./fixtures";
 
@@ -42,7 +43,7 @@ async function measure(page: Page) {
         .filter(({ id }) => !skip.test(id))
         .map(({ el, id }) => box(el, id.slice(prefix.length)))
         .filter((b) => b.width > 0 && b.height > 0);
-    const panels = ["diagram-card", "canvas-minimap", "canvas-controls", "live-toggle", "live-controls"].flatMap(
+    const panels = ["topbar", "tool-rail", "inspector", "canvas-minimap", "canvas-controls", "live-controls"].flatMap(
       (id) => {
         const el = document.querySelector(`[data-testid="${id}"]`);
         return el ? [box(el, id)] : [];
@@ -88,6 +89,7 @@ for (const theme of ["light", "dark"] as const) {
         for (const { slug } of part(k)) {
           await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
           await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+          await fitDiagram(page);
           await settle(page);
           const { nodes, labels, panels } = await measure(page);
           const tag = slug;
@@ -132,6 +134,8 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   await page.goto("./?view=lab&preset=edges-obstacles&cols=4&rows=3&gap=400");
   await page.getByTestId("lab-open-editor").click();
   await settle(page);
+  await page.getByTestId("present-toggle").click();
+  await settle(page);
   const card = page.getByTestId("diagram-card");
   await expect(card).not.toHaveAttribute("data-collapsed", "1");
   // Zoom in around the middle (Ctrl+wheel; the wheel alone pans): the diagram spreads out under the card.
@@ -146,8 +150,8 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   }
   await page.keyboard.up("Control");
   await expect(card).toHaveAttribute("data-collapsed", "1");
-  // Fit again: the card has room and unfolds.
-  await page.getByTestId("fit-view-button").click();
+  // Presentation hides editing controls; its fit shortcut gives the card room again.
+  await page.keyboard.press("Shift+Digit1");
   await settle(page);
   await expect(card).not.toHaveAttribute("data-collapsed", "1");
 });
@@ -155,11 +159,13 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
 for (const ex of publicExamples)
   test(`auto-layout never produces overlaps (${ex.slug})`, async ({ page, consoleErrors }) => {
     await page.goto(`./?view=canvas&example=${encodeURIComponent(ex.slug)}`);
+    await fitDiagram(page);
     await settle(page);
     const wrap = await page.getByTestId("canvas-wrap").boundingBox();
     if (!wrap) throw new Error("canvas not visible");
     // Empty pane: just above the bottom edge, left of the minimap and right of the controls.
-    await page.mouse.click(wrap.x + wrap.width * 0.55, wrap.y + wrap.height - 14, { button: "right" });
+    const point = await emptyCanvasPoint(page);
+    await page.mouse.click(wrap.x + point.x, wrap.y + point.y, { button: "right" });
     await page.getByTestId("context-menu-item-canvas.auto-layout").click();
     await settle(page);
     const { nodes, labels } = await measure(page);
@@ -198,12 +204,19 @@ for (const failure of ["read", "write"] as const) {
       }
     }, failure);
     await page.goto(`./?view=canvas&example=${publicExamples[0].slug}`);
+    await openLibrary(page);
     await expect(page.getByTestId("palette-family")).toHaveValue("all");
+    await openLibrary(page);
     await page.getByTestId("palette-family").selectOption("aws");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-aws.sqs")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-section-messaging").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-section-messaging")).toHaveAttribute("aria-expanded", "false");
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("sqs");
+    await openLibrary(page);
     await page.getByTestId("palette-search").press("Enter");
     await expect(page.getByTestId("node-sqs-1")).toBeVisible();
     expectNoErrors(consoleErrors);

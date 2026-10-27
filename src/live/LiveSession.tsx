@@ -1,4 +1,8 @@
+import { narrationSubject } from "./narrationSubject";
 import { defineLazySurface } from "../lib/lazySurface";
+import { createPortal } from "react-dom";
+import { activateDock } from "../canvas/inspector/dockActions";
+import { workbenchDock } from "../canvas/inspector/dockState";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -24,6 +28,7 @@ const TroubleCallout = defineLazySurface({
 });
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { CapacityAnalysis } from "./lazyCapacityAnalysis";
+import { RouteLegend } from "./RouteLegend";
 import { ControlBar } from "./ControlBar";
 const EventLog = defineLazySurface({
   id: "live.events",
@@ -99,6 +104,8 @@ export interface SessionProps extends LiveViewProps {
 }
 
 export function LiveSession({
+  caption,
+  transport,
   editor,
   presenting,
   simulations: simsProp,
@@ -119,6 +126,18 @@ export function LiveSession({
   // interaction); a Lab stage without a canvas gets one of its own.
   const { controller: interaction, local } = useInteractionOrLocal();
   const locale = useLocale();
+  useLayoutEffect(() => {
+    const shell = transport?.parentElement;
+    if (!transport || !shell) return;
+    const observer = new ResizeObserver(([entry]) => {
+      shell.style.setProperty("--transport-measured-h", `${entry.borderBoxSize[0].blockSize}px`);
+    });
+    observer.observe(transport);
+    return () => {
+      observer.disconnect();
+      shell.style.removeProperty("--transport-measured-h");
+    };
+  }, [transport]);
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
   const session = useLiveSessionState({ editor, diagram, params, simulations: simsProp });
@@ -245,6 +264,10 @@ export function LiveSession({
     saveInputs,
   } = fixes;
 
+  const noteSubject = narrationSubject(troubleOnScreen, controller.currentDiagram);
+  useEffect(() => {
+    camera.dispatch({ type: "narration.subject", id: noteSubject });
+  }, [camera, noteSubject]);
   const { addEntry } = useCapacityEntry({ session, editor, store, camera, interaction });
 
   useLiveContextMenu({
@@ -262,8 +285,19 @@ export function LiveSession({
 
   useLiveKeyboard({ session, spotlight, presenting, alwaysOn, onExit, editor, interaction });
 
+  const openNodeDetails = useCallback(
+    (id: string) => {
+      if (!editor) return;
+      editor.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+      activateDock("properties");
+      workbenchDock.snap("half");
+    },
+    [editor],
+  );
+
   const ui = useMemo<LiveUi>(
     () => ({
+      openNodeDetails,
       applyCapacityFix: applyFix,
       addReader,
       controller,
@@ -305,6 +339,7 @@ export function LiveSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       applyFix,
+      openNodeDetails,
       addReader,
       slow.session,
       controller,
@@ -334,6 +369,7 @@ export function LiveSession({
 
   const view = (
     <LiveContext.Provider value={ui}>
+      {!capturing && <RouteLegend routes={controller.currentDiagram.planning?.requestRoutes ?? []} />}
       {showCapacity && !capacityOpen && <CapacityAnalysis panel={false} onClose={closeCapacity} />}
       <ViewportPortal>
         <canvas
@@ -444,10 +480,17 @@ export function LiveSession({
         )}
         <SlowCaption slow={slow.session} />
         {/* Live's narration waits with live while slow motion plays. */}
-        {slow.state.status !== "on" && (state.run?.note || state.run?.done) && <NoteCallout state={state} />}
+        {slow.state.status !== "on" &&
+          (state.run?.note || state.run?.done) &&
+          (caption && !presenting ? (
+            createPortal(<NoteCallout state={state} docked subject={noteSubject} />, caption)
+          ) : (
+            <NoteCallout state={state} />
+          ))}
         {events.open && !capturing && <EventLog state={state} />}
         {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
-        {!capturing && <ControlBar state={state} />}
+        {!capturing &&
+          (transport ? createPortal(<ControlBar state={state} />, transport) : <ControlBar state={state} />)}
       </div>
       {capacityOpen && (
         <CapacityPanel

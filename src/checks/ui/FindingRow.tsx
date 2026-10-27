@@ -7,6 +7,7 @@ import { applyFix, ignoreFinding, turnOff } from "./actions";
 import { evidenceText } from "../evidenceMerge";
 import { useLocale } from "../../i18n";
 import { presentFinding, presentRule } from "../presentation";
+import { firstSentence } from "../../canvas/checks/findingOrder";
 
 // One finding, in the Checks card and (compact) at the top of a selected node's or edge's inspector: what's
 // wrong, why, what it involves, and its one primary action, the fix. ⋯ has Ignore here, Turn off this check
@@ -69,6 +70,9 @@ export function FindingRow({
   state,
   compact = false,
   testPrefix = "check",
+  number,
+  expanded = true,
+  onSelect,
 }: {
   finding: Finding;
   host: RowHost;
@@ -76,6 +80,9 @@ export function FindingRow({
   /** The inspector's version: no element chips (the selection is one of them). */
   compact?: boolean;
   testPrefix?: string;
+  number?: number;
+  expanded?: boolean;
+  onSelect?(): void;
 }) {
   useLocale();
   const f = presentFinding(finding);
@@ -141,12 +148,20 @@ export function FindingRow({
   };
   const head = (
     <>
-      <span className={`check-sev is-${f.severity}`} aria-label={f.severity === "warning" ? "Warning" : "Suggestion"}>
-        {f.severity === "warning" ? <Icon name="warning" size={13} /> : <span className="check-dot" />}
-      </span>
+      {number !== undefined ? (
+        <span className="check-number" data-testid={t("number")} aria-hidden>
+          {number}
+        </span>
+      ) : (
+        <span className={`check-sev is-${f.severity}`} aria-label={f.severity === "warning" ? "Warning" : "Suggestion"}>
+          {f.severity === "warning" ? <Icon name="warning" size={13} /> : <span className="check-dot" />}
+        </span>
+      )}
       <span className="check-row-text">
         <strong>{f.title}</strong>
-        <span className="check-msg">{f.message}</span>
+        {(number === undefined || !expanded) && (
+          <span className="check-msg">{number === undefined ? f.message : firstSentence(f.message)}</span>
+        )}
       </span>
     </>
   );
@@ -155,180 +170,191 @@ export function FindingRow({
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       ref={self}
-      className={`check-row is-${f.severity}${compact ? " is-compact" : ""}`}
+      className={`check-row is-${f.severity}${compact ? " is-compact" : ""}${number !== undefined ? " is-numbered" : ""}${expanded ? " is-expanded" : ""}`}
       role="listitem"
       data-testid={t("row")}
       data-severity={f.severity}
+      data-expanded={expanded}
       onMouseEnter={() => host.hover?.(f.id)}
       onMouseLeave={() => host.hover?.(null)}
       onKeyDown={onPanelKey}
       data-panel-open={panel ? "" : undefined}
     >
-      {diagramScope ? (
+      {diagramScope && number === undefined ? (
         <div className="check-row-head">{head}</div>
       ) : (
         <button
           type="button"
           className="check-row-head"
-          data-testid={t("select")}
+          data-testid={t(diagramScope ? "open" : "select")}
+          aria-expanded={number !== undefined ? expanded : undefined}
           data-check-head
           title="Select and show what it involves"
-          onClick={() => host.reveal(f.elements)}
+          onClick={() => {
+            onSelect?.();
+            if (!diagramScope) host.reveal(f.elements);
+          }}
           onFocus={() => host.hover?.(f.id)}
           onBlur={() => host.hover?.(null)}
         >
           {head}
         </button>
       )}
-      {f.evidence?.length ? (
-        // What the saved simulations showed here (Run simulations): one line each, the first few.
-        <ul className="check-evidence" aria-label="In the simulations" data-testid={t("evidence")}>
-          {f.evidence.slice(0, MAX_EVIDENCE).map((e, i) => (
-            // Two simulations may share a title: their place in the file tells them apart.
-            <li key={i}>{evidenceText(e)}</li>
-          ))}
-          {f.evidence.length > MAX_EVIDENCE && (
-            <li className="is-more">
-              and {f.evidence.length - MAX_EVIDENCE} more simulation{f.evidence.length - MAX_EVIDENCE === 1 ? "" : "s"}
-            </li>
+      {expanded && (
+        <div className="check-row-body">
+          {number !== undefined && <p className="check-msg">{f.message}</p>}
+          {f.evidence?.length ? (
+            // What the saved simulations showed here (Run simulations): one line each, the first few.
+            <ul className="check-evidence" aria-label="In the simulations" data-testid={t("evidence")}>
+              {f.evidence.slice(0, MAX_EVIDENCE).map((e, i) => (
+                // Two simulations may share a title: their place in the file tells them apart.
+                <li key={i}>{evidenceText(e)}</li>
+              ))}
+              {f.evidence.length > MAX_EVIDENCE && (
+                <li className="is-more">
+                  and {f.evidence.length - MAX_EVIDENCE} more simulation
+                  {f.evidence.length - MAX_EVIDENCE === 1 ? "" : "s"}
+                </li>
+              )}
+            </ul>
+          ) : null}
+          {!compact && (
+            <details className="check-why" data-testid={t("why")}>
+              <summary data-testid={t("why-toggle")}>Why</summary>
+              <p data-testid={t("why-text")}>{f.rationale}</p>
+            </details>
           )}
-        </ul>
-      ) : null}
-      {!compact && (
-        <details className="check-why" data-testid={t("why")}>
-          <summary data-testid={t("why-toggle")}>Why</summary>
-          <p data-testid={t("why-text")}>{f.rationale}</p>
-        </details>
-      )}
-      {chips.length > 0 && (
-        <div className="check-chips" aria-label="Involves">
-          {chips.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className="check-chip"
-              data-testid={`${testPrefix}-element-${c.id}`}
-              title={`Select ${c.name}`}
-              onClick={() => host.reveal([c.id])}
-            >
-              {c.name}
-            </button>
-          ))}
-          {unnamed > 0 && <span className="check-chip is-more">+{unnamed}</span>}
-        </div>
-      )}
-      <div className="check-actions">
-        {fix?.ops ? (
-          <button
-            type="button"
-            className="btn check-fix"
-            data-testid={t("fix")}
-            // A fix from a check the diagram has moved on from waits for the next one (never applied twice).
-            disabled={state.stale}
-            title={state.stale ? "Checking your change…" : undefined}
-            onClick={() => fixIt()}
-          >
-            <Icon name="check" size={13} /> {fix.label}
-          </button>
-        ) : fix ? (
-          host.choose ? (
-            <button
-              type="button"
-              className="btn check-fix"
-              data-testid={t("choose")}
-              title={fix.choice}
-              onClick={() => host.choose!(f.target)}
-            >
-              <Icon name="plus" size={13} /> {fix.label}
-            </button>
-          ) : (
-            <span className="check-choice" data-testid={t("choice")}>
-              {fix.choice}
-            </span>
-          )
-        ) : null}
-        <button
-          type="button"
-          className="icon-btn check-more"
-          aria-label={diagramScope ? "More: turn off, about" : "More: ignore, turn off, about"}
-          aria-expanded={panel === "menu"}
-          title={diagramScope ? "Turn off, about" : "Ignore, turn off, about"}
-          data-testid={t("more")}
-          ref={more}
-          onClick={() => setPanel(panel === "menu" ? null : "menu")}
-        >
-          <span aria-hidden>⋯</span>
-        </button>
-      </div>
-      {fix?.ops && fix.options?.length ? (
-        // Other ways to make the same fix, one click each (another gateway): secondary to the button.
-        <div className="check-alts" role="group" aria-label="Or instead">
-          <span className="check-alts-or">or</span>
-          {fix.options.map((o, i) => (
-            <button
-              key={o.label}
-              type="button"
-              className="check-chip is-option"
-              data-testid={t(`fix-option-${i}`)}
-              disabled={state.stale}
-              title={state.stale ? "Checking your change…" : o.label}
-              aria-label={o.label}
-              onClick={() => fixIt(finding.fix?.options?.[i]?.label)}
-            >
-              {o.short}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {panel === "menu" && (
-        <div className="check-menu" role="group" aria-label="Finding options">
-          {!diagramScope && (
-            <button type="button" data-testid={t("ignore")} onClick={() => setPanel("ignore")}>
-              Ignore here…
-            </button>
+          {chips.length > 0 && (
+            <div className="check-chips" aria-label="Involves" data-testid={t("chips")}>
+              {chips.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="check-chip"
+                  data-testid={`${testPrefix}-element-${c.id}`}
+                  title={`Select ${c.name}`}
+                  onClick={() => host.reveal([c.id])}
+                >
+                  {c.name}
+                </button>
+              ))}
+              {unnamed > 0 && <span className="check-chip is-more">+{unnamed}</span>}
+            </div>
           )}
-          <button
-            type="button"
-            data-testid={t("turn-off")}
-            onClick={() => {
-              setPanel(null);
-              turnOff(host.editor, f.rule, rule?.name ?? f.rule);
-            }}
-          >
-            Turn off this check
-          </button>
-          <button type="button" data-testid={t("about")} onClick={() => setPanel("about")}>
-            About this check
-          </button>
+          <div className="check-actions">
+            {fix?.ops ? (
+              <button
+                type="button"
+                className="btn check-fix"
+                data-testid={t("fix")}
+                // A fix from a check the diagram has moved on from waits for the next one (never applied twice).
+                disabled={state.stale}
+                title={state.stale ? "Checking your change…" : undefined}
+                onClick={() => fixIt()}
+              >
+                <Icon name="check" size={13} /> {fix.label}
+              </button>
+            ) : fix ? (
+              host.choose ? (
+                <button
+                  type="button"
+                  className="btn check-fix"
+                  data-testid={t("choose")}
+                  title={fix.choice}
+                  onClick={() => host.choose!(f.target)}
+                >
+                  <Icon name="plus" size={13} /> {fix.label}
+                </button>
+              ) : (
+                <span className="check-choice" data-testid={t("choice")}>
+                  {fix.choice}
+                </span>
+              )
+            ) : null}
+            <button
+              type="button"
+              className="icon-btn check-more"
+              aria-label={diagramScope ? "More: turn off, about" : "More: ignore, turn off, about"}
+              aria-expanded={panel === "menu"}
+              title={diagramScope ? "Turn off, about" : "Ignore, turn off, about"}
+              data-testid={t("more")}
+              ref={more}
+              onClick={() => setPanel(panel === "menu" ? null : "menu")}
+            >
+              <span aria-hidden>⋯</span>
+            </button>
+          </div>
+          {fix?.ops && fix.options?.length ? (
+            // Other ways to make the same fix, one click each (another gateway): secondary to the button.
+            <div className="check-alts" role="group" aria-label="Or instead">
+              <span className="check-alts-or">or</span>
+              {fix.options.map((o, i) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  className="check-chip is-option"
+                  data-testid={t(`fix-option-${i}`)}
+                  disabled={state.stale}
+                  title={state.stale ? "Checking your change…" : o.label}
+                  aria-label={o.label}
+                  onClick={() => fixIt(finding.fix?.options?.[i]?.label)}
+                >
+                  {o.short}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {panel === "menu" && (
+            <div className="check-menu" role="group" aria-label="Finding options">
+              {!diagramScope && (
+                <button type="button" data-testid={t("ignore")} onClick={() => setPanel("ignore")}>
+                  Ignore here…
+                </button>
+              )}
+              <button
+                type="button"
+                data-testid={t("turn-off")}
+                onClick={() => {
+                  setPanel(null);
+                  turnOff(host.editor, f.rule, rule?.name ?? f.rule);
+                }}
+              >
+                Turn off this check
+              </button>
+              <button type="button" data-testid={t("about")} onClick={() => setPanel("about")}>
+                About this check
+              </button>
+            </div>
+          )}
+          {panel === "ignore" && !diagramScope && (
+            <div className="check-ignore">
+              <input
+                // The reason box opens on purpose, to type: focus it.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                className="insp-input"
+                maxLength={200}
+                placeholder="Why it's fine here (optional)"
+                aria-label="Why it's fine here (optional)"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                onKeyDown={onReasonKey}
+                data-testid={t("ignore-reason")}
+              />
+              <button type="button" className="btn" data-testid={t("ignore-confirm")} onClick={confirmIgnore}>
+                Ignore
+              </button>
+              <button type="button" className="link-btn" onClick={closePanel} data-testid={t("ignore-cancel")}>
+                Cancel
+              </button>
+            </div>
+          )}
+          {panel === "about" && rule && (
+            <p className="check-about" data-testid={t("about-text")}>
+              <strong>{rule.name}.</strong> {rule.about}
+            </p>
+          )}
         </div>
-      )}
-      {panel === "ignore" && !diagramScope && (
-        <div className="check-ignore">
-          <input
-            // The reason box opens on purpose, to type: focus it.
-            // eslint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
-            className="insp-input"
-            maxLength={200}
-            placeholder="Why it's fine here (optional)"
-            aria-label="Why it's fine here (optional)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            onKeyDown={onReasonKey}
-            data-testid={t("ignore-reason")}
-          />
-          <button type="button" className="btn" data-testid={t("ignore-confirm")} onClick={confirmIgnore}>
-            Ignore
-          </button>
-          <button type="button" className="link-btn" onClick={closePanel} data-testid={t("ignore-cancel")}>
-            Cancel
-          </button>
-        </div>
-      )}
-      {panel === "about" && rule && (
-        <p className="check-about" data-testid={t("about-text")}>
-          <strong>{rule.name}.</strong> {rule.about}
-        </p>
       )}
     </div>
   );

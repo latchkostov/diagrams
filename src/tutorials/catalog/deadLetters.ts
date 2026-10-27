@@ -1,3 +1,4 @@
+import { livePropertiesGoal } from "./liveProperties";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
@@ -46,10 +47,15 @@ export const deadLetters: Tutorial = {
     {
       id: "max-deliveries",
       title: msg("tutorials.deadLetters.maxTitle"),
-      goal: msg("tutorials.deadLetters.maxGoal"),
+      goal: livePropertiesGoal(msg("tutorials.deadLetters.maxGoal")),
       done: msg("tutorials.deadLetters.maxDone"),
       check: { kind: "prop", subject: "commands", prop: "maxDeliveryCount", op: "=", value: 3 },
       targets: [
+        {
+          testId: "dock-edit-properties",
+          tip: livePropertiesGoal(msg("tutorials.deadLetters.maxGoal")),
+          selected: "commands",
+        },
         { testId: "inspector-field-maxDeliveryCount", tip: msg("tutorials.deadLetters.maxGoal"), selected: "commands" },
         {
           testId: "inspector-section-node-simulation",
@@ -61,6 +67,7 @@ export const deadLetters: Tutorial = {
       demo: [{ kind: "patch", subject: "commands", patches: [{ op: "set", path: ["maxDeliveryCount"], value: 3 }] }],
       solution: [
         { dblclick: "node-{commands}" },
+        { open: "dock-edit-properties" },
         { click: "inspector-section-node-simulation" },
         { fill: "inspector-field-maxDeliveryCount", text: "3" },
         { press: "Tab" },

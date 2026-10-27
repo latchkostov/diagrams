@@ -2,7 +2,7 @@
   "layout": {
     "status": 0,
     "stdout": "<tmp>/laid.json: placed 15 nodes.\n",
-    "nodes": { "user": [40, 220], "rag-api": [433, 220], "cache": [823, 220], "feedback": [823, 100], "llm": [1606, 340], "vector-db": [1213, 160], "eval-job": [1213, 40], "quality": [1606, 220], "docs": [40, 340], "ingest-q": [433, 340], "embed-worker": [823, 340], "embeddings": [1213, 400], "vault": [1213, 280], "ingest-dlq": [823, 460], "ingest-triage": [1213, 520] },
+    "nodes": { "user": [40, 220], "rag-api": [436.37, 220], "cache": [829.36, 220], "feedback": [829.36, 100], "llm": [1614.6, 340], "vector-db": [1220.44, 160], "eval-job": [1220.44, 40], "quality": [1614.6, 220], "docs": [40, 340], "ingest-q": [436.37, 340], "embed-worker": [829.36, 340], "embeddings": [1220.44, 400], "vault": [1220.44, 280], "ingest-dlq": [829.36, 460], "ingest-triage": [1220.44, 520] },
     "groups": {}
   },
   "shareLink": {

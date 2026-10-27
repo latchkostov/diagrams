@@ -1,5 +1,4 @@
 import { useSyncExternalStore, type ReactNode } from "react";
-import { Icon } from "../../components/Icon";
 import { lazyComponent } from "../../lib/lazyLoad";
 import type { RowHost } from "../../checks/ui/FindingRow";
 import { checksPanel } from "./checksPanel";
@@ -13,6 +12,7 @@ const ChecksMarkers = defineLazySurface({
   retryToast: true,
 });
 import { useChecksState, useHotFinding, type ChecksStore } from "./useChecks";
+import { findingOrder, selectedFinding } from "./findingOrder";
 
 // What shows the checks on the canvas, each subscribed to the canvas's ChecksStore on its own, so a new result or
 // a hovered row re-renders only these, never the canvas. The card and the inspector's row are a lazy chunk.
@@ -34,7 +34,6 @@ export type ChecksHost = RowHost & {
 export function DiagramCardMeta({
   store,
   reset,
-  open,
   showWarnings,
 }: {
   store: ChecksStore;
@@ -44,22 +43,7 @@ export function DiagramCardMeta({
 }) {
   const warnings = useSyncExternalStore(store.subscribe, () => (showWarnings ? store.get().warnings : 0));
   if (!reset && !warnings) return null;
-  return (
-    <div className="diagram-card-meta">
-      {reset}
-      {warnings > 0 && (
-        <button
-          className="link-btn checks-count"
-          onClick={() => checksPanel.toggle()}
-          aria-expanded={open}
-          data-testid="checks-count"
-          title="Check diagram (Ctrl+K)"
-        >
-          <Icon name="warning" size={13} /> {warnings} warning{warnings === 1 ? "" : "s"}
-        </button>
-      )}
-    </div>
-  );
+  return <div className="diagram-card-meta">{reset}</div>;
 }
 
 export function ChecksCardView({
@@ -67,20 +51,25 @@ export function ChecksCardView({
   host,
   top,
   onMount,
+  placement,
 }: {
   store: ChecksStore;
   host: ChecksHost;
   top: number;
   onMount(): void;
+  placement?: "dock" | "floating";
 }) {
   const state = useChecksState(store);
+  const selection = useSyncExternalStore(store.selection.subscribe, store.selection.get);
   return (
     <ChecksCard
       {...host}
       applied={store.markStale}
       result={state.result}
       state={state}
+      selection={{ ...selection, select: store.selection.select, filter: store.selection.filter }}
       top={top}
+      placement={placement}
       onMount={() => {
         onMount();
         // The card's code arrived (on a Retry, too): a check that couldn't download its own code runs again.
@@ -95,7 +84,25 @@ export function ChecksCardView({
 export function ChecksMarkersView({ store }: { store: ChecksStore }) {
   const { result, byElement } = useChecksState(store);
   const hot = useHotFinding(store);
-  return result ? <ChecksMarkers byElement={byElement} hot={hot} /> : null;
+  const selection = useSyncExternalStore(store.selection.subscribe, store.selection.get);
+  const ordered = findingOrder(result?.findings ?? []);
+  const selected = selectedFinding(ordered, selection.finding, selection.element);
+  return result ? (
+    <ChecksMarkers
+      byElement={byElement}
+      hot={hot}
+      selected={selected?.id ?? null}
+      numbers={new Map(ordered.map((finding, index) => [finding.id, index + 1]))}
+      onSelect={(id) => {
+        checksPanel.open();
+        store.selection.select(id);
+      }}
+      onFilter={(id) => {
+        checksPanel.open();
+        store.selection.filter(id);
+      }}
+    />
+  ) : null;
 }
 
 /** A single selected node's or connection's findings, at the top of its inspector. */

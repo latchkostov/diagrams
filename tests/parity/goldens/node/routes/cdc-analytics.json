@@ -1,16 +1,16 @@
 {
   "smoothstep": {
-    "sql-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 107, 32], "mode": "wrap", "text": "CDC · transaction log", "lines": ["CDC ·", "transaction log"] },
-    "debezium-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 745.5, 316, 745.5, 196, 800, 196], "path": "890340a80c94", "label": [765.75, 196, 59, 45], "mode": "wrap", "text": "Order row changes", "lines": ["Order", "row", "changes"] },
-    "debezium-to-customers-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 330, 740, 330, 740, 436, 800, 436], "path": "ace3d07f7bd3", "label": [740, 383, 137, 19], "mode": "full", "text": "Customer row changes", "lines": ["Customer row changes"] },
-    "orders-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1059, 189, 1136.5, 189, 1136.5, 309, 1180, 309], "path": "f175d3210e81", "label": [1136.5, 249, 155, 19], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
-    "customers-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1060, 429, 1103.5, 429, 1103.5, 323, 1180, 323], "path": "8af380871edc", "label": [1103.5, 376, 155, 19], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
-    "processor-to-search": { "ok": true, "sides": ["right", "left"], "points": [1440, 309, 1500, 309, 1500, 196, 1560, 196], "path": "f1ef7a638668", "label": [1500, 252.5, 131, 19], "mode": "full", "text": "Bulk index / delete", "lines": ["Bulk index / delete"] },
-    "processor-to-warehouse": { "ok": true, "sides": ["right", "left"], "points": [1440, 323, 1500, 323, 1500, 436, 1560, 436], "path": "1ea7c7e3e27a", "label": [1500, 379.5, 83, 19], "mode": "full", "text": "Batch MERGE", "lines": ["Batch MERGE"] },
-    "orders-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1059, 203, 1125.5, 203, 1125.5, 549, 1180, 549], "path": "af921b8e632a", "label": [1125.5, 406, 107, 32], "mode": "wrap", "text": "group: retail-raw-sink", "lines": ["group:", "retail-raw-sink"] },
-    "customers-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1060, 443, 1114.5, 443, 1114.5, 563, 1180, 563], "path": "b12e93661912", "label": [1114.5, 503, 149, 19], "mode": "full", "text": "group: retail-raw-sink", "lines": ["group: retail-raw-sink"] },
-    "s3-sink-to-lake": { "ok": true, "sides": ["right", "left"], "points": [1421, 556, 1560, 556], "path": "9040033d0135", "label": [1484.5, 556, 71, 32], "mode": "wrap", "text": "PutObject · Parquet", "lines": ["PutObject", "· Parquet"] },
-    "debezium-to-registry": { "ok": true, "sides": ["right", "left"], "points": [680, 302, 734.5, 302, 734.5, 76, 800, 76], "path": "d74e07d1fd4e", "label": [734.5, 159, 107, 19], "mode": "full", "text": "Register schema", "lines": ["Register schema"] }
+    "sql-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 99.61, 38], "mode": "wrap", "text": "CDC · transaction log", "lines": ["CDC ·", "transaction log"] },
+    "debezium-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 745.5, 316, 745.5, 196, 800, 196], "path": "890340a80c94", "label": [745.5, 256, 120.18, 22], "mode": "full", "text": "Order row changes", "lines": ["Order row changes"] },
+    "debezium-to-customers-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 330, 740, 330, 740, 436, 800, 436], "path": "ace3d07f7bd3", "label": [740, 383, 143.42000000000002, 22], "mode": "full", "text": "Customer row changes", "lines": ["Customer row changes"] },
+    "orders-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1059, 189, 1136.5, 189, 1136.5, 309, 1180, 309], "path": "f175d3210e81", "label": [1136.5, 249, 136.45, 22], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
+    "customers-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1060, 429, 1103.5, 429, 1103.5, 323, 1180, 323], "path": "8af380871edc", "label": [1103.5, 376, 136.45, 22], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
+    "processor-to-search": { "ok": true, "sides": ["right", "left"], "points": [1440, 309, 1500, 309, 1500, 196, 1560, 196], "path": "f1ef7a638668", "label": [1500, 252.5, 117.44999999999999, 22], "mode": "full", "text": "Bulk index / delete", "lines": ["Bulk index / delete"] },
+    "processor-to-warehouse": { "ok": true, "sides": ["right", "left"], "points": [1440, 323, 1500, 323, 1500, 436, 1560, 436], "path": "1ea7c7e3e27a", "label": [1500, 379.5, 93.8, 22], "mode": "full", "text": "Batch MERGE", "lines": ["Batch MERGE"] },
+    "orders-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1059, 203, 1125.5, 203, 1125.5, 549, 1180, 549], "path": "af921b8e632a", "label": [1125.5, 466, 97.16999999999999, 38], "mode": "wrap", "text": "group: retail-raw-sink", "lines": ["group:", "retail-raw-sink"] },
+    "customers-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1060, 443, 1114.5, 443, 1114.5, 563, 1180, 563], "path": "b12e93661912", "label": [1114.5, 503, 134.30999999999997, 22], "mode": "full", "text": "group: retail-raw-sink", "lines": ["group: retail-raw-sink"] },
+    "s3-sink-to-lake": { "ok": true, "sides": ["right", "left"], "points": [1421, 556, 1560, 556], "path": "9040033d0135", "label": [1484.5, 556, 72, 38], "mode": "wrap", "text": "PutObject · Parquet", "lines": ["PutObject", "· Parquet"] },
+    "debezium-to-registry": { "ok": true, "sides": ["right", "left"], "points": [680, 302, 734.5, 302, 734.5, 76, 800, 76], "path": "d74e07d1fd4e", "label": [734.5, 179, 108.78, 22], "mode": "full", "text": "Register schema", "lines": ["Register schema"] }
   },
   "bezier": {
     "sql-to-debezium": {
@@ -61,7 +61,7 @@
         316
       ],
       "path": "a91203b30b94",
-      "label": [347.4722325, 316, 107, 32],
+      "label": [347.4722325, 316, 99.61, 38],
       "mode": "wrap",
       "text": "CDC · transaction log",
       "lines": ["CDC ·", "transaction log"]
@@ -114,7 +114,7 @@
         196
       ],
       "path": "465350f3afba",
-      "label": [741.8388650034437, 251.51500000000001, 119, 19],
+      "label": [741.8388650034437, 251.51500000000001, 120.18, 22],
       "mode": "full",
       "text": "Order row changes",
       "lines": ["Order row changes"]
@@ -167,7 +167,7 @@
         436
       ],
       "path": "a58e999139a3",
-      "label": [738.0115535399877, 379.03825000000006, 137, 19],
+      "label": [738.0115535399877, 379.03825000000006, 143.42000000000002, 22],
       "mode": "full",
       "text": "Customer row changes",
       "lines": ["Customer row changes"]
@@ -220,7 +220,7 @@
         309
       ],
       "path": "e9d484503e87",
-      "label": [1121.3651915664454, 253.48499999999999, 155, 19],
+      "label": [1121.3651915664454, 253.48499999999999, 136.45, 22],
       "mode": "full",
       "text": "group: retail-projector",
       "lines": ["group: retail-projector"]
@@ -273,7 +273,7 @@
         323
       ],
       "path": "f4d20df18977",
-      "label": [1118.0115535399877, 379.96175000000005, 155, 19],
+      "label": [1118.0115535399877, 379.96175000000005, 136.45, 22],
       "mode": "full",
       "text": "group: retail-projector",
       "lines": ["group: retail-projector"]
@@ -326,7 +326,7 @@
         196
       ],
       "path": "35c877d8337e",
-      "label": [1501.9148848620623, 248.276625, 131, 19],
+      "label": [1501.9148848620623, 248.276625, 117.44999999999999, 22],
       "mode": "full",
       "text": "Bulk index / delete",
       "lines": ["Bulk index / delete"]
@@ -379,7 +379,7 @@
         436
       ],
       "path": "39b7ab2dad30",
-      "label": [1498.0851151379377, 375.276625, 83, 19],
+      "label": [1498.0851151379377, 375.276625, 93.8, 22],
       "mode": "full",
       "text": "Batch MERGE",
       "lines": ["Batch MERGE"]
@@ -432,10 +432,10 @@
         549
       ],
       "path": "1b6eef721cec",
-      "label": [1122.8234089326459, 337.46425, 101, 19],
-      "mode": "truncate",
+      "label": [1124.2721857044025, 289.11074999999994, 97.16999999999999, 38],
+      "mode": "wrap",
       "text": "group: retail-raw-sink",
-      "lines": ["group: retail-raw-sink"]
+      "lines": ["group:", "retail-raw-sink"]
     },
     "customers-topic-to-s3-sink": {
       "ok": true,
@@ -485,7 +485,7 @@
         563
       ],
       "path": "ab1a4f2bc0e5",
-      "label": [1118.1611349965563, 498.51500000000004, 149, 19],
+      "label": [1118.1611349965563, 498.51500000000004, 134.30999999999997, 22],
       "mode": "full",
       "text": "group: retail-raw-sink",
       "lines": ["group: retail-raw-sink"]
@@ -538,7 +538,7 @@
         556
       ],
       "path": "5c41263b402c",
-      "label": [1487.4722325000002, 556, 71, 32],
+      "label": [1487.4722325000002, 556, 72, 38],
       "mode": "wrap",
       "text": "PutObject · Parquet",
       "lines": ["PutObject", "· Parquet"]
@@ -591,23 +591,23 @@
         76
       ],
       "path": "b70e2f2304c7",
-      "label": [740.4951476645087, 180.55325000000002, 107, 19],
+      "label": [740.4951476645087, 180.55325000000002, 108.78, 22],
       "mode": "full",
       "text": "Register schema",
       "lines": ["Register schema"]
     }
   },
   "straight": {
-    "sql-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 107, 32], "mode": "wrap", "text": "CDC · transaction log", "lines": ["CDC ·", "transaction log"] },
-    "debezium-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 800, 196], "path": "6eb1999610ba", "label": [756.9705627484772, 239.02943725152286, 59, 45], "mode": "wrap", "text": "Order row changes", "lines": ["Order", "row", "changes"] },
-    "debezium-to-customers-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 330, 800, 436], "path": "2aa61b21ebc8", "label": [735.5031607293087, 379.02779197755603, 137, 19], "mode": "full", "text": "Customer row changes", "lines": ["Customer row changes"] },
-    "orders-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1059, 189, 1180, 309], "path": "1a7cf6601cd1", "label": [1122.3401388871769, 251.81666666496875, 155, 19], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
-    "customers-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1060, 429, 1180, 323], "path": "7c32efca53da", "label": [1115.5031607293088, 379.97220802244397, 155, 19], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
-    "processor-to-search": { "ok": true, "sides": ["right", "left"], "points": [1440, 309, 1560, 196], "path": "b49f4ec3f142", "label": [1495.63186884732, 256.61332350210705, 131, 19], "mode": "full", "text": "Bulk index / delete", "lines": ["Bulk index / delete"] },
-    "processor-to-warehouse": { "ok": true, "sides": ["right", "left"], "points": [1440, 323, 1560, 436], "path": "64c6126263aa", "label": [1495.63186884732, 375.38667649789295, 83, 19], "mode": "full", "text": "Batch MERGE", "lines": ["Batch MERGE"] },
-    "orders-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1059, 203, 1180, 549], "path": "9beb27d4edd6", "label": [1097.7129135429686, 313.6997362468357, 149, 19], "mode": "full", "text": "group: retail-raw-sink", "lines": ["group: retail-raw-sink"] },
-    "customers-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1060, 443, 1180, 563], "path": "1041f40cda8c", "label": [1115.7573593128807, 498.75735931288074, 149, 19], "mode": "full", "text": "group: retail-raw-sink", "lines": ["group: retail-raw-sink"] },
-    "s3-sink-to-lake": { "ok": true, "sides": ["right", "left"], "points": [1421, 556, 1560, 556], "path": "9040033d0135", "label": [1484.5, 556, 71, 32], "mode": "wrap", "text": "PutObject · Parquet", "lines": ["PutObject", "· Parquet"] },
-    "debezium-to-registry": { "ok": true, "sides": ["right", "left"], "points": [680, 302, 800, 76], "path": "f2369fd47c93", "label": [737.186211654969, 194.2993013831417, 107, 19], "mode": "full", "text": "Register schema", "lines": ["Register schema"] }
+    "sql-to-debezium": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 99.61, 38], "mode": "wrap", "text": "CDC · transaction log", "lines": ["CDC ·", "transaction log"] },
+    "debezium-to-orders-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 800, 196], "path": "6eb1999610ba", "label": [764.0416305603426, 231.9583694396574, 63.79, 54], "mode": "wrap", "text": "Order row changes", "lines": ["Order", "row", "changes"] },
+    "debezium-to-customers-topic": { "ok": true, "sides": ["right", "left"], "points": [680, 330, 800, 436], "path": "2aa61b21ebc8", "label": [735.5031607293087, 379.02779197755603, 143.42000000000002, 22], "mode": "full", "text": "Customer row changes", "lines": ["Customer row changes"] },
+    "orders-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1059, 189, 1180, 309], "path": "1a7cf6601cd1", "label": [1122.3401388871769, 251.81666666496875, 136.45, 22], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
+    "customers-topic-to-processor": { "ok": true, "sides": ["right", "left"], "points": [1060, 429, 1180, 323], "path": "7c32efca53da", "label": [1115.5031607293088, 379.97220802244397, 136.45, 22], "mode": "full", "text": "group: retail-projector", "lines": ["group: retail-projector"] },
+    "processor-to-search": { "ok": true, "sides": ["right", "left"], "points": [1440, 309, 1560, 196], "path": "b49f4ec3f142", "label": [1495.63186884732, 256.61332350210705, 117.44999999999999, 22], "mode": "full", "text": "Bulk index / delete", "lines": ["Bulk index / delete"] },
+    "processor-to-warehouse": { "ok": true, "sides": ["right", "left"], "points": [1440, 323, 1560, 436], "path": "64c6126263aa", "label": [1495.63186884732, 375.38667649789295, 93.8, 22], "mode": "full", "text": "Batch MERGE", "lines": ["Batch MERGE"] },
+    "orders-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1059, 203, 1180, 549], "path": "9beb27d4edd6", "label": [1097.7129135429686, 313.6997362468357, 134.30999999999997, 22], "mode": "full", "text": "group: retail-raw-sink", "lines": ["group: retail-raw-sink"] },
+    "customers-topic-to-s3-sink": { "ok": true, "sides": ["right", "left"], "points": [1060, 443, 1180, 563], "path": "1041f40cda8c", "label": [1115.7573593128807, 498.75735931288074, 134.30999999999997, 22], "mode": "full", "text": "group: retail-raw-sink", "lines": ["group: retail-raw-sink"] },
+    "s3-sink-to-lake": { "ok": true, "sides": ["right", "left"], "points": [1421, 556, 1560, 556], "path": "9040033d0135", "label": [1484.5, 556, 72, 38], "mode": "wrap", "text": "PutObject · Parquet", "lines": ["PutObject", "· Parquet"] },
+    "debezium-to-registry": { "ok": true, "sides": ["right", "left"], "points": [680, 302, 800, 76], "path": "f2369fd47c93", "label": [765.324095105279, 141.30628755172455, 108.78, 22], "mode": "full", "text": "Register schema", "lines": ["Register schema"] }
   }
 }

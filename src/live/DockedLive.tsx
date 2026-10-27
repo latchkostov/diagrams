@@ -15,6 +15,8 @@ export function DockedLive({
   kind = "node",
   broker = false,
   children,
+  identity,
+  chart,
 }: {
   summary: HoverSummary;
   healthy: string;
@@ -23,6 +25,8 @@ export function DockedLive({
   kind?: "node" | "edge";
   broker?: boolean;
   children(section: string): ReactNode;
+  identity?(control: ReactNode): ReactNode;
+  chart?: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
   const description = useId();
@@ -40,9 +44,10 @@ export function DockedLive({
     chosen: time >= 1000,
   }));
   if (!section.chosen && time >= 1000) setSection({ open: defaultSection(), chosen: true });
-  const [history, setHistory] = useState({ at: time, samples: time >= 1000 ? [value] : ([] as number[]) });
-  if (time < history.at) setHistory({ at: time, samples: time >= 1000 ? [value] : [] });
-  else if (time - history.at >= 1000) setHistory({ at: time, samples: [...history.samples.slice(-9), value] });
+  const second = Math.floor(time / 1000);
+  const [history, setHistory] = useState({ at: second, samples: second >= 1 ? [value] : ([] as number[]) });
+  if (second < history.at) setHistory({ at: second, samples: second >= 1 ? [value] : [] });
+  else if (second > history.at) setHistory({ at: second, samples: [...history.samples.slice(-9), value] });
   else if (history.samples.length && history.samples.at(-1) !== value)
     setHistory({ ...history, samples: [...history.samples.slice(0, -1), value] });
   const problem = summary.problems[0];
@@ -52,20 +57,37 @@ export function DockedLive({
       className={`insp-section inspector-live${problem ? (problem.severe ? " is-bad" : " is-warning") : ""}`}
       data-testid="planning-live-details"
     >
-      <h3 className="insp-section-title inspector-live-heading">
-        <button
-          data-testid="planning-live-details-toggle"
-          aria-expanded={expanded}
-          aria-describedby={!expanded ? description : undefined}
-          onClick={() => setExpanded(!expanded)}
-        >
-          <span className="insp-disclosure-title" data-testid="inspector-live-title">
-            {t("hover.live")}
-          </span>
-          <HoverStatus summary={summary} />
-          <Icon name="chevron-right" size={12} />
-        </button>
-      </h3>
+      {identity ? (
+        identity(
+          <button
+            className="dock-live-status"
+            data-testid="planning-live-details-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <span className="sr-only" data-testid="inspector-live-title">
+              {t("hover.live")}
+            </span>
+            <HoverStatus summary={summary} />
+            <Icon name="chevron-right" size={12} />
+          </button>,
+        )
+      ) : (
+        <h3 className="insp-section-title inspector-live-heading">
+          <button
+            data-testid="planning-live-details-toggle"
+            aria-expanded={expanded}
+            aria-describedby={!expanded ? description : undefined}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <span className="insp-disclosure-title" data-testid="inspector-live-title">
+              {t("hover.live")}
+            </span>
+            <HoverStatus summary={summary} />
+            <Icon name="chevron-right" size={12} />
+          </button>
+        </h3>
+      )}
       {!expanded && (
         <p className="insp-summary" id={description} data-testid="inspector-summary-live">
           {problem?.text ?? healthy}
@@ -81,7 +103,7 @@ export function DockedLive({
           ) : (
             <>
               <HoverVitals summary={summary} />
-              <SampleSparkline samples={history.samples} docked />
+              {chart ?? <SampleSparkline samples={history.samples} docked />}
             </>
           )}
           <SectionRows

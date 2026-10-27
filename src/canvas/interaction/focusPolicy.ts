@@ -16,12 +16,12 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | M6  | menu.closed(any other), Live popover|                                 | keep (a pick or a press leaves focus where it put it)  |
  * | M7  | menu.closed(remote): a peer deleted |                                 | the canvas after the commit, if focus was lost (the    |
  * |     | what the menu was for               |                                 | invoker went with the target); extends R1              |
- * | K1  | selection.changed(keyboard)         | to a node                       | focus it next frame (it reveals itself); Tab stop := it|
- * | K2  | selection.changed(keyboard)         | to a connection                 | focus it next frame (it reveals itself)                |
+ * | K1  | selection.changed(keyboard)         | to a node                       | wait until visible (it reveals itself); Tab stop := it|
+ * | K2  | selection.changed(keyboard)         | to a connection                 | wait until visible (it reveals itself)                |
  * | H1  | selection.changed(undo / redo)      | focus was on the canvas         | focus the selection once drawn (else the canvas)       |
  * | H2  | selection.changed(undo / redo)      | focus was elsewhere (toolbar)   | keep; the Tab stop moves to the selection              |
  * | P1  | selection.changed(palette)          | it added the node               | focus the node once drawn                              |
- * | P2  | selection.changed(palette)          | it went to the node             | focus the node now                                     |
+ * | P2  | selection.changed(palette)          | it went to the node             | focus the node when visible                                     |
  * | S1  | selection.changed(click, box,       |                                 | keep                                                   |
  * |     | placement, programmatic)            |                                 |                                                        |
  * | N1  | naming.done (Enter / Esc in a name) |                                 | focus the named item on the canvas now                 |
@@ -129,7 +129,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       const { cause, target } = event;
       if (cause === "keyboard" && target)
         return move(
-          { target: { kind: target.kind, id: target.id }, when: "frame", revealed: true },
+          { target: { kind: target.kind, id: target.id }, when: "measured", revealed: true },
           target.kind === "node" ? { roving: target.id } : {},
         );
       if ((cause === "undo" || cause === "redo") && event.selection) {
@@ -142,7 +142,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         return move(
           event.placed
             ? { target: { kind: target.kind, id: target.id }, when: "measured", fresh: true }
-            : { target: { kind: target.kind, id: target.id }, when: "now" },
+            : { target: { kind: target.kind, id: target.id }, when: "ready" },
         );
       return keep();
     }
@@ -163,7 +163,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         { fieldSeq: event.seq },
       );
     case "inspector.toggled":
-      return keep();
+      return event.cause === "panel" ? move({ target: { kind: "inspectorToggle" }, when: "commit" }) : keep();
     case "inspector.abandoned":
       return state.pending?.target.kind === "field" ? keep({ pending: null }) : keep();
     case "dialog.opened":
@@ -220,6 +220,17 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return move({ target: canvas, when: "frame" });
     case "presenting":
       return move({ target: canvas, when: "now", onlyIfLost: true });
+    // T1: Add waits for search; Select and Escape return to their explicit keyboard home.
+    case "tool.focus":
+      return move({
+        target:
+          event.cause === "library"
+            ? { kind: "paletteSearch" }
+            : event.target
+              ? { kind: "element", handle: event.target }
+              : canvas,
+        when: event.cause === "library" ? "ready" : "now",
+      });
     case "start.blank":
       return move({ target: { kind: "paletteSearch" }, when: "frame" });
     case "dependencies.hidden":

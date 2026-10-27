@@ -5,12 +5,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("inspector width", () => {
   it.each([
-    [1366, 362],
-    [1440, 382],
-    [1920, 509],
-    [2560, 640],
-    [3440, 640],
-  ])("scales the default at %ipx to %ipx", (viewport, expected) => {
+    [1366, 372],
+    [1440, 372],
+    [1920, 372],
+    [2560, 372],
+    [3440, 372],
+  ])("keeps the dock default at %ipx to %ipx", (viewport, expected) => {
     expect(sheetWidth(viewport)).toBe(expected);
   });
   it("bounds manual widths by 60vw and the canvas room after other panels", () => {
@@ -40,7 +40,7 @@ describe("inspector width", () => {
     expect(readSheetWidth()).toBe(700); // Shrinking never overwrites the person's choice.
     saveSheetWidth(null);
     expect(values.has(SHEET_WIDTH_KEY)).toBe(false);
-    expect(sheetWidth(1920, 1920, readSheetWidth())).toBe(509);
+    expect(sheetWidth(1920, 1920, readSheetWidth())).toBe(372);
   });
   it.each(["", " ", "NaN", "Infinity", "-1", "0", "oops"])("ignores invalid storage %j", (value) => {
     vi.stubGlobal("localStorage", { getItem: () => value });

@@ -36,11 +36,13 @@ export function NodeSettings({
   meta,
   focus,
   namingActive,
+  liveMode = false,
 }: Pick<InspectorProps, "editor" | "revision" | "counts" | "readDiagram" | "meta" | "focus"> & {
   nodeId: string;
   stencilId: string;
   nodeProps: Record<string, unknown> | undefined;
   namingActive: boolean;
+  liveMode?: boolean;
 }) {
   useLocale();
   const stencil = getStencil(stencilId);
@@ -93,6 +95,7 @@ export function NodeSettings({
   const planning = useMemo(
     () => (
       <NodePlanning
+        configuredOnly={liveMode}
         id={nodeId}
         editor={editor}
         revision={planningRevision}
@@ -101,7 +104,7 @@ export function NodeSettings({
         counts={counts}
       />
     ),
-    [nodeId, editor, planningRevision, planningRead, namingActive, counts],
+    [nodeId, editor, planningRevision, planningRead, namingActive, counts, liveMode],
   );
   const simulation = useMemo(
     () => (

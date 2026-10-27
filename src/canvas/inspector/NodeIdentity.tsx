@@ -70,9 +70,11 @@ export function NodeIdentity({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
     [stencil, setPicker, locale],
   );
+  // The hot label row needs no extra component reconciliation on every key.
   const labelField = useMemo(
     () => (
-      <Field label={t("inspector.label")}>
+      <label className="insp-field">
+        <span className="insp-label">{t("inspector.label")}</span>
         <input
           className="insp-input"
           value={node.data.label}
@@ -81,7 +83,7 @@ export function NodeIdentity({
           name="label"
           data-testid="inspector-field-label"
         />
-      </Field>
+      </label>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
     [node.data.label, node.id, editor, naming, nameKeys, locale],

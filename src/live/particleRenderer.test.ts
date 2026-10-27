@@ -111,6 +111,11 @@ function setup() {
   const renderer = new ParticleRenderer(fakeCanvas(main), env, opts, fakeCanvas(over));
   return {
     renderer,
+    env,
+    setZoom: (zoom: number) => {
+      transform = [0, 100, zoom];
+      version++;
+    },
     main,
     over,
     pan: () => (transform = [10, 100, 1]),
@@ -239,4 +244,21 @@ describe("calm sampler and frame counts", () => {
     renderer.draw(snapshot([particle(1, 0.3)]), 48);
     expect(renderer.frames).toBe(2);
   });
+});
+
+it("frame ink suppresses hidden and far background particles on both render paths", () => {
+  const { renderer, env, setZoom } = setup();
+  const paused = snapshot([particle(1, 0.2)]);
+  env.edgeInk = () => ({ alpha: 0, near: true });
+  renderer.draw(paused, 0);
+  expect(renderer.drawn).toBe(0);
+  env.edgeInk = () => ({ alpha: 0.28, near: false });
+  setZoom(0.4);
+  renderer.draw(paused, 1);
+  expect(renderer.drawn).toBe(0);
+  env.edgeInk = () => ({ alpha: 1, near: true });
+  renderer.invalidate();
+  renderer.draw(paused, 2);
+  expect(renderer.drawn).toBe(1);
+  vi.unstubAllGlobals();
 });

@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(105.106px, 407.723px) scale(1.08511)",
+  "viewport": "translate(171.5px, 405.25px) scale(1.25)",
   "nodes": {
     "request-path": { "kind": "annotation", "box": "translate(-60px, -150px) 940×330", "text": "Request path" },
     "group:partner-region": { "kind": "group", "box": "translate(-30px, -70px) 280×200", "text": "Partner" },

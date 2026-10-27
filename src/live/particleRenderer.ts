@@ -1,3 +1,4 @@
+import type { EdgeInk } from "./liveScene";
 // Draws every particle, trail, arrival pulse and failure flash onto one canvas, imperatively, once
 // per animation frame. No React and no DOM here: the same code draws on the main thread (an
 // HTMLCanvasElement, the fallback) and in a worker (an OffscreenCanvas, see liveRenderer.ts). The
@@ -91,6 +92,7 @@ export interface Obstacles {
 }
 
 export interface RenderEnv {
+  edgeInk?(id: string): EdgeInk | undefined;
   /** Viewport transform: screen = flow * zoom + (x, y). */
   transform(): readonly [x: number, y: number, zoom: number];
   /** Pane size in CSS px. */
@@ -159,6 +161,8 @@ export interface RenderOverlay {
 }
 
 interface Batch {
+  alpha: number;
+  scale: number;
   color: string;
   kind: ParticleKind;
   /** Request routing: the route's marker (absent for unaddressed traffic, drawn as today). */
@@ -462,6 +466,10 @@ export class ParticleRenderer {
     this.focusHeads.length = 0;
     for (let i = 0; i < particles.length; i += stride) {
       const p = particles[i];
+      const ink = this.env.edgeInk?.(p.edgeId);
+      if (ink?.alpha === 0 || (zoom < 0.6 && ink && !ink.near)) continue;
+      const inkAlpha = (ink?.alpha ?? 1) * (zoom < 0.6 ? 0.5 : 1);
+      const inkScale = zoom < 0.6 ? 0.6 : 1;
       const s = this.env.samples(p.edgeId);
       if (!s || s.length === 0) continue;
       const focused = focus !== undefined && p.rootId === focus;
@@ -492,10 +500,20 @@ export class ParticleRenderer {
         drawn++;
         continue;
       }
-      const bk = marker ? `${p.kind}|${color}|${marker}` : `${p.kind}|${color}`;
+      const paintKey = `${inkAlpha}|${inkScale}|`;
+      const bk = paintKey + (marker ? `${p.kind}|${color}|${marker}` : `${p.kind}|${color}`);
       let b = this.batches.get(bk);
       if (!b) {
-        b = { color, kind: p.kind, heads: [], trails: [], dim: [], ...(marker ? { marker } : {}) };
+        b = {
+          color,
+          alpha: inkAlpha,
+          scale: inkScale,
+          kind: p.kind,
+          heads: [],
+          trails: [],
+          dim: [],
+          ...(marker ? { marker } : {}),
+        };
         this.batches.set(bk, b);
       }
       // Behind a label pill: the pill hides the trail; the dot shows through, dimmed, on the overlay.
@@ -516,10 +534,10 @@ export class ParticleRenderer {
     for (const b of this.batches.values()) {
       if (!b.trails.length) continue;
       ctx.strokeStyle = b.color;
-      ctx.globalAlpha = (dark ? 0.26 : 0.2) * dim;
+      ctx.globalAlpha = (dark ? 0.26 : 0.2) * dim * b.alpha;
       ctx.lineWidth = size * (b.kind === "dlq" ? 1.6 : 1.25);
       this.strokeTrails(b.trails, 1);
-      ctx.globalAlpha = (dark ? 0.62 : 0.5) * dim;
+      ctx.globalAlpha = (dark ? 0.62 : 0.5) * dim * b.alpha;
       ctx.lineWidth = size * 0.7;
       this.strokeTrails(b.trails, 0.5);
     }
@@ -531,10 +549,10 @@ export class ParticleRenderer {
     for (const b of this.batches.values()) {
       if (!b.heads.length) continue;
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
-      const sprite = this.sprite(b.color, b.kind, r, b.marker);
+      const sprite = this.sprite(b.color, b.kind, r * b.scale, b.marker);
       const half = sprite.width / 2;
       ctx.globalAlpha =
-        (b.kind === "reply" ? 0.55 : 1) * (slow ? slow.backgroundAlpha : focus !== undefined ? 0.28 : 1);
+        (b.kind === "reply" ? 0.55 : 1) * b.alpha * (slow ? slow.backgroundAlpha : focus !== undefined ? 0.28 : 1);
       const heads = b.heads;
       for (let i = 0; i < heads.length; i += 2) ctx.drawImage(sprite, heads[i] - half, heads[i + 1] - half);
       ctx.globalAlpha = 1;
@@ -583,7 +601,7 @@ export class ParticleRenderer {
       any = true;
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
       ctx.fillStyle = b.color;
-      ctx.globalAlpha = DIM_UNDER_LABEL * (b.kind === "reply" ? 0.55 : 1) * (focused ? 0.28 : 1);
+      ctx.globalAlpha = DIM_UNDER_LABEL * b.alpha * (b.kind === "reply" ? 0.55 : 1) * (focused ? 0.28 : 1);
       ctx.beginPath();
       for (let i = 0; i < b.dim.length; i += 2) {
         if (b.marker) markerPath(ctx, b.dim[i], b.dim[i + 1], r, b.marker);
@@ -646,7 +664,7 @@ export class ParticleRenderer {
     // On the overlay, so trace labels stay above the edge label pills.
     const ctx = this.octx;
     const font = Math.max(11 * dpr, size * 3.2);
-    ctx.font = `600 ${font}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
+    ctx.font = `600 ${font}px "Mona Sans Canvas", "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
     ctx.textBaseline = "middle";
     const scaled = (r: Rect): Box => ({ x: r.x * dpr, y: r.y * dpr, w: r.width * dpr, h: r.height * dpr });
     const found = this.env.obstacles?.();

@@ -446,3 +446,184 @@ div.check-row-head {
     width: min(290px, calc(100% - 32px));
   }
 }
+
+/* Workbench findings: one expanded sentence, with a stable number shared by its canvas tags. */
+.check-row.is-numbered {
+  border-inline-start: 2px solid transparent;
+  padding-inline-start: 12px;
+}
+.check-row.is-numbered.is-expanded {
+  border-inline-start-color: var(--tag);
+  background: color-mix(in oklab, var(--tag) 5%, var(--panel));
+}
+.check-row.is-numbered.is-suggestion.is-expanded {
+  border-inline-start-color: var(--info);
+  background: color-mix(in oklab, var(--info) 5%, var(--panel));
+}
+.check-row.is-numbered .check-row-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: start;
+}
+.check-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 5px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1.5px var(--tag-line);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.is-expanded > .check-row-head .check-number {
+  background: var(--tag);
+  color: #1a1d24;
+  box-shadow: none;
+}
+.is-suggestion.is-expanded > .check-row-head .check-number {
+  background: var(--info);
+  color: var(--accent-ink);
+}
+.check-row.is-numbered .check-row-text {
+  min-inline-size: 0;
+}
+.check-row.is-numbered .check-row-text strong {
+  font-size: 13px;
+}
+.check-row.is-numbered .check-msg {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.check-row.is-numbered:not(.is-expanded) .check-msg {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-block-start: 5px;
+}
+.check-row-body {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+.check-row.is-numbered .check-row-body {
+  padding-inline-start: 28px;
+}
+.check-row.is-numbered .check-row-body > * {
+  margin-inline-start: 0;
+}
+.checks-filter {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+}
+.check-marker-group {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.check-marker-group button {
+  pointer-events: auto;
+  flex: none;
+  font: 650 11.5px var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  opacity: 1;
+}
+.check-tag {
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  border: 0;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--tag);
+  box-shadow: inset 0 0 0 2px var(--board);
+  outline: 2px solid var(--tag);
+  outline-offset: 0;
+  color: #1a1d24;
+}
+.check-tag span {
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 5px;
+  background: var(--tag);
+}
+.check-count {
+  min-block-size: 24px;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text);
+  background: transparent;
+}
+.check-count-ink {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  block-size: 20px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 1.5px var(--tag-line),
+    0 0 0 2px var(--board);
+}
+.check-tag:focus-visible,
+.check-count:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* These are flow coordinates, independent of the surrounding chrome's writing direction. */
+.check-marker-group {
+  inset-inline-start: auto;
+  top: 0;
+  left: 0;
+  direction: ltr;
+}
+
+.check-row,
+.checks-counts,
+.check-marker-group button {
+  font-variant-numeric: tabular-nums;
+}
+.check-row-title {
+  font-stretch: var(--stretch-wide);
+}
+.check-count-ink {
+  font-size: 11.5px;
+  font-weight: 700;
+  gap: 3px;
+}
+.check-count-ink svg {
+  color: var(--tag-line);
+}
+
+.check-marker-group {
+  gap: 8px;
+}
+.check-tag,
+.check-tag span {
+  border-radius: 999px;
+}
+.check-tag {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--tag-line);
+}

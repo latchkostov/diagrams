@@ -1,3 +1,6 @@
+import { Icon } from "../components/Icon";
+import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
+import { activateDock, closeWorkbenchDock } from "./inspector/dockActions";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
 import { EdgeMessages } from "./edges/lazyEdgeMessages";
 import { gestureTargetRemoved } from "./interaction/gestures";
@@ -82,7 +85,7 @@ import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } fr
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import { ANNOTATION_DND_MIME, resolveAnnotationColor, annotationTitle } from "./annotations";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
-import { Palette, STENCIL_DND_MIME } from "./Palette";
+import { Palette, AnnotateGroup, ANNOTATE, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
 import { actionRegistry } from "../editor/actions";
@@ -98,7 +101,7 @@ import type { DiagramFlowEdge, FlowNode } from "./types";
 
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
 import { CanvasFitContext } from "./canvasFit";
-import { safeStorage } from "../lib/storage";
+import { tools, useToolSurface } from "./chrome/tools";
 import type { StartOptions } from "./StartCard";
 import { useAiDock } from "../ai/ui/dock";
 const NodeTipLayer = defineLazySurface({
@@ -126,6 +129,14 @@ import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
 import { defineLazySurface } from "../lib/lazySurface";
+const FrameDetail = defineLazySurface({
+  id: "canvas.frame-detail",
+  load: () => import("./FrameDetail").then((m) => m.FrameDetail),
+  placeholder: {},
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 const PresenceLayer = defineLazySurface({
   id: "canvas.presence",
   load: () => import("./CanvasReadouts").then((m) => m.PresenceLayer),
@@ -180,7 +191,6 @@ const HIDE_ATTRIBUTION = { hideAttribution: true };
  * wrapper: everything handed to <ReactFlow> keeps its identity across the canvas's renders.
  */
 const SNAP_GRID: [number, number] = [10, 10];
-const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 /** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
 const ROOMY = 1680;
 const CRAMPED = 1280;
@@ -188,6 +198,8 @@ const CRAMPED = 1280;
 export type { CanvasHandle } from "./document/useCanvasDocument";
 
 interface Props {
+  transport?: HTMLElement | null;
+  bezel?: boolean;
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
   room?: EditorRoom;
   slug: string;
@@ -241,7 +253,9 @@ export function CanvasView(props: Props) {
 actionRegistry.register(builtinActions());
 
 function CanvasInner({
+  transport,
   slug,
+  bezel = false,
   presenting,
   onExitPresent,
   onTutorials,
@@ -257,10 +271,15 @@ function CanvasInner({
   room,
 }: Props) {
   const locale = useLocale();
-  const { theme, nodeVariant, edgeStyle } = useSettings();
+  const settings = useSettings();
+  const { theme, nodeVariant, edgeStyle } = settings;
+  const toolSurface = useToolSurface();
+  const dock = useWorkbenchDock();
   const { screenToFlowPosition, getNode, getNodes } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
+  const [caption, setCaption] = useState<HTMLDivElement | null>(null);
+  const [localTransport, setLocalTransport] = useState<HTMLDivElement | null>(null);
   useNoCanvasTextSelection(wrapper);
   /** The pointer over the canvas (client coords), for "T adds text here" and Ctrl+V. */
   const pointer = useRef<{ x: number; y: number } | null>(null);
@@ -286,12 +305,6 @@ function CanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);
   const [bootstrapFit] = useState(() => flow.nodes.some((n) => !n.hidden));
-  const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
-    const saved = safeStorage.getItem(PALETTE_KEY);
-    // Narrow windows always start with the canvas, not the stencil list.
-    return saved && window.innerWidth >= 1280 ? saved === "1" : window.innerWidth < 1400;
-  });
-  useEffect(() => void safeStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
   const [prefs, setPref] = useEditorPrefs();
   const [sheetResize, setSheetResize] = useState(0);
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
@@ -313,7 +326,10 @@ function CanvasInner({
   // Below CRAMPED, an open AI panel keeps the inspector folded to its rail until opened by hand.
   const [cramped, setCramped] = useState(() => window.innerWidth < CRAMPED);
   const aiDock = useAiDock();
-  const aiDockOpen = aiDock.open;
+  useLayoutEffect(() => {
+    if (aiDock.open) workbenchDock.show("ai");
+  }, [aiDock.open]);
+  useLayoutEffect(() => () => workbenchDock.close(), []);
   useEffect(() => {
     const onResize = () => {
       setNarrow(window.innerWidth < ROOMY);
@@ -337,8 +353,12 @@ function CanvasInner({
   const [inspectorRequest, requestInspector] = useState(0);
   const openInspector = useCallback(
     (field?: string, caret?: "end", target?: string, text?: string) => {
+      activateDock("properties");
       requestInspector((revision) => revision + 1);
       liveHandle.current?.session?.closePanel();
+      // A floating trace may fold Properties automatically; an explicit
+      // Properties command still opens it while that trace remains available.
+      setLivePanelOpen(false);
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
       if (field) setInspectorFocus({ name: field, seq: ++inspectorFocusSeq.current, caret, target, text });
@@ -551,8 +571,14 @@ function CanvasInner({
         history.redo();
       },
     },
-    prefs,
-    setPref,
+    prefs: { ...prefs, inspector: dock.value !== "closed" },
+    setPref: (key, value) => {
+      setPref(key, value);
+      if (key === "inspector") {
+        if (value) activateDock(workbenchDock.get().last);
+        else closeWorkbenchDock();
+      }
+    },
     setEditing: (target) => {
       if (readOnly || live || presenting) return;
       interaction.annotating(target?.id ?? null);
@@ -667,8 +693,13 @@ function CanvasInner({
     },
     [interaction],
   );
+  const canUndo = editor.canUndo(history.canUndo);
+  const canRedo = editor.canRedo(history.canRedo);
+  const labHistory = useMemo(() => (bezel ? undefined : { canUndo, canRedo }), [bezel, canUndo, canRedo]);
   useCanvasHost(editor, {
     live,
+    canUndo,
+    canRedo,
     enabled: !readOnly,
     localOnly: privacy === "local-only",
     private: !!privacyFlags.private,
@@ -705,8 +736,8 @@ function CanvasInner({
     if (presenting) interaction.dispatch({ type: "presenting" });
   }, [presenting, interaction]);
 
-  useModeFit(controller, presenting, live);
-  const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard);
+  useModeFit(controller, presenting, live, readOnly);
+  const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard, !bezel || presenting);
 
   // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
   // covers mistakes). Examples and shared diagrams keep "Edited, reset".
@@ -765,8 +796,11 @@ function CanvasInner({
       choose: growFromChip,
       hover: checks.setHot,
       open: () => checksPanel.open(),
-      returnFocus: () =>
-        interaction.dispatch({ type: "dialog.closed", dialog: "checks", opener: checksPanel.opener() }),
+      returnFocus: () => {
+        // A fix can switch tabs before its requested field mounts. That destination owns focus.
+        if (inspectorFocusSeq.current > inspectorFocusDone.current) return;
+        interaction.dispatch({ type: "dialog.closed", dialog: "checks", opener: checksPanel.opener() });
+      },
     }),
     [editor, revealIds, growFromChip, checks, interaction],
   );
@@ -955,17 +989,52 @@ function CanvasInner({
   );
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
-  const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
-  const settledEmpty = useSettledSelection({ wrapper, editGestures, controller, nothingSelected });
-  const inspectorHidden =
-    livePanelOpen ||
-    !prefs.inspector ||
-    ((live || (narrow && settledEmpty) || (cramped && aiDockOpen)) && !openedByHand.inspector);
+  const paletteHidden = !settings.libraryPinned && toolSurface !== "library";
+  const dockSelection = JSON.stringify(
+    [...selectedNodes, ...selectedGroups, ...selectedEdges, ...selectedAnnotations].map((item) => item.id),
+  );
+  const { empty: settledEmpty, key: settledKey } = useSettledSelection({
+    wrapper,
+    editGestures,
+    controller,
+    nothingSelected,
+    selectionKey: dockSelection,
+    // Once Properties is open, another selection already renders its new content.
+    // Track identity only while it can switch tabs; no extra canvas commit per click.
+    trackSelectionKey: dock.value !== "properties",
+  });
+  const inspectorHidden = dock.value === "closed" || (livePanelOpen && dock.value === "properties");
+  const selectedForDock = useRef("");
+  useLayoutEffect(() => {
+    if (settledEmpty) {
+      const hadSelection = !!selectedForDock.current;
+      selectedForDock.current = "";
+      if (hadSelection && dock.value === "properties" && !openedByHand.inspector) {
+        if (aiDock.open) activateDock("ai");
+        else workbenchDock.close();
+      }
+      return;
+    }
+    if (settledKey === selectedForDock.current) return;
+    selectedForDock.current = settledKey;
+    // Live's keyboard reading order already offers a focused readout. An explicit
+    // Properties action still opens the dock; traversal alone keeps that reading path.
+    if (live && interaction.selectionCause === "keyboard") return;
+    if (
+      dock.value === "ai" &&
+      (interaction.selectionCause === "programmatic" ||
+        interaction.selectionCause === "undo" ||
+        interaction.selectionCause === "redo")
+    )
+      return;
+    if (!checksPanel.isOpen()) activateDock("properties");
+  }, [settledEmpty, settledKey, dock.value, openedByHand.inspector, aiDock.open, live, interaction]);
   const { checksMounted } = usePaneCamera(controller, {
     paletteHidden,
     aiDock,
     inspectorHidden,
     sheetResize,
+    sheetSnap: dock.snap,
     inspectorPref: prefs.inspector,
     inspectorByHand: openedByHand.inspector,
     livePanelOpen,
@@ -1012,9 +1081,9 @@ function CanvasInner({
   );
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
-    setPaletteCollapsed(!paletteHidden);
-    setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
-  }, [paletteHidden]);
+    settings.set("libraryPinned", !settings.libraryPinned);
+    tools.open("closed");
+  }, [settings]);
   const addFromPalette = useAddFromPalette(editor, live, interaction);
   const viewerDiagram = useMemo(
     () => (readOnly ? fromFlow(meta, nodes, edges) : undefined),
@@ -1031,6 +1100,64 @@ function CanvasInner({
   useEffect(() => railAnchor.set(live || hideChrome ? undefined : anchorLabel), [live, hideChrome, anchorLabel]);
   useEffect(() => () => railAnchor.set(undefined), []);
   const annotateFromPalette = useAnnotateFromPalette(editor, interaction);
+  useLayoutEffect(() => {
+    if (hideChrome) return;
+    return tools.connect({
+      live,
+      pinned: !!settings.libraryPinned,
+      checks,
+      select: () => {
+        editor.clearSelection();
+        interaction.dispatch({ type: "tool.focus", cause: "select" });
+      },
+      shortcuts: showShortcuts,
+    });
+  }, [hideChrome, live, settings.libraryPinned, checks, editor, showShortcuts, interaction]);
+  useLayoutEffect(() => {
+    if (toolSurface === "library") interaction.dispatch({ type: "tool.focus", cause: "library" });
+  }, [toolSurface, interaction]);
+  useEffect(() => {
+    if (toolSurface === "closed") return;
+    const outside = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        !target.closest(
+          '[data-testid="palette"], [data-testid="palette-annotate-flyout"], [data-testid="rail-add"], [data-testid="rail-annotate"]',
+        )
+      )
+        tools.open("closed");
+    };
+    const detachEscape = interaction.attachEscape(() => {
+      tools.open("closed");
+      const target = document.querySelector<HTMLElement>(
+        toolSurface === "library" ? '[data-testid="rail-add"]' : '[data-testid="rail-annotate"]',
+      );
+      interaction.dispatch({ type: "tool.focus", cause: "escape", target: target ?? undefined });
+      return true;
+    });
+    document.addEventListener("pointerdown", outside, true);
+    return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      detachEscape();
+    };
+  }, [toolSurface, interaction]);
+  useEffect(
+    () =>
+      actionRegistry.register([
+        {
+          id: "canvas.add-stencil",
+          section: "insert",
+          targets: ["canvas"],
+          paletteOnly: true,
+          label: () => tr("command.addStencil"),
+          icon: "node-plus",
+          run: () => tools.open("library"),
+        },
+      ]),
+    [],
+  );
+
   const labels = useMemo(
     () =>
       new Map([
@@ -1063,6 +1190,7 @@ function CanvasInner({
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
+  const nodeLabel = useCallback((id: string) => labels.get(id) ?? id, [labels]);
   const inspectorCounts = useMemo(
     () => ({ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }),
     [nodeCount, edges.length, groupNodes.length],
@@ -1070,6 +1198,8 @@ function CanvasInner({
   const inspectorResize = useCallback(() => setSheetResize((revision) => revision + 1), []);
   const inspectorToggle = useCallback(() => {
     interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
+    if (inspectorHidden) activateDock(workbenchDock.get().last);
+    else closeWorkbenchDock();
     setPref("inspector", inspectorHidden);
     setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
   }, [interaction, setPref, inspectorHidden]);
@@ -1079,8 +1209,6 @@ function CanvasInner({
     [namedNode],
   );
   const diagramColor = meta.color ? resolveAnnotationColor(meta.color).hex : undefined;
-  const canUndo = editor.canUndo(history.canUndo);
-  const canRedo = editor.canRedo(history.canRedo);
 
   // Document edits change the controlled graph, not its chrome. Reusing these elements also
   // lets React Flow's own memoized children bail out of parent reconciliation.
@@ -1088,26 +1216,29 @@ function CanvasInner({
     () => (
       <>
         <ZoomVar host={wrapper} />
+        {!readOnly && !presenting && (
+          <FrameDetail host={wrapper} routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }} />
+        )}
         {!readOnly && <ConnectionRadius />}
         {prefs.grid && <DotGrid />}
         {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
         {editGestures && <LandingOutline />}
-        {!hideChrome && (
+        {!hideChrome && !live && (
           <CanvasControls
             editor={editor}
-            canUndo={canUndo}
-            canRedo={canRedo}
             menus={interaction}
             menu={menu}
             fit={fit}
             zoomedByButton={zoomedByButton}
-            onShortcuts={showShortcuts}
+            history={labHistory}
           />
         )}
         {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
         {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
         {(nodeCount > 0 || live) && (
           <LiveView
+            caption={caption}
+            transport={transport ?? localTransport}
             readOnly={readOnly}
             initial={viewer?.live}
             onHandle={receiveLiveHandle}
@@ -1139,6 +1270,12 @@ function CanvasInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated descendants when the locale changes.
     [
       locale,
+      edgeStyle,
+      caption,
+      transport,
+      localTransport,
+      bezel,
+      labHistory,
       wrapper,
       readOnly,
       prefs.grid,
@@ -1169,13 +1306,12 @@ function CanvasInner({
       checks,
       presence,
       presenceChanged,
-      canUndo,
-      canRedo,
     ],
   );
   const overlays = useMemo(
     () => (
       <CanvasOverlays
+        bezel={bezel && !presenting}
         card={card}
         cardCovers={cardCovers}
         presenting={presenting}
@@ -1201,7 +1337,7 @@ function CanvasInner({
         onBlank={() => {
           setStartDismissed(true);
           // A blank canvas starts from the stencil list: open it and put the cursor in its search.
-          setPaletteCollapsed(false);
+          tools.open("library");
           setOpenedByHand((o) => ({ ...o, palette: true }));
           interaction.dispatch({ type: "start.blank" });
         }}
@@ -1213,6 +1349,7 @@ function CanvasInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated overlay text when the locale changes.
     [
       locale,
+      bezel,
       card,
       cardCovers,
       presenting,
@@ -1282,7 +1419,7 @@ function CanvasInner({
         colorMode={theme}
         // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
         attributionPosition="bottom-right"
-        proOptions={viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
+        proOptions={bezel || viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
         minZoom={0.15}
         maxZoom={2.5}
         snapToGrid={prefs.snap}
@@ -1321,6 +1458,7 @@ function CanvasInner({
     ),
     [
       bootstrapFit,
+      bezel,
       presenting,
       handleNodesChange,
       handleEdgesChange,
@@ -1368,84 +1506,125 @@ function CanvasInner({
             {!hideChrome && (
               <Palette
                 collapsed={paletteHidden}
+                mode={settings.libraryPinned ? "pinned" : "flyout"}
                 onToggle={togglePalette}
                 onAdd={addFromPalette}
                 onAnnotate={annotateFromPalette}
                 nodeVariant={nodeVariant}
               />
             )}
-            <div
-              className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
-              data-testid="canvas-wrap"
-              data-toast-area
-              tabIndex={-1}
-              ref={wrapper}
-              style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
-              onFocusCapture={(e) => {
-                if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
-              }}
-              onPointerDownCapture={(e) => {
-                // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
-                const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
-                if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
-                const { nodes: ns, edges: es } = store.getState();
-                boxBaseRef.current = {
-                  nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
-                  edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
-                };
-              }}
-              onPointerMove={(e) => {
-                pointer.current = { x: e.clientX, y: e.clientY };
-                sendCursor({ x: e.clientX, y: e.clientY });
-                const target =
-                  e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
-                if (controller.fitting && target) {
-                  // Hover is input too: keep the target still and arm its tooltip after
-                  // stopping the fit (whose move-start dismisses the previous tooltip).
-                  interruptFit();
-                  const id = target.dataset.testid?.slice("rf__node-".length);
-                  const node = id ? getNode(id) : undefined;
-                  if (node?.type === "diagram" && !editing)
-                    showTip(target, {
-                      nodeId: node.id,
-                      label: node.data.label || node.id,
-                      sublabel: node.data.sublabel,
-                      stencil: node.data.stencil,
-                      description: node.data.description,
-                    });
-                }
-                // Ctrl/Cmd during a box selection: only what's wholly inside.
-                containRef.current = e.ctrlKey || e.metaKey;
-              }}
-              onPointerLeave={() => {
-                pointer.current = null;
-                sendCursor(null);
-              }}
-              onDragOver={(e) => {
-                if (
-                  e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
-                  e.dataTransfer.types.includes(ANNOTATION_DND_MIME)
-                ) {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "copy";
-                }
-                if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
-              }}
-              onDragLeave={(e) => {
-                if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
-              }}
-              onDrop={onDrop}
-            >
-              {EDGE_MARKERS}
-              {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
-              {flowView}
-              <FlowGraph nodes={ariaNodes} edges={ariaEdges} />
+            {!hideChrome && toolSurface === "annotate" && (
+              <div className="annotate-flyout" data-testid="palette-annotate-flyout">
+                <AnnotateGroup
+                  items={ANNOTATE}
+                  className="is-flyout"
+                  onAdd={(kind, shape) => {
+                    annotateFromPalette(kind, shape);
+                    tools.open("closed");
+                  }}
+                />
+              </div>
+            )}
+            <div className="canvas-column">
+              <div
+                className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
+                data-testid="canvas-wrap"
+                data-toast-area
+                tabIndex={-1}
+                ref={wrapper}
+                style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
+                onFocusCapture={(e) => {
+                  if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
+                }}
+                onPointerDownCapture={(e) => {
+                  // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
+                  const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
+                  if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
+                  const { nodes: ns, edges: es } = store.getState();
+                  boxBaseRef.current = {
+                    nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
+                    edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
+                  };
+                }}
+                onPointerMove={(e) => {
+                  pointer.current = { x: e.clientX, y: e.clientY };
+                  sendCursor({ x: e.clientX, y: e.clientY });
+                  const target =
+                    e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
+                  if (target && wrapper.current) {
+                    const hoveredId = target.dataset.testid?.slice("rf__node-".length);
+                    if (hoveredId && getNode(hoveredId)?.type === "diagram")
+                      wrapper.current.dataset.detailHover = hoveredId;
+                  }
+                  if (controller.fitting && target) {
+                    // Hover is input too: keep the target still and arm its tooltip after
+                    // stopping the fit (whose move-start dismisses the previous tooltip).
+                    interruptFit();
+                    const id = target.dataset.testid?.slice("rf__node-".length);
+                    const node = id ? getNode(id) : undefined;
+                    if (node?.type === "diagram" && !editing)
+                      showTip(target, {
+                        nodeId: node.id,
+                        label: node.data.label || node.id,
+                        sublabel: node.data.sublabel,
+                        stencil: node.data.stencil,
+                        description: node.data.description,
+                      });
+                  }
+                  // Ctrl/Cmd during a box selection: only what's wholly inside.
+                  containRef.current = e.ctrlKey || e.metaKey;
+                }}
+                onPointerLeave={() => {
+                  pointer.current = null;
+                  sendCursor(null);
+                }}
+                onDragOver={(e) => {
+                  if (
+                    e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
+                    e.dataTransfer.types.includes(ANNOTATION_DND_MIME)
+                  ) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                  }
+                  if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
+                }}
+                onDragLeave={(e) => {
+                  if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
+                }}
+                onDrop={(e) => {
+                  onDrop(e);
+                  tools.open("closed");
+                }}
+              >
+                {EDGE_MARKERS}
+                {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
+                {flowView}
+                <FlowGraph nodes={ariaNodes} edges={ariaEdges} />
 
-              {overlays}
+                {overlays}
+              </div>
+              <div className="live-caption-mount" ref={setCaption} data-testid="live-caption-mount" />
             </div>
             {!hideChrome && (
               <Inspector
+                privacy={privacy}
+                diagramReset={
+                  modified &&
+                  !ownDiagram && (
+                    <button
+                      className="link-btn"
+                      data-testid="reset-diagram"
+                      onClick={reset}
+                      title={tr("canvas.discardYourEditsToThisDiagramUndoable")}
+                    >
+                      <Icon name="reset" size={13} />
+                      {tr("canvas.editedReset")}
+                    </button>
+                  )
+                }
                 editor={editor}
+                checksStore={checks}
+                checksHost={checksHost}
                 revision={hostRevision}
                 readDiagram={readInspectorDiagram}
                 meta={meta}
@@ -1454,7 +1633,7 @@ function CanvasInner({
                 selectedEdges={selectedEdges}
                 selectedAnnotations={selectedAnnotations}
                 groups={groupNodes}
-                nodeLabel={(id) => labels.get(id) ?? id}
+                nodeLabel={nodeLabel}
                 counts={inspectorCounts}
                 collapsed={inspectorHidden}
                 onResize={inspectorResize}
@@ -1471,6 +1650,7 @@ function CanvasInner({
                 findings={inspectorFindings}
               />
             )}
+            {transport === undefined && <div className="live-transport-mount is-local" ref={setLocalTransport} />}
           </div>
           {menu &&
             (menu.connected ? (

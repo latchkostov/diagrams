@@ -1,8 +1,8 @@
 {
   "smoothstep": {
-    "a->b": { "ok": true, "sides": ["right", "left"], "points": [260, 236, 760, 236], "path": "0e850e65fba4", "label": [504, 236, 95, 19], "mode": "full", "text": "Over the zone", "lines": ["Over the zone"] },
-    "c->d": { "ok": true, "sides": ["right", "left"], "points": [260, 516, 325, 516, 325, 628, 675, 628, 675, 516, 760, 516], "path": "9ff39dc60abc", "label": [500, 628, 107, 19], "mode": "full", "text": "Around the note", "lines": ["Around the note"] },
-    "e->s": { "ok": true, "sides": ["right", "left"], "points": [260, 796, 340.375, 796, 340.375, 795, 420.75, 795], "path": "61f2b047b0c7", "label": [311.1875, 796, 77, 19], "mode": "full", "text": "To a shape", "lines": ["To a shape"] },
+    "a->b": { "ok": true, "sides": ["right", "left"], "points": [260, 236, 760, 236], "path": "0e850e65fba4", "label": [504, 236, 91.85, 22], "mode": "full", "text": "Over the zone", "lines": ["Over the zone"] },
+    "c->d": { "ok": true, "sides": ["right", "left"], "points": [260, 516, 325, 516, 325, 628, 675, 628, 675, 516, 760, 516], "path": "9ff39dc60abc", "label": [500, 628, 104.82999999999998, 22], "mode": "full", "text": "Around the note", "lines": ["Around the note"] },
+    "e->s": { "ok": true, "sides": ["right", "left"], "points": [260, 796, 340.375, 796, 340.375, 795, 420.75, 795], "path": "61f2b047b0c7", "label": [311.1875, 796, 76.52999999999999, 22], "mode": "full", "text": "To a shape", "lines": ["To a shape"] },
     "s->f": { "ok": true, "sides": ["right", "left"], "points": [579.25, 795, 669.625, 795, 669.625, 796, 760, 796], "path": "ff56e420ca13" }
   },
   "bezier": {
@@ -54,7 +54,7 @@
         236
       ],
       "path": "a9260985f2ad",
-      "label": [332.98125, 236, 95, 19],
+      "label": [332.98125, 236, 91.85, 22],
       "mode": "full",
       "text": "Over the zone",
       "lines": ["Over the zone"]
@@ -107,7 +107,7 @@
         516
       ],
       "path": "2ef85835b945",
-      "label": [687.0187500000001, 516, 107, 19],
+      "label": [332.98125, 516, 104.82999999999998, 22],
       "mode": "full",
       "text": "Around the note",
       "lines": ["Around the note"]
@@ -160,7 +160,7 @@
         795
       ],
       "path": "7f2c56100220",
-      "label": [336.87351162375325, 795.537375, 77, 19],
+      "label": [336.87351162375325, 795.537375, 76.52999999999999, 22],
       "mode": "full",
       "text": "To a shape",
       "lines": ["To a shape"]
@@ -216,9 +216,9 @@
     }
   },
   "straight": {
-    "a->b": { "ok": true, "sides": ["right", "left"], "points": [260, 236, 760, 236], "path": "0e850e65fba4", "label": [504, 236, 95, 19], "mode": "full", "text": "Over the zone", "lines": ["Over the zone"] },
-    "c->d": { "ok": true, "sides": ["right", "left"], "points": [260, 516, 760, 516], "path": "5e1b3b817971", "label": [654, 516, 107, 19], "mode": "full", "text": "Around the note", "lines": ["Around the note"] },
-    "e->s": { "ok": true, "sides": ["right", "left"], "points": [260, 796, 420.75, 795], "path": "75a279b1385f", "label": [334.3751160931745, 795.5373243166832, 77, 19], "mode": "full", "text": "To a shape", "lines": ["To a shape"] },
+    "a->b": { "ok": true, "sides": ["right", "left"], "points": [260, 236, 760, 236], "path": "0e850e65fba4", "label": [504, 236, 91.85, 22], "mode": "full", "text": "Over the zone", "lines": ["Over the zone"] },
+    "c->d": { "ok": true, "sides": ["right", "left"], "points": [260, 516, 760, 516], "path": "5e1b3b817971", "label": [654, 516, 104.82999999999998, 22], "mode": "full", "text": "Around the note", "lines": ["Around the note"] },
+    "e->s": { "ok": true, "sides": ["right", "left"], "points": [260, 796, 420.75, 795], "path": "75a279b1385f", "label": [334.3751160931745, 795.5373243166832, 76.52999999999999, 22], "mode": "full", "text": "To a shape", "lines": ["To a shape"] },
     "s->f": { "ok": true, "sides": ["right", "left"], "points": [579.25, 795, 760, 796], "path": "a9b8c51d5245" }
   }
 }

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { openDiagramProperties } from "./fixtures";
 import { holdChunk, releaseAndEvaluate } from "./chunk";
 import { chunk } from "./chunk";
 import type { Page } from "@playwright/test";
@@ -371,12 +373,14 @@ test("a privacy confirmation still downloading stays with its diagram", async ({
       buffer: Buffer.from(JSON.stringify(work(title))),
     });
     await expect(page.getByTestId("diagram-title")).toHaveText(title);
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
   };
   await open("First private");
   await open("Second private");
 
   // Asked about the second; another diagram opens while the confirmation downloads.
+  await openDiagramProperties(page);
   await page.getByTestId("private-badge").click();
   await expect(page.getByTestId("lazy-dialog-loading")).toBeVisible();
   await page.goBack();
@@ -389,14 +393,19 @@ test("a privacy confirmation still downloading stays with its diagram", async ({
   await settle(page);
   // Nothing asks about (or turns off) the diagram now open, and both stay private.
   await expect(page.getByTestId("privacy-dialog")).toHaveCount(0);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.goForward();
   await expect(page.getByTestId("diagram-title")).toHaveText("Second private");
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expectNoErrors(consoleErrors);
 });
 
 test("a simulation chosen while the live session downloads runs once it arrives", async ({ page, consoleErrors }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+  });
   const session = await gate(page, SESSION);
   await gotoCanvas(page, SLUG);
   const toggle = page.getByTestId("live-toggle");
@@ -404,6 +413,13 @@ test("a simulation chosen while the live session downloads runs once it arrives"
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect.poll(session.requested).toBe(true);
   await expect(toggle).toHaveAttribute("aria-busy", "true");
+  await expect(toggle).toHaveCSS("cursor", "progress");
+  await expect(toggle).toBeFocused();
+  const exported = page.waitForEvent("download");
+  await page.keyboard.press(`${MOD}+s`);
+  const file = await exported;
+  expect(JSON.parse(readFileSync(await file.path(), "utf8")).format).toBe("diagrams/v1");
+  await expect(toggle).toBeFocused();
   await expect(page.getByTestId("live-hud")).toHaveCount(0);
 
   await page.keyboard.press(`${MOD}+k`);

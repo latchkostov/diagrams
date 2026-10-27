@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { paletteHost } from "../palette/host";
+import { ModeSwitch, HistoryButtons } from "./ModeSwitch";
+import { usePhone } from "../lib/usePhone";
 import { workChoices } from "../lib/diagramPicker";
 import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
@@ -28,6 +31,8 @@ export interface ExampleOption {
 }
 
 interface Props {
+  diagramTitle?: string;
+  documentId?: string;
   view: View;
   onView: (v: View) => void;
   exampleOptions: ExampleOption[];
@@ -48,7 +53,12 @@ interface Props {
 }
 
 export function TopBar(p: Props) {
-  const s = useSettings();
+  const phone = usePhone();
+  const live = useSyncExternalStore(paletteHost.subscribe, () => !!paletteHost.get().canvas?.live);
+  const ready = useSyncExternalStore(
+    paletteHost.subscribe,
+    () => !!paletteHost.get().canvas && (!p.documentId || paletteHost.get().canvas?.documentId === p.documentId),
+  );
   const localOptions = p.exampleOptions.filter((o) => o.localOnly);
   const choices = workChoices(p.exampleOptions, p.example);
   const canvas = p.view === "canvas";
@@ -57,55 +67,23 @@ export function TopBar(p: Props) {
   const showLab = LAB;
 
   return (
-    <header className="topbar" data-testid="topbar">
+    <header className={live ? "topbar is-live" : "topbar"} data-testid="topbar">
       <div className="brand" data-testid="brand">
         <Logo />
         <span>{BRAND_NAME}</span>
       </div>
 
-      <div className="segmented" role="tablist" aria-label={t("topbar.views")}>
+      {showLab && (
         <button
-          role="tab"
-          aria-selected={canvas}
-          className={canvas ? "is-on" : ""}
-          onClick={() => p.onView("canvas")}
-          data-testid="view-canvas"
+          className="icon-btn"
+          data-testid="view-lab"
+          aria-pressed={lab}
+          onClick={() => p.onView("lab")}
+          aria-label={t("topbar.views")}
         >
-          <Icon name="canvas" size={14} /> {t("topbar.diagram")}
+          <LabGlyph />
         </button>
-        <button
-          role="tab"
-          aria-selected={p.view === "gallery"}
-          className={p.view === "gallery" ? "is-on" : ""}
-          onClick={() => p.onView("gallery")}
-          data-testid="view-gallery"
-        >
-          <Icon name="grid" size={14} /> {t("topbar.stencils")}
-        </button>
-        <button
-          role="tab"
-          aria-selected={p.view === "tutorials"}
-          className={p.view === "tutorials" ? "is-on" : ""}
-          onClick={() => p.onView("tutorials")}
-          data-testid="view-tutorials"
-        >
-          <Icon name="checklist" size={14} /> {t("tutorials.section")}
-        </button>
-        {showLab && (
-          <button
-            role="tab"
-            aria-selected={lab}
-            className={lab ? "is-on" : ""}
-            onClick={() => p.onView("lab")}
-            data-testid="view-lab"
-            // eslint-disable-next-line local/no-literal-ui-text -- the Lab is a development tool, in English
-            title="Component lab: presets of the current code"
-          >
-            {/* eslint-disable-next-line local/no-literal-ui-text -- a development tool */}
-            <LabGlyph /> Lab
-          </button>
-        )}
-      </div>
+      )}
 
       {canvas && (
         <Menu
@@ -171,8 +149,8 @@ export function TopBar(p: Props) {
               data-testid="example-picker"
               data-diagram-slug={p.example}
             >
-              <span className="diagram-picker-title">
-                {p.exampleOptions.find((o) => o.slug === p.example)?.title ?? t("file.new")}
+              <span className="diagram-picker-title" data-testid={ready ? "diagram-title" : undefined} dir="auto">
+                {p.diagramTitle ?? p.exampleOptions.find((o) => o.slug === p.example)?.title ?? t("file.new")}
               </span>
               {p.exampleOptions.some((o) => o.slug === p.example && o.group === "examples") && (
                 <span className="example-badge" data-testid="example-badge">
@@ -189,37 +167,40 @@ export function TopBar(p: Props) {
       {canvas && !p.room && p.shared && <SharedChip {...p.shared} />}
       {canvas && !p.room && !p.shared && <SaveStatus binding={p.interop.binding} />}
 
+      {canvas && (
+        <>
+          {!phone && <HistoryButtons />}
+          <ModeSwitch />
+        </>
+      )}
       <div className="topbar-spacer" />
 
-      <div className="topbar-group" data-testid="topbar-actions">
-        <ViewMenu edges={canvas || lab} overlays={canvas} />
-        <FileMenu
-          api={p.interop}
-          canvas={canvas}
-          onNewDiagram={p.onNewDiagram}
-          onLibrary={p.onLibrary}
-          libraryCount={p.libraryCount}
-        />
-        {canvas && (
-          <button
-            className="btn btn-primary"
-            onClick={p.onPresent}
-            data-testid="present-toggle"
-            title={t("topbar.presentTitle")}
-          >
-            <Icon name="present" size={14} /> <span className="label-optional">{t("topbar.present")}</span>
-          </button>
-        )}
-        <button
-          className="icon-btn"
-          onClick={() => s.set("theme", s.theme === "dark" ? "light" : "dark")}
-          aria-label={s.theme === "dark" ? t("topbar.toLight") : t("topbar.toDark")}
-          title={s.theme === "dark" ? t("topbar.lightTheme") : t("topbar.darkTheme")}
-          data-testid="theme-toggle"
-        >
-          <Icon name={s.theme === "dark" ? "sun" : "moon"} />
-        </button>
-      </div>
+      <details className="topbar-overflow" open={phone ? undefined : true}>
+        <summary data-testid="topbar-more" aria-label={t("workbench.moreTools")}>
+          ⋯
+        </summary>
+        <div className="topbar-group" data-testid="topbar-actions">
+          {canvas && phone && <HistoryButtons />}
+          <ViewMenu edges={canvas || lab} overlays={canvas} />
+          <FileMenu
+            api={p.interop}
+            canvas={canvas}
+            onNewDiagram={p.onNewDiagram}
+            onLibrary={p.onLibrary}
+            libraryCount={p.libraryCount}
+          />
+          {canvas && (
+            <button
+              className="btn btn-primary"
+              onClick={p.onPresent}
+              data-testid="present-toggle"
+              title={t("topbar.presentTitle")}
+            >
+              <Icon name="present" size={14} /> <span className="label-optional">{t("topbar.present")}</span>
+            </button>
+          )}
+        </div>
+      </details>
     </header>
   );
 }
@@ -238,6 +219,7 @@ const edgeNames: Record<EdgeStyle, () => string> = {
 /** Look options (node renderer, edge style): one menu button instead of two selects in the bar. */
 function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
   const s = useSettings();
+  const editor = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.editor);
   return (
     <Menu
       label={t("view.menu")}
@@ -269,6 +251,15 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
         ...(overlays
           ? [
               { type: "section" as const, label: t("view.overlays") },
+              {
+                type: "item" as const,
+                testId: "view-minimap",
+                checkbox: true,
+                title: t("chrome.minimap"),
+                checked: editor?.prefs.minimap ?? false,
+                disabled: !editor,
+                onSelect: () => editor?.setPref("minimap", !editor.prefs.minimap),
+              },
               {
                 type: "item" as const,
                 testId: "capacity-overlay-toggle",
@@ -316,6 +307,35 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
               },
             ]
           : []),
+        { type: "separator" },
+        {
+          type: "item",
+          testId: "theme-toggle",
+          title: t("htmlExport.theme"),
+          submenu: () => [
+            {
+              type: "item",
+              testId: "theme-light",
+              title: t("htmlExport.light"),
+              checked: s.themePreference === "light",
+              onSelect: () => s.set("themePreference", "light"),
+            },
+            {
+              type: "item",
+              testId: "theme-dark",
+              title: t("htmlExport.dark"),
+              checked: s.themePreference === "dark",
+              onSelect: () => s.set("themePreference", "dark"),
+            },
+            {
+              type: "item",
+              testId: "theme-system",
+              title: t("workbench.systemTheme"),
+              checked: s.themePreference === "system",
+              onSelect: () => s.set("themePreference", "system"),
+            },
+          ],
+        },
       ]}
       trigger={(props) => (
         <button

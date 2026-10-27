@@ -1,6 +1,6 @@
 {
   "smoothstep": {
-    "demand": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 360, 156], "path": "b262686bdfc3", "label": [284, 156, 53, 19], "mode": "full", "text": "secret", "lines": ["secret"] },
+    "demand": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 360, 156], "path": "b262686bdfc3", "label": [284, 156, 50.85, 22], "mode": "full", "text": "secret", "lines": ["secret"] },
     "credential": { "ok": true, "sides": ["right", "left"], "points": [580, 156, 720, 156], "path": "51c21f2cf583", "label": [644, 156, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   },
   "bezier": {
@@ -52,7 +52,7 @@
         156
       ],
       "path": "4e1d92d5fe69",
-      "label": [286.95045000000005, 156, 53, 19],
+      "label": [286.95045000000005, 156, 50.85, 22],
       "mode": "full",
       "text": "secret",
       "lines": ["secret"]
@@ -113,7 +113,7 @@
     }
   },
   "straight": {
-    "demand": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 360, 156], "path": "b262686bdfc3", "label": [284, 156, 53, 19], "mode": "full", "text": "secret", "lines": ["secret"] },
+    "demand": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 360, 156], "path": "b262686bdfc3", "label": [284, 156, 50.85, 22], "mode": "full", "text": "secret", "lines": ["secret"] },
     "credential": { "ok": true, "sides": ["right", "left"], "points": [580, 156, 720, 156], "path": "51c21f2cf583", "label": [644, 156, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   }
 }

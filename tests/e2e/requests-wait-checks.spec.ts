@@ -1,4 +1,13 @@
-import { test, expect, gotoCanvas, gotoLive, savedDiagram, STORAGE_KEYS, pauseClock } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  savedDiagram,
+  STORAGE_KEYS,
+  pauseClock,
+  openCheckFinding,
+} from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
@@ -70,7 +79,10 @@ for (const locale of ["en", "ar", "en-XA"]) {
     const primary = page.getByTestId("check-fix-blocked-threads:caller");
     const blind = page.getByTestId("check-fix-scaling-blind:caller");
     await expect(primary).toBeEnabled();
-    await expect(blind).toHaveText((await primary.innerText()).trim());
+    const primaryText = (await primary.innerText()).trim();
+    await openCheckFinding(page, "scaling-blind:caller");
+    await expect(blind).toHaveText(primaryText);
+    await openCheckFinding(page, "blocked-threads:caller");
     const timeout = page.getByTestId("check-row-call-timeout:call");
     await expect(timeout).toBeVisible();
     if (locale === "en") await expect(primary).toContainText("Scale on busy threads");
@@ -89,6 +101,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await expect(page.getByTestId("check-select-call-timeout:call")).toBeFocused();
     await page.getByTestId("check-fix-undo").focus();
     await page.keyboard.press("Enter");
+    await openCheckFinding(page, "blocked-threads:caller");
     await expect(primary).toBeEnabled();
     await primary.focus();
     await page.keyboard.press("Enter");
@@ -231,6 +244,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await page.getByTestId("live-play").click();
     await page.clock.runFor(1000);
     await page.getByTestId("live-play").click();
+    await page.getByTestId("live-expectations-summary").click();
     for (const id of ["busy", "waiting"]) {
       const chip = page.getByTestId(`expectation-${id}`);
       await expect(chip).toHaveAttribute("data-status", "pass");

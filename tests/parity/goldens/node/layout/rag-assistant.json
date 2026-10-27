@@ -1,9 +1,9 @@
 {
   "autoLayout": {
-    "LR": { "user": [40, 220], "docs": [40, 340], "rag-api": [433, 220], "ingest-q": [433, 340], "feedback": [823, 100], "cache": [823, 220], "embed-worker": [823, 340], "ingest-dlq": [823, 460], "eval-job": [1213, 40], "vector-db": [1213, 160], "vault": [1213, 280], "embeddings": [1213, 400], "ingest-triage": [1213, 520], "quality": [1606, 220], "llm": [1606, 340] },
+    "LR": { "user": [40, 220], "docs": [40, 340], "rag-api": [436.37, 220], "ingest-q": [436.37, 340], "feedback": [829.36, 100], "cache": [829.36, 220], "embed-worker": [829.36, 340], "ingest-dlq": [829.36, 460], "eval-job": [1220.44, 40], "vector-db": [1220.44, 160], "vault": [1220.44, 280], "embeddings": [1220.44, 400], "ingest-triage": [1220.44, 520], "quality": [1614.6, 220], "llm": [1614.6, 340] },
     "TB": { "user": [510, 40], "docs": [820, 40], "rag-api": [510, 200], "ingest-q": [820, 200], "cache": [200, 360], "feedback": [510, 360], "embed-worker": [820, 360], "ingest-dlq": [1140, 360], "eval-job": [40, 520], "vector-db": [350, 520], "vault": [670, 520], "embeddings": [980, 520], "ingest-triage": [1290, 520], "llm": [510, 680], "quality": [820, 680] }
   },
-  "tidy": { "user": [40, 220], "rag-api": [433, 220], "cache": [823, 220], "feedback": [823, 100], "llm": [1606, 340], "vector-db": [1213, 160], "eval-job": [1213, 40], "quality": [1606, 220], "docs": [40, 340], "ingest-q": [433, 340], "embed-worker": [823, 340], "embeddings": [1213, 400], "vault": [1213, 280], "ingest-dlq": [823, 460], "ingest-triage": [1213, 520] },
+  "tidy": { "user": [40, 220], "rag-api": [436, 220], "cache": [829, 220], "feedback": [829, 100], "llm": [1615, 340], "vector-db": [1220, 160], "eval-job": [1220, 40], "quality": [1615, 220], "docs": [40, 340], "ingest-q": [436, 340], "embed-worker": [829, 340], "embeddings": [1220, 400], "vault": [1220, 280], "ingest-dlq": [829, 460], "ingest-triage": [1220, 520] },
   "arrange": {
     "alignLeft": { "user": [40, 160], "rag-api": [40, 160], "cache": [40, 320], "feedback": [40, 40], "llm": [40, 160], "vector-db": [40, 320], "eval-job": [40, 40], "quality": [40, 40], "docs": [40, 480], "ingest-q": [40, 480], "embed-worker": [40, 480], "embeddings": [40, 480], "vault": [40, 320], "ingest-dlq": [40, 640], "ingest-triage": [40, 640] },
     "alignMiddle": { "user": [40, 340], "rag-api": [420, 340], "cache": [420, 340], "feedback": [800, 340], "llm": [800, 340], "vector-db": [800, 340], "eval-job": [1180, 340], "quality": [1560, 340], "docs": [40, 340], "ingest-q": [420, 340], "embed-worker": [800, 340], "embeddings": [1180, 340], "vault": [1180, 340], "ingest-dlq": [420, 340], "ingest-triage": [800, 340] },
@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": [],
     "placedNotes": [],
-    "nodes": { "user": [40, 220], "rag-api": [433, 220], "cache": [823, 220], "feedback": [823, 100], "llm": [1606, 340], "vector-db": [1213, 160], "eval-job": [1213, 40], "quality": [1606, 220], "docs": [40, 340], "ingest-q": [433, 340], "embed-worker": [823, 340], "embeddings": [1213, 400], "vault": [1213, 280], "ingest-dlq": [823, 460], "ingest-triage": [1213, 520] },
+    "nodes": { "user": [40, 220], "rag-api": [436.37, 220], "cache": [829.36, 220], "feedback": [829.36, 100], "llm": [1614.6, 340], "vector-db": [1220.44, 160], "eval-job": [1220.44, 40], "quality": [1614.6, 220], "docs": [40, 340], "ingest-q": [436.37, 340], "embed-worker": [829.36, 340], "embeddings": [1220.44, 400], "vault": [1220.44, 280], "ingest-dlq": [829.36, 460], "ingest-triage": [1220.44, 520] },
     "groups": {}
   }
 }

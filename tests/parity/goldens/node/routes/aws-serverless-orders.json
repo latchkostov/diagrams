@@ -1,29 +1,29 @@
 {
   "smoothstep": {
-    "client-to-apigw": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 420, 196], "path": "beafdcd3b17b", "label": [334, 196, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "apigw-to-create-order": { "ok": true, "sides": ["right", "left"], "points": [661, 196, 800, 196], "path": "4d60d8c6ec24", "label": [724.5, 196, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "create-order-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1020, 196, 1100, 196, 1100, 189, 1180, 189], "path": "d334129b4f06", "label": [1061, 196, 59, 19], "mode": "full", "text": "PutItem", "lines": ["PutItem"] },
-    "orders-table-to-stream-fn": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 232, 1290, 400], "path": "a02bc3b2d5c9", "label": [1290, 310, 113, 19], "mode": "full", "text": "DynamoDB Streams", "lines": ["DynamoDB Streams"] },
-    "stream-fn-to-bus": { "ok": true, "sides": ["right", "left"], "points": [1400, 436, 1560, 436], "path": "e93b312a7bab", "label": [1474, 436, 71, 19], "mode": "full", "text": "PutEvents", "lines": ["PutEvents"] },
-    "bus-to-sfn": { "ok": true, "sides": ["top", "bottom"], "points": [1670, 400, 1670, 316, 1671, 316, 1671, 232], "path": "18c71980689b", "label": [1670, 357, 119, 19], "mode": "full", "text": "Rule: OrderPlaced", "lines": ["Rule: OrderPlaced"] },
-    "sfn-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [1782, 196, 1861, 196, 1861, 76, 1940, 76], "path": "66c481dcebc4", "label": [1861, 136, 89, 19], "mode": "full", "text": "Task: charge", "lines": ["Task: charge"] },
-    "sfn-to-orders-table": { "ok": true, "sides": ["left", "right"], "points": [1560, 196, 1400, 196], "path": "3577d40cc2f4", "label": [1486, 196, 113, 19], "mode": "full", "text": "UpdateItem: PAID", "lines": ["UpdateItem: PAID"] },
-    "bus-to-fulfillment-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 429, 1861, 429, 1861, 443, 1940, 443], "path": "1f76c839400c", "label": [1841.5, 429, 107, 19], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
-    "fulfillment-q-to-fulfillment-fn": { "ok": true, "sides": ["right", "left"], "points": [2160, 436, 2320, 436], "path": "b4cb53fc17e0", "label": [2234, 436, 89, 19], "mode": "full", "text": "Event source", "lines": ["Event source"] },
-    "fulfillment-fn-to-three-pl": { "ok": true, "sides": ["top", "bottom"], "points": [2446.5, 400, 2446.5, 256, 2430, 256, 2430, 112], "path": "67c8d195a63e", "label": [2446.5, 327, 107, 19], "mode": "full", "text": "Create shipment", "lines": ["Create shipment"] },
-    "fulfillment-q-to-dlq": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 400, 2050, 376, 2060.5, 376, 2060.5, 352], "path": "7b5fbd7ea953", "label": [2050, 386, 113, 19], "mode": "full", "text": "After 3 receives", "lines": ["After 3 receives"] },
-    "dlq-to-fulfillment-q": { "ok": true, "sides": ["left", "left"], "points": [1940, 316, 1902, 316, 1902, 429, 1940, 429], "path": "2dd08088caa3", "label": [1902, 372.5, 59, 19], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
-    "bus-to-sns": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 472, 1670, 556, 1671, 556, 1671, 640], "path": "d3917596098b", "label": [1670, 515, 107, 19], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
-    "sns-to-email": { "ok": true, "sides": ["right", "left"], "points": [1782, 669, 1861, 669, 1861, 616, 1940, 616], "path": "f546c24bc302", "label": [1822.5, 669, 47, 19], "mode": "full", "text": "Email", "lines": ["Email"] },
-    "sns-to-sms": { "ok": true, "sides": ["right", "left"], "points": [1782, 683, 1872, 683, 1872, 736, 1940, 736], "path": "ba33b7485ff5", "label": [1899, 736, 35, 19], "mode": "full", "text": "SMS", "lines": ["SMS"] },
-    "apigw-to-cognito": { "ok": true, "sides": ["bottom", "top"], "points": [540.5, 232, 540.5, 316, 541, 384, 541, 400], "path": "5c82d92eeb8c", "label": [540.5, 275, 117, 19], "mode": "full", "text": "JWT authorizer", "lines": ["JWT authorizer"], "glyph": true },
-    "bus-to-archive-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 443, 1850, 443, 1850, 896, 1940, 896], "path": "bc91abac960f", "label": [1850, 599.5, 113, 19], "mode": "full", "text": "Rule: all orders", "lines": ["Rule: all orders"] },
-    "archive-q-to-archive-fn": { "ok": true, "sides": ["right", "left"], "points": [2200, 896, 2320, 896], "path": "9519a40abf84", "label": [2254, 896, 89, 19], "mode": "full", "text": "Event source", "lines": ["Event source"] },
-    "archive-fn-to-archive-s3": { "ok": true, "sides": ["bottom", "top"], "points": [2430, 932, 2430, 1016, 2434, 1016, 2434, 1100], "path": "e64a880edbd2", "label": [2430, 975, 71, 19], "mode": "full", "text": "PutObject", "lines": ["PutObject"] },
-    "archive-q-to-archive-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2077, 932, 2077, 1016, 2064, 1016, 2064, 1100], "path": "e0b7c9f5354d", "label": [2077, 975, 113, 19], "mode": "full", "text": "After 5 receives", "lines": ["After 5 receives"] },
-    "archive-dlq-to-archive-q": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 1100, 2050, 1016, 2063, 1016, 2063, 932], "path": "b284f3d16e15", "label": [2050, 1057, 59, 19], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
-    "schedule-to-reconcile": { "ok": true, "sides": ["right", "left"], "points": [640, 676, 800, 676], "path": "2ad52fe37a63", "label": [714, 676, 107, 19], "mode": "full", "text": "Scheduled event", "lines": ["Scheduled event"] },
-    "reconcile-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1034, 676, 1107, 676, 1107, 203, 1180, 203], "path": "620a5c136079", "label": [1107, 439.5, 89, 19], "mode": "full", "text": "Query PLACED", "lines": ["Query PLACED"] }
+    "client-to-apigw": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 420, 196], "path": "beafdcd3b17b", "label": [334, 196, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "apigw-to-create-order": { "ok": true, "sides": ["right", "left"], "points": [661, 196, 800, 196], "path": "4d60d8c6ec24", "label": [724.5, 196, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "create-order-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1020, 196, 1100, 196, 1100, 189, 1180, 189], "path": "d334129b4f06", "label": [1061, 196, 60.7, 22], "mode": "full", "text": "PutItem", "lines": ["PutItem"] },
+    "orders-table-to-stream-fn": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 232, 1290, 400], "path": "a02bc3b2d5c9", "label": [1290, 310, 129.01999999999998, 22], "mode": "full", "text": "DynamoDB Streams", "lines": ["DynamoDB Streams"] },
+    "stream-fn-to-bus": { "ok": true, "sides": ["right", "left"], "points": [1400, 436, 1560, 436], "path": "e93b312a7bab", "label": [1474, 436, 72.75, 22], "mode": "full", "text": "PutEvents", "lines": ["PutEvents"] },
+    "bus-to-sfn": { "ok": true, "sides": ["top", "bottom"], "points": [1670, 400, 1670, 316, 1671, 316, 1671, 232], "path": "18c71980689b", "label": [1670, 357, 115.04999999999998, 22], "mode": "full", "text": "Rule: OrderPlaced", "lines": ["Rule: OrderPlaced"] },
+    "sfn-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [1782, 196, 1861, 196, 1861, 76, 1940, 76], "path": "66c481dcebc4", "label": [1861, 136, 86.78999999999999, 22], "mode": "full", "text": "Task: charge", "lines": ["Task: charge"] },
+    "sfn-to-orders-table": { "ok": true, "sides": ["left", "right"], "points": [1560, 196, 1400, 196], "path": "3577d40cc2f4", "label": [1486, 196, 114.24, 22], "mode": "full", "text": "UpdateItem: PAID", "lines": ["UpdateItem: PAID"] },
+    "bus-to-fulfillment-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 429, 1861, 429, 1861, 443, 1940, 443], "path": "1f76c839400c", "label": [1841.5, 429, 102.21999999999998, 22], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
+    "fulfillment-q-to-fulfillment-fn": { "ok": true, "sides": ["right", "left"], "points": [2160, 436, 2320, 436], "path": "b4cb53fc17e0", "label": [2234, 436, 87.56, 22], "mode": "full", "text": "Event source", "lines": ["Event source"] },
+    "fulfillment-fn-to-three-pl": { "ok": true, "sides": ["top", "bottom"], "points": [2446.5, 400, 2446.5, 256, 2430, 256, 2430, 112], "path": "67c8d195a63e", "label": [2446.5, 327, 108.41999999999999, 22], "mode": "full", "text": "Create shipment", "lines": ["Create shipment"] },
+    "fulfillment-q-to-dlq": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 400, 2050, 376, 2060.5, 376, 2060.5, 352], "path": "7b5fbd7ea953", "label": [2055.25, 376, 101.42, 22], "mode": "full", "text": "After 3 receives", "lines": ["After 3 receives"] },
+    "dlq-to-fulfillment-q": { "ok": true, "sides": ["left", "left"], "points": [1940, 316, 1902, 316, 1902, 429, 1940, 429], "path": "2dd08088caa3", "label": [1902, 372.5, 58.480000000000004, 22], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
+    "bus-to-sns": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 472, 1670, 556, 1671, 556, 1671, 640], "path": "d3917596098b", "label": [1670, 515, 102.21999999999998, 22], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
+    "sns-to-email": { "ok": true, "sides": ["right", "left"], "points": [1782, 669, 1861, 669, 1861, 616, 1940, 616], "path": "f546c24bc302", "label": [1822.5, 669, 48, 22], "mode": "full", "text": "Email", "lines": ["Email"] },
+    "sns-to-sms": { "ok": true, "sides": ["right", "left"], "points": [1782, 683, 1872, 683, 1872, 736, 1940, 736], "path": "ba33b7485ff5", "label": [1899, 736, 42.09, 22], "mode": "full", "text": "SMS", "lines": ["SMS"] },
+    "apigw-to-cognito": { "ok": true, "sides": ["bottom", "top"], "points": [540.5, 232, 540.5, 316, 541, 384, 541, 400], "path": "5c82d92eeb8c", "label": [540.5, 275, 114.65999999999998, 22], "mode": "full", "text": "JWT authorizer", "lines": ["JWT authorizer"], "glyph": true },
+    "bus-to-archive-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 443, 1850, 443, 1850, 896, 1940, 896], "path": "bc91abac960f", "label": [1850, 599.5, 96.89999999999999, 22], "mode": "full", "text": "Rule: all orders", "lines": ["Rule: all orders"] },
+    "archive-q-to-archive-fn": { "ok": true, "sides": ["right", "left"], "points": [2200, 896, 2320, 896], "path": "9519a40abf84", "label": [2254, 896, 87.56, 22], "mode": "full", "text": "Event source", "lines": ["Event source"] },
+    "archive-fn-to-archive-s3": { "ok": true, "sides": ["bottom", "top"], "points": [2430, 932, 2430, 1016, 2434, 1016, 2434, 1100], "path": "e64a880edbd2", "label": [2430, 975, 72, 22], "mode": "full", "text": "PutObject", "lines": ["PutObject"] },
+    "archive-q-to-archive-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2077, 932, 2077, 1016, 2064, 1016, 2064, 1100], "path": "e0b7c9f5354d", "label": [2077, 975, 101.42, 22], "mode": "full", "text": "After 5 receives", "lines": ["After 5 receives"] },
+    "archive-dlq-to-archive-q": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 1100, 2050, 1016, 2063, 1016, 2063, 932], "path": "b284f3d16e15", "label": [2050, 1057, 58.480000000000004, 22], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
+    "schedule-to-reconcile": { "ok": true, "sides": ["right", "left"], "points": [640, 676, 800, 676], "path": "2ad52fe37a63", "label": [714, 676, 107.63, 22], "mode": "full", "text": "Scheduled event", "lines": ["Scheduled event"] },
+    "reconcile-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1034, 676, 1107, 676, 1107, 203, 1180, 203], "path": "620a5c136079", "label": [1107, 439.5, 98.97999999999999, 22], "mode": "full", "text": "Query PLACED", "lines": ["Query PLACED"] }
   },
   "bezier": {
     "client-to-apigw": {
@@ -74,7 +74,7 @@
         196
       ],
       "path": "6c5d7b88c8c5",
-      "label": [336.51480000000004, 196, 47, 19],
+      "label": [336.51480000000004, 196, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -127,7 +127,7 @@
         196
       ],
       "path": "3a05da87007c",
-      "label": [727.4722325, 196, 89, 19],
+      "label": [727.4722325, 196, 90.3, 22],
       "mode": "full",
       "text": "POST /orders",
       "lines": ["POST /orders"]
@@ -180,7 +180,7 @@
         189
       ],
       "path": "943b98fe555a",
-      "label": [1096.51718646015, 192.761625, 59, 19],
+      "label": [1096.51718646015, 192.761625, 60.7, 22],
       "mode": "full",
       "text": "PutItem",
       "lines": ["PutItem"]
@@ -233,7 +233,7 @@
         400
       ],
       "path": "71c80c970842",
-      "label": [1290, 312.34054000000003, 113, 19],
+      "label": [1290, 312.34054000000003, 129.01999999999998, 22],
       "mode": "full",
       "text": "DynamoDB Streams",
       "lines": ["DynamoDB Streams"]
@@ -286,7 +286,7 @@
         436
       ],
       "path": "ffcd65a8fbec",
-      "label": [1476.5148, 436.00000000000006, 71, 19],
+      "label": [1476.5148, 436.00000000000006, 72.75, 22],
       "mode": "full",
       "text": "PutEvents",
       "lines": ["PutEvents"]
@@ -339,7 +339,7 @@
         232
       ],
       "path": "9d7067c23696",
-      "label": [1670.4626250000001, 319.65941359416104, 119, 19],
+      "label": [1670.4626250000001, 319.65941359416104, 115.04999999999998, 22],
       "mode": "full",
       "text": "Rule: OrderPlaced",
       "lines": ["Rule: OrderPlaced"]
@@ -392,7 +392,7 @@
         76
       ],
       "path": "3fe63836a7c9",
-      "label": [1858.188358585168, 140.485, 89, 19],
+      "label": [1858.188358585168, 140.485, 86.78999999999999, 22],
       "mode": "full",
       "text": "Task: charge",
       "lines": ["Task: charge"]
@@ -445,7 +445,7 @@
         196
       ],
       "path": "a498cdd11792",
-      "label": [1476.5148000000002, 196, 113, 19],
+      "label": [1476.5148000000002, 196, 114.24, 22],
       "mode": "full",
       "text": "UpdateItem: PAID",
       "lines": ["UpdateItem: PAID"]
@@ -498,7 +498,7 @@
         443
       ],
       "path": "be422eac0dd9",
-      "label": [1856.524332195821, 435.47675000000004, 107, 19],
+      "label": [1863.4756678041792, 436.52325, 102.21999999999998, 22],
       "mode": "full",
       "text": "Rule: OrderPaid",
       "lines": ["Rule: OrderPaid"]
@@ -551,7 +551,7 @@
         436
       ],
       "path": "3ffc8194890d",
-      "label": [2236.5148, 436.00000000000006, 89, 19],
+      "label": [2236.5148, 436.00000000000006, 87.56, 22],
       "mode": "full",
       "text": "Event source",
       "lines": ["Event source"]
@@ -604,7 +604,7 @@
         112
       ],
       "path": "44325e77e5a5",
-      "label": [2432.1470625, 183.96069622066034, 107, 19],
+      "label": [2432.1470625, 183.96069622066034, 108.41999999999999, 22],
       "mode": "full",
       "text": "Create shipment",
       "lines": ["Create shipment"]
@@ -657,7 +657,7 @@
         352
       ],
       "path": "e577f69220cf",
-      "label": [2051.3663125000003, 383.50750000000005, 113, 19],
+      "label": [2051.3663125000003, 383.50750000000005, 101.42, 22],
       "mode": "full",
       "text": "After 3 receives",
       "lines": ["After 3 receives"]
@@ -710,7 +710,7 @@
         429
       ],
       "path": "70e68b4f074d",
-      "label": [1904.5829750000003, 368.276625, 59, 19],
+      "label": [1904.5829750000003, 368.276625, 58.480000000000004, 22],
       "mode": "full",
       "text": "Redrive",
       "lines": ["Redrive"]
@@ -763,7 +763,7 @@
         640
       ],
       "path": "3f5918f618a1",
-      "label": [1670.4626250000001, 552.3405864058391, 107, 19],
+      "label": [1670.4626250000001, 552.3405864058391, 102.21999999999998, 22],
       "mode": "full",
       "text": "Rule: OrderPaid",
       "lines": ["Rule: OrderPaid"]
@@ -816,7 +816,7 @@
         616
       ],
       "path": "409c485b2761",
-      "label": [1891.9301051515245, 625.8646249999999, 47, 19],
+      "label": [1891.9301051515245, 625.8646249999999, 48, 22],
       "mode": "full",
       "text": "Email",
       "lines": ["Email"]
@@ -869,7 +869,7 @@
         736
       ],
       "path": "07b0c8de6fb3",
-      "label": [1877.7285497826426, 719.205625, 35, 19],
+      "label": [1877.7285497826426, 719.205625, 42.09, 22],
       "mode": "full",
       "text": "SMS",
       "lines": ["SMS"]
@@ -922,7 +922,7 @@
         400
       ],
       "path": "eb6e684df7e9",
-      "label": [540.7686874999999, 319.65944839846316, 117, 19],
+      "label": [540.7686874999999, 319.65944839846316, 114.65999999999998, 22],
       "mode": "full",
       "text": "JWT authorizer",
       "lines": ["JWT authorizer"],
@@ -976,7 +976,7 @@
         896
       ],
       "path": "ed2847afdd35",
-      "label": [1865.8851883914972, 586.5443750000001, 113, 19],
+      "label": [1865.8851883914972, 586.5443750000001, 96.89999999999999, 22],
       "mode": "full",
       "text": "Rule: all orders",
       "lines": ["Rule: all orders"]
@@ -1029,7 +1029,7 @@
         896
       ],
       "path": "eccac7c0005f",
-      "label": [2257.3861, 896, 89, 19],
+      "label": [2257.3861, 896, 87.56, 22],
       "mode": "full",
       "text": "Event source",
       "lines": ["Event source"]
@@ -1082,7 +1082,7 @@
         1100
       ],
       "path": "7f9bfc56b727",
-      "label": [2431.8505, 1012.3412823948003, 71, 19],
+      "label": [2431.8505, 1012.3412823948003, 72, 22],
       "mode": "full",
       "text": "PutObject",
       "lines": ["PutObject"]
@@ -1135,7 +1135,7 @@
         1100
       ],
       "path": "04ac091ed1ab",
-      "label": [2072.8806250000002, 997.5756817403924, 113, 19],
+      "label": [2072.8806250000002, 997.5756817403924, 101.42, 22],
       "mode": "full",
       "text": "After 5 receives",
       "lines": ["After 5 receives"]
@@ -1188,7 +1188,7 @@
         932
       ],
       "path": "d5a483297e74",
-      "label": [2056.014125, 1019.6516290488197, 59, 19],
+      "label": [2054.1193749999998, 1034.4243182596074, 58.480000000000004, 22],
       "mode": "full",
       "text": "Redrive",
       "lines": ["Redrive"]
@@ -1241,7 +1241,7 @@
         676
       ],
       "path": "23891d2e7a6a",
-      "label": [716.5148, 676, 107, 19],
+      "label": [716.5148, 676, 107.63, 22],
       "mode": "full",
       "text": "Scheduled event",
       "lines": ["Scheduled event"]
@@ -1294,36 +1294,36 @@
         203
       ],
       "path": "0d39ffcff8f1",
-      "label": [1109.2618524935724, 457.1783750000001, 89, 19],
+      "label": [1109.2618524935724, 457.1783750000001, 98.97999999999999, 22],
       "mode": "full",
       "text": "Query PLACED",
       "lines": ["Query PLACED"]
     }
   },
   "straight": {
-    "client-to-apigw": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 420, 196], "path": "beafdcd3b17b", "label": [334, 196, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "apigw-to-create-order": { "ok": true, "sides": ["right", "left"], "points": [661, 196, 800, 196], "path": "4d60d8c6ec24", "label": [724.5, 196, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "create-order-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1020, 196, 1180, 189], "path": "bdbc7b5830a1", "label": [1094.005733957447, 192.7622491393617, 59, 19], "mode": "full", "text": "PutItem", "lines": ["PutItem"] },
-    "orders-table-to-stream-fn": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 232, 1290, 400], "path": "a02bc3b2d5c9", "label": [1290, 310, 113, 19], "mode": "full", "text": "DynamoDB Streams", "lines": ["DynamoDB Streams"] },
-    "stream-fn-to-bus": { "ok": true, "sides": ["right", "left"], "points": [1400, 436, 1560, 436], "path": "e93b312a7bab", "label": [1474, 436, 71, 19], "mode": "full", "text": "PutEvents", "lines": ["PutEvents"] },
-    "bus-to-sfn": { "ok": true, "sides": ["top", "bottom"], "points": [1670, 400, 1671, 232], "path": "1fa894a16f51", "label": [1670.4642863469624, 321.99989371030745, 119, 19], "mode": "full", "text": "Rule: OrderPlaced", "lines": ["Rule: OrderPlaced"] },
-    "sfn-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [1782, 196, 1940, 76], "path": "fed5cbecd245", "label": [1856.2218615920353, 139.62896587946676, 89, 19], "mode": "full", "text": "Task: charge", "lines": ["Task: charge"] },
-    "sfn-to-orders-table": { "ok": true, "sides": ["left", "right"], "points": [1560, 196, 1400, 196], "path": "3577d40cc2f4", "label": [1486, 196, 113, 19], "mode": "full", "text": "UpdateItem: PAID", "lines": ["UpdateItem: PAID"] },
-    "bus-to-fulfillment-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 429, 1940, 443], "path": "03afb8dcda76", "label": [1854.0228376950233, 435.4769982983145, 107, 19], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
-    "fulfillment-q-to-fulfillment-fn": { "ok": true, "sides": ["right", "left"], "points": [2160, 436, 2320, 436], "path": "b4cb53fc17e0", "label": [2234, 436, 89, 19], "mode": "full", "text": "Event source", "lines": ["Event source"] },
-    "fulfillment-fn-to-three-pl": { "ok": true, "sides": ["top", "bottom"], "points": [2446.5, 400, 2430, 112], "path": "4b93a682ab2f", "label": [2438.5931872336723, 261.9901771695539, 107, 19], "mode": "full", "text": "Create shipment", "lines": ["Create shipment"] },
-    "fulfillment-q-to-dlq": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 400, 2060.5, 352], "path": "44bffe755362", "label": [2054.5334843940273, 379.2754999130187, 113, 19], "mode": "full", "text": "After 3 receives", "lines": ["After 3 receives"] },
-    "dlq-to-fulfillment-q": { "ok": true, "sides": ["left", "left"], "points": [1940, 316, 1940, 429], "path": "a6f5dfe30789", "label": [1940, 366.5, 59, 19], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
-    "bus-to-sns": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 472, 1671, 640], "path": "06614d4cbf0e", "label": [1670.4642863469624, 550.0001062896926, 107, 19], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
-    "sns-to-email": { "ok": true, "sides": ["right", "left"], "points": [1782, 669, 1940, 616], "path": "97510561fcf7", "label": [1883.7539569244468, 634.8673435633184, 47, 19], "mode": "full", "text": "Email", "lines": ["Email"] },
-    "sns-to-sms": { "ok": true, "sides": ["right", "left"], "points": [1782, 683, 1940, 736], "path": "9a8e1508c9bc", "label": [1845.830695383702, 704.4115623755456, 35, 19], "mode": "full", "text": "SMS", "lines": ["SMS"] },
-    "apigw-to-cognito": { "ok": true, "sides": ["bottom", "top"], "points": [540.5, 232, 541, 400], "path": "abe46fc1b2d2", "label": [540.732142936229, 310.0000265729527, 117, 19], "mode": "full", "text": "JWT authorizer", "lines": ["JWT authorizer"], "glyph": true },
-    "bus-to-archive-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 443, 1940, 896], "path": "8bdd190176cb", "label": [1861.3321514575528, 673.271653814196, 113, 19], "mode": "full", "text": "Rule: all orders", "lines": ["Rule: all orders"] },
-    "archive-q-to-archive-fn": { "ok": true, "sides": ["right", "left"], "points": [2200, 896, 2320, 896], "path": "9519a40abf84", "label": [2254, 896, 89, 19], "mode": "full", "text": "Event source", "lines": ["Event source"] },
-    "archive-fn-to-archive-s3": { "ok": true, "sides": ["bottom", "top"], "points": [2430, 932, 2434, 1100], "path": "312c3579ff23", "label": [2431.857183332322, 1010.0016999575352, 71, 19], "mode": "full", "text": "PutObject", "lines": ["PutObject"] },
-    "archive-q-to-archive-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2077, 932, 2064, 1100], "path": "3f114361ed2b", "label": [2071.734405061281, 1000.0476884388286, 113, 19], "mode": "full", "text": "After 5 receives", "lines": ["After 5 receives"] },
-    "archive-dlq-to-archive-q": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 1100, 2063, 932], "path": "b401327eddaf", "label": [2056.0370981020196, 1021.9821168354392, 59, 19], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
-    "schedule-to-reconcile": { "ok": true, "sides": ["right", "left"], "points": [640, 676, 800, 676], "path": "2ad52fe37a63", "label": [714, 676, 107, 19], "mode": "full", "text": "Scheduled event", "lines": ["Scheduled event"] },
-    "reconcile-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1034, 676, 1180, 203], "path": "51179862c552", "label": [1105.2303752510413, 445.2330993579278, 89, 19], "mode": "full", "text": "Query PLACED", "lines": ["Query PLACED"] }
+    "client-to-apigw": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 420, 196], "path": "beafdcd3b17b", "label": [334, 196, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "apigw-to-create-order": { "ok": true, "sides": ["right", "left"], "points": [661, 196, 800, 196], "path": "4d60d8c6ec24", "label": [724.5, 196, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "create-order-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1020, 196, 1180, 189], "path": "bdbc7b5830a1", "label": [1094.005733957447, 192.7622491393617, 60.7, 22], "mode": "full", "text": "PutItem", "lines": ["PutItem"] },
+    "orders-table-to-stream-fn": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 232, 1290, 400], "path": "a02bc3b2d5c9", "label": [1290, 310, 129.01999999999998, 22], "mode": "full", "text": "DynamoDB Streams", "lines": ["DynamoDB Streams"] },
+    "stream-fn-to-bus": { "ok": true, "sides": ["right", "left"], "points": [1400, 436, 1560, 436], "path": "e93b312a7bab", "label": [1474, 436, 72.75, 22], "mode": "full", "text": "PutEvents", "lines": ["PutEvents"] },
+    "bus-to-sfn": { "ok": true, "sides": ["top", "bottom"], "points": [1670, 400, 1671, 232], "path": "1fa894a16f51", "label": [1670.4642863469624, 321.99989371030745, 115.04999999999998, 22], "mode": "full", "text": "Rule: OrderPlaced", "lines": ["Rule: OrderPlaced"] },
+    "sfn-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [1782, 196, 1940, 76], "path": "fed5cbecd245", "label": [1856.2218615920353, 139.62896587946676, 86.78999999999999, 22], "mode": "full", "text": "Task: charge", "lines": ["Task: charge"] },
+    "sfn-to-orders-table": { "ok": true, "sides": ["left", "right"], "points": [1560, 196, 1400, 196], "path": "3577d40cc2f4", "label": [1486, 196, 114.24, 22], "mode": "full", "text": "UpdateItem: PAID", "lines": ["UpdateItem: PAID"] },
+    "bus-to-fulfillment-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 429, 1940, 443], "path": "03afb8dcda76", "label": [1854.0228376950233, 435.4769982983145, 102.21999999999998, 22], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
+    "fulfillment-q-to-fulfillment-fn": { "ok": true, "sides": ["right", "left"], "points": [2160, 436, 2320, 436], "path": "b4cb53fc17e0", "label": [2234, 436, 87.56, 22], "mode": "full", "text": "Event source", "lines": ["Event source"] },
+    "fulfillment-fn-to-three-pl": { "ok": true, "sides": ["top", "bottom"], "points": [2446.5, 400, 2430, 112], "path": "4b93a682ab2f", "label": [2438.5931872336723, 261.9901771695539, 108.41999999999999, 22], "mode": "full", "text": "Create shipment", "lines": ["Create shipment"] },
+    "fulfillment-q-to-dlq": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 400, 2060.5, 352], "path": "44bffe755362", "label": [2054.5334843940273, 379.2754999130187, 101.42, 22], "mode": "full", "text": "After 3 receives", "lines": ["After 3 receives"] },
+    "dlq-to-fulfillment-q": { "ok": true, "sides": ["left", "left"], "points": [1940, 316, 1940, 429], "path": "a6f5dfe30789", "label": [1940, 376.5, 58.480000000000004, 22], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
+    "bus-to-sns": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 472, 1671, 640], "path": "06614d4cbf0e", "label": [1670.4642863469624, 550.0001062896926, 102.21999999999998, 22], "mode": "full", "text": "Rule: OrderPaid", "lines": ["Rule: OrderPaid"] },
+    "sns-to-email": { "ok": true, "sides": ["right", "left"], "points": [1782, 669, 1940, 616], "path": "97510561fcf7", "label": [1883.7539569244468, 634.8673435633184, 48, 22], "mode": "full", "text": "Email", "lines": ["Email"] },
+    "sns-to-sms": { "ok": true, "sides": ["right", "left"], "points": [1782, 683, 1940, 736], "path": "9a8e1508c9bc", "label": [1845.830695383702, 704.4115623755456, 42.09, 22], "mode": "full", "text": "SMS", "lines": ["SMS"] },
+    "apigw-to-cognito": { "ok": true, "sides": ["bottom", "top"], "points": [540.5, 232, 541, 400], "path": "abe46fc1b2d2", "label": [540.732142936229, 310.0000265729527, 114.65999999999998, 22], "mode": "full", "text": "JWT authorizer", "lines": ["JWT authorizer"], "glyph": true },
+    "bus-to-archive-q": { "ok": true, "sides": ["right", "left"], "points": [1780, 443, 1940, 896], "path": "8bdd190176cb", "label": [1861.3321514575528, 673.271653814196, 96.89999999999999, 22], "mode": "full", "text": "Rule: all orders", "lines": ["Rule: all orders"] },
+    "archive-q-to-archive-fn": { "ok": true, "sides": ["right", "left"], "points": [2200, 896, 2320, 896], "path": "9519a40abf84", "label": [2254, 896, 87.56, 22], "mode": "full", "text": "Event source", "lines": ["Event source"] },
+    "archive-fn-to-archive-s3": { "ok": true, "sides": ["bottom", "top"], "points": [2430, 932, 2434, 1100], "path": "312c3579ff23", "label": [2431.857183332322, 1010.0016999575352, 72, 22], "mode": "full", "text": "PutObject", "lines": ["PutObject"] },
+    "archive-q-to-archive-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [2077, 932, 2064, 1100], "path": "3f114361ed2b", "label": [2072.5059082245816, 990.0774937130965, 101.42, 22], "mode": "full", "text": "After 5 receives", "lines": ["After 5 receives"] },
+    "archive-dlq-to-archive-q": { "ok": true, "sides": ["top", "bottom"], "points": [2050, 1100, 2063, 932], "path": "b401327eddaf", "label": [2056.0370981020196, 1021.9821168354392, 58.480000000000004, 22], "mode": "full", "text": "Redrive", "lines": ["Redrive"] },
+    "schedule-to-reconcile": { "ok": true, "sides": ["right", "left"], "points": [640, 676, 800, 676], "path": "2ad52fe37a63", "label": [714, 676, 107.63, 22], "mode": "full", "text": "Scheduled event", "lines": ["Scheduled event"] },
+    "reconcile-to-orders-table": { "ok": true, "sides": ["right", "left"], "points": [1034, 676, 1180, 203], "path": "51179862c552", "label": [1105.2303752510413, 445.2330993579278, 98.97999999999999, 22], "mode": "full", "text": "Query PLACED", "lines": ["Query PLACED"] }
   }
 }

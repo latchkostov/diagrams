@@ -1,9 +1,9 @@
 {
   "autoLayout": {
-    "LR": { "app": [40, 220], "carriers": [40, 340], "gateway": [400, 280], "tracking": [763, 40], "pricing": [763, 160], "pricing-canary": [763, 280], "labels": [763, 400], "events": [763, 520] },
+    "LR": { "app": [40, 220], "carriers": [40, 340], "gateway": [400, 280], "tracking": [760, 40], "pricing": [760, 160], "pricing-canary": [760, 280], "labels": [760, 400], "events": [760, 520] },
     "TB": { "app": [460, 40], "carriers": [740, 40], "gateway": [600, 200], "tracking": [40, 360], "pricing": [320, 360], "pricing-canary": [600, 360], "labels": [880, 360], "events": [1160, 360] }
   },
-  "tidy": { "app": [40, 180], "carriers": [40, 300], "gateway": [400, 240], "tracking": [763, 0], "pricing": [763, 120], "pricing-canary": [763, 240], "labels": [763, 360], "events": [763, 480] },
+  "tidy": { "app": [40, 180], "carriers": [40, 300], "gateway": [400, 240], "tracking": [760, 0], "pricing": [760, 120], "pricing-canary": [760, 240], "labels": [760, 360], "events": [760, 480] },
   "arrange": {
     "alignLeft": { "app": [40, 120], "carriers": [40, 420], "gateway": [40, 270], "tracking": [40, 0], "pricing": [40, 150], "pricing-canary": [40, 300], "labels": [40, 450], "events": [40, 600] },
     "alignMiddle": { "app": [40, 300], "carriers": [40, 300], "gateway": [380, 300], "tracking": [760, 300], "pricing": [760, 300], "pricing-canary": [760, 300], "labels": [760, 300], "events": [760, 300] },
@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": [],
     "placedNotes": [],
-    "nodes": { "app": [40, 220], "carriers": [40, 340], "gateway": [400, 280], "tracking": [763, 40], "pricing": [763, 160], "pricing-canary": [763, 280], "labels": [763, 400], "events": [763, 520] },
+    "nodes": { "app": [40, 220], "carriers": [40, 340], "gateway": [400, 280], "tracking": [760, 40], "pricing": [760, 160], "pricing-canary": [760, 280], "labels": [760, 400], "events": [760, 520] },
     "groups": {}
   }
 }

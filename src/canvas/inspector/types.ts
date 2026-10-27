@@ -5,6 +5,10 @@ import type { DiagramMeta } from "../convert";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode } from "../types";
 
 export interface InspectorProps {
+  privacy?: "private" | "local-only" | null;
+  diagramReset?: ReactNode;
+  checksStore?: import("../checks/useChecks").ChecksStore;
+  checksHost?: import("../checks/ChecksViews").ChecksHost;
   editor: EditorApi;
   meta: DiagramMeta;
   selectedNodes: DiagramFlowNode[];

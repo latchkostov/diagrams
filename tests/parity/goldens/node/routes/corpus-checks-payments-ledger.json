@@ -1,7 +1,7 @@
 {
   "smoothstep": {
-    "web-api": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 300, 156], "path": "05c1ca9a42ee", "label": [264, 156, 59, 19], "mode": "truncate", "text": "POST /payments", "lines": ["POST /payments"] },
-    "api-payments": { "ok": true, "sides": ["right", "left"], "points": [520, 149, 570, 149, 570, 156, 620, 156], "path": "f2bdeb9e6734", "label": [570, 152.5, 89, 19], "mode": "full", "text": "PaymentTaken", "lines": ["PaymentTaken"] },
+    "web-api": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 300, 156], "path": "05c1ca9a42ee", "label": [254, 156, 16, 16], "mode": "dot", "text": "POST /payments", "lines": ["POST /payments"], "dot": 1 },
+    "api-payments": { "ok": true, "sides": ["right", "left"], "points": [520, 149, 570, 149, 570, 156, 620, 156], "path": "f2bdeb9e6734", "label": [546, 149, 16, 16], "mode": "dot", "text": "PaymentTaken", "lines": ["PaymentTaken"], "dot": 2 },
     "payments-ledger": { "ok": true, "sides": ["right", "left"], "points": [840, 156, 890, 156, 890, 149, 940, 149], "path": "a52fafdf1723" },
     "ledger-db": { "ok": true, "sides": ["right", "left"], "points": [1160, 156, 1260, 156], "path": "6ac6b63da490" },
     "api-kv": { "ok": true, "sides": ["right", "left"], "points": [520, 163, 570, 163, 570, 416, 620, 416], "path": "a0ddce1a4bc2", "label": [570, 289.5, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
@@ -56,10 +56,11 @@
         156
       ],
       "path": "9c7f1a2c2104",
-      "label": [258.3465, 156, 65, 19],
-      "mode": "truncate",
+      "label": [258.3465, 156, 16, 16],
+      "mode": "dot",
       "text": "POST /payments",
-      "lines": ["POST /payments"]
+      "lines": ["POST /payments"],
+      "dot": 1
     },
     "api-payments": {
       "ok": true,
@@ -109,10 +110,11 @@
         156
       ],
       "path": "e27dc34f8632",
-      "label": [567.8255654942313, 152.23837500000002, 83, 19],
-      "mode": "truncate",
+      "label": [567.8255654942313, 152.23837500000002, 16, 16],
+      "mode": "dot",
       "text": "PaymentTaken",
-      "lines": ["PaymentTaken"]
+      "lines": ["PaymentTaken"],
+      "dot": 2
     },
     "payments-ledger": {
       "ok": true,
@@ -322,8 +324,8 @@
     }
   },
   "straight": {
-    "web-api": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 300, 156], "path": "05c1ca9a42ee", "label": [264, 156, 59, 19], "mode": "truncate", "text": "POST /payments", "lines": ["POST /payments"] },
-    "api-payments": { "ok": true, "sides": ["right", "left"], "points": [520, 149, 620, 156], "path": "7a53aa66b78c", "label": [573.9902358685665, 152.77931651079965, 83, 19], "mode": "truncate", "text": "PaymentTaken", "lines": ["PaymentTaken"] },
+    "web-api": { "ok": true, "sides": ["right", "left"], "points": [220, 156, 300, 156], "path": "05c1ca9a42ee", "label": [254, 156, 16, 16], "mode": "dot", "text": "POST /payments", "lines": ["POST /payments"], "dot": 1 },
+    "api-payments": { "ok": true, "sides": ["right", "left"], "points": [520, 149, 620, 156], "path": "7a53aa66b78c", "label": [564.0146461971502, 152.08102523380052, 16, 16], "mode": "dot", "text": "PaymentTaken", "lines": ["PaymentTaken"], "dot": 2 },
     "payments-ledger": { "ok": true, "sides": ["right", "left"], "points": [840, 156, 940, 149], "path": "90ce007f03b4" },
     "ledger-db": { "ok": true, "sides": ["right", "left"], "points": [1160, 156, 1260, 156], "path": "6ac6b63da490" },
     "api-kv": { "ok": true, "sides": ["right", "left"], "points": [520, 163, 620, 416], "path": "53d18b578e0b", "label": [567.7944902484771, 283.92006032864714, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },

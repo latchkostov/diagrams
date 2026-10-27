@@ -17,6 +17,17 @@ const files = import.meta.glob<DiagramFile>("./*.json", { eager: true, import: "
 const publicExamples = examples.filter((e) => !e.localOnly);
 
 describe("example metadata and loading", () => {
+  it("the run-history showcase develops a queue and narrates it within ten seconds", () => {
+    const d = files["./retry-storm.json"];
+    expect(exampleMetadata["retry-storm"].shows).toContain("runHistory");
+    const run = createSimulationRun(
+      d,
+      d.simulations!.find((s) => s.id === "three-quick-retries")!,
+    );
+    run.step(9600);
+    expect(run.engine.snapshot().nodes.payments.backlog).toBeGreaterThan(100);
+    expect(run.state().note?.atMs).toBe(9000);
+  });
   it("the inline rate-limit showcase rejects excess requests within ten seconds", () => {
     const diagram = files["./inline-rate-limit.json"];
     expect(exampleMetadata["inline-rate-limit"].shows).toContain("rateLimits");

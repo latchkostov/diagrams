@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { waitForStableViewport } from "./fixtures";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -475,6 +476,7 @@ test("Markdown images respect production CSP", async ({ page }) => {
     ],
   );
   expectPolicy(await page.goto(`./?view=canvas&example=${KAFKA}`));
+  await openDiagramProperties(page);
   const images = page.getByTestId("diagram-description").getByTestId("markdown-image");
   await expect(images).toHaveCount(2);
   const image = images.nth(0);

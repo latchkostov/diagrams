@@ -1,5 +1,19 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForStableViewport, expectNoErrors } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  pauseClock,
+  waitForStableViewport,
+  expectNoErrors,
+  publicExamples,
+  goToNode,
+  openViewMenu,
+  openLiveInputs,
+  flowState,
+} from "./fixtures";
+import { installFakeLanguageModel, openAiPanel } from "./ai-helpers";
 
 const showcases = [
   { slug: "partitions-vs-subscriptions", signal: "log", field: "backlog" },
@@ -12,6 +26,7 @@ const showcases = [
 
 async function positive(page: Page, node: string, field: string) {
   const badge = page.getByTestId(`node-badge-${node}`);
+  if (!(await badge.isVisible())) await goToNode(page, node, true);
   await expect(badge).toBeVisible();
   await expect.poll(async () => Number(await badge.getAttribute(`data-${field}`))).toBeGreaterThan(0);
 }
@@ -75,25 +90,21 @@ for (const theme of ["light", "dark"] as const)
           await page.clock.runFor(1000);
           await waitForStableViewport(page);
           if (viewport.width === 390) {
-            const title = await page.getByTestId("diagram-card").boundingBox();
+            const title = await page.getByTestId("example-picker").boundingBox();
             const toggle = await page.getByTestId("live-toggle").boundingBox();
             expect(title).not.toBeNull();
             expect(toggle).not.toBeNull();
             if (!title || !toggle) throw new Error("Expected visible title and Live toggle");
             expect(title.height).toBeLessThan(toggle.height * 2);
             const titleText = page.getByTestId("diagram-title");
-            expect(await titleText.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+            const example = publicExamples.find((entry) => entry.slug === showcase.slug);
+            if (!example) throw new Error(`Missing public example ${showcase.slug}`);
+            await expect(titleText).toHaveText(example.title);
+            expect(await titleText.evaluate((el) => getComputedStyle(el).textOverflow)).toBe("ellipsis");
             const bar = await page.getByTestId("live-controls").boundingBox();
             expect(bar).not.toBeNull();
             if (!bar) throw new Error("Expected visible playback bar");
-            for (const id of [
-              "live-play",
-              "live-restart",
-              "live-speed",
-              "live-sim-picker",
-              "live-capacity",
-              "live-more",
-            ]) {
+            for (const id of ["live-play", "live-restart", "live-sim-picker", "live-more"]) {
               const control = await page.getByTestId(id).boundingBox();
               expect(control, id).not.toBeNull();
               if (!control) throw new Error(`Expected visible ${id}`);
@@ -107,6 +118,11 @@ for (const theme of ["light", "dark"] as const)
                 `${id} is not covered by a side rail`,
               ).toBe(true);
             }
+            // The phone keeps speed in More, with the same selector and values.
+            if (viewport.width < 640) await page.getByTestId("live-more").click();
+            await expectExposed(page.getByTestId("live-speed"));
+            await expectExposed(page.getByTestId("live-capacity"));
+            if (viewport.width < 640) await page.getByTestId("live-more").click();
           }
           await page.getByTestId("live-restart").click();
           await page.clock.runFor(8000);
@@ -143,11 +159,13 @@ for (const theme of ["light", "dark"] as const)
             // Exercise the controls after capturing the normal opening state: Inputs enables the heat map.
             await page.getByTestId("live-play").click();
             await page.getByTestId("live-play").click();
-            await page.getByTestId("live-capacity").click();
-            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-pressed", "true");
-            await page.getByTestId("live-capacity").click();
-            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-pressed", "false");
+            await openLiveInputs(page);
             await page.getByTestId("live-more").click();
+            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-checked", "true");
+            await page.getByTestId("live-more").click();
+            await openLiveInputs(page);
+            await page.getByTestId("live-more").click();
+            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-checked", "false");
             await expect(page.getByTestId("live-more-menu")).toBeVisible();
             await page.keyboard.press("Escape");
           }
@@ -269,10 +287,14 @@ test.describe("mobile title card", () => {
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
+    await page.getByTestId("topbar-more").click();
     await page.getByTestId("undo-button").click();
     await expect(page.getByTestId("undo-button")).toBeDisabled();
     await expect(page.getByTestId("redo-button")).toBeEnabled();
+    await openViewMenu(page);
+    await page.keyboard.press("Escape");
     for (const id of ["example-picker", "view-button", "file-button", "theme-toggle"]) {
+      if (id === "theme-toggle") await page.getByTestId("view-button").click();
       const control = page.getByTestId(id);
       await control.focus();
       await expect(control).toBeFocused();
@@ -283,6 +305,7 @@ test.describe("mobile title card", () => {
       // Scroll offsets round to device pixels; allow their subpixel remainder.
       expect(bounds.x, id).toBeGreaterThanOrEqual(-0.5);
       expect(bounds.x + bounds.width, id).toBeLessThanOrEqual(390.5);
+      if (id === "theme-toggle") await page.keyboard.press("Escape");
     }
   });
 });
@@ -290,31 +313,61 @@ test.describe("mobile title card", () => {
 test.describe("phone live panels", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("playback leaves the expanded AI footer exposed and Inputs folds the dock", async ({ page }) => {
+  test("phone AI footer without Prompt API", async ({ page }) => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(window, "LanguageModel");
+    });
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await page.getByTestId("ai-rail-open").click();
-    const advanced = page.getByTestId("ai-advanced-toggle");
-    await expectExposed(advanced);
-    await advanced.focus();
-    await expect(advanced).toBeFocused();
-    const footer = await advanced.boundingBox();
-    const bar = await page.getByTestId("live-controls").boundingBox();
-    expect(footer && bar && footer.y + footer.height < bar.y).toBe(true);
+    await openAiPanel(page);
+    await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "true");
+    await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
+    await expectExposed(page.getByTestId("ai-advanced-toggle"));
     await expectExposed(page.getByTestId("live-play"));
-    await page.getByTestId("live-capacity").click();
-    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
-    await expectExposed(page.getByTestId("capacity-heading"));
-    await expectExposed(page.getByTestId("live-play"));
+  });
+
+  test("playback leaves the expanded AI footer exposed and Inputs folds the dock", async ({ page }) => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(window, "LanguageModel");
+    });
+    await installFakeLanguageModel(page);
+    let release = () => {};
+    const download = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(/\/assets\/OnDeviceInput-[\w-]+\.js$/, async (route) => {
+      await download;
+      await route.continue();
+    });
+    try {
+      await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+      await openAiPanel(page);
+      release();
+      await expect(page.getByTestId("ai-ondevice")).toBeVisible();
+      const advanced = page.getByTestId("ai-advanced-toggle");
+      await expectExposed(advanced);
+      await advanced.focus();
+      await expect(advanced).toBeFocused();
+      const footer = await advanced.boundingBox();
+      const bar = await page.getByTestId("live-controls").boundingBox();
+      expect(footer && bar && footer.y + footer.height < bar.y).toBe(true);
+      await expectExposed(page.getByTestId("live-play"));
+      await openLiveInputs(page);
+      await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+      await expectExposed(page.getByTestId("live-more"));
+      await expectExposed(page.getByTestId("capacity-heading"));
+      await expectExposed(page.getByTestId("live-play"));
+    } finally {
+      release();
+    }
   });
 
   test("Inputs folds an already expanded AI dock", async ({ page }) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await page.getByTestId("ai-rail-open").click();
+    await openAiPanel(page);
     await expect(page.getByTestId("ai-panel")).toBeVisible();
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
+    await expectExposed(page.getByTestId("live-more"));
     await expectExposed(page.getByTestId("capacity-heading"));
   });
 
@@ -323,7 +376,7 @@ test.describe("phone live panels", () => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
     await expect(page.getByTestId("live-note")).toBeVisible();
     await pauseClock(page);
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     const panel = page.getByTestId("capacity-panel");
     await expect(panel).toBeInViewport({ ratio: 1 });
     await expectExposed(page.getByTestId("capacity-heading"));
@@ -348,12 +401,12 @@ test.describe("phone live panels", () => {
     await page.screenshot({ path: info.outputPath("phone-inputs-narration-log.png") });
     await page.getByTestId("capacity-close").click();
     await expect(panel).toHaveCount(0);
-    await expectExposed(page.getByTestId("diagram-card"));
+    await expectExposed(page.getByTestId("example-picker"));
   });
 
   test("More stays exposed with Inputs open", async ({ page }, info) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
     await page.getByTestId("live-more").click();
     await expectExposed(page.getByTestId("live-more-menu"));
@@ -370,7 +423,7 @@ test.describe("phone live panels", () => {
 
   test("expectations stay exposed with Inputs open", async ({ page }, info) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
     await page.getByTestId("live-expectations-summary").click();
     await expectExposed(page.getByTestId("live-expectations-list"));
@@ -458,6 +511,31 @@ const boxOf = async (page: Page, testId: string) => {
 const clear = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
   a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
 
+async function settleNarrationCamera(page: Page) {
+  // Complete the move's fake-clock duration before polling its acknowledgement.
+  // Under load, 32 ms per protocol round trip need not reach a 900 ms move in time.
+  await page.clock.runFor(1000);
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(32);
+        return page.getByTestId("canvas-wrap").getAttribute("data-camera-state");
+      },
+      { intervals: [0] },
+    )
+    .toBe("idle");
+  await page.clock.runFor(32);
+}
+
+async function visitNarrationPin(page: Page, id: string) {
+  const pin = page.getByTestId(`focus-offscreen-${id}`);
+  if (!(await pin.isVisible())) return false;
+  await expect(pin).toBeInViewport({ ratio: 1 });
+  await pin.click();
+  await settleNarrationCamera(page);
+  return true;
+}
+
 for (const viewport of [
   { width: 1920, height: 1080 },
   { width: 390, height: 844 },
@@ -482,10 +560,22 @@ for (const viewport of [
         // Let the narration camera finish its move.
         await page.clock.runFor(1500);
         await waitForStableViewport(page);
+        await settleNarrationCamera(page);
+        await expect(page.getByTestId("live-view-menu")).toContainText("Following");
+        expect((await flowState(page)).zoom).toBeGreaterThanOrEqual(viewport.width < 640 ? 0.92 : 0.9);
         const canvas = await boxOf(page, "canvas-wrap");
         const note = await boxOf(page, "live-note");
         const bar = await boxOf(page, "live-controls");
+        let visitedPin = false;
         for (const id of n.focus) {
+          // Follow keeps its subject readable and pins distant cards. A pin is a
+          // manual move: resume Follow before inspecting the next focus card.
+          if (visitedPin) {
+            await page.getByTestId("canvas-wrap").focus();
+            await page.keyboard.press("Shift+Digit3");
+            await settleNarrationCamera(page);
+          }
+          visitedPin = await visitNarrationPin(page, id);
           const card = await boxOf(page, `rf__node-${id}`);
           expect(card.x, id).toBeGreaterThanOrEqual(canvas.x - 0.5);
           expect(card.y, id).toBeGreaterThanOrEqual(canvas.y - 0.5);
@@ -498,6 +588,7 @@ for (const viewport of [
         }
         // Never further out than the overview. (On a phone both sit at the canvas's 15% minimum zoom: the note pans
         // to its cards; see docs/backlog/2026-10-18-phone-narration-zoom.md.)
+        await visitNarrationPin(page, n.focus[0]);
         const close = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
         expect(close).toBeGreaterThanOrEqual(overview - 0.5);
       });

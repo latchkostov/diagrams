@@ -87,7 +87,7 @@ test.describe("self-hosted build with link opening off", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
     await expect(page.getByTestId("brand")).toHaveText("Live Diagrams");
-    await expect(page.getByTestId("ai-rail")).toHaveCount(0);
+    await expect(page.getByTestId("ai-rail-open")).toHaveCount(0);
     await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 60 } });
     await page.keyboard.press(`${MOD}+i`);
     await expect(page.getByTestId("ai-panel")).toHaveCount(0);
@@ -109,7 +109,7 @@ test.describe("self-hosted build with one language (VITE_LOCALES=en)", () => {
   }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByTestId("view-canvas")).toHaveText("Diagram");
+    await expect(page.getByTestId("file-button")).toHaveText("File");
     await page.getByTestId("view-button").click();
     await expect(page.getByTestId("view-menu")).toBeVisible();
     await expect(page.getByTestId("view-language")).toHaveCount(0);

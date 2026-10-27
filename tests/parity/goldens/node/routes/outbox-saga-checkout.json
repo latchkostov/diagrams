@@ -1,24 +1,24 @@
 {
   "smoothstep": {
-    "client-to-order-api": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 420, 356], "path": "1b93e61ef9d4", "label": [334, 356, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "order-api-to-orders-db": { "ok": true, "sides": ["bottom", "top"], "points": [530, 392, 530, 480], "path": "4a040165139d", "label": [530, 430, 149, 19], "mode": "full", "text": "Order + outbox, one tx", "lines": ["Order + outbox, one tx"] },
-    "orders-db-to-outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [640, 516, 800, 516], "path": "d99324509b7f", "label": [714, 516, 35, 19], "mode": "full", "text": "WAL", "lines": ["WAL"] },
-    "outbox-relay-to-order-events": { "ok": true, "sides": ["top", "bottom"], "points": [911, 480, 911, 356, 910, 356, 910, 232], "path": "c50fe75921b0", "label": [911, 417, 95, 19], "mode": "full", "text": "Outbox events", "lines": ["Outbox events"] },
-    "order-events-to-saga": { "ok": true, "sides": ["right", "left"], "points": [1020, 203, 1100, 203, 1100, 349, 1180, 349], "path": "615d85735454", "label": [1100, 276, 89, 19], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
-    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1020, 189, 1100, 189, 1100, 76, 1180, 76], "path": "9e7fe79d1413", "label": [1100, 132.5, 143, 19], "mode": "full", "text": "Confirmed · Cancelled", "lines": ["Confirmed · Cancelled"] },
-    "notifications-to-email": { "ok": true, "sides": ["right", "left"], "points": [1413, 76, 1560, 76], "path": "47880b58711d", "label": [1480.5, 76, 77, 19], "mode": "full", "text": "Send email", "lines": ["Send email"] },
-    "saga-to-saga-db": { "ok": true, "sides": ["bottom", "top"], "points": [1303.5, 392, 1303.5, 436, 1290, 436, 1290, 480], "path": "4b7934848437", "label": [1303.5, 415, 89, 19], "mode": "full", "text": "Persist step", "lines": ["Persist step"] },
-    "saga-to-inventory-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 342, 1480.5, 342, 1480.5, 196, 1560, 196], "path": "696dcbd4101a", "label": [1480.5, 269, 119, 19], "mode": "full", "text": "Reserve / Release", "lines": ["Reserve / Release"] },
-    "saga-to-payment-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 370, 1493.5, 370, 1493.5, 516, 1560, 516], "path": "6d611964ebba", "label": [1493.5, 443, 95, 19], "mode": "full", "text": "ChargePayment", "lines": ["ChargePayment"] },
-    "saga-to-order-api": { "ok": true, "sides": ["left", "right"], "points": [1180, 363, 922, 363, 922, 356, 640, 356], "path": "d6d4a01420e7", "label": [788, 356, 113, 19], "mode": "full", "text": "Confirm / Cancel", "lines": ["Confirm / Cancel"] },
+    "client-to-order-api": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 420, 356], "path": "1b93e61ef9d4", "label": [334, 356, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "order-api-to-orders-db": { "ok": true, "sides": ["bottom", "top"], "points": [530, 392, 530, 480], "path": "4a040165139d", "label": [530, 430, 137.86, 22], "mode": "full", "text": "Order + outbox, one tx", "lines": ["Order + outbox, one tx"] },
+    "orders-db-to-outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [640, 516, 800, 516], "path": "d99324509b7f", "label": [714, 516, 42.82000000000001, 22], "mode": "full", "text": "WAL", "lines": ["WAL"] },
+    "outbox-relay-to-order-events": { "ok": true, "sides": ["top", "bottom"], "points": [911, 480, 911, 356, 910, 356, 910, 232], "path": "c50fe75921b0", "label": [911, 417, 96.67999999999999, 22], "mode": "full", "text": "Outbox events", "lines": ["Outbox events"] },
+    "order-events-to-saga": { "ok": true, "sides": ["right", "left"], "points": [1020, 203, 1100, 203, 1100, 349, 1180, 349], "path": "615d85735454", "label": [1100, 276, 92.47999999999999, 22], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
+    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1020, 189, 1100, 189, 1100, 76, 1180, 76], "path": "9e7fe79d1413", "label": [1100, 132.5, 140.96999999999997, 22], "mode": "full", "text": "Confirmed · Cancelled", "lines": ["Confirmed · Cancelled"] },
+    "notifications-to-email": { "ok": true, "sides": ["right", "left"], "points": [1413, 76, 1560, 76], "path": "47880b58711d", "label": [1480.5, 76, 77.81, 22], "mode": "full", "text": "Send email", "lines": ["Send email"] },
+    "saga-to-saga-db": { "ok": true, "sides": ["bottom", "top"], "points": [1303.5, 392, 1303.5, 436, 1290, 436, 1290, 480], "path": "4b7934848437", "label": [1303.5, 415, 80.72, 22], "mode": "full", "text": "Persist step", "lines": ["Persist step"] },
+    "saga-to-inventory-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 342, 1480.5, 342, 1480.5, 196, 1560, 196], "path": "696dcbd4101a", "label": [1480.5, 269, 113.85, 22], "mode": "full", "text": "Reserve / Release", "lines": ["Reserve / Release"] },
+    "saga-to-payment-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 370, 1493.5, 370, 1493.5, 516, 1560, 516], "path": "6d611964ebba", "label": [1493.5, 443, 106.89999999999999, 22], "mode": "full", "text": "ChargePayment", "lines": ["ChargePayment"] },
+    "saga-to-order-api": { "ok": true, "sides": ["left", "right"], "points": [1180, 363, 922, 363, 922, 356, 640, 356], "path": "d6d4a01420e7", "label": [788, 356, 110.12, 22], "mode": "full", "text": "Confirm / Cancel", "lines": ["Confirm / Cancel"] },
     "inventory-cmds-to-inventory-svc": { "ok": true, "sides": ["right", "left"], "points": [1780, 196, 1924, 196, 1924, 189, 1940, 189], "path": "89b2d6dc2518" },
-    "inventory-svc-to-inventory-db": { "ok": true, "sides": ["right", "left"], "points": [2160, 196, 2320, 196], "path": "55a1bd6710dc", "label": [2234, 196, 95, 19], "mode": "full", "text": "Reserve stock", "lines": ["Reserve stock"] },
-    "inventory-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 203, 1924, 203, 1924, 349, 1780, 349], "path": "440da1b93c1d", "label": [1924, 276, 131, 19], "mode": "full", "text": "Reserved / Released", "lines": ["Reserved / Released"] },
+    "inventory-svc-to-inventory-db": { "ok": true, "sides": ["right", "left"], "points": [2160, 196, 2320, 196], "path": "55a1bd6710dc", "label": [2234, 196, 93.52, 22], "mode": "full", "text": "Reserve stock", "lines": ["Reserve stock"] },
+    "inventory-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 203, 1924, 203, 1924, 349, 1780, 349], "path": "440da1b93c1d", "label": [1924, 276, 128.01, 22], "mode": "full", "text": "Reserved / Released", "lines": ["Reserved / Released"] },
     "payment-cmds-to-payment-svc": { "ok": true, "sides": ["right", "left"], "points": [1780, 516, 1924, 516, 1924, 523, 1940, 523], "path": "6f2cd17a1dd6" },
-    "payment-cmds-to-payments-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 552, 1670, 596, 1680.5, 596, 1680.5, 640], "path": "1b5836dfd78d", "label": [1670, 575, 113, 19], "mode": "full", "text": "After 5 attempts", "lines": ["After 5 attempts"] },
-    "payment-svc-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [2160, 516, 2320, 516], "path": "15ae99eaa472", "label": [2234, 516, 107, 19], "mode": "full", "text": "Idempotency-Key", "lines": ["Idempotency-Key"] },
-    "payment-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 509, 1924, 509, 1924, 363, 1780, 363], "path": "4e94e897f516", "label": [1924, 436, 131, 19], "mode": "full", "text": "Captured / Declined", "lines": ["Captured / Declined"] },
-    "saga-replies-to-saga": { "ok": true, "sides": ["left", "right"], "points": [1560, 356, 1427, 356], "path": "17927ec9818b", "label": [1499.5, 356, 71, 19], "mode": "full", "text": "Next step", "lines": ["Next step"] },
+    "payment-cmds-to-payments-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 552, 1670, 596, 1680.5, 596, 1680.5, 640], "path": "1b5836dfd78d", "label": [1670, 575, 106.71, 22], "mode": "full", "text": "After 5 attempts", "lines": ["After 5 attempts"] },
+    "payment-svc-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [2160, 516, 2320, 516], "path": "15ae99eaa472", "label": [2234, 516, 114.04, 22], "mode": "full", "text": "Idempotency-Key", "lines": ["Idempotency-Key"] },
+    "payment-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 509, 1924, 509, 1924, 363, 1780, 363], "path": "4e94e897f516", "label": [1924, 436, 126.51999999999998, 22], "mode": "full", "text": "Captured / Declined", "lines": ["Captured / Declined"] },
+    "saga-replies-to-saga": { "ok": true, "sides": ["left", "right"], "points": [1560, 356, 1427, 356], "path": "17927ec9818b", "label": [1499.5, 356, 69.33, 22], "mode": "full", "text": "Next step", "lines": ["Next step"] },
     "payment-svc-to-vault": { "ok": true, "sides": ["bottom", "top"], "points": [2050, 552, 2050, 640], "path": "9d0ccd30bb4d", "label": [2050, 590, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   },
   "bezier": {
@@ -70,7 +70,7 @@
         356
       ],
       "path": "9e88f51a199c",
-      "label": [336.51480000000004, 356, 89, 19],
+      "label": [336.51480000000004, 356, 90.3, 22],
       "mode": "full",
       "text": "POST /orders",
       "lines": ["POST /orders"]
@@ -123,7 +123,7 @@
         480
       ],
       "path": "8cb3fa32c487",
-      "label": [530, 434.08314000000007, 149, 19],
+      "label": [530, 434.08314000000007, 137.86, 22],
       "mode": "full",
       "text": "Order + outbox, one tx",
       "lines": ["Order + outbox, one tx"]
@@ -176,7 +176,7 @@
         516
       ],
       "path": "6bc1b6ef6b00",
-      "label": [716.5148, 516, 35, 19],
+      "label": [716.5148, 516, 42.82000000000001, 22],
       "mode": "full",
       "text": "WAL",
       "lines": ["WAL"]
@@ -229,7 +229,7 @@
         232
       ],
       "path": "b10f3b3e2f05",
-      "label": [910.0200011028164, 255.93560268698323, 95, 19],
+      "label": [910.0200011028164, 255.93560268698323, 96.67999999999999, 22],
       "mode": "full",
       "text": "Outbox events",
       "lines": ["Outbox events"]
@@ -282,7 +282,7 @@
         349
       ],
       "path": "ddcd57e8ca0a",
-      "label": [1097.3973513372207, 270.54325, 89, 19],
+      "label": [1097.3973513372207, 270.54325, 92.47999999999999, 22],
       "mode": "full",
       "text": "OrderCreated",
       "lines": ["OrderCreated"]
@@ -335,7 +335,7 @@
         76
       ],
       "path": "c997fe66d583",
-      "label": [1102.9257400810907, 128.276625, 143, 19],
+      "label": [1102.9257400810907, 128.276625, 140.96999999999997, 22],
       "mode": "full",
       "text": "Confirmed · Cancelled",
       "lines": ["Confirmed · Cancelled"]
@@ -388,7 +388,7 @@
         76
       ],
       "path": "d22cf4f76412",
-      "label": [1483.2979725, 76, 77, 19],
+      "label": [1483.2979725, 76, 77.81, 22],
       "mode": "full",
       "text": "Send email",
       "lines": ["Send email"]
@@ -441,7 +441,7 @@
         480
       ],
       "path": "2720565f85ea",
-      "label": [1297.2545625, 434.09919231497355, 89, 19],
+      "label": [1297.2545625, 434.09919231497355, 80.72, 22],
       "mode": "full",
       "text": "Persist step",
       "lines": ["Persist step"]
@@ -494,7 +494,7 @@
         196
       ],
       "path": "81d9780d6299",
-      "label": [1491.6085944062504, 274.45675, 119, 19],
+      "label": [1491.6085944062504, 274.45675, 113.85, 22],
       "mode": "full",
       "text": "Reserve / Release",
       "lines": ["Reserve / Release"]
@@ -547,7 +547,7 @@
         516
       ],
       "path": "010b482c1cd1",
-      "label": [1491.6085944062504, 437.54325000000006, 95, 19],
+      "label": [1491.6085944062504, 437.54325000000006, 106.89999999999999, 22],
       "mode": "full",
       "text": "ChargePayment",
       "lines": ["ChargePayment"]
@@ -600,7 +600,7 @@
         356
       ],
       "path": "a4335d6900fb",
-      "label": [772.885, 356.91087500000003, 113, 19],
+      "label": [772.885, 356.91087500000003, 110.12, 22],
       "mode": "full",
       "text": "Confirm / Cancel",
       "lines": ["Confirm / Cancel"]
@@ -702,7 +702,7 @@
         196
       ],
       "path": "eeb0ab68aa35",
-      "label": [2236.5148, 196, 95, 19],
+      "label": [2236.5148, 196, 93.52, 22],
       "mode": "full",
       "text": "Reserve stock",
       "lines": ["Reserve stock"]
@@ -755,7 +755,7 @@
         349
       ],
       "path": "8795ea11bc9a",
-      "label": [1857.3973513372205, 281.45675, 131, 19],
+      "label": [1857.3973513372205, 281.45675, 128.01, 22],
       "mode": "full",
       "text": "Reserved / Released",
       "lines": ["Reserved / Released"]
@@ -857,7 +857,7 @@
         640
       ],
       "path": "d2ca0b7b6a7b",
-      "label": [1674.8575625, 594.0928729418083, 113, 19],
+      "label": [1674.8575625, 594.0928729418083, 106.71, 22],
       "mode": "full",
       "text": "After 5 attempts",
       "lines": ["After 5 attempts"]
@@ -910,7 +910,7 @@
         516
       ],
       "path": "e372d66425dc",
-      "label": [2236.5148, 516, 107, 19],
+      "label": [2236.5148, 516, 114.04, 22],
       "mode": "full",
       "text": "Idempotency-Key",
       "lines": ["Idempotency-Key"]
@@ -963,7 +963,7 @@
         363
       ],
       "path": "628d1acb0c12",
-      "label": [1857.3973513372205, 430.54325, 131, 19],
+      "label": [1857.3973513372205, 430.54325, 126.51999999999998, 22],
       "mode": "full",
       "text": "Captured / Declined",
       "lines": ["Captured / Declined"]
@@ -1016,7 +1016,7 @@
         356
       ],
       "path": "60ac26098fbc",
-      "label": [1514.1425974999997, 356, 71, 19],
+      "label": [1514.1425974999997, 356, 69.33, 22],
       "mode": "full",
       "text": "Next step",
       "lines": ["Next step"]
@@ -1077,25 +1077,25 @@
     }
   },
   "straight": {
-    "client-to-order-api": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 420, 356], "path": "1b93e61ef9d4", "label": [334, 356, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "order-api-to-orders-db": { "ok": true, "sides": ["bottom", "top"], "points": [530, 392, 530, 480], "path": "4a040165139d", "label": [530, 430, 149, 19], "mode": "full", "text": "Order + outbox, one tx", "lines": ["Order + outbox, one tx"] },
-    "orders-db-to-outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [640, 516, 800, 516], "path": "d99324509b7f", "label": [714, 516, 35, 19], "mode": "full", "text": "WAL", "lines": ["WAL"] },
-    "outbox-relay-to-order-events": { "ok": true, "sides": ["top", "bottom"], "points": [911, 480, 910, 232], "path": "296d9c33928a", "label": [910.5645156045514, 371.99986992874534, 95, 19], "mode": "full", "text": "Outbox events", "lines": ["Outbox events"] },
-    "order-events-to-saga": { "ok": true, "sides": ["right", "left"], "points": [1020, 203, 1180, 349], "path": "d85a918ecbd4", "label": [1095.5678878193587, 271.9556976351648, 89, 19], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
-    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1020, 189, 1180, 76], "path": "f488da3d2fe6", "label": [1095.099041863685, 135.96130168377255, 143, 19], "mode": "full", "text": "Confirmed · Cancelled", "lines": ["Confirmed · Cancelled"] },
-    "notifications-to-email": { "ok": true, "sides": ["right", "left"], "points": [1413, 76, 1560, 76], "path": "47880b58711d", "label": [1480.5, 76, 77, 19], "mode": "full", "text": "Send email", "lines": ["Send email"] },
-    "saga-to-saga-db": { "ok": true, "sides": ["bottom", "top"], "points": [1303.5, 392, 1290, 480], "path": "48c4d575e7b3", "label": [1297.6598109003896, 430.0693807974603, 89, 19], "mode": "full", "text": "Persist step", "lines": ["Persist step"] },
-    "saga-to-inventory-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 342, 1560, 196], "path": "c577d56320de", "label": [1489.4594289280012, 273.4355141091114, 119, 19], "mode": "full", "text": "Reserve / Release", "lines": ["Reserve / Release"] },
-    "saga-to-payment-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 370, 1560, 516], "path": "7d35bee009c5", "label": [1489.4594289280012, 438.5644858908886, 95, 19], "mode": "full", "text": "ChargePayment", "lines": ["ChargePayment"] },
-    "saga-to-order-api": { "ok": true, "sides": ["left", "right"], "points": [1180, 363, 640, 356], "path": "3d7619c3125a", "label": [1025.9902550004242, 361.00357737963515, 113, 19], "mode": "full", "text": "Confirm / Cancel", "lines": ["Confirm / Cancel"] },
+    "client-to-order-api": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 420, 356], "path": "1b93e61ef9d4", "label": [334, 356, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "order-api-to-orders-db": { "ok": true, "sides": ["bottom", "top"], "points": [530, 392, 530, 480], "path": "4a040165139d", "label": [530, 430, 137.86, 22], "mode": "full", "text": "Order + outbox, one tx", "lines": ["Order + outbox, one tx"] },
+    "orders-db-to-outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [640, 516, 800, 516], "path": "d99324509b7f", "label": [714, 516, 42.82000000000001, 22], "mode": "full", "text": "WAL", "lines": ["WAL"] },
+    "outbox-relay-to-order-events": { "ok": true, "sides": ["top", "bottom"], "points": [911, 480, 910, 232], "path": "296d9c33928a", "label": [910.5645156045514, 371.99986992874534, 96.67999999999999, 22], "mode": "full", "text": "Outbox events", "lines": ["Outbox events"] },
+    "order-events-to-saga": { "ok": true, "sides": ["right", "left"], "points": [1020, 203, 1180, 349], "path": "d85a918ecbd4", "label": [1095.5678878193587, 271.9556976351648, 92.47999999999999, 22], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
+    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1020, 189, 1180, 76], "path": "f488da3d2fe6", "label": [1095.099041863685, 135.96130168377255, 140.96999999999997, 22], "mode": "full", "text": "Confirmed · Cancelled", "lines": ["Confirmed · Cancelled"] },
+    "notifications-to-email": { "ok": true, "sides": ["right", "left"], "points": [1413, 76, 1560, 76], "path": "47880b58711d", "label": [1480.5, 76, 77.81, 22], "mode": "full", "text": "Send email", "lines": ["Send email"] },
+    "saga-to-saga-db": { "ok": true, "sides": ["bottom", "top"], "points": [1303.5, 392, 1290, 480], "path": "48c4d575e7b3", "label": [1297.6598109003896, 430.0693807974603, 80.72, 22], "mode": "full", "text": "Persist step", "lines": ["Persist step"] },
+    "saga-to-inventory-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 342, 1560, 196], "path": "c577d56320de", "label": [1489.4594289280012, 273.4355141091114, 113.85, 22], "mode": "full", "text": "Reserve / Release", "lines": ["Reserve / Release"] },
+    "saga-to-payment-cmds": { "ok": true, "sides": ["right", "left"], "points": [1427, 370, 1560, 516], "path": "7d35bee009c5", "label": [1489.4594289280012, 438.5644858908886, 106.89999999999999, 22], "mode": "full", "text": "ChargePayment", "lines": ["ChargePayment"] },
+    "saga-to-order-api": { "ok": true, "sides": ["left", "right"], "points": [1180, 363, 640, 356], "path": "3d7619c3125a", "label": [1015.9910950865946, 360.87395864001144, 110.12, 22], "mode": "full", "text": "Confirm / Cancel", "lines": ["Confirm / Cancel"] },
     "inventory-cmds-to-inventory-svc": { "ok": true, "sides": ["right", "left"], "points": [1780, 196, 1940, 189], "path": "30ace01e7ddb" },
-    "inventory-svc-to-inventory-db": { "ok": true, "sides": ["right", "left"], "points": [2160, 196, 2320, 196], "path": "55a1bd6710dc", "label": [2234, 196, 95, 19], "mode": "full", "text": "Reserve stock", "lines": ["Reserve stock"] },
-    "inventory-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 203, 1780, 349], "path": "8901ce255b03", "label": [1864.4321121806413, 271.9556976351648, 131, 19], "mode": "full", "text": "Reserved / Released", "lines": ["Reserved / Released"] },
+    "inventory-svc-to-inventory-db": { "ok": true, "sides": ["right", "left"], "points": [2160, 196, 2320, 196], "path": "55a1bd6710dc", "label": [2234, 196, 93.52, 22], "mode": "full", "text": "Reserve stock", "lines": ["Reserve stock"] },
+    "inventory-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 203, 1780, 349], "path": "8901ce255b03", "label": [1864.4321121806413, 271.9556976351648, 128.01, 22], "mode": "full", "text": "Reserved / Released", "lines": ["Reserved / Released"] },
     "payment-cmds-to-payment-svc": { "ok": true, "sides": ["right", "left"], "points": [1780, 516, 1940, 523], "path": "a2d6bce57903" },
-    "payment-cmds-to-payments-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 552, 1680.5, 640], "path": "afe8e53c36cc", "label": [1674.5391332695792, 590.0422597831408, 113, 19], "mode": "full", "text": "After 5 attempts", "lines": ["After 5 attempts"] },
-    "payment-svc-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [2160, 516, 2320, 516], "path": "15ae99eaa472", "label": [2234, 516, 107, 19], "mode": "full", "text": "Idempotency-Key", "lines": ["Idempotency-Key"] },
-    "payment-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 509, 1780, 363], "path": "47f4154b14d6", "label": [1864.4321121806413, 440.0443023648352, 131, 19], "mode": "full", "text": "Captured / Declined", "lines": ["Captured / Declined"] },
-    "saga-replies-to-saga": { "ok": true, "sides": ["left", "right"], "points": [1560, 356, 1427, 356], "path": "17927ec9818b", "label": [1499.5, 356, 71, 19], "mode": "full", "text": "Next step", "lines": ["Next step"] },
+    "payment-cmds-to-payments-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [1670, 552, 1680.5, 640], "path": "afe8e53c36cc", "label": [1674.5391332695792, 590.0422597831408, 106.71, 22], "mode": "full", "text": "After 5 attempts", "lines": ["After 5 attempts"] },
+    "payment-svc-to-stripe": { "ok": true, "sides": ["right", "left"], "points": [2160, 516, 2320, 516], "path": "15ae99eaa472", "label": [2234, 516, 114.04, 22], "mode": "full", "text": "Idempotency-Key", "lines": ["Idempotency-Key"] },
+    "payment-svc-to-saga-replies": { "ok": true, "sides": ["left", "right"], "points": [1940, 509, 1780, 363], "path": "47f4154b14d6", "label": [1864.4321121806413, 440.0443023648352, 126.51999999999998, 22], "mode": "full", "text": "Captured / Declined", "lines": ["Captured / Declined"] },
+    "saga-replies-to-saga": { "ok": true, "sides": ["left", "right"], "points": [1560, 356, 1427, 356], "path": "17927ec9818b", "label": [1499.5, 356, 69.33, 22], "mode": "full", "text": "Next step", "lines": ["Next step"] },
     "payment-svc-to-vault": { "ok": true, "sides": ["bottom", "top"], "points": [2050, 552, 2050, 640], "path": "9d0ccd30bb4d", "label": [2050, 590, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   }
 }

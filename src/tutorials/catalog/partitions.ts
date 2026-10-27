@@ -1,3 +1,4 @@
+import { livePropertiesGoal } from "./liveProperties";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
@@ -26,10 +27,15 @@ export const partitions: Tutorial = {
     {
       id: "six-partitions",
       title: msg("tutorials.partitions.editTitle"),
-      goal: msg("tutorials.partitions.editGoal"),
+      goal: livePropertiesGoal(msg("tutorials.partitions.editGoal")),
       done: msg("tutorials.partitions.editDone"),
       check: { kind: "prop", subject: "topic", prop: "partitions", op: "=", value: 6 },
       targets: [
+        {
+          testId: "dock-edit-properties",
+          tip: livePropertiesGoal(msg("tutorials.partitions.editGoal")),
+          selected: "topic",
+        },
         { testId: "inspector-field-partitions", tip: msg("tutorials.partitions.editGoal") },
         { testId: "inspector-section-node-simulation", tip: msg("tutorials.partitions.editGoal") },
         { testId: "node-{topic}", tip: msg("tutorials.partitions.editGoal") },
@@ -37,6 +43,7 @@ export const partitions: Tutorial = {
       demo: [{ kind: "prop", subject: "topic", props: { partitions: 6 } }],
       solution: [
         { dblclick: "node-{topic}" },
+        { open: "dock-edit-properties" },
         { click: "inspector-section-node-simulation" },
         { fill: "inspector-field-partitions", text: "6" },
         { press: "Enter" },

@@ -43,6 +43,10 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
     },
   );
 
+  if (id === "canvas.frame-detail") {
+    await gotoCanvas(page, SLUG);
+    return;
+  }
   if (id === "examples.discovery") {
     await gotoCanvas(page, SLUG);
     await page.getByTestId("example-picker").click();

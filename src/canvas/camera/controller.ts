@@ -16,6 +16,8 @@ import type {
 
 /** What a fit covers and how it keeps clear of the chrome (see useOverlayFit's fitAvoiding). */
 export interface FitRequest {
+  workbench?: "focus" | "zone";
+  zone?: string;
   only?: ReadonlySet<string>;
   onlyEdges?: ReadonlySet<string>;
   maxZoom?: number;
@@ -61,6 +63,12 @@ export interface CameraPort {
   move(target: Viewport, o: { duration: number; linear: boolean }): MoveHandle;
   /** The overlay-aware fit's viewport, or null while the pane has no size. */
   fitTarget(request: FitRequest): Viewport | null;
+  focusTarget?(ids?: ReadonlySet<string>): Viewport | null;
+  followTarget?(
+    focus: readonly string[],
+    subject?: string,
+    room?: { panel?: boolean; card?: boolean },
+  ): Viewport | null;
   /** The smallest overlay-aware pan revealing `scope` from `base`, or null when it's in view and uncovered. */
   revealTarget(base: Viewport, scope: RevealScope): Viewport | null;
   /** The diagram's centre brought back into the pane from `base`, or null when it's well inside. */
@@ -267,18 +275,28 @@ export function createCameraController(
   }
 
   /** The overlay-aware fit: at once on the committed geometry, refined when the measurements settle. */
-  function fit(request: FitRequest, animate: boolean, whole: boolean, reason: FitReason | "zoomToSelection") {
+  function fit(
+    request: FitRequest,
+    animate: boolean,
+    whole: boolean,
+    reason: FitReason | "zoomToSelection" | "focusSelection",
+  ) {
     const gen = ++generation;
     const claim = ownership.claim(whole ? "fit" : "manual");
     const valid = () => gen === generation && ownership.isCurrent(claim);
     const issue = (duration: number) => {
-      const target = port.fitTarget(request);
+      let target = port.fitTarget(request);
+      if (reason === "mode" && !live && !presenting && target && !policy.viewChoice) {
+        policy = decide(policy, { type: "opening.measured", zoom: target.zoom }).state;
+        if (policy.view === "focus") target = port.focusTarget?.() ?? target;
+      }
+      if (whole && reason === "pane" && policy.view === "focus") target = port.focusTarget?.() ?? target;
       if (!target) return undefined;
       return move(target, duration, { linear: false, kind: "fit" });
     };
     if (options.journal)
       journal({
-        command: whole ? "fit" : "zoomToSelection",
+        command: whole ? "fit" : (reason as "focusSelection" | "zoomToSelection"),
         cause: whole ? (reason as FitReason) : undefined,
         moved: true,
         from: base(),
@@ -316,19 +334,19 @@ export function createCameraController(
         return {
           request: {
             maxZoom: presenting ? 1.6 : 1.25,
-            margin: presenting ? 64 : 40,
+            margin: presenting ? 56 : 32,
             insets: liveBar,
             duration: firstFit ? 350 : 0,
           },
           animate: false,
         };
       case "fullscreen":
-        return { request: { maxZoom: 1.6, margin: 64, insets: liveBar, duration: 350 }, animate: false };
+        return { request: { maxZoom: 1.6, margin: 56, insets: liveBar, duration: 350 }, animate: false };
       case "reset":
         return { request: { maxZoom: 1.25, duration: 350 }, animate: false };
       case "checks":
       case "pane":
-        return { request: { maxZoom: 1.25, margin: 40, duration: 250 }, animate: false };
+        return { request: { maxZoom: 1.25, margin: 32, duration: 250 }, animate: false };
     }
   }
 
@@ -345,12 +363,38 @@ export function createCameraController(
         const { request, animate } = fitRequest(command.reason);
         return fit(request, animate, true, command.reason);
       }
+      case "focusSelection":
+        return fit(
+          {
+            workbench: command.zone ? "zone" : "focus",
+            zone: command.zone,
+            only: command.nodes,
+            duration: command.automatic ? 250 : 300,
+          },
+          true,
+          false,
+          "focusSelection",
+        );
+      case "zoomStep":
+        return pan(
+          port.zoomTarget(base(), base().zoom * (command.direction === 1 ? 1.2 : 1 / 1.2)),
+          MOVES.zoom100,
+          false,
+          { command: "zoomStep" },
+        );
       case "zoomToSelection": {
         const e = event as Extract<CameraEvent, { type: "zoomToSelection" }>;
         // Never past 125% (no huge single node), clear of the panels; refined once the pane is measured,
         // so a pending Inspector reveal can't overwrite it at the old zoom.
         return fit(
-          { only: e.nodes, onlyEdges: e.edges, maxZoom: 1.25, margin: 64, duration: 300 },
+          {
+            ...(port.focusTarget ? { workbench: "focus" as const } : {}),
+            only: e.nodes,
+            onlyEdges: e.edges,
+            maxZoom: 1.25,
+            margin: 56,
+            duration: 300,
+          },
           true,
           false,
           "zoomToSelection",
@@ -394,13 +438,22 @@ export function createCameraController(
       }
       // One move at a time: a follow pan waits for the plan's fit or the last pan to land.
       case "follow":
-        return inFlight ? undefined : pan(command.view, MOVES.follow, false, { command: "follow" });
+        return command.view && inFlight
+          ? undefined
+          : pan(
+              command.view ?? port.followTarget?.(command.focus ?? policy.live.focus, command.subject, command) ?? null,
+              MOVES.follow,
+              false,
+              { command: "follow" },
+            );
       case "restore":
         return pan(command.view, MOVES.restore, false, { command: "restore" });
     }
   }
 
   function dispatch(event: CameraEvent) {
+    if (event.type === "selection.changed") event = { ...event, zoom: port.viewport().zoom };
+    if (event.type === "reveal.requested") event = { ...event, zoom: port.viewport().zoom, keyboard: !pointerHeld };
     // Live claims the view for its narration directly: decide with the owner as it is now.
     policy = { ...policy, owner: ownership.owner };
     const decision = decide(policy, event);
@@ -408,7 +461,10 @@ export function createCameraController(
     policy = decision.state;
     // A move by hand or a command takes the view afresh: Live's deferred work checks its own claim. Fits
     // claim for themselves (their refinement runs only while that claim is current).
-    if (claimed && !decision.commands.some((c) => c.type === "fit" || c.type === "zoomToSelection"))
+    if (
+      claimed &&
+      !decision.commands.some((c) => c.type === "fit" || c.type === "zoomToSelection" || c.type === "focusSelection")
+    )
       ownership.claim(policy.owner);
     for (const c of decision.commands) execute(c, event);
     reschedule();
@@ -456,7 +512,7 @@ export function createCameraController(
           else if (edit) facts.centreOff = port.centerTarget(from) !== null;
         }
       }
-      dispatch({ type: "pane.settled", ...facts });
+      dispatch({ type: "pane.settled", ...facts, zoom: port.viewport().zoom });
       settledReveal = null;
       return;
     }
@@ -502,12 +558,15 @@ export function createCameraController(
       }
       if (kind === "press") pointerHeld = true;
       interrupt();
-      dispatch({ type: "input" });
+      dispatch({ type: "input", pointer: kind === "press" });
     },
     /** Interrupts fits without being input (a node focused, a hover over a node while a fit is early). */
     interrupt() {
       interrupt();
       publish();
+    },
+    get interacting() {
+      return pointerHeld;
     },
     /** A move is in flight (slow motion's follow pans wait for it before measuring the next one). */
     get moving() {

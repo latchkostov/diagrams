@@ -102,6 +102,8 @@ function harness() {
         }
         case "paletteSearch":
           return { state: "ready", el: els.get("search") ?? el("search") };
+        case "inspectorToggle":
+          return { state: "ready", el: els.get("inspector-toggle") ?? el("inspector-toggle") };
         case "panelOpener": {
           const opener = els.get("panel-opener");
           return opener?.connected ? { state: "ready", el: opener } : { state: "gone" };
@@ -226,6 +228,19 @@ function harness() {
     written,
   };
 }
+
+it("a palette destination takes focus after the camera reveals its card", () => {
+  const h = harness();
+  h.env.nodes.set("destination", { drawn: false });
+  h.env.active = h.canvas;
+  h.controller.dispatch({ type: "selection.changed", cause: "palette", target: { kind: "node", id: "destination" } });
+  h.frame();
+  expect(h.env.active).toBe(h.canvas);
+  expect(h.controller.phase).toBe("focus-pending");
+  h.env.nodes.set("destination", { drawn: true });
+  h.frame();
+  expect(h.env.active).toBe(h.nodeEl("destination"));
+});
 
 it("segment keys yield to selection changes, menus, panning and touch gesture ownership", () => {
   const { controller: c } = harness();
@@ -951,8 +966,8 @@ describe("interaction controller: readiness and the journal", () => {
     h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "a" } });
     h.frame();
     expect(h.journal.map((e) => `${e.event} ${e.command}${e.result ? ` ${e.result}` : ""}`)).toEqual([
-      "selection.changed:keyboard focus:node:a@frame",
-      "focus.result focus:node:a@frame focused",
+      "selection.changed:keyboard focus:node:a@measured",
+      "focus.result focus:node:a@measured focused",
       "focus.ran keep",
     ]);
   });

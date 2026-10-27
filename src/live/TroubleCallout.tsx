@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t, msg } from "../i18n";
 import { useInteraction } from "../canvas/interaction";
 import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
-import { useFloatingPlacement } from "./useFloatingPlacement";
 import { planFixLabel } from "../planning/scalingPlanText";
 import { applyThreadFix, type ApplyThreadFix } from "./threadFixes";
+import { useFloatingPlacement } from "./useFloatingPlacement";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
@@ -46,6 +46,7 @@ interface TroubleProps {
  * rising. It comes on its own, with one action, and goes when dismissed or when the trouble ends.
  */
 export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating, disabledHint }: TroubleProps) {
+  const [expanded, setExpanded] = useState(false);
   const action = TROUBLE_ACTIONS[trouble.action.kind];
   const label =
     trouble.action.kind === "restore-boundary"
@@ -60,7 +61,7 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
-  const placement = useFloatingPlacement(box, !!floating);
+  const placement = useFloatingPlacement(box, !!floating, 16);
   // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>
   // (focus policy row L3).
   const focused = useRef(false);
@@ -75,14 +76,23 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   return (
     <div
       ref={box}
-      className={`cap-callout is-over${floating ? " is-floating" : ""}${placement.compact ? " is-compact" : ""}`}
-      title={placement.compact ? detail : undefined}
-      data-compact={placement.compact ? "" : undefined}
-      style={placement.style}
+      className={`cap-callout is-over${floating ? " is-floating is-status-strip" : ""}${placement.compact ? " is-compact" : ""}`}
+      style={
+        floating && "left" in placement.style
+          ? {
+              ...placement.style,
+              insetBlockStart: placement.below ? "var(--callout-top)" : 16,
+              insetInlineEnd: "auto",
+              marginInline: 0,
+              transform: placement.below ? "none" : "translateX(-50%)",
+            }
+          : undefined
+      }
       data-testid="trouble-callout"
       data-kind={trouble.kind}
+      data-expanded={expanded ? "1" : "0"}
       data-node={trouble.node}
-      data-below={placement.below ? "" : undefined}
+      data-below={floating && placement.below ? "" : undefined}
       data-canvas-overlay={floating ? "" : undefined}
       data-editor-overlay
       onFocus={() => (focused.current = true)}
@@ -91,6 +101,13 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       }}
     >
       <span className="cap-callout-dot" aria-hidden />
+      <button
+        className="trouble-expand"
+        data-testid="trouble-expand"
+        aria-label={trouble.headline}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+      />
       <div className="cap-callout-text">
         <strong data-testid="trouble-headline">{trouble.headline}</strong>
         {detail && <span data-testid="trouble-detail">{detail}</span>}

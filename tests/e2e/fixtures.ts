@@ -10,6 +10,105 @@ import { withSlowmoDiagnostic, slowmoDiagnosticEnabled, slowmoDiagnosticTest } f
 export const TEXT_START = textBoundaryKey("start");
 export const TEXT_END = textBoundaryKey("end");
 
+/** Diagram details moved from the canvas card into Properties. */
+export async function openDiagramProperties(page: Page) {
+  if (await page.getByTestId("inspector-field-title").isVisible()) return;
+  const at = await emptyCanvasPoint(page);
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: at });
+  await page.getByTestId("context-menu-item-canvas.properties").click();
+  await expect(page.getByTestId("inspector-field-title")).toBeVisible();
+}
+
+/** Live Properties may already be expanded by a context-menu naming request. */
+export async function openEditProperties(page: Page) {
+  const button = page.getByTestId("dock-edit-properties");
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
+}
+
+/** Inputs moves into playback's More menu on phones. */
+export async function openLiveInputs(page: Page) {
+  if (!(await page.getByTestId("live-capacity").isVisible())) await page.getByTestId("live-more").click();
+  await page.getByTestId("live-capacity").click();
+}
+
+/** Numbered findings disclose their controls only after the row is selected. */
+export async function openCheckFinding(page: Page, id: string) {
+  const head = page.getByTestId(`check-select-${id}`).or(page.getByTestId(`check-open-${id}`));
+  await expect(head).toBeVisible();
+  if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+  await waitForCameraIdle(page);
+  await waitForChecks(page);
+}
+
+/** Theme choices moved into the View menu. */
+export async function openViewMenu(page: Page) {
+  const view = page.getByTestId("view-button");
+  if (!(await view.isVisible())) await page.getByTestId("topbar-more").click();
+  if ((await view.getAttribute("aria-expanded")) !== "true") await view.click();
+  await expect(page.getByTestId("view-menu")).toBeVisible();
+}
+
+export async function toggleTheme(page: Page) {
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+  await openViewMenu(page);
+  await page.getByTestId("theme-toggle").click();
+  await page.getByTestId(theme === "dark" ? "theme-light" : "theme-dark").click();
+}
+export async function setTheme(page: Page, theme: string) {
+  await openViewMenu(page);
+  await page.getByTestId("theme-toggle").click();
+  await page.getByTestId(`theme-${theme}`).click();
+}
+export async function expectTheme(page: Page, theme: string) {
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
+  await openViewMenu(page);
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.getByTestId(`theme-${theme}`)).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+}
+
+/** The stencil library starts as a flyout; a pinned library is already open. */
+export async function openLibrary(page: Page) {
+  if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("rail-add").click();
+  await expect(page.getByTestId("palette-search")).toBeVisible();
+}
+
+/** Keep the library mounted across canvas and menu actions when a test exercises that workflow. */
+export async function pinLibrary(page: Page) {
+  await openLibrary(page);
+  if ((await page.getByTestId("palette").getAttribute("data-mode")) !== "pinned")
+    await page.getByTestId("palette-toggle").click();
+  await expect(page.getByTestId("palette")).toHaveAttribute("data-mode", "pinned");
+}
+
+export async function openAnnotate(page: Page) {
+  if (!(await page.getByTestId("palette-annotate").isVisible())) await page.getByTestId("rail-annotate").click();
+  await expect(page.getByTestId("palette-annotate")).toBeVisible();
+}
+
+/** Go to a node through search when Focus has left it outside the current frame. */
+export async function goToNode(page: Page, id: string, clock = false) {
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill(id);
+  await page.getByTestId(`command-item-node:${id}`).click();
+  if (clock)
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(32);
+          return page.getByTestId("canvas-wrap").getAttribute("data-camera-state");
+        },
+        { intervals: [0] },
+      )
+      .toBe("idle");
+  await waitForCameraIdle(page);
+  if (clock) await page.clock.runFor(32);
+  await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+}
+
 /**
  * Shared helpers for every e2e spec. Selectors are data-testid only (owner's rule):
  * use page.getByTestId(...) and scope with .getByTestId(...) — never classes or ids.
@@ -393,6 +492,15 @@ export async function cameraMoves(page: Page, after = 0): Promise<string[]> {
  * clicked until the view brings it back: a selection that opened the inspector, or a smaller window,
  * can leave one there.
  */
+/** Fit's button moves into the transport menu in Live. The action and its test ID stay the same. */
+export async function clickFitView(page: Page) {
+  const view = page.getByTestId("live-view-menu");
+  if (await view.isVisible()) {
+    if ((await view.getAttribute("aria-expanded")) !== "true") await view.click();
+  }
+  await page.getByTestId("fit-view-button").click();
+}
+
 export async function fitDiagram(page: Page) {
   await waitForStableViewport(page);
   await page.getByTestId("canvas-wrap").focus();
@@ -435,6 +543,22 @@ export async function flowPoint(page: Page, screen: { x: number; y: number }): P
     if (!probe) throw new Error("No React Flow store probe");
     return probe.toFlow(x, y);
   }, screen);
+}
+
+/** An exposed point on the actual stroke; an SVG bounding box can contain another edge. */
+export async function edgePoint(page: Page, id: string) {
+  return page.getByTestId(`edge-${id}`).evaluate((edge) => {
+    const path = [...edge.children].find((child) => child instanceof SVGPathElement);
+    if (!(path instanceof SVGPathElement)) throw new Error("Expected a connection path");
+    const matrix = path.getScreenCTM();
+    if (!matrix) throw new Error("Expected the connection's screen transform");
+    for (const fraction of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9]) {
+      const at = path.getPointAtLength(path.getTotalLength() * fraction);
+      const screen = new DOMPoint(at.x, at.y).matrixTransform(matrix);
+      if (edge.contains(document.elementFromPoint(screen.x, screen.y))) return { x: screen.x, y: screen.y };
+    }
+    throw new Error(`No exposed stroke on ${edge.getAttribute("data-testid")}`);
+  });
 }
 
 /** The canvas viewport's CSS transform (React Flow's pan and zoom). */
@@ -556,6 +680,14 @@ export async function gotoLive(page: Page, url: string) {
 
 /** Live summaries disclose their full readouts only after an explicit pin and section choice. */
 export async function openLiveNodeDetails(page: Page, id: string, section: string) {
+  // The selected node's dock replaces its floating card. Explicitly close that surface to test the card.
+  const dock = page.getByTestId("inspector");
+  if (
+    (await dock.count()) > 0 &&
+    (await dock.getAttribute("data-dock-tab")) === "properties" &&
+    (await dock.getAttribute("data-inspector-target")) === id
+  )
+    await page.getByTestId("inspector-toggle").click();
   await page.getByTestId(`node-${id}`).evaluate((el) => el.parentElement?.focus());
   const card = page.getByTestId(`node-detail-${id}`);
   await expect(card).toBeVisible();

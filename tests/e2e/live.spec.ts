@@ -1,4 +1,7 @@
 import {
+  toggleTheme,
+  expectTheme,
+  setTheme,
   pauseClock,
   openLiveNodeDetails,
   savedDiagram,
@@ -112,6 +115,9 @@ for (const presenting of [false, true]) {
       await expect(label).toBeFocused();
       await page.keyboard.press("Escape");
       await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+      // Enter's floating readout is available after closing the selected node's dock.
+      await page.getByTestId("inspector-toggle").click();
+      await node.evaluate((el) => el.parentElement?.focus());
     } else await expect(label).toHaveCount(0);
     await expect(play).toHaveAttribute("data-state", "waiting");
     await page.keyboard.press("Enter");
@@ -123,7 +129,8 @@ for (const presenting of [false, true]) {
     await page.getByTestId("live-note-continue").click();
     await expect(play).toHaveAttribute("data-state", "playing");
     if (presenting) await expect(label).toHaveCount(0);
-    else await expect(label).not.toBeFocused();
+    else
+      await expect.poll(() => label.evaluateAll((els) => els.some((el) => el === document.activeElement))).toBe(false);
     expectNoErrors(consoleErrors);
   });
 }
@@ -380,6 +387,23 @@ test.describe("live view", () => {
     await page.getByTestId("edge-label-order-events-to-payments").click({ button: "right" });
     await menuItem(page, "sim.trace").click();
     await expect(page.getByTestId("live-trace")).toBeVisible();
+    // Dynamic stylesheets can finish in either order. Frame styling loaded last
+    // must still leave routes outside a path trace dimmed.
+    for (let i = 0; i < 8 && (await page.getByTestId("canvas-wrap").getAttribute("data-detail-far")) === null; i++) {
+      await page.getByTestId("live-view-menu").click();
+      await page.getByTestId("zoom-out-button").click();
+      await waitForCameraIdle(page);
+    }
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-far", "");
+    await page.evaluate(() => {
+      const rules = [...document.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule) => rule instanceof CSSStyleRule && rule.selectorText.includes("[data-detail-far]"));
+      if (!rules.length) throw new Error("Expected the frame stylesheet");
+      const last = document.createElement("style");
+      last.textContent = rules.map((rule) => rule.cssText).join("\n");
+      document.head.appendChild(last);
+    });
     const unrelatedNode = page.getByTestId("node-inventory");
     const downstreamNode = page.getByTestId("node-payments");
     const unrelatedEdge = page.getByTestId("edge-order-events-to-inventory");
@@ -388,6 +412,8 @@ test.describe("live view", () => {
       page.getByTestId(id).evaluate((el) => ({
         dim: el.closest("[data-id]")?.getAttribute("data-live-dim"),
         opacity: getComputedStyle(el.closest("[data-id]") ?? el).opacity,
+        labelColor: getComputedStyle(el.querySelector('[data-testid="card-title"]') ?? el).color,
+        mutedColor: getComputedStyle(el).getPropertyValue("--text-2").trim(),
       }));
     const edgeDecoration = (id: string) =>
       page.getByTestId(id).evaluate((el) => {
@@ -395,7 +421,9 @@ test.describe("live view", () => {
         return {
           dim: edge.getAttribute("data-live-dim"),
           trace: edge.getAttribute("data-live-trace"),
+          near: edge.getAttribute("data-live-near"),
           opacity: getComputedStyle(edge).opacity,
+          pathOpacity: getComputedStyle(el.children[1]).opacity,
         };
       });
     await expect(unrelatedNode).toBeVisible();
@@ -404,7 +432,7 @@ test.describe("live view", () => {
     await expect(tracedEdge).toBeVisible();
     await expect.poll(() => nodeDecoration("node-inventory")).toMatchObject({ dim: "1" });
     await expect.poll(() => nodeDecoration("node-payments")).toMatchObject({ dim: null, opacity: "1" });
-    await expect.poll(() => edgeDecoration("edge-order-events-to-inventory")).toMatchObject({ dim: "1" });
+    await expect.poll(() => edgeDecoration("edge-order-events-to-inventory")).toMatchObject({ dim: "1", near: "" });
     await expect
       .poll(() => edgeDecoration("edge-order-events-to-payments"))
       .toMatchObject({ dim: null, trace: "1", opacity: "1" });
@@ -412,9 +440,22 @@ test.describe("live view", () => {
       .poll(() => edgeDecoration("edge-payments-to-payment-db"))
       .toMatchObject({ dim: null, trace: "1", opacity: "1" });
     // The dim attribute precedes the CSS transition's first frame; wait for the rendered result too.
-    await expect.poll(async () => Number((await nodeDecoration("node-inventory")).opacity)).toBeLessThan(1);
     await expect
-      .poll(async () => Number((await edgeDecoration("edge-order-events-to-inventory")).opacity))
+      .poll(async () => {
+        return unrelatedNode.evaluate((el) => {
+          const title = el.querySelector('[data-testid="card-title"]');
+          if (!title) throw new Error("Expected the node title");
+          const probe = document.createElement("span");
+          probe.style.color = "var(--text-2)";
+          el.append(probe);
+          const muted = getComputedStyle(probe).color;
+          probe.remove();
+          return getComputedStyle(title).color === muted;
+        });
+      })
+      .toBe(true);
+    await expect
+      .poll(async () => Number((await edgeDecoration("edge-order-events-to-inventory")).pathOpacity))
       .toBeLessThan(1);
     await page.getByTestId("live-trace-clear").click();
     await expect(page.getByTestId("live-trace")).toHaveCount(0);
@@ -711,9 +752,8 @@ test.describe("live view", () => {
     await expect(alert).toBeVisible();
     await page.getByTestId("live-play").click();
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      if (theme === "light") await setTheme(page, theme);
+      await expectTheme(page, theme);
       const contrasts = await metric.evaluate((el) => {
         const canvas = document.createElement("canvas");
         canvas.width = canvas.height = 1;
@@ -765,7 +805,7 @@ test.describe("live view", () => {
         return (Math.max(bg, fg) + 0.05) / (Math.min(bg, fg) + 0.05);
       });
       expect(alertColors).toBeGreaterThanOrEqual(4.5);
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
 

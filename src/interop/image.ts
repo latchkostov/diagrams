@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { suspendFrameCapture } from "../canvas/camera/frameCapture";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { MarkdownView, loadMarkdown } from "../components/markdown/lazy";
@@ -144,6 +145,15 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     await unlessCancelled(routeReadiness, opts.signal);
     flushSync(() => {});
   }
+  const restoreDetail = suspendFrameCapture(viewport);
+  try {
+    return await captureDiagramImage(kind, opts, viewport);
+  } finally {
+    restoreDetail();
+  }
+}
+
+async function captureDiagramImage(kind: "png" | "svg", opts: ImageOptions, viewport: HTMLElement): Promise<Blob> {
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
   const header = opts.header?.title.trim() ? addHeader(viewport, content, opts.header) : undefined;

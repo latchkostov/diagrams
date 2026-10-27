@@ -12,6 +12,8 @@ interface FakePath {
 
 function fakeDom(edges: Map<string, FakePath>) {
   const g = (id: string, p: FakePath) => ({
+    dataset: { id },
+    hasAttribute: () => false,
     getAttribute: (name: string) => (name === "data-id" ? id : null),
     querySelector: () => ({
       getAttribute: () => p.d,
@@ -21,6 +23,7 @@ function fakeDom(edges: Map<string, FakePath>) {
     }),
   });
   const root = {
+    hasAttribute: () => false,
     querySelectorAll: (selector: string) =>
       selector === ".react-flow__edge[data-id]" ? [...edges].map(([id, p]) => g(id, p)) : [],
     querySelector: () => null,
@@ -34,7 +37,65 @@ function fakeDom(edges: Map<string, FakePath>) {
 const path = (length: number, d = `M0 0 L${length} 0`): FakePath => ({ d, length, queries: 0 });
 const queries = (edges: Map<string, FakePath>) => [...edges.values()].reduce((n, p) => n + p.queries, 0);
 
+it.each(["measurement", "detail styling"])("invalidates cached trace obstacles after a card's %s changes", (change) => {
+  let notify = () => {};
+  vi.stubGlobal(
+    "MutationObserver",
+    class {
+      constructor(callback: (records: { attributeName: string }[]) => void) {
+        notify = () => callback([{ attributeName: "data-detail-wrapped" }]);
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+  let height = 72;
+  let nodes = [{}];
+  const card = { getBoundingClientRect: () => ({ left: 20, top: 30, width: 220, height }) };
+  const root = {
+    hasAttribute: () => false,
+    getBoundingClientRect: () => ({ left: 0, top: 0 }),
+    querySelectorAll: (selector: string) => (selector.startsWith(".react-flow__node-diagram,") ? [card] : []),
+    querySelector: () => null,
+  } as unknown as HTMLElement;
+  const scene = new LiveScene(root, {
+    getState: () => ({
+      transform: [0, 0, 1],
+      width: 800,
+      height: 600,
+      nodes,
+      nodeLookup: new Map([
+        ["card", { internals: { positionAbsolute: { x: 20, y: 30 } }, measured: { width: 220, height } }],
+      ]),
+    }),
+  });
+  try {
+    scene.refresh();
+    const first = scene.obstacles();
+    expect(first.hard[0].height).toBe(72);
+    expect(scene.obstacles()).toBe(first);
+    height = 96;
+    if (change === "measurement") {
+      nodes = [{}];
+      scene.refresh();
+    } else notify();
+    const next = scene.obstacles();
+    expect(next.hard[0].height).toBe(96);
+    expect(next).not.toBe(first);
+    expect(scene.obstacles()).toBe(next);
+  } finally {
+    scene.dispose();
+    vi.unstubAllGlobals();
+  }
+});
+
 describe("LiveScene paths", () => {
+  it("keeps free-play edges in the particle scene when no subject is spotlit", () => {
+    const scene = fakeDom(new Map([["traffic", path(600)]]));
+    scene.refresh();
+    expect(scene.ink.get("traffic")).toEqual({ alpha: 1, near: true });
+  });
+
   it("reads every edge's path but samples only the ones the renderer asks for", () => {
     const edges = new Map([
       ["busy", path(600)],

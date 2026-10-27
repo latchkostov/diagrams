@@ -1,15 +1,15 @@
 {
   "smoothstep": {
-    "n0-1->n3-1": { "ok": true, "sides": ["right", "left"], "points": [260, 216, 336, 216, 336, 151.5, 1150, 151.5, 1150, 216, 1240, 216], "path": "67bb4fae59d8", "label": [683, 151.5, 125, 19], "mode": "full", "text": "Skips every column", "lines": ["Skips every column"] },
-    "n0-0->n2-2": { "ok": true, "sides": ["right", "left"], "points": [260, 90, 325, 90, 325, 286, 744.5, 286, 744.5, 349, 840, 349], "path": "b2b09212ce38", "label": [534.75, 286, 107, 19], "mode": "full", "text": "Diagonal across", "lines": ["Diagonal across"] },
-    "n1-1->n2-0": { "ok": true, "sides": ["right", "left"], "points": [660, 202, 750, 202, 750, 76, 840, 76], "path": "f97816a9f76e", "label": [750, 129, 47, 19], "mode": "full", "text": "Fan 0", "lines": ["Fan 0"] },
-    "n1-1->n2-1": { "ok": true, "sides": ["right", "left"], "points": [660, 216, 840, 216], "path": "89d9e974fd77", "label": [744, 216, 47, 19], "mode": "full", "text": "Fan 1", "lines": ["Fan 1"] },
-    "n1-1->n2-2": { "ok": true, "sides": ["right", "left"], "points": [660, 230, 755.5, 230, 755.5, 363, 840, 363], "path": "3fe640fd7eec", "label": [755.5, 276.5, 47, 19], "mode": "full", "text": "Fan 2", "lines": ["Fan 2"] },
-    "n0-0->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 76, 347, 76, 347, 209, 440, 209], "path": "74d03298e08a", "label": [347, 132.5, 41, 19], "mode": "full", "text": "In 0", "lines": ["In 0"] },
-    "n0-2->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 358, 356, 358, 223, 440, 223], "path": "82aceff30eed", "label": [358, 299.5, 41, 19], "mode": "full", "text": "In 2", "lines": ["In 2"] },
-    "n3-0->n0-0": { "ok": true, "sides": ["left", "right"], "points": [1240, 76, 1150, 76, 1150, 140.5, 369, 140.5, 369, 62, 260, 62], "path": "abbd0332ae10", "label": [839.5, 140.5, 119, 19], "mode": "full", "text": "Back to the start", "lines": ["Back to the start"] },
-    "n3-2->n2-2": { "ok": true, "sides": ["left", "right"], "points": [1240, 363, 1060, 363], "path": "a681a809536f", "label": [1206, 363, 47, 19], "mode": "full", "text": "Reply", "lines": ["Reply"] },
-    "n2-2->n3-2": { "ok": true, "sides": ["right", "left"], "points": [1060, 349, 1240, 349], "path": "d294ecef7514", "label": [1144, 349, 59, 19], "mode": "full", "text": "Request", "lines": ["Request"] }
+    "n0-1->n3-1": { "ok": true, "sides": ["right", "left"], "points": [260, 216, 336, 216, 336, 151.5, 1150, 151.5, 1150, 216, 1240, 216], "path": "67bb4fae59d8", "label": [653, 151.5, 123.05999999999999, 22], "mode": "full", "text": "Skips every column", "lines": ["Skips every column"] },
+    "n0-0->n2-2": { "ok": true, "sides": ["right", "left"], "points": [260, 90, 325, 90, 325, 286, 744.5, 286, 744.5, 349, 840, 349], "path": "b2b09212ce38", "label": [534.75, 286, 105.46000000000001, 22], "mode": "full", "text": "Diagonal across", "lines": ["Diagonal across"] },
+    "n1-1->n2-0": { "ok": true, "sides": ["right", "left"], "points": [660, 202, 750, 202, 750, 76, 840, 76], "path": "f97816a9f76e", "label": [750, 129, 47.67, 22], "mode": "full", "text": "Fan 0", "lines": ["Fan 0"] },
+    "n1-1->n2-1": { "ok": true, "sides": ["right", "left"], "points": [660, 216, 840, 216], "path": "89d9e974fd77", "label": [744, 216, 47.67, 22], "mode": "full", "text": "Fan 1", "lines": ["Fan 1"] },
+    "n1-1->n2-2": { "ok": true, "sides": ["right", "left"], "points": [660, 230, 755.5, 230, 755.5, 363, 840, 363], "path": "3fe640fd7eec", "label": [755.5, 266.5, 47.67, 22], "mode": "full", "text": "Fan 2", "lines": ["Fan 2"] },
+    "n0-0->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 76, 347, 76, 347, 209, 440, 209], "path": "74d03298e08a", "label": [347, 132.5, 36.87, 22], "mode": "full", "text": "In 0", "lines": ["In 0"] },
+    "n0-2->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 358, 356, 358, 223, 440, 223], "path": "82aceff30eed", "label": [358, 299.5, 36.87, 22], "mode": "full", "text": "In 2", "lines": ["In 2"] },
+    "n3-0->n0-0": { "ok": true, "sides": ["left", "right"], "points": [1240, 76, 1150, 76, 1150, 140.5, 369, 140.5, 369, 62, 260, 62], "path": "abbd0332ae10", "label": [839.5, 140.5, 107.65999999999998, 22], "mode": "full", "text": "Back to the start", "lines": ["Back to the start"] },
+    "n3-2->n2-2": { "ok": true, "sides": ["left", "right"], "points": [1240, 363, 1060, 363], "path": "a681a809536f", "label": [1206, 363, 47.660000000000004, 22], "mode": "full", "text": "Reply", "lines": ["Reply"] },
+    "n2-2->n3-2": { "ok": true, "sides": ["right", "left"], "points": [1060, 349, 1240, 349], "path": "d294ecef7514", "label": [1144, 349, 62.150000000000006, 22], "mode": "full", "text": "Request", "lines": ["Request"] }
   },
   "bezier": {
     "n0-1->n3-1": {
@@ -60,7 +60,7 @@
         216
       ],
       "path": "23fd0ee0f2b4",
-      "label": [356.70000000000005, 216, 125, 19],
+      "label": [346.70000000000005, 216.00000000000003, 123.05999999999999, 22],
       "mode": "full",
       "text": "Skips every column",
       "lines": ["Skips every column"]
@@ -113,7 +113,7 @@
         349
       ],
       "path": "dc2af4647388",
-      "label": [617.85, 266.929375, 107, 19],
+      "label": [645.41, 284.54137499999996, 105.46000000000001, 22],
       "mode": "full",
       "text": "Diagonal across",
       "lines": ["Diagonal across"]
@@ -166,7 +166,7 @@
         76
       ],
       "path": "379f65364d1c",
-      "label": [746.69845293189, 143.70925, 47, 19],
+      "label": [746.69845293189, 143.70925, 47.67, 22],
       "mode": "full",
       "text": "Fan 0",
       "lines": ["Fan 0"]
@@ -219,7 +219,7 @@
         216
       ],
       "path": "35124e2db4e8",
-      "label": [777.9373499999999, 215.99999999999997, 47, 19],
+      "label": [777.9373499999999, 215.99999999999997, 47.67, 22],
       "mode": "full",
       "text": "Fan 1",
       "lines": ["Fan 1"]
@@ -272,7 +272,7 @@
         363
       ],
       "path": "7ad63a02787d",
-      "label": [746.7621906784852, 291.529125, 47, 19],
+      "label": [746.7621906784852, 291.529125, 47.67, 22],
       "mode": "full",
       "text": "Fan 2",
       "lines": ["Fan 2"]
@@ -325,7 +325,7 @@
         209
       ],
       "path": "ead8cf4b51d9",
-      "label": [346.76219067848524, 137.52912500000002, 41, 19],
+      "label": [346.76219067848524, 137.52912500000002, 36.87, 22],
       "mode": "full",
       "text": "In 0",
       "lines": ["In 0"]
@@ -378,7 +378,7 @@
         223
       ],
       "path": "a0734baa5761",
-      "label": [346.7621906784852, 294.47087500000004, 41, 19],
+      "label": [346.7621906784852, 294.47087500000004, 36.87, 22],
       "mode": "full",
       "text": "In 2",
       "lines": ["In 2"]
@@ -431,7 +431,7 @@
         62
       ],
       "path": "3cd280ee248d",
-      "label": [731.5383103038981, 68.66057346684873, 119, 19],
+      "label": [721.54, 68.47675, 107.65999999999998, 22],
       "mode": "full",
       "text": "Back to the start",
       "lines": ["Back to the start"]
@@ -484,7 +484,7 @@
         363
       ],
       "path": "68f6a5a713f9",
-      "label": [1204.1651500000003, 363, 47, 19],
+      "label": [1204.1651500000003, 363, 47.660000000000004, 22],
       "mode": "full",
       "text": "Reply",
       "lines": ["Reply"]
@@ -537,22 +537,22 @@
         349
       ],
       "path": "f1ea79488ac6",
-      "label": [1146.07915, 349, 59, 19],
+      "label": [1146.07915, 349, 62.150000000000006, 22],
       "mode": "full",
       "text": "Request",
       "lines": ["Request"]
     }
   },
   "straight": {
-    "n0-1->n3-1": { "ok": true, "sides": ["right", "left"], "points": [260, 216, 1240, 216], "path": "a03f58258488", "label": [804, 216, 53, 45], "mode": "wrap", "text": "Skips every column", "lines": ["Skips", "every", "column"] },
-    "n0-0->n2-2": { "ok": true, "sides": ["right", "left"], "points": [260, 90, 840, 349], "path": "38a194e4fb89", "label": [371.0331802793779, 139.5820580902739, 107, 19], "mode": "full", "text": "Diagonal across", "lines": ["Diagonal across"] },
-    "n1-1->n2-0": { "ok": true, "sides": ["right", "left"], "points": [660, 202, 840, 76], "path": "d612517876f3", "label": [745.0846084768857, 142.44077406617998, 47, 19], "mode": "full", "text": "Fan 0", "lines": ["Fan 0"] },
-    "n1-1->n2-1": { "ok": true, "sides": ["right", "left"], "points": [660, 216, 840, 216], "path": "89d9e974fd77", "label": [744, 216, 47, 19], "mode": "full", "text": "Fan 1", "lines": ["Fan 1"] },
-    "n1-1->n2-2": { "ok": true, "sides": ["right", "left"], "points": [660, 230, 840, 363], "path": "19ede97ff5e4", "label": [721.0463163331542, 275.1064448461639, 47, 19], "mode": "full", "text": "Fan 2", "lines": ["Fan 2"] },
-    "n0-0->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 76, 440, 209], "path": "bd3cbe5c8667", "label": [377.3451456853544, 162.70502431195627, 41, 19], "mode": "full", "text": "In 0", "lines": ["In 0"] },
-    "n0-2->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 440, 223], "path": "448b6671bb15", "label": [345.1743860555257, 293.0655925256393, 41, 19], "mode": "full", "text": "In 2", "lines": ["In 2"] },
-    "n3-0->n0-0": { "ok": true, "sides": ["left", "right"], "points": [1240, 76, 260, 62], "path": "79256ba601ee", "label": [755.9993878487971, 69.0857055406971, 119, 19], "mode": "full", "text": "Back to the start", "lines": ["Back to the start"] },
-    "n3-2->n2-2": { "ok": true, "sides": ["left", "right"], "points": [1240, 363, 1060, 363], "path": "a681a809536f", "label": [1206, 363, 47, 19], "mode": "full", "text": "Reply", "lines": ["Reply"] },
-    "n2-2->n3-2": { "ok": true, "sides": ["right", "left"], "points": [1060, 349, 1240, 349], "path": "d294ecef7514", "label": [1144, 349, 59, 19], "mode": "full", "text": "Request", "lines": ["Request"] }
+    "n0-1->n3-1": { "ok": true, "sides": ["right", "left"], "points": [260, 216, 1240, 216], "path": "a03f58258488", "label": [804, 216, 58.28, 54], "mode": "wrap", "text": "Skips every column", "lines": ["Skips", "every", "column"] },
+    "n0-0->n2-2": { "ok": true, "sides": ["right", "left"], "points": [260, 90, 840, 349], "path": "38a194e4fb89", "label": [718.009667492829, 294.52500669076323, 105.46000000000001, 22], "mode": "full", "text": "Diagonal across", "lines": ["Diagonal across"] },
+    "n1-1->n2-0": { "ok": true, "sides": ["right", "left"], "points": [660, 202, 840, 76], "path": "d612517876f3", "label": [745.0846084768857, 142.44077406617998, 47.67, 22], "mode": "full", "text": "Fan 0", "lines": ["Fan 0"] },
+    "n1-1->n2-1": { "ok": true, "sides": ["right", "left"], "points": [660, 216, 840, 216], "path": "89d9e974fd77", "label": [744, 216, 47.67, 22], "mode": "full", "text": "Fan 1", "lines": ["Fan 1"] },
+    "n1-1->n2-2": { "ok": true, "sides": ["right", "left"], "points": [660, 230, 840, 363], "path": "19ede97ff5e4", "label": [713.003626425697, 269.16379063676504, 47.67, 22], "mode": "full", "text": "Fan 2", "lines": ["Fan 2"] },
+    "n0-0->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 76, 440, 209], "path": "bd3cbe5c8667", "label": [377.3451456853544, 162.70502431195627, 36.87, 22], "mode": "full", "text": "In 0", "lines": ["In 0"] },
+    "n0-2->n1-1": { "ok": true, "sides": ["right", "left"], "points": [260, 356, 440, 223], "path": "448b6671bb15", "label": [345.1743860555257, 293.0655925256393, 36.87, 22], "mode": "full", "text": "In 2", "lines": ["In 2"] },
+    "n3-0->n0-0": { "ok": true, "sides": ["left", "right"], "points": [1240, 76, 260, 62], "path": "79256ba601ee", "label": [755.9993878487971, 69.0857055406971, 107.65999999999998, 22], "mode": "full", "text": "Back to the start", "lines": ["Back to the start"] },
+    "n3-2->n2-2": { "ok": true, "sides": ["left", "right"], "points": [1240, 363, 1060, 363], "path": "a681a809536f", "label": [1206, 363, 47.660000000000004, 22], "mode": "full", "text": "Reply", "lines": ["Reply"] },
+    "n2-2->n3-2": { "ok": true, "sides": ["right", "left"], "points": [1060, 349, 1240, 349], "path": "d294ecef7514", "label": [1144, 349, 62.150000000000006, 22], "mode": "full", "text": "Request", "lines": ["Request"] }
   }
 }

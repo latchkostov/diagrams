@@ -1,13 +1,13 @@
 {
-  "viewport": "translate(40px, 145.366px) scale(0.829268)",
+  "viewport": "translate(32px, 67.7854px) scale(1.06016)",
   "nodes": {
     "source": { "kind": "node", "box": "translate(0px, 180px) 233×72", "text": "Applications submitted User" },
     "applications": { "kind": "node", "box": "translate(320px, 180px) 220×72", "text": "Applications Topic" },
-    "caller": { "kind": "node", "box": "translate(660px, 180px) 253×72", "text": "Decision service 4 replicas · 16 threads each" },
+    "caller": { "kind": "node", "box": "translate(660px, 180px) 232×72", "text": "Decision service 4 replicas · 16 threads each" },
     "partner": { "kind": "node", "box": "translate(1010px, 180px) 220×72", "text": "Partner scoring API External API" },
     "decisions": { "kind": "node", "box": "translate(660px, 420px) 220×72", "text": "Decisions Topic" },
     "store": { "kind": "node", "box": "translate(1010px, 420px) 220×72", "text": "Case store Database" }
   },
-  "edges": { "submit": "M233,216 L320,216", "consume": "M540,216 L660,216", "call": "M913,216 L1010,216", "publish": "M786.5,252 L786.5,327.8 Q786.5,336 778.3,336 L778.3,336 Q770,336 770,344.3 L770,420", "save": "M880,456 L1010,456" },
+  "edges": { "submit": "M233,216 L320,216", "consume": "M540,216 L660,216", "call": "M892,216 L1010,216", "publish": "M776,252 L776,333 Q776,336 773,336 L773,336 Q770,336 770,339 L770,420", "save": "M880,456 L1010,456" },
   "labels": {}
 }

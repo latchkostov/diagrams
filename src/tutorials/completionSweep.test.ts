@@ -447,6 +447,8 @@ function sandbox(
     write({ ...diagram, edges: diagram.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
   const editor = {
     getDiagram: () => diagram,
+    // Live demos reveal Properties before changing a setting; this headless host models the editor API.
+    openInspector: vi.fn(),
     getNode: (id: string) => diagram.nodes.find((node) => node.id === id),
     getEdge: (id: string) => diagram.edges.find((edge) => edge.id === id),
     getDocumentVersion: () => version,

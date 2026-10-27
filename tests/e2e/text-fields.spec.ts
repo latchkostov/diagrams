@@ -1,3 +1,4 @@
+import { openLibrary, openEditProperties } from "./fixtures";
 import { TEXT_END, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
@@ -548,8 +549,10 @@ test.describe("renaming in the inspector", () => {
       const label = page.getByTestId("inspector-field-label");
       await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
       if (c.id === "node-a") {
+        await openEditProperties(page);
         await expect(label).not.toBeFocused();
         await expect.poll(() => selected(label)).toBe("");
+        await page.getByTestId(c.id).evaluate((el) => el.parentElement?.focus());
         await page.keyboard.press("F2");
       }
       await expect(label).toBeFocused();
@@ -810,8 +813,9 @@ test.describe("selecting text with the mouse", () => {
     await page.keyboard.press("Escape");
 
     // The stencil rail's search.
+    await openLibrary(page);
     const stencils = page.getByTestId("palette-search");
-    if (!(await stencils.isVisible())) await page.getByTestId("palette-toggle").click();
+    if (!(await stencils.isVisible())) await openLibrary(page);
     await expect(stencils).toBeVisible();
     await stencils.fill("service bus");
     await expectNativeSelection(stencils, "service", "service bus");

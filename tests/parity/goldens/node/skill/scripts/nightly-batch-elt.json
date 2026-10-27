@@ -2,8 +2,8 @@
   "layout": {
     "status": 0,
     "stdout": "<tmp>/laid.json: placed 10 nodes, fitted 1 boundary.\n",
-    "nodes": { "airflow": [40, 40], "app-db": [40, 160], "crm": [40, 280], "billing": [40, 400], "airbyte": [417, 580], "raw": [777, 280], "dbt": [417, 220], "marts": [777, 400], "tableau": [40, 520], "slack": [777, 40] },
-    "groups": { "snowflake": [377, 156, 687, 356] }
+    "nodes": { "airflow": [40, 40], "app-db": [40, 160], "crm": [40, 280], "billing": [40, 400], "airbyte": [414, 580], "raw": [774, 280], "dbt": [414, 220], "marts": [774, 400], "tableau": [40, 520], "slack": [774, 40] },
+    "groups": { "snowflake": [374, 156, 687, 356] }
   },
   "shareLink": {
     "status": 0,

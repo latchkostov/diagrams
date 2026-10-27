@@ -1,3 +1,5 @@
+import { openDiagramProperties } from "./fixtures";
+import { openAnnotate, openLibrary } from "./fixtures";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import {
@@ -15,6 +17,7 @@ import {
   waitForLiveSession,
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
+import { CATCH_UP_MS } from "../../src/live/frameClock";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
 
@@ -85,7 +88,12 @@ for (const [control, lesson] of [
 }
 
 async function play(page: Page, step: ResolvedUiStep) {
-  if ("click" in step) {
+  if ("open" in step) {
+    const disclosure = page.getByTestId(step.open);
+    await expect(disclosure).toBeVisible();
+    if ((await disclosure.getAttribute("aria-expanded")) === "false") await disclosure.click();
+    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+  } else if ("click" in step) {
     if (step.click === "canvas-pane")
       await page.getByTestId("canvas-wrap").click({ position: await emptyCanvasPoint(page) });
     else if (step.click.startsWith("edge-") && !step.click.startsWith("edge-label-")) {
@@ -144,8 +152,14 @@ async function play(page: Page, step: ResolvedUiStep) {
     const position = await emptyCanvasPoint(page);
     await page.getByTestId("canvas-wrap").dblclick({ position });
   } else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
-  else if ("hover" in step) await page.getByTestId(step.hover).hover();
-  else if ("fill" in step) {
+  else if ("hover" in step) {
+    // A narrated Follow can move this subject out of frame. Overview is the stable map for inspecting any node.
+    if (step.hover.startsWith("node-")) {
+      await fitDiagram(page);
+      await waitForCameraIdle(page);
+    }
+    await page.getByTestId(step.hover).hover();
+  } else if ("fill" in step) {
     if (step.fill === "inspector-field-label") {
       // Quick-add can render the new field before its queued reveal and naming focus arrive. Filling it early
       // lets that later focus reopen naming after Enter, leaving the runner in completing (CI: add-users).
@@ -268,10 +282,27 @@ test("capacity: solution driver handles completion between browser reads", async
   expect(await finishSolution(page)).toEqual(["drain"]);
 });
 
-async function skipAll(page: Page) {
+/** Drive authored replay time separately from the wall-clock assertion deadline. */
+async function advanceTutorialClock(page: Page, ready: () => Promise<boolean>) {
+  await expect
+    .poll(
+      async () => {
+        // One frame catches up all fixed simulation ticks in this batch; drawing
+        // every intervening frame only couples completion to the test machine.
+        await page.clock.fastForward(CATCH_UP_MS);
+        return ready();
+      },
+      { intervals: [0] },
+    )
+    .toBe(true);
+}
+
+async function skipAll(page: Page, clocked = false) {
   while ((await strip(page).getAttribute("data-phase")) === "step") {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
     await page.getByTestId("tutorial-skip").click();
+    if (clocked)
+      await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== current);
     await expect(strip(page)).not.toHaveAttribute("data-step", current);
   }
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
@@ -546,6 +577,9 @@ test("rate-limit: playback waits for the limiter readout before completing", asy
     for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
   }
   await page.getByTestId("live-sim-picker").hover();
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+    .toBeGreaterThan(0);
   await pauseClock(page);
   await page.clock.runFor(10000);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "10000");
@@ -611,6 +645,7 @@ for (const finish of ["inspector", "Skip"] as const)
     await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
     await fitDiagram(page);
     await page.getByTestId("node-psp").dblclick();
+    await page.getByTestId("dock-edit-properties").click();
     await page.getByTestId("inspector-field-label").click();
     await page.getByTestId("inspector-field-label").press("Enter");
     // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
@@ -632,6 +667,7 @@ for (const finish of ["inspector", "Skip"] as const)
 
 test("study-checkout: Skip and Continue replay the authored tenfold traffic", async ({ page, consoleErrors }) => {
   test.slow();
+  await page.clock.install();
   await reachStudyMilestone(page, "study-checkout", "survive-tenfold");
   await page.getByTestId("live-toggle").click();
   await page.getByTestId("live-sim-picker").selectOption("tenfold");
@@ -642,13 +678,17 @@ test("study-checkout: Skip and Continue replay the authored tenfold traffic", as
   const traffic = () =>
     page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "tenfold")?.multipliers?.traffic);
   await expect.poll(traffic).toBe(1);
+  await pauseClock(page);
   await page.getByTestId("tutorial-skip").click();
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "keep-orders");
   await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
   await expect.poll(traffic).toBe(10);
+  await page.getByTestId("live-capacity").click();
   await expect(page.getByTestId("capacity-traffic-mult")).toHaveAttribute("data-value", "10");
   await page.reload();
   await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
   await page.getByTestId("tutorial-start").click();
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "keep-orders");
   await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
   await expect.poll(traffic).toBe(10);
   expectNoErrors(consoleErrors);
@@ -661,6 +701,7 @@ test("study-checkout: Skip repairs the saved Partner quota pool", async ({ page,
   await page.getByTestId("live-sim-picker").selectOption("partner-quota");
   await fitDiagram(page);
   await page.getByTestId("node-payments").dblclick();
+  await page.getByTestId("dock-edit-properties").click();
   await page.getByTestId("inspector-field-label").click();
   await page.getByTestId("inspector-field-label").press("Enter");
   // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
@@ -717,6 +758,7 @@ for (const { replicas, partitions } of [
     await expect(strip(page)).toHaveAttribute("data-step", "fix-partition-ceiling");
     await page.getByTestId("tutorial-skip").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-replicas-dispatcher")).toHaveValue("4");
     await expect(page.getByTestId("capacity-partitions-pings")).toHaveValue("4");
     expectNoErrors(consoleErrors);
@@ -760,6 +802,7 @@ test("study-payments: brownout Skip repairs overridden draft settings, through t
   // The Live inspector on the saved run: its own deadline (too long) and its breaker turned off.
   await fitDiagram(page);
   await page.getByTestId("node-psp").dblclick();
+  await page.getByTestId("dock-edit-properties").click();
   await page.getByTestId("inspector-field-label").click();
   await page.getByTestId("inspector-field-label").press("Enter");
   // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
@@ -883,9 +926,11 @@ for (const { id, quarantined } of tutorialEntries)
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
     test.fixme(!!quarantined, quarantineReason);
+    await page.clock.install();
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
-    await skipAll(page);
+    await pauseClock(page);
+    await skipAll(page, true);
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });
@@ -920,6 +965,7 @@ test("annotate keeps each instruction current until the annotation's editor clos
 }) => {
   await openTutorial(page, "annotate");
   await page.getByTestId("tutorial-start").click();
+  await openAnnotate(page);
   await page.getByTestId("palette-annotate-text").click();
   await expect(page.getByTestId("annotation-editor")).toBeFocused();
   await expect(strip(page)).toHaveAttribute("data-step", "title");
@@ -929,6 +975,7 @@ test("annotate keeps each instruction current until the annotation's editor clos
   await page.keyboard.press("Escape");
   await expect(strip(page)).toHaveAttribute("data-step", "note");
   // Skip with the note's editor open commits it and moves on once, without another note.
+  await openAnnotate(page);
   await page.getByTestId("palette-annotate-note").click();
   await expect(page.getByTestId("annotation-editor")).toBeFocused();
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
@@ -1030,7 +1077,8 @@ test("command-palette: Skip after adding the topic selects Service 1 without a s
   await page.getByTestId("tutorial-start").click();
   await playUntil(page, 3);
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
-  const nodes = page.getByTestId(/^node-/);
+  const nodes = page.getByTestId(/^rf__node-/);
+  await expect(nodes).toHaveCount(3);
   const count = await nodes.count();
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-step", "goto");
@@ -1197,6 +1245,7 @@ test("empty canvas, tutorial title in Ctrl+K and shortcuts footer enter tutorial
   await page.getByTestId("tutorial-not-now").click();
   await page.getByTestId("start-blank").click();
   await expect(page.getByTestId("start-card")).toHaveCount(0);
+  await openLibrary(page);
   await expect(page.getByTestId("palette-search")).toBeFocused();
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("?");
@@ -1305,7 +1354,7 @@ test("Tutorials is a view of its own: a card starts the tutorial, Enter starts i
   await page.getByTestId("picker-browse-examples").click();
   await page.getByTestId("examples-open-tutorials").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible({ timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("tutorials-track-basics")).toContainText("A mobile app talks to an API");
   await page.getByTestId("tutorial-open-mobile-api").click();
   await expect(page.getByTestId("tutorial-app")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -1413,9 +1462,13 @@ test("Skip does every step for you, and the tutorial remembers it was completed"
 test("Undo goes back a step; Show me reveals the hint and highlights still point the way", async ({ page }) => {
   await openTutorial(page, "mobile-api");
   await page.getByTestId("tutorial-start").click();
+  await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "rail-add");
+  await page.getByTestId("rail-add").click();
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "palette-search");
+  await openLibrary(page);
   await page.getByTestId("palette-search").fill("mobile");
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "palette-item-client.mobile");
+  await openLibrary(page);
   await page.getByTestId("palette-item-client.mobile").click();
   await expect(strip(page)).toHaveAttribute("data-step", "add-api");
   await expect(page.getByTestId("tutorial-done")).toBeVisible();
@@ -1604,11 +1657,13 @@ for (const policy of ["marked", "default"] as const)
     await expect(page.getByTestId("node-imported-api")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText(importedDiagram.title);
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     const entries = await savedEntries(page);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ private: true });
     await page.reload();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible({ timeout: pageLoadTimeout() });
   });
 
@@ -1623,6 +1678,7 @@ test("tutorial share-link imports persist privately before opening and retain su
   await page.getByTestId("open-link-submit").click();
   await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "shared");
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("node-imported-api")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -1640,6 +1696,7 @@ test("tutorial share-link imports persist privately before opening and retain su
     .toBe(true);
   await page.reload();
   await expect(page.getByTestId("node-imported-api")).toContainText("Kept API", { timeout: pageLoadTimeout() });
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 });
 

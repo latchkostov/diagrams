@@ -1,4 +1,5 @@
 import {
+  toggleTheme,
   waitForAutosave,
   TEXT_END,
   test,
@@ -482,7 +483,7 @@ for (const theme of ["light", "dark"] as const)
     test.slow(); // Hover/focus lifecycle plus a full accessibility audit.
     await page.clock.install();
     await gotoCanvas(page, SLUG);
-    if (theme === "dark") await page.getByTestId("theme-toggle").click();
+    if (theme === "dark") await toggleTheme(page);
     await page.getByTestId("live-toggle").click();
     await page.clock.runFor(1200);
     const pill = page.getByTestId("edge-label-api-to-appcfg");

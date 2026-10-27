@@ -13,13 +13,16 @@ const LiveMoreItems = defineLazySurface({
   export: "skip",
   retryToast: true,
 });
+import { ViewMenu } from "./ViewMenu";
+import { Icon } from "../components/Icon";
+import { usePhone } from "../lib/usePhone";
 import { SimPanel } from "./lazySimPanel";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
 import { useLive } from "./context";
-import { formatClock, formatCount, formatSpeed, formatScale } from "./format";
+import { formatClock, formatSeconds, formatCount, formatSpeed, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./lazyTimeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
@@ -32,8 +35,9 @@ import { SlowBar } from "./slowmo/SlowBar";
  * behind "⋯" and in the right-click menu. Leaving live view is the Live toggle (or L, or Esc):
  * one way out, not two buttons.
  */
-export function ControlBar({ state }: { state: LiveState }) {
+export function ControlBar({ state, slim = false }: { state: LiveState; slim?: boolean }) {
   useLocale();
+  const phone = usePhone();
   const ui = useLive();
   const c = ui.controller;
   const run = state.run;
@@ -53,7 +57,7 @@ export function ControlBar({ state }: { state: LiveState }) {
 
   return (
     <div
-      className={`lv-bar${slowOn ? " is-slowmo" : ""}`}
+      className={`lv-bar${slim ? " is-slim" : ""}${slowOn ? " is-slowmo" : ""}`}
       data-testid="live-controls"
       data-editor-overlay
       data-toast-avoid
@@ -95,21 +99,23 @@ export function ControlBar({ state }: { state: LiveState }) {
         <LiveIcon name="restart" size={15} />
       </button>
 
-      <label className="lv-select lv-speed" title={slowOn ? "Slow motion pace" : SPEED_HINT}>
-        <span className="sr-only">Speed</span>
-        <select
-          value={String(state.speed)}
-          onChange={(e) => c.setSpeed(Number(e.target.value))}
-          data-testid="live-speed"
-          name="live-speed"
-        >
-          {SPEEDS.map((s) => (
-            <option key={s} value={String(s)}>
-              {formatSpeed(s)}
-            </option>
-          ))}
-        </select>
-      </label>
+      {!phone && (
+        <label className="lv-select lv-speed" title={slowOn ? "Slow motion pace" : SPEED_HINT}>
+          <span className="sr-only">Speed</span>
+          <select
+            value={String(state.speed)}
+            onChange={(e) => c.setSpeed(Number(e.target.value))}
+            data-testid="live-speed"
+            name="live-speed"
+          >
+            {SPEEDS.map((s) => (
+              <option key={s} value={String(s)}>
+                {formatSpeed(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {slowOn || slow.loading ? (
         <SlowBar slow={ui.slowmo} />
@@ -134,29 +140,38 @@ export function ControlBar({ state }: { state: LiveState }) {
             <LiveIcon name="chevron" size={11} />
           </label>
 
-          <button
-            className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
-            onClick={() => ui.openCapacity(!ui.capacityOpen)}
-            aria-pressed={ui.capacityOpen}
-            aria-label="Inputs"
-            title={t("broker.inputs")}
-            data-testid="live-capacity"
-          >
-            <LiveIcon name="gauge" size={15} />
-            <span>Inputs</span>
-          </button>
+          {!phone && (
+            <button
+              className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
+              onClick={() => ui.openCapacity(!ui.capacityOpen)}
+              aria-pressed={ui.capacityOpen}
+              aria-label="Inputs"
+              title={t("broker.inputs")}
+              data-testid="live-capacity"
+            >
+              <LiveIcon name="gauge" size={15} />
+              <span>Inputs</span>
+            </button>
+          )}
 
           {state.simulation && run ? (
             <>
-              <span
-                className="lv-clock mono"
-                data-testid="live-clock"
-                data-ms={Math.round(run.time)}
-                title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
-              >
-                {formatClock(run.time)}
+              <span className="lv-clock-pair">
+                <span
+                  className="lv-clock"
+                  data-testid="live-clock"
+                  data-ms={Math.round(run.time)}
+                  title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
+                >
+                  {formatSeconds(run.time)}
+                </span>
+                <span className="lv-clock-total" data-testid="live-clock-total">
+                  / {formatSeconds(run.totalMs)}
+                </span>
               </span>
+              {!phone && <InFlight state={state} />}
               <Timeline
+                viewControl={<ViewMenu />}
                 sim={state.simulation}
                 run={run}
                 onSeek={(ms) => c.seek(ms)}
@@ -179,15 +194,9 @@ export function ControlBar({ state }: { state: LiveState }) {
         </>
       )}
 
-      <span
-        className="lv-stat mono"
-        title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatScale(state.scale)})` : ""}`}
-        data-testid="live-in-system"
-        data-count={state.snapshot.inSystem}
-      >
-        <strong>{formatCount(state.snapshot.inSystem)}</strong> in flight
-      </span>
+      {!phone && !state.run && <InFlight state={state} />}
 
+      {(!state.run || slowOn) && <ViewMenu />}
       <MoreMenu state={state} />
       {ui.notice && (
         <div className="lv-notice" role="status" data-testid="live-notice">
@@ -205,6 +214,9 @@ const SPEED_HINT = "Playback speed. Slower speeds draw fewer dots so each one is
 /** Same words as the right-click's "Trace a message ▸" (src/live/liveActions.ts). */
 
 function MoreMenu({ state }: { state: LiveState }) {
+  const phone = usePhone();
+  const ui = useLive();
+  const ai = phone ? ui.action("canvas.ai-panel") : undefined;
   const [traceOpen, setTraceOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const { open, toggle, close } = useLivePopover(() => button.current);
@@ -237,7 +249,68 @@ function MoreMenu({ state }: { state: LiveState }) {
       >
         <LiveIcon name="more" size={15} />
       </button>
-      {open && <LiveMoreItems state={state} close={close} traceOpen={traceOpen} setTraceOpen={setTraceOpen} />}
+      {open && (
+        <LiveMoreItems state={state} close={close} traceOpen={traceOpen} setTraceOpen={setTraceOpen}>
+          {phone && (
+            <>
+              <button
+                role="menuitemcheckbox"
+                aria-checked={ui.capacityOpen}
+                data-testid="live-capacity"
+                onClick={() => {
+                  ui.openCapacity(!ui.capacityOpen);
+                  close("pick");
+                }}
+              >
+                <LiveIcon name="gauge" size={14} />
+                <span>{t("broker.inputs")}</span>
+              </button>
+              <InFlight state={state} />
+              <label className="lv-select" title={SPEED_HINT}>
+                <span>{t("workbench.speed")}</span>
+                <select
+                  data-testid="live-speed"
+                  value={String(state.speed)}
+                  onChange={(e) => ui.controller.setSpeed(Number(e.target.value))}
+                >
+                  {SPEEDS.map((s) => (
+                    <option key={s} value={s}>
+                      {formatSpeed(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {ai && (
+                <button
+                  role="menuitem"
+                  data-testid="live-ai-panel"
+                  disabled={ai.disabled}
+                  onClick={() => {
+                    ai.run?.();
+                    close("pick");
+                  }}
+                >
+                  <Icon name="ai" size={14} />
+                  <span>{ai.label}</span>
+                </button>
+              )}
+            </>
+          )}
+        </LiveMoreItems>
+      )}
     </div>
+  );
+}
+
+function InFlight({ state }: { state: LiveState }) {
+  return (
+    <span
+      className="lv-stat"
+      data-testid="live-in-system"
+      data-count={state.snapshot.inSystem}
+      title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatScale(state.scale)})` : ""}`}
+    >
+      {t("hover.inFlight")} <strong>{formatCount(state.snapshot.inSystem)}</strong>
+    </span>
   );
 }

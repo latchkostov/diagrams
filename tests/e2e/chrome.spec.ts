@@ -10,7 +10,7 @@ async function openLibrary(page: Page) {
 }
 
 test.describe("said once", () => {
-  test("a blank diagram is named by the picker only; the title card waits for the first node", async ({ page }) => {
+  test("the bezel names a blank diagram and the canvas stays clear after its first node", async ({ page }) => {
     await page.goto("./");
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "new");
     await expect(page.getByTestId("start-card")).toBeVisible();
@@ -20,14 +20,14 @@ test.describe("said once", () => {
     await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("diagram-card")).toBeVisible();
+    await expect(page.getByTestId("diagram-card")).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText("Untitled diagram");
   });
 
-  test("the diagram card leaves node and edge counts to the inspector", async ({ page }) => {
+  test("the bezel title leaves node and edge counts to Diagram properties", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
     await expect(page.getByTestId("diagram-title")).toHaveText(publicExamples[0].title);
-    await expect(page.getByTestId("diagram-card")).not.toContainText(/\d+ nodes?, \d+ edges?/);
+    await expect(page.getByTestId("example-picker")).not.toContainText(/\d+ nodes?, \d+ edges?/);
   });
 
   test("Your diagrams shows the storage meter only once storage is half full", async ({ page }) => {

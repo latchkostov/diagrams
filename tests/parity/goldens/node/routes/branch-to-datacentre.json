@@ -1,12 +1,12 @@
 {
   "smoothstep": {
-    "customers-edge": { "ok": true, "sides": ["bottom", "top"], "points": [670, 112, 670, 236, 663, 236, 663, 360], "path": "5f42a37af101", "label": [670, 175, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "staff-branch": { "ok": true, "sides": ["bottom", "top"], "points": [1110, 112, 1110, 156, 1111, 156, 1111, 200], "path": "888663313c0e", "label": [1110, 135, 83, 19], "mode": "full", "text": "Back office", "lines": ["Back office"] },
-    "branch-edge": { "ok": true, "sides": ["bottom", "top"], "points": [1111, 272, 1111, 344, 677, 344, 677, 360], "path": "db2fcfc8713f", "label": [894, 344, 95, 19], "mode": "full", "text": "SD-WAN tunnel", "lines": ["SD-WAN tunnel"] },
+    "customers-edge": { "ok": true, "sides": ["bottom", "top"], "points": [670, 112, 670, 236, 663, 236, 663, 360], "path": "5f42a37af101", "label": [670, 175, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "staff-branch": { "ok": true, "sides": ["bottom", "top"], "points": [1110, 112, 1110, 156, 1111, 156, 1111, 200], "path": "888663313c0e", "label": [1110, 135, 77.91, 22], "mode": "full", "text": "Back office", "lines": ["Back office"] },
+    "branch-edge": { "ok": true, "sides": ["bottom", "top"], "points": [1111, 272, 1111, 344, 677, 344, 677, 360], "path": "db2fcfc8713f", "label": [894, 344, 103.06999999999998, 22], "mode": "full", "text": "SD-WAN tunnel", "lines": ["SD-WAN tunnel"] },
     "edge-firewall": { "ok": true, "sides": ["bottom", "top"], "points": [670, 432, 670, 476, 677, 476, 677, 520], "path": "d1742f2deeab" },
-    "firewall-spine-1": { "ok": true, "sides": ["bottom", "top"], "points": [670, 592, 670, 636, 490, 636, 490, 680], "path": "017c82df77af", "label": [580, 636, 77, 19], "mode": "full", "text": "Allow: web", "lines": ["Allow: web"] },
+    "firewall-spine-1": { "ok": true, "sides": ["bottom", "top"], "points": [670, 592, 670, 636, 490, 636, 490, 680], "path": "017c82df77af", "label": [580, 636, 73.66, 22], "mode": "full", "text": "Allow: web", "lines": ["Allow: web"] },
     "firewall-spine-2": { "ok": true, "sides": ["bottom", "top"], "points": [684, 592, 684, 636, 850, 636, 850, 680], "path": "f43c1df4cf06" },
-    "firewall-payments": { "ok": true, "sides": ["right", "top"], "points": [794, 556, 1170, 556, 1170, 1160], "path": "e0d6fc08cf61", "label": [1170, 851, 155, 19], "mode": "full", "text": "Deny: branch → payments", "lines": ["Deny: branch → payments"] },
+    "firewall-payments": { "ok": true, "sides": ["right", "top"], "points": [794, 556, 1170, 556, 1170, 1160], "path": "e0d6fc08cf61", "label": [1170, 851, 155.01999999999998, 22], "mode": "full", "text": "Deny: branch → payments", "lines": ["Deny: branch → payments"] },
     "spine-1-leaf": { "ok": true, "sides": ["bottom", "top"], "points": [490, 752, 490, 796, 670, 796, 670, 840], "path": "fe96ec168e25" },
     "spine-2-leaf": { "ok": true, "sides": ["bottom", "top"], "points": [850, 752, 850, 796, 684, 796, 684, 840], "path": "22b53ad0c2a9" },
     "leaf-adc": { "ok": true, "sides": ["bottom", "top"], "points": [677, 912, 677, 956, 671, 956, 671, 1000], "path": "b21bea582d92" },
@@ -14,7 +14,7 @@
     "adc-web-2": { "ok": true, "sides": ["bottom", "top"], "points": [678, 1072, 678, 1113.5, 850, 1113.5, 850, 1160], "path": "be69d4dc030b" },
     "web-1-db": { "ok": true, "sides": ["bottom", "top"], "points": [490, 1232, 490, 1276, 483, 1276, 483, 1320], "path": "51bfe184cb18" },
     "web-2-db": { "ok": true, "sides": ["bottom", "top"], "points": [850, 1232, 850, 1276, 497, 1276, 497, 1320], "path": "d08e6ca97011" },
-    "web-1-payments": { "ok": true, "sides": ["right", "left"], "points": [600, 1196, 670, 1196, 670, 1124.5, 1010, 1124.5, 1010, 1189, 1060, 1189], "path": "bd8598dea884", "label": [820, 1124.5, 53, 19], "mode": "full", "text": "Charge", "lines": ["Charge"] },
+    "web-1-payments": { "ok": true, "sides": ["right", "left"], "points": [600, 1196, 670, 1196, 670, 1124.5, 1010, 1124.5, 1010, 1189, 1060, 1189], "path": "bd8598dea884", "label": [820, 1124.5, 57.39, 22], "mode": "full", "text": "Charge", "lines": ["Charge"] },
     "web-2-payments": { "ok": true, "sides": ["right", "left"], "points": [960, 1196, 1010, 1196, 1010, 1203, 1060, 1203], "path": "c1e64412aeba" }
   },
   "bezier": {
@@ -66,7 +66,7 @@
         360
       ],
       "path": "8742362b55f3",
-      "label": [669.8766249999999, 134.3066803775005, 47, 19],
+      "label": [669.8766249999999, 134.3066803775005, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -119,7 +119,7 @@
         200
       ],
       "path": "1e1cccf285e0",
-      "label": [1110.4626250000001, 154.08322859089012, 83, 19],
+      "label": [1110.4626250000001, 154.08322859089012, 77.91, 22],
       "mode": "full",
       "text": "Back office",
       "lines": ["Back office"]
@@ -172,7 +172,7 @@
         360
       ],
       "path": "50f8abce2c3c",
-      "label": [877.7792499999999, 312.38414521292265, 95, 19],
+      "label": [877.7792499999999, 312.38414521292265, 103.06999999999998, 22],
       "mode": "full",
       "text": "SD-WAN tunnel",
       "lines": ["SD-WAN tunnel"]
@@ -274,7 +274,7 @@
         680
       ],
       "path": "a87206c58291",
-      "label": [573.2725, 636.1648917428968, 77, 19],
+      "label": [573.2725, 636.1648917428968, 73.66, 22],
       "mode": "full",
       "text": "Allow: web",
       "lines": ["Allow: web"]
@@ -376,7 +376,7 @@
         1160
       ],
       "path": "56dd85c24db3",
-      "label": [1074.05675, 794.4032500000001, 155, 19],
+      "label": [1074.05675, 794.4032500000001, 155.01999999999998, 22],
       "mode": "full",
       "text": "Deny: branch → payments",
       "lines": ["Deny: branch → payments"]
@@ -772,7 +772,7 @@
         1189
       ],
       "path": "efe50de35e61",
-      "label": [641.3659001385328, 1195.876625, 53, 19],
+      "label": [641.3659001385328, 1195.876625, 57.39, 22],
       "mode": "full",
       "text": "Charge",
       "lines": ["Charge"]
@@ -828,13 +828,13 @@
     }
   },
   "straight": {
-    "customers-edge": { "ok": true, "sides": ["bottom", "top"], "points": [670, 112, 663, 360], "path": "69e0a07a73f9", "label": [666.6692874168191, 230.0023886612663, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "staff-branch": { "ok": true, "sides": ["bottom", "top"], "points": [1110, 112, 1111, 200], "path": "357e03e5766a", "label": [1110.431822583627, 150.0003873591792, 83, 19], "mode": "full", "text": "Back office", "lines": ["Back office"] },
-    "branch-edge": { "ok": true, "sides": ["bottom", "top"], "points": [1111, 272, 677, 360], "path": "4de5e8a08a9d", "label": [899.8803365533464, 314.80767369425234, 95, 19], "mode": "full", "text": "SD-WAN tunnel", "lines": ["SD-WAN tunnel"] },
+    "customers-edge": { "ok": true, "sides": ["bottom", "top"], "points": [670, 112, 663, 360], "path": "69e0a07a73f9", "label": [666.6692874168191, 230.0023886612663, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "staff-branch": { "ok": true, "sides": ["bottom", "top"], "points": [1110, 112, 1111, 200], "path": "357e03e5766a", "label": [1110.431822583627, 150.0003873591792, 77.91, 22], "mode": "full", "text": "Back office", "lines": ["Back office"] },
+    "branch-edge": { "ok": true, "sides": ["bottom", "top"], "points": [1111, 272, 677, 360], "path": "4de5e8a08a9d", "label": [899.8803365533464, 314.80767369425234, 103.06999999999998, 22], "mode": "full", "text": "SD-WAN tunnel", "lines": ["SD-WAN tunnel"] },
     "edge-firewall": { "ok": true, "sides": ["bottom", "top"], "points": [670, 432, 677, 520], "path": "79ecee7a89d6" },
-    "firewall-spine-1": { "ok": true, "sides": ["bottom", "top"], "points": [670, 592, 490, 680], "path": "e62cfc993bd4", "label": [585.3903061655152, 633.3647392079704, 77, 19], "mode": "full", "text": "Allow: web", "lines": ["Allow: web"] },
+    "firewall-spine-1": { "ok": true, "sides": ["bottom", "top"], "points": [670, 592, 490, 680], "path": "e62cfc993bd4", "label": [585.3903061655152, 633.3647392079704, 73.66, 22], "mode": "full", "text": "Allow: web", "lines": ["Allow: web"] },
     "firewall-spine-2": { "ok": true, "sides": ["bottom", "top"], "points": [684, 592, 850, 680], "path": "1a2986045fa7" },
-    "firewall-payments": { "ok": true, "sides": ["right", "top"], "points": [794, 556, 1170, 1160], "path": "9d1872a86b9b", "label": [978.8291079529782, 852.9063329882948, 155, 19], "mode": "full", "text": "Deny: branch → payments", "lines": ["Deny: branch → payments"] },
+    "firewall-payments": { "ok": true, "sides": ["right", "top"], "points": [794, 556, 1170, 1160], "path": "9d1872a86b9b", "label": [978.8291079529782, 852.9063329882948, 155.01999999999998, 22], "mode": "full", "text": "Deny: branch → payments", "lines": ["Deny: branch → payments"] },
     "spine-1-leaf": { "ok": true, "sides": ["bottom", "top"], "points": [490, 752, 670, 840], "path": "bb8916bcae07" },
     "spine-2-leaf": { "ok": true, "sides": ["bottom", "top"], "points": [850, 752, 684, 840], "path": "0072b527e675" },
     "leaf-adc": { "ok": true, "sides": ["bottom", "top"], "points": [677, 912, 671, 1000], "path": "96b2ffcaa497" },
@@ -842,7 +842,7 @@
     "adc-web-2": { "ok": true, "sides": ["bottom", "top"], "points": [678, 1072, 850, 1160], "path": "a21c29a581c5" },
     "web-1-db": { "ok": true, "sides": ["bottom", "top"], "points": [490, 1232, 483, 1320], "path": "607d49c821fe" },
     "web-2-db": { "ok": true, "sides": ["bottom", "top"], "points": [850, 1232, 497, 1320], "path": "6116a367c184" },
-    "web-1-payments": { "ok": true, "sides": ["right", "left"], "points": [600, 1196, 1060, 1189], "path": "ab19c89ebcc3", "label": [704.0145863136263, 1194.4171693387057, 53, 19], "mode": "full", "text": "Charge", "lines": ["Charge"] },
+    "web-1-payments": { "ok": true, "sides": ["right", "left"], "points": [600, 1196, 1060, 1189], "path": "ab19c89ebcc3", "label": [704.0145863136263, 1194.4171693387057, 57.39, 22], "mode": "full", "text": "Charge", "lines": ["Charge"] },
     "web-2-payments": { "ok": true, "sides": ["right", "left"], "points": [960, 1196, 1060, 1203], "path": "82b8d2ec5a93" }
   }
 }

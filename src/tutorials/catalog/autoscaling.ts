@@ -1,3 +1,4 @@
+import { livePropertiesGoal } from "./liveProperties";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { moment, patchStep, runStep } from "./waitingSteps";
@@ -43,13 +44,14 @@ export const autoscaling: Tutorial = {
       "autoscaling-metric",
       [
         { dblclick: "node-{caller}" },
+        { open: "dock-edit-properties" },
         { click: "inspector-section-node-simulation" },
         { click: "autoscaling-advanced-toggle" },
         { select: "autoscaling-metric", value: "busyThreads" },
       ],
       {
         title: msg("tutorials.autoscaling.scaleTitle"),
-        goal: msg("tutorials.autoscaling.scaleGoal"),
+        goal: livePropertiesGoal(msg("tutorials.autoscaling.scaleGoal")),
         done: msg("tutorials.autoscaling.scaleDone"),
       },
     ),

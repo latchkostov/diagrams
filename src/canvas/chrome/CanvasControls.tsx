@@ -1,13 +1,7 @@
-import { useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import {
-  Background,
-  BackgroundVariant,
-  ControlButton,
-  Controls,
-  MiniMap,
-  useStore,
-  type ReactFlowState,
-} from "@xyflow/react";
+import { frameView } from "../detail";
+import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { Background, BackgroundVariant, ControlButton, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
+import { useCameraController } from "../camera/useCameraCore";
 import { Icon } from "../../components/Icon";
 import type { EditorApi } from "../../editor/types";
 import { formatCombo, shortcutKeys } from "../../editor/shortcuts";
@@ -35,12 +29,15 @@ const minimapStroke = (n: FlowNode) =>
 
 /**
  * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
- * any zoom (the handles' hit areas, the inline editors). Rounded down to a step, so what's scaled by
- * 1/zoom is never short of its size. Re-renders only itself, and only when the zoom moves a step.
+ * any zoom. Drawing styles retain their rounded-down step; gesture targets use
+ * the exact scale. This component alone subscribes; panning never changes the scale.
  */
 export function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
-  const zoom = useStore((s: ReactFlowState) => Math.max(0.02, Math.floor(s.transform[2] * 50 + 1e-6) / 50));
-  useLayoutEffect(() => void host.current?.style.setProperty("--rf-zoom", String(zoom)), [host, zoom]);
+  const zoom = useStore((s: ReactFlowState) => Math.max(0.02, s.transform[2]));
+  useLayoutEffect(() => {
+    host.current?.style.setProperty("--rf-zoom", String(Math.max(0.02, Math.floor(zoom * 50 + 1e-6) / 50)));
+    host.current?.style.setProperty("--rf-zoom-exact", String(zoom));
+  }, [host, zoom]);
   return null;
 }
 
@@ -62,49 +59,53 @@ export function CanvasControls({
   editor,
   fit,
   zoomedByButton,
-  onShortcuts,
   menus,
   menu,
-  canUndo,
-  canRedo,
+  history,
 }: {
   editor: EditorApi;
   fit: () => void;
   zoomedByButton: () => void;
-  onShortcuts: () => void;
   menus: CanvasMenus;
   menu: MenuState | null;
-  canUndo: boolean;
-  canRedo: boolean;
+  history?: { canUndo: boolean; canRedo: boolean };
 }) {
-  const locale = useLocale();
-  const bodyRef = useRef<HTMLDivElement>(null);
-  // Deliberately session-only: each new canvas starts expanded; no preference is stored.
+  useLocale();
+  const camera = useCameraController();
+  const view = useSyncExternalStore(camera?.subscribe ?? (() => () => {}), () => camera?.state.view ?? "overview");
+  const displayedView = useStore((s) =>
+    frameView(
+      view,
+      s.nodes.filter((n) => n.selected).length,
+      s.nodes.some((n) => n.selected && n.type === "diagram") &&
+        [...s.nodeLookup.values()].some(
+          (n) =>
+            n.type === "diagram" &&
+            !n.hidden &&
+            (n.internals.positionAbsolute.x * s.transform[2] + s.transform[0] < 0 ||
+              n.internals.positionAbsolute.x * s.transform[2] +
+                s.transform[0] +
+                (n.measured.width ?? 0) * s.transform[2] >
+                s.width ||
+              n.internals.positionAbsolute.y * s.transform[2] + s.transform[1] < 0 ||
+              n.internals.positionAbsolute.y * s.transform[2] +
+                s.transform[1] +
+                (n.measured.height ?? 0) * s.transform[2] >
+                s.height),
+        ),
+    ),
+  );
+  const zoom = useStore((s) => s.transform[2]);
   const [collapsed, setCollapsed] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
   const menuOpen = menu?.menuId === menuId;
-
-  // Controls does not forward button props. Retag its zoom buttons after expansion remounts them.
-  useLayoutEffect(() => {
-    const root = bodyRef.current?.parentElement;
-    for (const [selector, testId, label] of [
-      [".react-flow__controls-zoomin", "zoom-in-button", tr("chrome.zoomIn")],
-      [".react-flow__controls-zoomout", "zoom-out-button", tr("chrome.zoomOut")],
-    ] as const) {
-      const button = root?.querySelector(selector);
-      button?.setAttribute("data-testid", testId);
-      button?.setAttribute("title", label);
-      button?.setAttribute("aria-label", label);
-    }
-  }, [collapsed, locale]);
-
   const openViewMenu = (via: "pointer" | "keyboard") => {
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
     menus.openMenu(
       "context",
-      { ...toolbarViewMenu(editor), x: r.right + 6, y: r.top, triggerRef, menuId },
+      { ...toolbarViewMenu(editor), x: r.left, y: r.top - 8, above: true, triggerRef, menuId },
       { via, platform: platform(), invoker: triggerRef.current },
     );
   };
@@ -113,104 +114,109 @@ export function CanvasControls({
   const viewMenuLabel = tr("view.menu");
 
   return (
-    <>
-      <Controls
-        className={collapsed ? "is-collapsed" : undefined}
-        showZoom={!collapsed}
-        showInteractive={false}
-        showFitView={false}
-        position="bottom-left"
-        onZoomIn={zoomedByButton}
-        onZoomOut={zoomedByButton}
-      >
-        <div ref={bodyRef} className="rf-ctrl-body" inert={collapsed || undefined}>
-          <div className="rf-ctrl-inner">
-            {/* Our fit keeps content clear of the title card, minimap and live bar; flyout offers Zoom tools. */}
-            <div
-              className="rf-ctrl-split"
-              onContextMenu={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openViewMenu("pointer");
-              }}
-            >
-              <ControlButton
-                onClick={() => {
-                  menus.closeMenu("command");
-                  fit();
-                }}
-                title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
-                aria-label={tr("menu.fitView")}
-                data-testid="fit-view-button"
-              >
-                <Icon name="fit" size={14} />
-              </ControlButton>
+    <div
+      className={`workbench-view-controls react-flow__panel react-flow__controls${collapsed ? " is-collapsed" : ""}`}
+      data-testid="canvas-controls"
+    >
+      {!collapsed && (
+        <>
+          {history && (
+            <div className="bezel-history">
               <button
-                ref={triggerRef}
                 type="button"
-                className={`rf-ctrl-flyout${menuOpen ? " is-open" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (menuOpen) menus.closeMenu("toggle");
-                  else openViewMenu(e.detail === 0 ? "keyboard" : "pointer");
-                }}
-                title={viewMenuLabel}
-                aria-label={viewMenuLabel}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                aria-controls={menuOpen ? menuId : undefined}
-                data-testid="view-tools-menu-button"
+                data-testid="undo-button"
+                disabled={!history.canUndo}
+                title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
+                aria-label={tr("ai.undo")}
+                onClick={editor.undo}
               >
-                <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
-                  <path d="M6 0v6H0Z" fill="currentColor" />
-                </svg>
+                <Icon name="undo" size={16} />
+              </button>
+              <button
+                type="button"
+                data-testid="redo-button"
+                disabled={!history.canRedo}
+                title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
+                aria-label={tr("shortcuts.redo")}
+                onClick={editor.redo}
+              >
+                <Icon name="redo" size={16} />
               </button>
             </div>
-            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-history" />
-            <ControlButton
-              onClick={editor.undo}
-              disabled={!canUndo}
-              title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
-              aria-label={tr("ai.undo")}
-              data-testid="undo-button"
-            >
-              <Icon name="undo" size={14} />
-            </ControlButton>
-            <ControlButton
-              onClick={editor.redo}
-              disabled={!canRedo}
-              title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
-              aria-label={tr("shortcuts.redo")}
-              data-testid="redo-button"
-            >
-              <Icon name="redo" size={14} />
-            </ControlButton>
-            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-shortcuts" />
-            <ControlButton
-              onClick={onShortcuts}
-              title={tr("canvas.keyboardShortcuts")}
-              aria-label={tr("shortcuts.title")}
-              data-testid="shortcuts-button"
-            >
-              <Icon name="keyboard" size={14} />
-            </ControlButton>
-            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-collapse" />
-          </div>
-        </div>
-        <ControlButton
-          onClick={() => {
-            menus.closeMenu("command");
-            setCollapsed((c) => !c);
-          }}
-          title={collapseLabel}
-          aria-label={collapseLabel}
-          aria-expanded={!collapsed}
-          data-testid="collapse-toolbar-button"
-        >
-          <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={14} />
-        </ControlButton>
-      </Controls>
-    </>
+          )}
+          <button
+            type="button"
+            data-testid="fit-view-button"
+            aria-pressed={displayedView === "overview"}
+            title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
+            onClick={fit}
+          >
+            <span data-testid="view-overview">{tr("camera.overview")}</span>
+          </button>
+          <button
+            type="button"
+            data-testid="view-focus"
+            aria-pressed={displayedView === "focus"}
+            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus" })}
+          >
+            {tr("camera.focus")}
+          </button>
+          <button
+            type="button"
+            data-testid="zoom-out-button"
+            aria-label={tr("chrome.zoomOut")}
+            onClick={() => {
+              zoomedByButton();
+              camera?.dispatch({ type: "zoom.step", direction: -1 });
+            }}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            data-testid="zoom-100"
+            title={tr("shortcuts.zoom100")}
+            onClick={() => camera?.dispatch({ type: "zoom100" })}
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            data-testid="zoom-in-button"
+            aria-label={tr("chrome.zoomIn")}
+            onClick={() => {
+              zoomedByButton();
+              camera?.dispatch({ type: "zoom.step", direction: 1 });
+            }}
+          >
+            +
+          </button>
+          <button
+            ref={triggerRef}
+            type="button"
+            data-testid="view-tools-menu-button"
+            aria-label={viewMenuLabel}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? menuId : undefined}
+            onClick={(e) =>
+              menuOpen ? menus.closeMenu("toggle") : openViewMenu(e.detail === 0 ? "keyboard" : "pointer")
+            }
+          >
+            <Icon name="chevron-down" size={12} />
+          </button>
+        </>
+      )}
+      <ControlButton
+        data-testid="collapse-toolbar-button"
+        title={collapseLabel}
+        aria-label={collapseLabel}
+        aria-expanded={!collapsed}
+        onClick={() => setCollapsed((v) => !v)}
+      >
+        <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={12} />
+      </ControlButton>
+    </div>
   );
 }
 

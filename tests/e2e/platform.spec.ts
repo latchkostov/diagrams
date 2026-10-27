@@ -29,7 +29,9 @@ for (const platform of ["MacIntel", "Win32"]) {
       });
     }, platform);
     await gotoCanvas(page, "kafka-order-pipeline");
+    await page.getByTestId("rail-add").click();
     await expect(page.getByTestId("palette")).toContainText(platform === "MacIntel" ? "⌘K" : "Ctrl+K");
+    await page.keyboard.press("Escape");
     await waitForStableViewport(page);
     const pane = await page.getByTestId("canvas-wrap").boundingBox();
     if (!pane) throw new Error("No canvas");
@@ -67,6 +69,8 @@ for (const locale of ["en", "ar"]) {
 }
 
 test("zoom to selection wins over a deferred Inspector reveal", async ({ page }) => {
+  // Workbench Focus includes neighbours beside the wider dock; keep the 125% fixture roomy.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await page.clock.install();
   await gotoCanvas(page, "kafka-order-pipeline");
   await waitForStableViewport(page);

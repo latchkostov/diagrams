@@ -1,0 +1,26 @@
+import { expect, it, vi } from "vitest";
+import { registerFrameCapture, suspendFrameCapture } from "./frameCapture";
+it("suspends detail that mounts during capture and resumes only after the last capture", () => {
+  const viewport = {} as Element;
+  const first = suspendFrameCapture(viewport);
+  const resume = vi.fn();
+  const suspend = vi.fn(() => resume);
+  const unregister = registerFrameCapture(viewport, suspend);
+  expect(suspend).toHaveBeenCalledOnce();
+  const second = suspendFrameCapture(viewport);
+  first();
+  first();
+  expect(resume).not.toHaveBeenCalled();
+  second();
+  expect(resume).toHaveBeenCalledOnce();
+  unregister();
+});
+it("unregistering a suspended surface never reapplies its mutations", () => {
+  const viewport = {} as Element;
+  const resume = vi.fn();
+  const unregister = registerFrameCapture(viewport, () => resume);
+  const release = suspendFrameCapture(viewport);
+  unregister();
+  release();
+  expect(resume).toHaveBeenCalledOnce();
+});

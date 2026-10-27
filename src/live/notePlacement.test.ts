@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { placeNote, type Box } from "./notePlacement";
+import { freeNoteOffset, placeNote, type Box } from "./notePlacement";
+
+it("a free caption stays clear when only a strip without extra spacing fits", () => {
+  const desired = { x: 360, y: 166, width: 560, height: 74 };
+  const row = { x: 0, y: 70, width: 1280, height: 193 };
+  const offset = freeNoteOffset(desired, { width: 1280, height: 340 }, [row]);
+  expect(offset).not.toBeNull();
+  const top = desired.y + offset!.dy;
+  expect(top).toBeGreaterThanOrEqual(row.y + row.height);
+  expect(top + desired.height).toBeLessThanOrEqual(340);
+});
 
 const card = { w: 300, h: 100 };
 const pane = { width: 1200, height: 700 };

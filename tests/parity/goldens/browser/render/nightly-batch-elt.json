@@ -1,40 +1,40 @@
 {
-  "viewport": "translate(20.7547px, 271.962px) scale(0.481132)",
+  "viewport": "translate(7.39623px, 229.63px) scale(0.615094)",
   "nodes": {
     "group:snowflake": { "kind": "group", "box": "translate(760px, 280px) 1100×152", "text": "Snowflake · ANALYTICS" },
-    "airflow": { "kind": "node", "box": "translate(800px, 40px) 223×72", "text": "Airflow Nightly DAG · 02:00 UTC" },
+    "airflow": { "kind": "node", "box": "translate(800px, 40px) 220×72", "text": "Airflow Nightly DAG · 02:00 UTC" },
     "app-db": { "kind": "node", "box": "translate(40px, 160px) 220×72", "text": "App database Read replica" },
-    "crm": { "kind": "node", "box": "translate(40px, 320px) 229×72", "text": "Salesforce Accounts · opportunities" },
-    "billing": { "kind": "node", "box": "translate(40px, 480px) 229×72", "text": "Stripe Invoices · subscriptions" },
+    "crm": { "kind": "node", "box": "translate(40px, 320px) 220×72", "text": "Salesforce Accounts · opportunities" },
+    "billing": { "kind": "node", "box": "translate(40px, 480px) 220×72", "text": "Stripe Invoices · subscriptions" },
     "airbyte": { "kind": "node", "box": "translate(420px, 320px) 220×72", "text": "Airbyte Incremental syncs" },
     "raw": { "kind": "node", "box": "translate(800px, 320px) 220×72", "text": "Raw tables RAW schema · 3 sources" },
     "dbt": { "kind": "node", "box": "translate(1180px, 320px) 220×72", "text": "dbt build 120 models · tests" },
-    "marts": { "kind": "node", "box": "translate(1560px, 320px) 241×72", "text": "Marts Revenue · pipeline · churn" },
+    "marts": { "kind": "node", "box": "translate(1560px, 320px) 220×72", "text": "Marts Revenue · pipeline · churn" },
     "tableau": { "kind": "node", "box": "translate(1940px, 320px) 220×72", "text": "Tableau Extract refresh 06:00" },
     "slack": { "kind": "node", "box": "translate(1180px, 520px) 220×72", "text": "#data-alerts Failed tests" }
   },
   "edges": {
-    "app-db-to-airbyte": "M260,196 L334.5,196 Q344.5,196 344.5,206 L344.5,332 Q344.5,342 354.5,342 L420,342",
-    "crm-to-airbyte": "M269,356 L420,356",
-    "billing-to-airbyte": "M269,516 L334.5,516 Q344.5,516 344.5,506 L344.5,380 Q344.5,370 354.5,370 L420,370",
+    "app-db-to-airbyte": "M260,196 L330,196 Q340,196 340,206 L340,332 Q340,342 350,342 L420,342",
+    "crm-to-airbyte": "M260,356 L420,356",
+    "billing-to-airbyte": "M260,516 L330,516 Q340,516 340,506 L340,380 Q340,370 350,370 L420,370",
     "airflow-to-airbyte": "M800,76 L540,76 Q530,76 530,86 L530,320",
-    "airflow-to-dbt": "M1023,76 L1280,76 Q1290,76 1290,86 L1290,320",
+    "airflow-to-dbt": "M1020,76 L1280,76 Q1290,76 1290,86 L1290,320",
     "airbyte-to-raw": "M640,356 L800,356",
     "dbt-to-raw": "M1180,356 L1020,356",
     "dbt-to-marts": "M1400,356 L1560,356",
     "dbt-to-slack": "M1290,392 L1290,520",
-    "tableau-to-marts": "M1940,356 L1801,356"
+    "tableau-to-marts": "M1940,356 L1780,356"
   },
   "labels": {
-    "app-db-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(344.5px, 269px); --fe-w: 83px; --fe-h: 19px;", "text": "Incremental" },
-    "crm-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(338.5px, 356px); --fe-w: 65px; --fe-h: 19px;", "text": "Bulk API" },
-    "billing-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(344.5px, 443px); --fe-w: 77px; --fe-h: 19px;", "text": "Events API" },
-    "airflow-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(664px, 76px); --fe-w: 129px; --fe-h: 19px;", "text": "1 · Sync sources" },
-    "airflow-to-dbt": { "style": "transform: translate(-50%, -50%) translate(1157.5px, 76px); --fe-w: 111px; --fe-h: 19px;", "text": "2 · dbt build" },
-    "airbyte-to-raw": { "style": "transform: translate(-50%, -50%) translate(714px, 356px); --fe-w: 71px; --fe-h: 19px;", "text": "COPY INTO" },
-    "dbt-to-raw": { "style": "transform: translate(-50%, -50%) translate(1106px, 356px); --fe-w: 69px; --fe-h: 19px;", "text": "SELECT" },
-    "dbt-to-marts": { "style": "transform: translate(-50%, -50%) translate(1474px, 356px); --fe-w: 107px; --fe-h: 19px;", "text": "CREATE TABLE AS" },
-    "dbt-to-slack": { "style": "transform: translate(-50%, -50%) translate(1290px, 450px); --fe-w: 83px; --fe-h: 19px;", "text": "Test failed" },
-    "tableau-to-marts": { "style": "transform: translate(-50%, -50%) translate(1876.5px, 356px); --fe-w: 113px; --fe-h: 19px;", "text": "Refresh extracts" }
+    "app-db-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(340px, 269px); --fe-w: 83.14999999999999px; --fe-h: 22px;", "text": "Incremental" },
+    "crm-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(334px, 356px); --fe-w: 62.900000000000006px; --fe-h: 22px;", "text": "Bulk API" },
+    "billing-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(340px, 443px); --fe-w: 75.33px; --fe-h: 22px;", "text": "Events API" },
+    "airflow-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(664px, 76px); --fe-w: 123.74px; --fe-h: 22px;", "text": "1 · Sync sources" },
+    "airflow-to-dbt": { "style": "transform: translate(-50%, -50%) translate(1156px, 76px); --fe-w: 99.17999999999998px; --fe-h: 22px;", "text": "2 · dbt build" },
+    "airbyte-to-raw": { "style": "transform: translate(-50%, -50%) translate(714px, 356px); --fe-w: 80.52000000000001px; --fe-h: 22px;", "text": "COPY INTO" },
+    "dbt-to-raw": { "style": "transform: translate(-50%, -50%) translate(1106px, 356px); --fe-w: 76.36px; --fe-h: 22px;", "text": "SELECT" },
+    "dbt-to-marts": { "style": "transform: translate(-50%, -50%) translate(1474px, 356px); --fe-w: 119.91px; --fe-h: 22px;", "text": "CREATE TABLE AS" },
+    "dbt-to-slack": { "style": "transform: translate(-50%, -50%) translate(1290px, 450px); --fe-w: 73.41px; --fe-h: 22px;", "text": "Test failed" },
+    "tableau-to-marts": { "style": "transform: translate(-50%, -50%) translate(1866px, 356px); --fe-w: 107.11999999999999px; --fe-h: 22px;", "text": "Refresh extracts" }
   }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { CameraController } from "./controller";
+import type { SheetSnap } from "../inspector/dockState";
 
 /** What changes the canvas pane: its side panels, and the selection that opens the Inspector. */
 export interface PaneInputs {
@@ -8,6 +9,7 @@ export interface PaneInputs {
   aiDock: { open: boolean; width: number };
   inspectorHidden: boolean;
   sheetResize: number;
+  sheetSnap: SheetSnap;
   /** The Inspector's remembered setting and whether it was opened by hand. */
   inspectorPref: boolean;
   inspectorByHand: boolean;
@@ -37,9 +39,9 @@ export function usePaneCamera(controller: CameraController, p: PaneInputs) {
   const checksMounted = useCallback(() => controller.dispatch({ type: "overlay.opened" }), [controller]);
   const dock = `${paletteHidden}:${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}`;
   /** The pane's geometry. */
-  const dockKey = `${dock}:${inspectorHidden}:${sheetResize}`;
+  const dockKey = `${dock}:${inspectorHidden}:${sheetResize}:${p.sheetSnap}`;
   /** The panels' own state: when it changes with the pane, the cause is the panel. */
-  const panelKey = `${dock}:${p.inspectorPref}:${p.inspectorByHand}:${sheetResize}:${p.livePanelOpen}:${p.narrow}:${p.cramped}`;
+  const panelKey = `${dock}:${p.inspectorPref}:${p.inspectorByHand}:${sheetResize}:${p.sheetSnap}:${p.livePanelOpen}:${p.narrow}:${p.cramped}`;
   const selectionKey = JSON.stringify([
     ...nodes.filter((n) => n.selected).map((n) => n.id),
     ...edges.filter((e) => e.selected).map((e) => e.id),

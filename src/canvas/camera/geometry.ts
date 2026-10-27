@@ -6,6 +6,7 @@ import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } 
 import { intersects, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
+import { visibleCanvas, oneHop } from "./frameEdges";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
@@ -67,12 +68,141 @@ export function overlayFitViewport(
   o: FitOptions & { only?: ReadonlySet<string>; onlyEdges?: ReadonlySet<string> },
 ): Viewport | null {
   if (!root.clientWidth || !root.clientHeight) return null;
+  const visible = visibleCanvas(root);
+  const insets = {
+    top: Math.max(o.insets?.top ?? 0, visible.y),
+    left: Math.max(o.insets?.left ?? 0, visible.x),
+    right: Math.max(o.insets?.right ?? 0, root.clientWidth - visible.x - visible.width),
+    bottom: Math.max(o.insets?.bottom ?? 0, root.clientHeight - visible.y - visible.height),
+  };
   return fitAvoiding(
     contentRects(s, routing, o.only, o.onlyEdges),
     { width: root.clientWidth, height: root.clientHeight },
     overlayRects(root),
-    o,
+    // Only an editable single selection has a chip extending 36 screen pixels
+    // beyond the card. Viewers and whole-diagram fits retain their existing frame.
+    { margin: root.querySelector?.('[data-testid^="grow-chip-"]') ? 40 : 32, minZoom: s.minZoom, ...o, insets },
   );
+}
+
+/** A readable neighbourhood; a spread-out graph pans to the subject instead of shrinking it. */
+export function focusSelectionViewport(
+  root: HTMLElement,
+  s: State,
+  routing: RouteOptions,
+  ids?: ReadonlySet<string>,
+): Viewport | null {
+  const selected = ids?.size
+    ? new Set(ids)
+    : new Set([...s.nodeLookup.values()].filter((n) => n.selected && !n.hidden).map((n) => n.id));
+  if (!selected.size && root.dataset?.detailHover && s.nodeLookup.has(root.dataset.detailHover))
+    selected.add(root.dataset.detailHover);
+  if (!selected.size) {
+    const first = [...s.nodeLookup.values()].find((n) => n.type === "diagram" && !n.hidden);
+    if (first) selected.add(first.id);
+  }
+  const near = oneHop(s.edges, selected);
+  const rects = nodeRects(s, near);
+  const routes = selectRoutes(s, routing);
+  for (const edge of s.edges) {
+    if (!near.has(edge.source) && !near.has(edge.target)) continue;
+    const label = routes.get(edge.id)?.label;
+    if (label)
+      rects.push({
+        x: label.x - label.width / 2,
+        y: label.y - label.height / 2,
+        width: label.width,
+        height: label.height,
+      });
+  }
+  const rtl = typeof getComputedStyle === "function" && getComputedStyle(root).direction === "rtl";
+  const live = root.closest?.(".is-live");
+  const frame = visibleCanvas(root);
+  const insets = {
+    top: frame.y + 32,
+    left: frame.x + (rtl ? 56 : 32),
+    right: root.clientWidth - frame.x - frame.width + (rtl ? 32 : 56),
+    bottom: root.clientHeight - frame.y - frame.height + (live ? 32 : 72),
+  };
+  const fit = fitAvoiding(rects, { width: root.clientWidth, height: root.clientHeight }, overlayRects(root), {
+    margin: 0,
+    insets,
+    minZoom: s.minZoom,
+    maxZoom: 1.25,
+  });
+  if (!fit || fit.zoom >= 0.9) return fit;
+  const subject = union(nodeRects(s, selected));
+  if (!subject) return fit;
+  return {
+    zoom: 0.9,
+    x: (root.clientWidth + insets.left - insets.right) / 2 - (subject.x + subject.width / 2) * 0.9,
+    y: (root.clientHeight + insets.top - insets.bottom) / 2 - (subject.y + subject.height / 2) * 0.9,
+  };
+}
+
+/** Follow has a subject, rather than a bounding-box centre; other spotlit cards are allowed to pin. */
+export function followViewport(
+  root: HTMLElement,
+  s: State,
+  focus: readonly string[],
+  subject?: string,
+  room: { panel?: boolean; card?: boolean } = {},
+): Viewport | null {
+  if (!root.clientWidth || !root.clientHeight) return null;
+  const ids = new Set(focus);
+  const selected = [...s.nodeLookup.values()].find((n) => n.selected && n.type === "diagram")?.id;
+  const first = [...s.nodeLookup.values()].find((n) => n.type === "diagram" && !n.hidden)?.id;
+  const id =
+    subject && s.nodeLookup.has(subject) ? subject : (focus.find((key) => s.nodeLookup.has(key)) ?? selected ?? first);
+  if (!id) return null;
+  ids.add(id);
+  const subjectBox = nodeRects(s, new Set([id]))[0];
+  const bounds = union(nodeRects(s, ids));
+  if (!subjectBox || !bounds) return null;
+  const phone = (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640;
+  const pairFits =
+    phone && bounds.width * 0.92 <= root.clientWidth - 104 && bounds.height * 0.92 <= root.clientHeight - 104;
+  const centre = pairFits ? bounds : subjectBox;
+  const cx = centre.x + centre.width / 2,
+    cy = centre.y + centre.height / 2;
+  const frame = visibleCanvas(root);
+  const right =
+    root.clientWidth -
+    frame.x -
+    frame.width +
+    52 +
+    (room.panel || room.card ? Math.min(440, Math.max(0, root.clientWidth - 220)) : 0);
+  const nudge = phone && !pairFits ? (cx - bounds.x > bounds.x + bounds.width - cx ? 62 : -18) : 0;
+  const x = (frame.x + 52 + root.clientWidth - right) / 2 + nudge,
+    y = frame.y + frame.height * (phone ? 0.4 : 0.5);
+  const maximum = Math.min(
+    (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
+    (x - 52) / Math.max(1, cx - bounds.x),
+    (root.clientWidth - right - x) / Math.max(1, bounds.x + bounds.width - cx),
+    (y - 52) / Math.max(1, cy - bounds.y),
+    (frame.y + frame.height - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
+  );
+  const zoom = Math.max(phone ? 0.92 : 0.9, maximum);
+  return { x: x - cx * zoom, y: y - cy * zoom, zoom };
+}
+
+export function zoneViewport(root: HTMLElement, s: State, id: string): Viewport | null {
+  const ids = new Set([id]);
+  const children = new Map<string, string[]>();
+  for (const n of s.nodeLookup.values())
+    if (n.parentId) children.set(n.parentId, [...(children.get(n.parentId) ?? []), n.id]);
+  const pending = [id];
+  for (let parent = pending.pop(); parent; parent = pending.pop())
+    for (const child of children.get(parent) ?? [])
+      if (!ids.has(child)) {
+        ids.add(child);
+        pending.push(child);
+      }
+  return fitAvoiding(nodeRects(s, ids), { width: root.clientWidth, height: root.clientHeight }, [], {
+    margin: 52,
+    minZoom: s.minZoom,
+    maxZoom: 1.25,
+  });
 }
 
 /** Screen room kept around a selection brought into view: clear of the title card, controls and minimap edges. */
@@ -230,8 +360,8 @@ export function goToViewport(root: HTMLElement, s: State, viewport: Viewport, id
   const width = n.measured?.width ?? n.width ?? 180;
   const height = n.measured?.height ?? n.height ?? 64;
   const zoom = Math.max(viewport.zoom, 0.9);
-  const fx = n.position.x + width / 2;
-  const fy = n.position.y + height / 2;
+  const fx = n.internals.positionAbsolute.x + width / 2;
+  const fy = n.internals.positionAbsolute.y + height / 2;
   return { x: root.clientWidth / 2 - fx * zoom, y: root.clientHeight / 2 - fy * zoom, zoom };
 }
 
@@ -239,8 +369,8 @@ export function goToViewport(root: HTMLElement, s: State, viewport: Viewport, id
 
 type Insets = { top: number; right: number; bottom: number; left: number };
 
-/** Live's whole-diagram fit: clear of the title (top) and the live bar (bottom). */
-export const LIVE_FIT = { insets: { top: 110, right: 48, bottom: 48 + LIVE_BAR_SPACE, left: 48 }, maxZoom: 1.25 };
+/** Live fits clear the status strip and retain transport space until it moves outside the canvas. */
+export const LIVE_FIT = { insets: { top: 32, right: 32, bottom: 24 + LIVE_BAR_SPACE, left: 32 }, maxZoom: 1.25 };
 /** A note's close-up: room for the note callout below its focus. */
 export const NOTE_FIT = { insets: { top: 170, right: 80, bottom: 230, left: 80 }, maxZoom: 1 };
 /** The right edge Live keeps clear: the side panel's column, else the trace card's. */
@@ -252,7 +382,31 @@ const CARD_RIGHT = 400;
  * pane inside px paddings, through React Flow's own getViewportForBounds. Null when none is measured.
  */
 export function fitNodesViewport(s: State, only: ReadonlySet<string> | null, insets: Insets, maxZoom: number) {
-  const bounds = union(nodeRects(s, only ?? undefined, true));
+  const rects = nodeRects(s, only ?? undefined, true);
+  const root = s.domNode;
+  const pane = root?.getBoundingClientRect();
+  if (root && pane) {
+    const [tx, ty, zoom] = s.transform;
+    const ids = only
+      ? new Set(
+          s.edges
+            .filter((edge) => only.has(edge.source) && only.has(edge.target))
+            .map((edge) => `edge-label-${edge.id}`),
+        )
+      : null;
+    for (const label of root.querySelectorAll<HTMLElement>('[data-testid^="edge-label-"]')) {
+      if (ids && !ids.has(label.dataset.testid!)) continue;
+      const box = label.getBoundingClientRect();
+      if (box.width && box.height)
+        rects.push({
+          x: (box.left - pane.left - tx) / zoom,
+          y: (box.top - pane.top - ty) / zoom,
+          width: box.width / zoom,
+          height: box.height / zoom,
+        });
+    }
+  }
+  const bounds = union(rects);
   if (!bounds || !Number.isFinite(bounds.x) || !s.width || !s.height) return null;
   const px = (v: number) => `${v}px` as const;
   const padding = { top: px(insets.top), right: px(insets.right), bottom: px(insets.bottom), left: px(insets.left) };
@@ -263,7 +417,7 @@ export function fitNodesViewport(s: State, only: ReadonlySet<string> | null, ins
  * A fit of every node that leaves the trace card's footprint (its first rows, top right) clear: beside it, below
  * it, or untouched when nothing sits there anyway (see geometry/fit.ts). Null when there's nothing to fit.
  */
-function fitBesideCard(s: State, items: Rect[]): Viewport | null {
+function fitBesideCard(s: State, items: Rect[], insets: Insets): Viewport | null {
   const pane = s.domNode?.getBoundingClientRect();
   const el = s.domNode?.querySelector<HTMLElement>('[data-testid="trace-card"]')?.getBoundingClientRect();
   const width = el?.width || 352;
@@ -272,7 +426,7 @@ function fitBesideCard(s: State, items: Rect[]): Viewport | null {
     items,
     { width: s.width, height: s.height },
     [{ x, y: TRACE_CARD_TOP, width, height: TRACE_CARD_FOOTPRINT }],
-    { margin: 0, gap: 16, maxZoom: LIVE_FIT.maxZoom, insets: LIVE_FIT.insets },
+    { margin: 0, gap: 16, maxZoom: LIVE_FIT.maxZoom, insets },
   );
 }
 
@@ -286,9 +440,26 @@ export function liveFitViewport(
   room: { panel: boolean; card: boolean },
   routing: RouteOptions = { style: "smoothstep", direction: "LR" },
 ): Viewport | null {
+  const status = s.domNode?.querySelector<HTMLElement>('[data-testid="trouble-callout"]');
+  const statusRect = status?.getBoundingClientRect();
+  const paneTop = s.domNode?.getBoundingClientRect().top ?? 0;
+  // Until step 6 docks the strip, a wrapped floating callout can be taller than 60px.
+  const visible = s.domNode?.clientWidth ? visibleCanvas(s.domNode) : null;
+  const transport = s.domNode?.ownerDocument?.querySelector('[data-testid="live-controls"]')?.getBoundingClientRect();
+  const paneBottom = paneTop + s.height;
+  const transportSpace = transport
+    ? Math.max(0, paneBottom - Math.max(paneTop, transport.top))
+    : s.domNode?.ownerDocument
+      ? 0
+      : LIVE_BAR_SPACE;
+  const insets = {
+    ...LIVE_FIT.insets,
+    top: statusRect?.height ? Math.max(60, statusRect.bottom - paneTop + 16) : 32,
+    bottom: 24 + Math.max(transportSpace, visible ? s.height - visible.y - visible.height : 0),
+  };
   const items = s.edges.some((e) => e.data?.waypoints?.length) ? contentRects(s, routing) : null;
   if (room.card && !room.panel) {
-    const beside = fitBesideCard(s, items ?? nodeRects(s, undefined, true));
+    const beside = fitBesideCard(s, items ?? nodeRects(s, undefined, true), insets);
     if (beside) return beside;
   }
   const right = room.panel ? PANEL_RIGHT : room.card ? CARD_RIGHT : LIVE_FIT.insets.right;
@@ -296,10 +467,10 @@ export function liveFitViewport(
     return fitAvoiding(items, { width: s.width, height: s.height }, [], {
       margin: 0,
       maxZoom: LIVE_FIT.maxZoom,
-      insets: { ...LIVE_FIT.insets, right },
+      insets: { ...insets, right },
     });
   }
-  return fitNodesViewport(s, null, { ...LIVE_FIT.insets, right }, LIVE_FIT.maxZoom);
+  return fitNodesViewport(s, null, { ...insets, right }, LIVE_FIT.maxZoom);
 }
 
 /** A note's focus in view, clear of the side panel or the trace card's column. */

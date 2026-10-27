@@ -187,7 +187,9 @@ test("running wait overrides agree in node Inspector and hover", async ({ page }
   const ceiling = page.getByTestId("planning-live-details").getByTestId("thread-ceiling");
   await expect(ceiling).toContainText("reply");
   await expect(page.getByTestId("planning-observed")).toHaveCount(0);
+  await page.getByTestId("dock-edit-properties").click();
   await expect(page.getByTestId("planning-more-toggle")).toBeVisible();
+  await page.getByTestId("inspector-toggle").click();
   await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
   const card = page.getByTestId("node-detail-caller");
   await expect(card).toBeVisible();
@@ -366,8 +368,8 @@ test("a held node section keeps the docked summary readable and retries within P
 });
 
 for (const [width, columns] of [
-  [312, 2],
-  [452, 3],
+  [312, 4],
+  [452, 4],
 ]) {
   test(`Live wraps reader names in a ${width}px panel`, async ({ page }) => {
     await page.addInitScript((width) => localStorage.setItem("diagrams.inspector.width.v1", String(width)), width);
@@ -411,22 +413,20 @@ test("node Live is docked, opens the verdict section, and updates without resett
   await page.getByTestId("live-play").click();
   await expect(area.getByTestId("hover-vitals")).toContainText("Throughput");
   await expect(area.getByTestId("hover-vitals")).toContainText("p95");
-  await expect(area.getByTestId("hover-vitals")).toContainText("Threads");
+  await expect(area.getByTestId("hover-vitals")).toContainText("Queue");
+  await expect(area.getByTestId("hover-vitals")).toContainText("In flight");
   await expect(area.getByTestId("hover-verdict")).toContainText("threads are busy");
+  const verdict = await area.getByTestId("hover-verdict").textContent();
   await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  await expect(page.getByTestId("node-detail-caller")).toHaveCount(0);
+  await openInspectorLiveDetails(page, "threads");
+  await expect(area.getByTestId("thread-detail-caller")).toContainText("Threads");
+  await page.getByTestId("inspector-toggle").click();
+  await page.getByTestId("node-caller").hover();
   const card = page.getByTestId("node-detail-caller");
   await expect(card).toBeVisible();
-  await expect(area.getByTestId("hover-verdict")).toHaveText(
-    (await card.getByTestId("hover-verdict").textContent()) ?? "",
-  );
-  const warningBackground = await card
-    .getByTestId("hover-vital-threads")
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  await expect
-    .poll(() => area.getByTestId("hover-vital-threads").evaluate((el) => getComputedStyle(el).backgroundColor))
-    .toBe(warningBackground);
+  await expect(card.getByTestId("hover-verdict")).toHaveText(verdict ?? "");
   // Re-selecting initializes the default from the current verdict.
-  await page.getByTestId("inspector-toggle").click();
   await page.getByTestId("node-caller").dblclick();
   await expect(area.getByTestId("inspector-live-section-threads")).toHaveAttribute("aria-expanded", "true");
   await area.getByTestId("inspector-live-section-outcomes").click();
@@ -442,7 +442,10 @@ test("node Live is docked, opens the verdict section, and updates without resett
   await expect(processed).not.toHaveText(before);
   await expect(area.getByTestId("inspector-live-section-outcomes")).toHaveAttribute("aria-expanded", "true");
   await expect(area.getByTestId("hover-history-summary")).toContainText(/Now .*low .*peak/);
-  await expect(area.getByTestId("hover-history-chart")).toHaveAccessibleName("Last 10 seconds");
+  await expect(area.getByTestId("dock-run-chart")).toBeVisible();
+  await expect(area.getByTestId("hover-history-chart")).toHaveAccessibleName(
+    /Decision service: Throughput .*; Queue .*; 0–\d+ s of \d+ s/,
+  );
   expectNoErrors(consoleErrors);
 });
 

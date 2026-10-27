@@ -1,3 +1,4 @@
+import { goToNode, waitForCameraIdle } from "./fixtures";
 import { TEXT_END } from "./fixtures";
 import type { Page } from "@playwright/test";
 import {
@@ -13,6 +14,7 @@ import {
   flowState,
   STORAGE_KEYS,
   waitForSelectionSettled,
+  waitForChecks,
 } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
@@ -56,7 +58,7 @@ const RENDER_HOOK = `(() => {
         if ([0, 1, 11, 14, 15].includes(f.tag) && f.actualStartTime >= start && (f.flags & 1)) {
           const k = name(f);
           counts.set(k, (counts.get(k) || 0) + 1);
-          if (k === "FlowEdgeImpl") {
+          if (k === "FlowEdgeImpl" || k === "NodeWrapper") {
             const edge = k + ":" + f.memoizedProps.id;
             counts.set(edge, (counts.get(edge) || 0) + 1);
           }
@@ -146,6 +148,8 @@ async function openDiagram(page: Page, live = false) {
   await page.evaluate(
     () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
   );
+  if (!live) await waitForChecks(page);
+  await waitForCameraIdle(page);
 }
 
 /** Right-clicks the empty canvas above the diagram. */
@@ -365,14 +369,22 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await prepareNodeInteractions(page);
     const every = await page.getByTestId(/^rf__node-/).count();
     expect(every).toBeGreaterThanOrEqual(15);
+    await goToNode(page, "orders");
+    await page.getByTestId("zoom-100").click();
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "custom");
+    await waitForStableBox(page.getByTestId("node-gateway"));
+    await waitForStableBox(page.getByTestId("node-orders"));
+    await waitForSelectionSettled(page);
     const { counts: click } = await measure(page, async () => {
+      await page.getByTestId("node-gateway").click();
       await page.getByTestId("node-orders").click();
-      await page.getByTestId("node-payments").click();
     });
     expect(click.CanvasInner ?? 0, JSON.stringify(click)).toBeGreaterThan(0);
     expect(click.NodeWrapper ?? 0, JSON.stringify(click)).toBeLessThan(every);
     expect(click.NodeComponentWrapperInner ?? 0, JSON.stringify(click)).toBeLessThan(every);
 
+    await goToNode(page, "inventory");
     await page.getByTestId("node-inventory").dblclick();
     const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
@@ -391,6 +403,8 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await page.keyboard.press("Escape");
 
     const dragged = page.getByTestId("node-notifications");
+    await goToNode(page, "notifications");
+    await waitForCameraIdle(page);
     await waitForStableBox(dragged);
     const box = await dragged.boundingBox();
     if (!box) throw new Error("no node");

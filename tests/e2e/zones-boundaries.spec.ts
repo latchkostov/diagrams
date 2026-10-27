@@ -1,7 +1,7 @@
 import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBoundariesFixture";
 import { settledCanvas } from "../parity/browser/canvas";
 import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
-import { gotoLab } from "./fixtures";
+import { toggleTheme, expectTheme, setTheme, gotoLab } from "./fixtures";
 import { MERGE_WINDOW_MS } from "../../src/editor/history";
 import {
   test,
@@ -467,9 +467,8 @@ for (const tint of [undefined, "#ff0000", "#00ff00", "#0000ff"]) {
       })),
     });
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      if (theme === "light") await setTheme(page, theme);
+      await expectTheme(page, theme);
       await expect
         .poll(() =>
           page.getByTestId("canvas-wrap").evaluate((wrap) => {
@@ -506,7 +505,7 @@ for (const tint of [undefined, "#ff0000", "#00ff00", "#0000ff"]) {
       await expect(
         page.getByTestId(theme === "light" ? "annotation-text-caption-2" : "annotation-text-caption-1"),
       ).toHaveCSS("color", theme === "light" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)");
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
 }
@@ -825,12 +824,14 @@ for (const surface of ["inspector", "menu"] as const)
       })),
       edges: [],
     });
-    await page.getByTestId("group-label-a").click();
-    await page.getByTestId("group-label-c").click({ modifiers: ["Shift"] });
+    await fitDiagram(page);
+    await page.getByTestId("group-outline-a").click({ position: { x: 0.5, y: 40 } });
+    await fitDiagram(page);
+    await page.getByTestId("group-outline-c").click({ modifiers: ["Shift"], position: { x: 0.5, y: 40 } });
     await waitForSelectionSettled(page);
     if (surface === "inspector") await page.getByTestId("inspector-align-top").click();
     else {
-      await page.getByTestId("group-label-c").click({ button: "right" });
+      await page.getByTestId("group-outline-c").click({ button: "right", position: { x: 0.5, y: 40 } });
       await page.getByTestId("context-menu-item-selection.align").click();
       await page.getByTestId("context-menu-item-align:top").click();
     }

@@ -1,64 +1,64 @@
 {
   "autoLayout": {
-    "viewport": "translate(-3.26617px, 32.1972px) scale(1.08165)",
+    "viewport": "translate(-16.5106px, 40.766px) scale(1.21277)",
     "nodes": {
       "app": { "kind": "node", "box": "translate(40px, 220px) 220×72", "text": "Parcelpoint app 40 req/s · 4 routes" },
       "carriers": { "kind": "node", "box": "translate(40px, 340px) 220×72", "text": "Carrier webhooks 30 events/s" },
       "gateway": { "kind": "node", "box": "translate(400px, 280px) 220×72", "text": "API gateway Route table · 4 rules" },
-      "tracking": { "kind": "node", "box": "translate(763px, 40px) 220×72", "text": "Tracking GET /v1/parcels/{id}" },
-      "pricing": { "kind": "node", "box": "translate(763px, 160px) 220×72", "text": "Pricing POST /v1/quotes · 90%" },
-      "pricing-canary": { "kind": "node", "box": "translate(763px, 280px) 220×72", "text": "Pricing canary 10% of quotes" },
-      "labels": { "kind": "node", "box": "translate(763px, 400px) 220×72", "text": "Labels POST /v1/labels" },
-      "events": { "kind": "node", "box": "translate(763px, 520px) 220×72", "text": "Carrier events 1 × 4 slots · 200 ms" }
+      "tracking": { "kind": "node", "box": "translate(760px, 40px) 220×72", "text": "Tracking GET /v1/parcels/{id}" },
+      "pricing": { "kind": "node", "box": "translate(760px, 160px) 220×72", "text": "Pricing POST /v1/quotes · 90%" },
+      "pricing-canary": { "kind": "node", "box": "translate(760px, 280px) 220×72", "text": "Pricing canary 10% of quotes" },
+      "labels": { "kind": "node", "box": "translate(760px, 400px) 220×72", "text": "Labels POST /v1/labels" },
+      "events": { "kind": "node", "box": "translate(760px, 520px) 220×72", "text": "Carrier events 1 × 4 slots · 200 ms" }
     },
     "edges": {
       "app-gateway": "M260,256 L320,256 Q330,256 330,266 L330,299 Q330,309 340,309 L400,309",
       "carriers-gateway": "M260,376 L320,376 Q330,376 330,366 L330,333 Q330,323 340,323 L400,323",
-      "to-tracking": "M620,290 L676,290 Q686,290 686,280 L686,86 Q686,76 696,76 L763,76",
-      "to-pricing": "M620,303 L687,303 Q697,303 697,293 L697,206 Q697,196 707,196 L763,196",
-      "to-pricing-canary": "M620,316 L763,316",
-      "to-labels": "M620,329 L687,329 Q697,329 697,339 L697,426 Q697,436 707,436 L763,436",
-      "to-events": "M620,342 L676,342 Q686,342 686,352 L686,546 Q686,556 696,556 L763,556"
+      "to-tracking": "M620,290 L674.5,290 Q684.5,290 684.5,280 L684.5,86 Q684.5,76 694.5,76 L760,76",
+      "to-pricing": "M620,303 L685.5,303 Q695.5,303 695.5,293 L695.5,206 Q695.5,196 705.5,196 L760,196",
+      "to-pricing-canary": "M620,316 L760,316",
+      "to-labels": "M620,329 L685.5,329 Q695.5,329 695.5,339 L695.5,426 Q695.5,436 705.5,436 L760,436",
+      "to-events": "M620,342 L674.5,342 Q684.5,342 684.5,352 L684.5,546 Q684.5,556 694.5,556 L760,556"
     },
     "labels": {
-      "app-gateway": { "style": "transform: translate(-50%, -50%) translate(296px, 256px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
-      "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(296px, 376px); --fe-w: 59px; --fe-h: 19px;", "text": "Webhook" },
-      "to-tracking": { "style": "transform: translate(-50%, -50%) translate(686px, 173px); --fe-w: 47px; --fe-h: 19px;", "text": "Track" },
-      "to-pricing": { "style": "transform: translate(-50%, -50%) translate(723px, 196px); --fe-w: 47px; --fe-h: 19px;", "text": "Quote" },
-      "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(685.5px, 316px); --fe-w: 89px; --fe-h: 19px;", "text": "Quote canary" },
-      "to-labels": { "style": "transform: translate(-50%, -50%) translate(723px, 436px); --fe-w: 47px; --fe-h: 19px;", "text": "Label" },
-      "to-events": { "style": "transform: translate(-50%, -50%) translate(686px, 459px); --fe-w: 95px; --fe-h: 19px;", "text": "Carrier event" }
+      "app-gateway": { "style": "transform: translate(-50%, -50%) translate(296px, 256px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
+      "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(306px, 376px); --fe-w: 69.09px; --fe-h: 22px;", "text": "Webhook" },
+      "to-tracking": { "style": "transform: translate(-50%, -50%) translate(684.5px, 163px); --fe-w: 48.56px; --fe-h: 22px;", "text": "Track" },
+      "to-pricing": { "style": "transform: translate(-50%, -50%) translate(720.75px, 196px); --fe-w: 50.83px; --fe-h: 22px;", "text": "Quote" },
+      "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(684px, 316px); --fe-w: 91.67999999999999px; --fe-h: 22px;", "text": "Quote canary" },
+      "to-labels": { "style": "transform: translate(-50%, -50%) translate(720.75px, 436px); --fe-w: 46.760000000000005px; --fe-h: 22px;", "text": "Label" },
+      "to-events": { "style": "transform: translate(-50%, -50%) translate(684.5px, 469px); --fe-w: 88.12px; --fe-h: 22px;", "text": "Carrier event" }
     }
   },
   "tidy": {
-    "viewport": "translate(-166.644px, 68.5642px) scale(1.08165)",
+    "viewport": "translate(-120.511px, 24.5106px) scale(1.21277)",
     "nodes": {
       "app": { "kind": "node", "box": "translate(40px, 180px) 220×72", "text": "Parcelpoint app 40 req/s · 4 routes" },
       "carriers": { "kind": "node", "box": "translate(40px, 300px) 220×72", "text": "Carrier webhooks 30 events/s" },
       "gateway": { "kind": "node", "box": "translate(400px, 240px) 220×72", "text": "API gateway Route table · 4 rules" },
-      "tracking": { "kind": "node", "box": "translate(763px, 0px) 220×72", "text": "Tracking GET /v1/parcels/{id}" },
-      "pricing": { "kind": "node", "box": "translate(763px, 120px) 220×72", "text": "Pricing POST /v1/quotes · 90%" },
-      "pricing-canary": { "kind": "node", "box": "translate(763px, 240px) 220×72", "text": "Pricing canary 10% of quotes" },
-      "labels": { "kind": "node", "box": "translate(763px, 360px) 220×72", "text": "Labels POST /v1/labels" },
-      "events": { "kind": "node", "box": "translate(763px, 480px) 220×72", "text": "Carrier events 1 × 4 slots · 200 ms" }
+      "tracking": { "kind": "node", "box": "translate(760px, 0px) 220×72", "text": "Tracking GET /v1/parcels/{id}" },
+      "pricing": { "kind": "node", "box": "translate(760px, 120px) 220×72", "text": "Pricing POST /v1/quotes · 90%" },
+      "pricing-canary": { "kind": "node", "box": "translate(760px, 240px) 220×72", "text": "Pricing canary 10% of quotes" },
+      "labels": { "kind": "node", "box": "translate(760px, 360px) 220×72", "text": "Labels POST /v1/labels" },
+      "events": { "kind": "node", "box": "translate(760px, 480px) 220×72", "text": "Carrier events 1 × 4 slots · 200 ms" }
     },
     "edges": {
       "app-gateway": "M260,216 L320,216 Q330,216 330,226 L330,259 Q330,269 340,269 L400,269",
       "carriers-gateway": "M260,336 L320,336 Q330,336 330,326 L330,293 Q330,283 340,283 L400,283",
-      "to-tracking": "M620,250 L676,250 Q686,250 686,240 L686,46 Q686,36 696,36 L763,36",
-      "to-pricing": "M620,263 L687,263 Q697,263 697,253 L697,166 Q697,156 707,156 L763,156",
-      "to-pricing-canary": "M620,276 L763,276",
-      "to-labels": "M620,289 L687,289 Q697,289 697,299 L697,386 Q697,396 707,396 L763,396",
-      "to-events": "M620,302 L676,302 Q686,302 686,312 L686,506 Q686,516 696,516 L763,516"
+      "to-tracking": "M620,250 L674.5,250 Q684.5,250 684.5,240 L684.5,46 Q684.5,36 694.5,36 L760,36",
+      "to-pricing": "M620,263 L685.5,263 Q695.5,263 695.5,253 L695.5,166 Q695.5,156 705.5,156 L760,156",
+      "to-pricing-canary": "M620,276 L760,276",
+      "to-labels": "M620,289 L685.5,289 Q695.5,289 695.5,299 L695.5,386 Q695.5,396 705.5,396 L760,396",
+      "to-events": "M620,302 L674.5,302 Q684.5,302 684.5,312 L684.5,506 Q684.5,516 694.5,516 L760,516"
     },
     "labels": {
-      "app-gateway": { "style": "transform: translate(-50%, -50%) translate(296px, 216px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
-      "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(296px, 336px); --fe-w: 59px; --fe-h: 19px;", "text": "Webhook" },
-      "to-tracking": { "style": "transform: translate(-50%, -50%) translate(686px, 133px); --fe-w: 47px; --fe-h: 19px;", "text": "Track" },
-      "to-pricing": { "style": "transform: translate(-50%, -50%) translate(723px, 156px); --fe-w: 47px; --fe-h: 19px;", "text": "Quote" },
-      "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(685.5px, 276px); --fe-w: 89px; --fe-h: 19px;", "text": "Quote canary" },
-      "to-labels": { "style": "transform: translate(-50%, -50%) translate(723px, 396px); --fe-w: 47px; --fe-h: 19px;", "text": "Label" },
-      "to-events": { "style": "transform: translate(-50%, -50%) translate(686px, 419px); --fe-w: 95px; --fe-h: 19px;", "text": "Carrier event" }
+      "app-gateway": { "style": "transform: translate(-50%, -50%) translate(296px, 216px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
+      "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(306px, 336px); --fe-w: 69.09px; --fe-h: 22px;", "text": "Webhook" },
+      "to-tracking": { "style": "transform: translate(-50%, -50%) translate(684.5px, 123px); --fe-w: 48.56px; --fe-h: 22px;", "text": "Track" },
+      "to-pricing": { "style": "transform: translate(-50%, -50%) translate(720.75px, 156px); --fe-w: 50.83px; --fe-h: 22px;", "text": "Quote" },
+      "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(684px, 276px); --fe-w: 91.67999999999999px; --fe-h: 22px;", "text": "Quote canary" },
+      "to-labels": { "style": "transform: translate(-50%, -50%) translate(720.75px, 396px); --fe-w: 46.760000000000005px; --fe-h: 22px;", "text": "Label" },
+      "to-events": { "style": "transform: translate(-50%, -50%) translate(684.5px, 429px); --fe-w: 88.12px; --fe-h: 22px;", "text": "Carrier event" }
     }
   }
 }

@@ -1,7 +1,15 @@
 import { planningFixture } from "../../src/lab/planningFixture";
 import { newPlanningProps } from "../../src/model/planning";
 import { deviceValues } from "../../src/model/planningPresets";
-import { test, expect, gotoLive, waitForStableViewport, STORAGE_KEYS, expectNoErrors } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoLive,
+  waitForStableViewport,
+  STORAGE_KEYS,
+  expectNoErrors,
+  openEditProperties,
+} from "./fixtures";
 
 test("P1 inspector follows live inputs at sampling scale and applies the shared fix", async ({
   page,
@@ -21,6 +29,8 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await page.getByTestId("capacity-close").click();
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
+  await openEditProperties(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
   const x = page.getByTestId("inspector").getByTestId("planning-explanation-orders");
   await expect(x.getByTestId("planning-arithmetic")).toContainText("receives 6 req/s");
   await expect(x.getByTestId("planning-target")).toContainText("12 replicas at the 50% target");
@@ -34,8 +44,10 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await page.getByTestId("node-checkout").click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.slowmo-from").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  await page.getByTestId("live-play").click();
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
+  await openEditProperties(page);
   await expect(x.getByTestId("planning-apply")).toBeDisabled();
   await expect(x).toContainText("Exit slow motion (Esc) first");
   // Properties focuses its label input, which keeps Escape. Collapse it and move focus
@@ -44,11 +56,14 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
   await page.getByTestId("node-orders").focus();
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
   await page.getByTestId("live-play").focus();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("live-play")).not.toHaveAttribute("data-state", "slowmo");
+  await expect(page.getByTestId("live-controls")).toBeVisible();
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
+  await openEditProperties(page);
   await expect(x.getByTestId("planning-apply")).toBeEnabled();
   expectNoErrors(consoleErrors);
 });

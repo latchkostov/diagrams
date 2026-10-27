@@ -1,3 +1,4 @@
+import { goToNode, waitForCameraIdle } from "./fixtures";
 import { breakerFixture } from "../../src/lab/resilienceFixture";
 import type { Locator } from "@playwright/test";
 import { pathToFileURL } from "node:url";
@@ -190,6 +191,9 @@ for (const locale of ["ar", "en-XA"])
 test("a flow connection label opens its live readout", async ({ page, consoleErrors }) => {
   await gotoLive(page, "./?view=canvas&example=webhook-ingestion&live=1&paused=1");
   await waitForStableViewport(page);
+  await goToNode(page, "dlq");
+  await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+  await waitForCameraIdle(page);
   await page.getByTestId("diagram-title").hover();
   await page.getByTestId("edge-label-queue-to-dlq").hover();
   const card = page.getByTestId("edge-detail-queue-to-dlq");
@@ -301,6 +305,7 @@ test("Escape dismisses an unpinned card before clearing the selected node", asyn
   await page.keyboard.press("F2");
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Enter");
+  await page.getByTestId("inspector-toggle").click();
   await node.hover();
   await expect(card).toHaveAttribute("data-pinned", "false");
   expect(await node.evaluate((el) => el.parentElement?.classList.contains("selected"))).toBe(true);
@@ -512,7 +517,7 @@ test("Escape on a summary reached with Tab gives focus back to its node", async 
 });
 
 for (const pinned of [false, true])
-  test(`Tab exits the final Live readout (${pinned ? "pinned" : "unpinned"}) to the canvas controls`, async ({
+  test(`Tab exits the final Live readout (${pinned ? "pinned" : "unpinned"}) to the frame credit`, async ({
     page,
     consoleErrors,
   }) => {
@@ -531,7 +536,7 @@ for (const pinned of [false, true])
       stops.push(stop);
       if (!/^(node-detail-store|hover-section-)/.test(stop)) break;
     }
-    expect(stops.at(-1)).toBe("zoom-in-button");
+    expect(stops.at(-1)).toBe("react-flow-credit");
     expect(stops.filter((stop) => stop === "node-detail-store")).toEqual([]);
     expect(stops).not.toContain("BODY");
     await expect(card).toHaveCount(0);
@@ -715,6 +720,11 @@ for (const kind of ["node", "edge"] as const)
     const id = kind === "node" ? "caller" : "call";
     const item = page.getByTestId(`${kind}-${id}`);
     await item.click({ force: true });
+    if (kind === "node") {
+      await expect(page.getByTestId("dock-live-identity")).toBeVisible();
+      await page.getByTestId("inspector-toggle").click();
+      await item.hover({ force: true });
+    }
     const card = page.getByTestId(`${kind}-detail-${id}`);
     await card.click();
     await card
@@ -729,6 +739,7 @@ for (const kind of ["node", "edge"] as const)
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
     await page.keyboard.press("ControlOrMeta+z");
     await expect(item).toHaveCount(1);
+
     // Undo restores the canvas before Live syncs its snapshot; only then can a node own a readout.
     if (kind === "node") await expect(page.getByTestId(`node-badge-${id}`)).toBeVisible();
     await item.hover({ force: true });
@@ -745,6 +756,11 @@ for (const kind of ["node", "edge"] as const)
     const id = kind === "node" ? "caller" : "call";
     const item = page.getByTestId(`${kind}-${id}`);
     await item.click({ force: true });
+    if (kind === "node") {
+      await expect(page.getByTestId("dock-live-identity")).toBeVisible();
+      await page.getByTestId("inspector-toggle").click();
+      await item.hover({ force: true });
+    }
     const card = page.getByTestId(`${kind}-detail-${id}`);
     await expect(card).toBeVisible();
     await card.click();
@@ -755,6 +771,7 @@ for (const kind of ["node", "edge"] as const)
     await expect(card).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+z");
     await expect(item).toHaveCount(1);
+
     await item.hover({ force: true });
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute("data-pinned", "false");

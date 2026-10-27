@@ -267,6 +267,8 @@ export type Demo =
  */
 export type UiStep =
   | { click: string }
+  /** Open a disclosure, keeping it open when a previous lesson already opened it. */
+  | { open: string }
   | { modClick: string; modifiers: readonly ("Shift" | "Control" | "Meta" | "Alt")[] }
   | { rightclick: string }
   | { boxSelect: string; around: readonly string[] }

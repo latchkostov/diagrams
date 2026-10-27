@@ -149,29 +149,31 @@ const demoSubjects = (d: Demo): string[] =>
                         ? [d.subject]
                         : [];
 const testIdsOf = (s: UiStep): string[] =>
-  "modClick" in s
-    ? [s.modClick]
-    : "rightclick" in s
-      ? [s.rightclick]
-      : "boxSelect" in s
-        ? [s.boxSelect, ...s.around]
-        : "select" in s
-          ? [s.select]
-          : "pane" in s
-            ? ["canvas-pane"]
-            : "click" in s
-              ? [s.click]
-              : "dblclick" in s
-                ? [s.dblclick]
-                : "hover" in s
-                  ? [s.hover]
-                  : "fill" in s
-                    ? [s.fill]
-                    : "drag" in s
-                      ? [s.drag, s.to]
-                      : "type" in s && "text" in s
-                        ? [s.type]
-                        : [];
+  "open" in s
+    ? [s.open]
+    : "modClick" in s
+      ? [s.modClick]
+      : "rightclick" in s
+        ? [s.rightclick]
+        : "boxSelect" in s
+          ? [s.boxSelect, ...s.around]
+          : "select" in s
+            ? [s.select]
+            : "pane" in s
+              ? ["canvas-pane"]
+              : "click" in s
+                ? [s.click]
+                : "dblclick" in s
+                  ? [s.dblclick]
+                  : "hover" in s
+                    ? [s.hover]
+                    : "fill" in s
+                      ? [s.fill]
+                      : "drag" in s
+                        ? [s.drag, s.to]
+                        : "type" in s && "text" in s
+                          ? [s.type]
+                          : [];
 /** The subjects a test id names: `{api}`, or both ends of `{api->config}`. */
 const templates = (testId: string) =>
   [...testId.matchAll(/\{(\w+)(?:->(\w+))?\}/g)].flatMap((m) => (m[2] ? [m[1], m[2]] : [m[1]]));

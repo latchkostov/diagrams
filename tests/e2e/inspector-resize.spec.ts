@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { sheetRoutingFixture } from "../../src/lab/routingFixture";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
@@ -65,13 +66,17 @@ async function open(page: Page, viewport = 1920, live = false, simulation?: stri
   const settled = live ? waitForCameraIdle : waitForStableViewport;
   await settled(page);
   await page.getByTestId("node-kong").dblclick();
+  if (live) {
+    const editing = page.getByTestId("dock-edit-properties");
+    if ((await editing.getAttribute("aria-expanded")) !== "true") await editing.click();
+  }
   await expect(page.getByTestId("routes-table")).toBeVisible();
   await settled(page);
 }
 
 test("drag uses the extra table space, captures the pointer and saves only at release", async ({ page }) => {
   await open(page, 1440);
-  await expect.poll(() => width(page)).toBe(382);
+  await expect.poll(() => width(page)).toBe(372);
   const original = await savedDiagram(page);
   const handle = page.getByTestId("inspector-resize");
   const box = await handle.boundingBox();
@@ -102,9 +107,9 @@ test("keyboard steps, bounds, Enter reset and double-click reset", async ({ page
   await expect(handle).toHaveAttribute("aria-orientation", "vertical");
   await handle.focus();
   await handle.press("ArrowLeft");
-  await expect.poll(() => width(page)).toBe(525);
+  await expect.poll(() => width(page)).toBe(388);
   await handle.press("Shift+ArrowRight");
-  await expect.poll(() => width(page)).toBe(461);
+  await expect.poll(() => width(page)).toBe(324);
   await handle.press("Home");
   await expect.poll(() => width(page)).toBe(300);
   await handle.press("End");
@@ -112,11 +117,11 @@ test("keyboard steps, bounds, Enter reset and double-click reset", async ({ page
   const pane = await page.getByTestId("canvas-wrap").boundingBox();
   expect(pane?.width).toBeGreaterThanOrEqual(480);
   await handle.press("Enter");
-  await expect.poll(() => width(page)).toBe(509);
+  await expect.poll(() => width(page)).toBe(372);
   expect(await stored(page)).toBeNull();
   await handle.press("ArrowLeft");
   await handle.dblclick();
-  await expect.poll(() => width(page)).toBe(509);
+  await expect.poll(() => width(page)).toBe(372);
   expect(await stored(page)).toBeNull();
 });
 
@@ -130,7 +135,7 @@ test("choice survives reload, folding and selection modes; shrink clamps without
   await page.getByTestId("node-kong").dblclick();
   await expect.poll(() => width(page)).toBe(364);
   await page.getByTestId("inspector-toggle").click();
-  await expect.poll(() => width(page)).toBe(52);
+  await expect.poll(() => width(page)).toBe(0);
   await page.getByTestId("inspector-toggle").click();
   await expect.poll(() => width(page)).toBe(364);
   await page.getByTestId("inspector-resize").press("End");
@@ -145,24 +150,24 @@ test("choice survives reload, folding and selection modes; shrink clamps without
 test("default follows window resize and mobile keeps its original sheet and rail", async ({ page }) => {
   await open(page);
   await page.setViewportSize({ width: 2560, height: 1000 });
-  await expect.poll(() => width(page)).toBe(640);
+  await expect.poll(() => width(page)).toBe(372);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(() => width(page)).toBe(296);
+  await expect.poll(() => width(page)).toBe(390);
   await expect(page.getByTestId("inspector-resize")).toBeHidden();
   await page.getByTestId("inspector-toggle").click();
-  await expect.poll(() => width(page)).toBe(52);
+  await expect.poll(() => width(page)).toBe(0);
   expect(await stored(page)).toBeNull();
 });
 
-test("narrow desktop keeps a readable legacy sheet instead of squeezing it below its minimum", async ({ page }) => {
+test("narrow desktop keeps a readable Workbench sheet within the remaining canvas", async ({ page }) => {
   await open(page, 900);
-  await expect.poll(() => width(page)).toBe(296);
-  await expect(page.getByTestId("inspector-resize")).toBeHidden();
+  await expect.poll(() => width(page)).toBe(364);
+  await expect(page.getByTestId("inspector-resize")).toBeVisible();
 });
 
 test("a completed resize keeps a fitted diagram in the canvas", async ({ page }) => {
   await open(page);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await waitForStableViewport(page);
   await page.getByTestId("inspector-resize").press("End");
   await expect
@@ -179,7 +184,7 @@ test("a completed resize keeps a fitted diagram in the canvas", async ({ page })
 
 test("Live preserves its camera after an Inspector resize", async ({ page }) => {
   await open(page, 1920, true);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await waitForCameraIdle(page);
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
@@ -220,9 +225,9 @@ test("Enter resets the focused handle without continuing a waiting narration", a
   await expect(note).toBeVisible();
   const handle = page.getByTestId("inspector-resize");
   await handle.press("ArrowLeft");
-  await expect.poll(() => width(page)).toBe(525);
+  await expect.poll(() => width(page)).toBe(388);
   await handle.press("Enter");
-  await expect.poll(() => width(page)).toBe(509);
+  await expect.poll(() => width(page)).toBe(372);
   await expect(note).toBeVisible();
 });
 
@@ -234,9 +239,9 @@ test("slow motion leaves the focused resize handle's arrow keys alone", async ({
   await page.getByTestId("live-play").click();
   const handle = page.getByTestId("inspector-resize");
   await handle.press("ArrowLeft");
-  await expect.poll(() => width(page)).toBe(525);
+  await expect.poll(() => width(page)).toBe(388);
   await handle.press("Shift+ArrowRight");
-  await expect.poll(() => width(page)).toBe(461);
+  await expect.poll(() => width(page)).toBe(324);
 });
 
 test("drag frames finish geometry reads before writing the sheet width", async ({ page }) => {
@@ -268,7 +273,7 @@ test("drag frames finish geometry reads before writing the sheet width", async (
   if (!box) throw new Error("Resize handle is missing");
   await page.mouse.move(box.x + 4, box.y + 150);
   await page.mouse.down();
-  await page.mouse.move(box.x - 200, box.y + 150, { steps: 12 });
+  await page.mouse.move(box.x - 400, box.y + 150, { steps: 12 });
   await page.mouse.up();
   await expect.poll(() => width(page)).toBeGreaterThan(700);
   await expect(page.getByTestId("inspector")).toHaveAttribute("data-late-reads", "0");
@@ -281,11 +286,11 @@ test("cancelled pointer resize restores the previous choice", async ({ page }) =
   if (!box) throw new Error("Resize handle is missing");
   await page.mouse.move(box.x + 4, box.y + 150);
   await page.mouse.down();
-  await page.mouse.move(box.x - 100, box.y + 150);
+  await page.mouse.move(box.x - 300, box.y + 150);
   await expect.poll(() => width(page)).toBeGreaterThan(600);
   await handle.dispatchEvent("pointercancel", { pointerId: 1 });
   await page.mouse.up();
-  await expect.poll(() => width(page)).toBe(509);
+  await expect.poll(() => width(page)).toBe(372);
   expect(await stored(page)).toBeNull();
 });
 
@@ -314,14 +319,14 @@ test("right-to-left layout resizes from its canvas-facing edge", async ({ page }
   });
   const handle = page.getByTestId("inspector-resize");
   await handle.press("ArrowRight");
-  await expect.poll(() => width(page)).toBe(525);
+  await expect.poll(() => width(page)).toBe(388);
   await handle.press("Shift+ArrowLeft");
-  await expect.poll(() => width(page)).toBe(461);
+  await expect.poll(() => width(page)).toBe(324);
   const box = await handle.boundingBox();
   if (!box) throw new Error("Resize handle is missing");
   await page.mouse.move(box.x + 4, box.y + 150);
   await page.mouse.down();
   await page.mouse.move(box.x + 104, box.y + 150);
   await page.mouse.up();
-  await expect.poll(() => width(page)).toBe(561);
+  await expect.poll(() => width(page)).toBe(424);
 });

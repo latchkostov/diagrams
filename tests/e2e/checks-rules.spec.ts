@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openCheckFinding } from "./fixtures";
 
 // The batch 3 and 4 checks in the Checks card (docs/research/architecture-checks.md, "Batch 3"): a service using
 // another's database (a warning, fixed by asking the owner) and a client going around the gateway (a suggestion,
@@ -22,7 +22,7 @@ async function openFixture(page: Page) {
     buffer: FIXTURE,
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Checkout shortcuts");
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
 }
@@ -37,13 +37,13 @@ test("a service using another's database: Ask the owner instead, in one undo ste
   await page.getByTestId(`check-fix-${SHARED}`).click();
   await expect(page.getByTestId("toast")).toContainText("Ask Order service instead: done");
   await expect(row(page, SHARED)).toHaveCount(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // Billing now asks the order service; its flow into the database is gone.
   await expect(page.getByTestId("edge-billing-db")).toHaveCount(0);
 
   await page.getByTestId("check-fix-undo").click();
   await expect(row(page, SHARED)).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   expectNoErrors(consoleErrors);
 });
 
@@ -53,13 +53,14 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
 }) => {
   await openFixture(page);
   const bypass = row(page, BYPASS);
+  await openCheckFinding(page, BYPASS);
   await expect(bypass).toHaveAttribute("data-severity", "suggestion");
   await expect(bypass).toContainText("Mobile app calls Order service directly");
   await expect(page.getByTestId(`check-fix-${BYPASS}`)).toHaveText(/Go through Commerce gateway/);
   await expect(page.getByTestId(`check-fix-option-0-${BYPASS}`)).toHaveText("Firewall / WAF");
   await expect(page.getByTestId(`check-fix-option-1-${BYPASS}`)).toHaveText("Kong Gateway");
 
-  // Hovering the row makes its markers stand out where they are: at the node's top-right corner.
+  // Hovering the row lights its tag inside the node's upper-right corner.
   await bypass.hover();
   const marker = page.getByTestId("check-marker-app");
   await expect(marker).toHaveClass(/is-hot/);
@@ -67,7 +68,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
     const m = await marker.boundingBox();
     const n = await page.getByTestId("node-app").boundingBox();
     if (!m || !n) return Infinity;
-    return Math.hypot(m.x + m.width / 2 - (n.x + n.width), m.y + m.height / 2 - n.y);
+    return Math.hypot(m.x + m.width - (n.x + n.width), m.y - n.y);
   };
   await expect.poll(near).toBeLessThan(16);
 
@@ -86,6 +87,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
   await expect(bypass).toBeVisible();
+  await openCheckFinding(page, BYPASS);
   await page.getByTestId(`check-fix-${BYPASS}`).click();
   await expect(page.getByTestId("toast")).toContainText("Go through Commerce gateway: done");
   await expect(bypass).toHaveCount(0);
@@ -109,7 +111,7 @@ async function openLedger(page: Page) {
     buffer: LEDGER,
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Payments ledger");
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
   await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 1 suggestion");
@@ -129,14 +131,14 @@ test("Avro without a schema registry: Add Schema Registry, in one undo step", as
   await expect(page.getByTestId("toast")).toContainText("Added Schema Registry");
   await expect.poll(() => nodes.count()).toBe(before + 1);
   await expect(warning).toHaveCount(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // The flow is as it was: the topic still feeds the ledger writer.
   await expect(page.getByTestId("edge-payments-ledger")).toHaveCount(1);
 
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
   await expect(warning).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   expectNoErrors(consoleErrors);
 });
 
@@ -146,6 +148,7 @@ test("services reading secrets without an identity: the fix gives each its own; 
 }) => {
   await openLedger(page);
   const suggestion = row(page, IDENTITY);
+  await openCheckFinding(page, IDENTITY);
   await expect(suggestion).toHaveAttribute("data-severity", "suggestion");
   await expect(suggestion).toContainText("2 services read secrets without an identity");
   await expect(page.getByTestId(`check-fix-${IDENTITY}`)).toHaveText(/Add managed identities$/);
@@ -165,6 +168,7 @@ test("services reading secrets without an identity: the fix gives each its own; 
   // Undo, then the chip: one shared identity.
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
+  await openCheckFinding(page, IDENTITY);
   await page.getByTestId(`check-fix-option-0-${IDENTITY}`).click();
   await expect(page.getByTestId("toast")).toContainText("Added Managed Identity");
   await expect.poll(() => nodes.count()).toBe(before + 1);

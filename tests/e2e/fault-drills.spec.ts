@@ -182,6 +182,13 @@ test("Cut link fails pushed Requests, retains broker deliveries and restores the
   await item(page, "sim.inject").click();
   await item(page, "sim.inject:10").click();
   await expect.poll(() => nodeCount(page, "worker", "dropped")).toBe(10);
+  // The injection selects its node and opens Properties. Let the paused clock settle that pane.
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(16);
+      return page.getByTestId("canvas-wrap").getAttribute("data-camera-state");
+    })
+    .toBe("idle");
   await faultMenu(page, "edge-label-delivery");
   await item(page, "sim.cut-link").click();
   await page.getByTestId("node-queue").click({ button: "right" });

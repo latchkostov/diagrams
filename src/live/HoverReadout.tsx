@@ -33,10 +33,10 @@ export function HoverVitals({ summary }: { summary: HoverSummary }) {
     <div className="hover-vitals" data-testid="hover-vitals">
       {summary.vitals.map((v) => (
         <div key={v.key} className={v.bad ? "is-bad" : ""} data-testid={`hover-vital-${v.key}`}>
-          <b className="mono" title={v.value}>
+          <b className="mono" title={v.value} data-testid={`hover-vital-value-${v.key}`}>
             <bdi dir="ltr">{v.value}</bdi>
           </b>
-          <small>{v.label}</small>
+          <small data-testid={`hover-vital-label-${v.key}`}>{v.label}</small>
           {v.ratio !== undefined && Number.isFinite(v.ratio) ? (
             <meter min={0} max={1} value={Math.min(1, Math.max(0, v.ratio))} aria-label={v.label} />
           ) : (

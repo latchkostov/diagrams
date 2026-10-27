@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(40px, 245.823px) scale(0.64557)",
+  "viewport": "translate(32px, 196.213px) scale(0.825316)",
   "nodes": {
     "shopper": { "kind": "node", "box": "translate(0px, 160px) 220×72", "text": "Shopper Web Browser" },
     "cdn": { "kind": "node", "box": "translate(340px, 160px) 220×72", "text": "Fastly Fastly" },

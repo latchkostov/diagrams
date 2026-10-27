@@ -1,11 +1,11 @@
 import type { FitViewOptions } from "@xyflow/react";
 
-// Pixel padding keeps the title card (top-left) from covering the diagram.
+// Pixel padding clears the view control at the bottom-right of the canvas.
 export const FIT: FitViewOptions = {
-  padding: { top: "110px", right: "48px", bottom: "48px", left: "48px" },
+  padding: { top: "32px", right: "40px", bottom: "72px", left: "32px" },
   maxZoom: 1.25,
 };
 export const FIT_PRESENT: FitViewOptions = {
-  padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" },
+  padding: { top: "56px", right: "56px", bottom: "56px", left: "56px" },
   maxZoom: 1.6,
 };

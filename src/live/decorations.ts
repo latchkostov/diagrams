@@ -1,3 +1,4 @@
+import { mainRateThreshold } from "./overviewInk";
 // Live decorations on the real canvas DOM, applied imperatively at the UI clock (~8 Hz): status,
 // heat and dimming on node wrappers, active / idle on edges. Only `data-live-*` attributes are
 // written, which React Flow never touches, so a node or edge re-render doesn't wipe them. Styling
@@ -50,6 +51,9 @@ export interface DecorationStats {
 }
 
 export class Decorator {
+  private delivered = new Map<string, number>();
+  private rates = new Map<string, number>();
+  private sampledAt = 0;
   private applied = new Map<Element, string>();
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
   private lastActive = new Map<string, number>();
@@ -66,6 +70,20 @@ export class Decorator {
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
     const continuity = snapshotContinuity.get(snapshot);
     if (continuity !== this.continuity || snapshot.time < this.lastTime) this.lastActive.clear();
+    if (continuity !== this.continuity || snapshot.time < this.sampledAt) {
+      this.delivered.clear();
+      this.rates.clear();
+      this.sampledAt = 0;
+    }
+    const interval = snapshot.time - this.sampledAt;
+    if (interval > 0) {
+      for (const edge of Object.values(snapshot.edges)) {
+        this.rates.set(edge.id, (Math.max(0, edge.delivered - (this.delivered.get(edge.id) ?? 0)) * 1000) / interval);
+        this.delivered.set(edge.id, edge.delivered);
+      }
+      this.sampledAt = snapshot.time;
+    }
+    const mainThreshold = mainRateThreshold([...this.rates.values()]);
     this.continuity = continuity;
     // Holds count publishes of a moving simulation: while it stands still, every edge keeps its state.
     if (!still && snapshot.time !== this.lastTime) stats.publishes++;
@@ -115,7 +133,8 @@ export class Decorator {
       const dim = spotlight ? !spotlight.edges.has(id) : false;
       const lit = spotlight?.kind === "trace" && spotlight.edges.has(id);
       const cut = cutLinks.has(id);
-      const key = `${active}|${dim}|${lit}|${cut}`;
+      const main = (this.rates.get(id) ?? 0) >= mainThreshold;
+      const key = `${active}|${dim}|${lit}|${cut}|${main}`;
       seen.add(el);
       if (this.applied.get(el) === key) continue;
       this.applied.set(el, key);
@@ -124,6 +143,7 @@ export class Decorator {
       if (was !== null && was !== state) stats.edgeFlips++;
       setAttr(el, "data-live-cut", cut ? "1" : null);
       setAttr(el, "data-live-edge", state);
+      setAttr(el, "data-live-main", main ? "1" : null);
       setAttr(el, "data-live-dim", dim ? "1" : null);
       setAttr(el, "data-live-trace", lit ? "1" : null);
     }
@@ -141,11 +161,12 @@ export class Decorator {
     const root = this.root;
     for (const a of ["data-live", "data-live-spotlight", "data-live-still", "data-live-large"]) root.removeAttribute(a);
     for (const el of root.querySelectorAll(
-      "[data-live-cut],[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
+      "[data-live-main],[data-live-cut],[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
     )) {
       for (const a of [
         "data-live-cut",
         "data-live-status",
+        "data-live-main",
         "data-live-edge",
         "data-live-dim",
         "data-live-heat",

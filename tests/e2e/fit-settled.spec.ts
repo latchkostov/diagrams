@@ -1,5 +1,5 @@
-import { test, expect, savedDiagram, pauseClock, gotoLab, waitForStableBox } from "./fixtures";
-import { checksChrome, command, readCanvas, settledCanvas } from "../parity/browser/canvas";
+import { test, expect, savedDiagram, pauseClock, gotoLab, waitForStableBox, waitForCameraIdle } from "./fixtures";
+import { command, readCanvas, settledCanvas } from "../parity/browser/canvas";
 import type { Drawn } from "../parity/browser/canvas";
 import layout from "../parity/goldens/browser/layout/aws-serverless-orders.json" with { type: "json" };
 import example from "../../src/examples/aws-serverless-orders.json" with { type: "json" };
@@ -189,10 +189,16 @@ test("pressing a node cancels a pending refinement without moving its screen box
   await page.keyboard.press("Shift+Digit1");
   await waitForStableBox(node);
   await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+  await node.hover();
+  await page.keyboard.press("Shift+Digit1");
+  await waitForStableBox(node);
+  await expect(canvas).toHaveAttribute("data-fit-pending", "true");
   // Make the eventual chrome refinement observably different from the early fit.
-  await page.getByTestId("diagram-card").evaluate((el) => {
+  await page.getByTestId("canvas-wrap").evaluate((el) => {
     const row = document.createElement("div");
     row.dataset.testid = "held-fit-chrome";
+    row.setAttribute("data-canvas-overlay", "");
+    Object.assign(row.style, { position: "absolute", top: "0", width: "100%", pointerEvents: "none" });
     row.style.height = "160px";
     el.append(row);
   });
@@ -408,7 +414,7 @@ test("measurement transactions release all node observations while idle and regi
   expect(fitted.retained).toBe(0);
 });
 
-test("a folded title card caches its expanded footprint across resize notifications", async ({ page }) => {
+test("a presentation title card caches its expanded footprint across resize notifications", async ({ page }) => {
   await page.addInitScript(() => {
     const Native = window.ResizeObserver;
     const observers = new Map<ResizeObserver, { callback: ResizeObserverCallback; targets: Set<Element> }>();
@@ -444,22 +450,33 @@ test("a folded title card caches its expanded footprint across resize notificati
   });
   await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
-  await checksChrome(page, "aws-serverless-orders");
+  await page.getByTestId("present-toggle").click();
+  await settledCanvas(page);
   const card = page.getByTestId("diagram-card");
+  // The description swaps its Markdown fallback asynchronously. Font/content invalidation
+  // belongs before the cache measurement, not between two resize-notification samples.
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("diagram-description")
+        .evaluate((el) => el.firstElementChild?.hasAttribute("data-markdown-pending") ?? true),
+    )
+    .toBe(false);
+  await page.evaluate(() => document.fonts.ready);
   const box = await card.boundingBox();
   const node = await page.getByTestId("rf__node-client").boundingBox();
   if (!box || !node) throw new Error("Expected the title and client boxes");
   await page.mouse.move(800, 500);
   await page.mouse.wheel(node.x - box.x - 20, node.y - box.y - 20);
   await expect(card).toHaveAttribute("data-collapsed", "1");
+  await settledCanvas(page);
   const clones = () => page.evaluate(() => (window as unknown as { titleClones(): number }).titleClones());
-  const before = await page.evaluate(() =>
-    (window as unknown as { resizeTitle(count: number): number }).resizeTitle(1),
-  );
-  // A transition can deliver any number of notifications. Count the expensive work directly.
-  const repeated = await page.evaluate(() =>
-    (window as unknown as { resizeTitle(count: number): number }).resizeTitle(12),
-  );
+  // Sample one burst atomically: unrelated font/content events may invalidate the cache
+  // between browser tasks, and are supposed to trigger another measurement.
+  const { before, repeated } = await page.evaluate(() => {
+    const probe = window as unknown as { resizeTitle(count: number): number };
+    return { before: probe.resizeTitle(1), repeated: probe.resizeTitle(12) };
+  });
   expect(repeated).toBe(before);
   const height = Number(await card.getAttribute("data-overlay-height"));
   await card.evaluate((el) => {
@@ -481,7 +498,7 @@ test("a folded title card caches its expanded footprint across resize notificati
   const presenting = await card.evaluate((el) => {
     const probe = window as unknown as { resizeTitle(count: number): number; titleClones(): number };
     const before = probe.titleClones();
-    el.classList.add("is-large");
+    el.classList.remove("is-large");
     return { before, after: probe.resizeTitle(12) };
   });
   expect(presenting.after).toBe(presenting.before + 1);
@@ -718,6 +735,12 @@ for (const interrupted of [false, true]) {
       await expect.poll(async () => (await stats()).active).toBe(0);
       // Request no later fit: count mutation callbacks through subsequent canvas changes.
     }
+    // Keep this observer contract at a readable zoom: selecting below 50% intentionally starts automatic Focus.
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Shift+Digit0");
+    await page.getByTestId("rf__node-client").focus();
+    await waitForCameraIdle(page);
+    await expect.poll(async () => (await stats()).active).toBe(0);
     const before = await stats();
     const client = page.getByTestId("rf__node-client");
     const node = page.getByTestId("node-client");
@@ -771,6 +794,8 @@ for (const [width, height] of [
     await expect(page.getByTestId("diagram-title")).toHaveText(title);
     const canvas = page.getByTestId("canvas-wrap");
     await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+    await page.getByTestId("fit-view-button").click();
+    await settledCanvas(page);
     const before = await readCanvas(page);
     expect((before.nodes["group:aws"] as { box: string }).box).toContain(`${Math.round(width)}×${Math.round(height)}`);
     await page.getByTestId("fit-view-button").click();

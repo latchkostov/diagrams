@@ -1,20 +1,20 @@
 {
   "smoothstep": {
-    "api-db": { "ok": true, "sides": ["bottom", "bottom"], "points": [110, 72, 110, 220, 760, 220, 760, 72], "path": "48fd70104bb4", "label": [435, 220, 53, 19], "mode": "full", "text": "writes", "lines": ["writes"] },
-    "jog": { "ok": true, "sides": ["right", "left"], "points": [220, 43, 360, 43, 360, 356, 650, 356], "path": "f7f9598e70a1", "label": [360, 199.5, 65, 19], "mode": "full", "text": "receipts", "lines": ["receipts"] },
-    "detour": { "ok": true, "sides": ["right", "top"], "points": [220, 29, 236, 29, 236, -16, -180, -16, -180, -200, 400, -200, 400, -160, 760, -160, 760, 0], "path": "d2b3bfcee96a", "label": [110, -200, 47, 19], "mode": "full", "text": "audit", "lines": ["audit"] },
+    "api-db": { "ok": true, "sides": ["bottom", "bottom"], "points": [110, 72, 110, 220, 760, 220, 760, 72], "path": "48fd70104bb4", "label": [435, 220, 49.690000000000005, 22], "mode": "full", "text": "writes", "lines": ["writes"] },
+    "jog": { "ok": true, "sides": ["right", "left"], "points": [220, 43, 360, 43, 360, 356, 650, 356], "path": "f7f9598e70a1", "label": [360, 199.5, 60.87, 22], "mode": "full", "text": "receipts", "lines": ["receipts"] },
+    "detour": { "ok": true, "sides": ["right", "top"], "points": [220, 29, 236, 29, 236, -16, -180, -16, -180, -200, 400, -200, 400, -160, 760, -160, 760, 0], "path": "d2b3bfcee96a", "label": [110, -200, 45.42, 22], "mode": "full", "text": "audit", "lines": ["audit"] },
     "shape-end": { "ok": true, "sides": ["bottom", "bottom"], "points": [760, 392, 760, 580, 1170, 580, 1170, 419.25], "path": "4d542fe90f74" }
   },
   "bezier": {
-    "api-db": { "ok": true, "sides": ["bottom", "bottom"], "points": [110, 72, 110, 220, 760, 220, 760, 72], "path": "f8cecd5f526b", "label": [435, 220, 53, 19], "mode": "full", "text": "writes", "lines": ["writes"] },
-    "jog": { "ok": true, "sides": ["right", "left"], "points": [220, 43, 360, 43, 360, 356, 650, 356], "path": "b6844c63b1c7", "label": [360, 199.5, 65, 19], "mode": "full", "text": "receipts", "lines": ["receipts"] },
-    "detour": { "ok": true, "sides": ["right", "top"], "points": [220, 29, 236, 29, 236, -16, -180, -16, -180, -200, 400, -200, 400, -160, 760, -160, 760, 0], "path": "4e75ae2ee5e2", "label": [110, -200, 47, 19], "mode": "full", "text": "audit", "lines": ["audit"] },
+    "api-db": { "ok": true, "sides": ["bottom", "bottom"], "points": [110, 72, 110, 220, 760, 220, 760, 72], "path": "f8cecd5f526b", "label": [435, 220, 49.690000000000005, 22], "mode": "full", "text": "writes", "lines": ["writes"] },
+    "jog": { "ok": true, "sides": ["right", "left"], "points": [220, 43, 360, 43, 360, 356, 650, 356], "path": "b6844c63b1c7", "label": [360, 199.5, 60.87, 22], "mode": "full", "text": "receipts", "lines": ["receipts"] },
+    "detour": { "ok": true, "sides": ["right", "top"], "points": [220, 29, 236, 29, 236, -16, -180, -16, -180, -200, 400, -200, 400, -160, 760, -160, 760, 0], "path": "4e75ae2ee5e2", "label": [110, -200, 45.42, 22], "mode": "full", "text": "audit", "lines": ["audit"] },
     "shape-end": { "ok": true, "sides": ["bottom", "bottom"], "points": [760, 392, 760, 580, 1170, 580, 1170, 419.25], "path": "b8380ec43feb" }
   },
   "straight": {
-    "api-db": { "ok": true, "sides": ["bottom", "bottom"], "points": [110, 72, 110, 220, 760, 220, 760, 72], "path": "3f8ae9f7d631", "label": [435, 220, 53, 19], "mode": "full", "text": "writes", "lines": ["writes"] },
-    "jog": { "ok": true, "sides": ["right", "left"], "points": [220, 43, 360, 43, 360, 356, 650, 356], "path": "7485d7cd35e7", "label": [360, 199.5, 65, 19], "mode": "full", "text": "receipts", "lines": ["receipts"] },
-    "detour": { "ok": true, "sides": ["right", "top"], "points": [220, 29, 236, 29, 236, -16, -180, -16, -180, -200, 400, -200, 400, -160, 760, -160, 760, 0], "path": "31e17f39100f", "label": [110, -200, 47, 19], "mode": "full", "text": "audit", "lines": ["audit"] },
+    "api-db": { "ok": true, "sides": ["bottom", "bottom"], "points": [110, 72, 110, 220, 760, 220, 760, 72], "path": "3f8ae9f7d631", "label": [435, 220, 49.690000000000005, 22], "mode": "full", "text": "writes", "lines": ["writes"] },
+    "jog": { "ok": true, "sides": ["right", "left"], "points": [220, 43, 360, 43, 360, 356, 650, 356], "path": "7485d7cd35e7", "label": [360, 199.5, 60.87, 22], "mode": "full", "text": "receipts", "lines": ["receipts"] },
+    "detour": { "ok": true, "sides": ["right", "top"], "points": [220, 29, 236, 29, 236, -16, -180, -16, -180, -200, 400, -200, 400, -160, 760, -160, 760, 0], "path": "31e17f39100f", "label": [110, -200, 45.42, 22], "mode": "full", "text": "audit", "lines": ["audit"] },
     "shape-end": { "ok": true, "sides": ["bottom", "bottom"], "points": [760, 392, 760, 580, 1170, 580, 1170, 419.25], "path": "3ae347d3d3f0" }
   }
 }

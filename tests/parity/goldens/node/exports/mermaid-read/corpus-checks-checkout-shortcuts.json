@@ -5,11 +5,11 @@
     "title": "Checkout shortcuts",
     "direction": "LR",
     "groups": [
-      { "id": "g_team", "label": "Orders team", "tone": "neutral", "x": 760, "y": 160, "width": 660, "height": 176 }
+      { "id": "g_team", "label": "Orders team", "tone": "neutral", "x": 760, "y": 160, "width": 661, "height": 176 }
     ],
     "nodes": [
       { "id": "orders", "stencil": "generic.service", "label": "Order service", "x": 800, "y": 224, "group": "g_team" },
-      { "id": "db", "stencil": "generic.database", "label": "orders-db", "x": 1160, "y": 224, "group": "g_team" },
+      { "id": "db", "stencil": "generic.database", "label": "orders-db", "x": 1161.38, "y": 224, "group": "g_team" },
       { "id": "web", "stencil": "generic.service", "label": "Storefront", "x": 80, "y": 104 },
       { "id": "app", "stencil": "client.mobile", "label": "Mobile app", "x": 80, "y": 224 },
       { "id": "gw", "stencil": "generic.service", "label": "Commerce gateway", "sublabel": "TLS · /api", "x": 440, "y": 224 },

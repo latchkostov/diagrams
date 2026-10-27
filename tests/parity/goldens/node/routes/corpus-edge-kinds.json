@@ -2,10 +2,10 @@
   "smoothstep": {
     "edge-async": { "ok": true, "sides": ["right", "left"], "points": [260, 76, 544, 76], "path": "5f0bbfff1cda" },
     "edge-sync": { "ok": true, "sides": ["right", "left"], "points": [260, 256, 544, 256], "path": "e9547cbcca1d" },
-    "edge-labelled": { "ok": true, "sides": ["right", "left"], "points": [260, 436, 544, 436], "path": "829fbc0c8f79", "label": [396, 436, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "edge-long-label": { "ok": true, "sides": ["right", "left"], "points": [260, 616, 544, 616], "path": "a819a7fed866", "label": [396, 616, 173, 32], "mode": "wrap", "text": "POST /orders/{id}/payments (idempotent, retries ×3)", "lines": ["POST /orders/{id}/payments", "(idempotent, retries ×3)"] },
-    "bi-ab": { "ok": true, "sides": ["right", "left"], "points": [260, 789, 544, 789], "path": "c0dc909a6d12", "label": [396, 789, 59, 19], "mode": "full", "text": "request", "lines": ["request"] },
-    "bi-ba": { "ok": true, "sides": ["left", "right"], "points": [544, 803, 260, 803], "path": "16078e331758", "label": [468, 803, 65, 19], "mode": "full", "text": "callback", "lines": ["callback"] }
+    "edge-labelled": { "ok": true, "sides": ["right", "left"], "points": [260, 436, 544, 436], "path": "829fbc0c8f79", "label": [396, 436, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "edge-long-label": { "ok": true, "sides": ["right", "left"], "points": [260, 616, 544, 616], "path": "a819a7fed866", "label": [396, 616, 174.19, 38], "mode": "wrap", "text": "POST /orders/{id}/payments (idempotent, retries ×3)", "lines": ["POST /orders/{id}/payments", "(idempotent, retries ×3)"] },
+    "bi-ab": { "ok": true, "sides": ["right", "left"], "points": [260, 789, 544, 789], "path": "c0dc909a6d12", "label": [396, 789, 58.48, 22], "mode": "full", "text": "request", "lines": ["request"] },
+    "bi-ba": { "ok": true, "sides": ["left", "right"], "points": [544, 803, 260, 803], "path": "16078e331758", "label": [468, 803, 63.690000000000005, 22], "mode": "full", "text": "callback", "lines": ["callback"] }
   },
   "bezier": {
     "edge-async": {
@@ -154,7 +154,7 @@
         436
       ],
       "path": "8a05d9b9e838",
-      "label": [330.90557, 436.00000000000006, 83, 19],
+      "label": [330.90557, 436.00000000000006, 85.72, 22],
       "mode": "full",
       "text": "OrderPlaced",
       "lines": ["OrderPlaced"]
@@ -207,7 +207,7 @@
         616
       ],
       "path": "9d51950d788a",
-      "label": [395.81377000000003, 616, 173, 32],
+      "label": [395.81377000000003, 616, 174.19, 38],
       "mode": "wrap",
       "text": "POST /orders/{id}/payments (idempotent, retries ×3)",
       "lines": ["POST /orders/{id}/payments", "(idempotent, retries ×3)"]
@@ -260,7 +260,7 @@
         789
       ],
       "path": "16a17ac8edac",
-      "label": [330.90557, 789.0000000000001, 59, 19],
+      "label": [330.90557, 789.0000000000001, 58.48, 22],
       "mode": "full",
       "text": "request",
       "lines": ["request"]
@@ -313,7 +313,7 @@
         803
       ],
       "path": "4c65444cf2c7",
-      "label": [473.0944300000001, 803.0000000000001, 65, 19],
+      "label": [473.0944300000001, 803.0000000000001, 63.690000000000005, 22],
       "mode": "full",
       "text": "callback",
       "lines": ["callback"]
@@ -322,9 +322,9 @@
   "straight": {
     "edge-async": { "ok": true, "sides": ["right", "left"], "points": [260, 76, 544, 76], "path": "5f0bbfff1cda" },
     "edge-sync": { "ok": true, "sides": ["right", "left"], "points": [260, 256, 544, 256], "path": "e9547cbcca1d" },
-    "edge-labelled": { "ok": true, "sides": ["right", "left"], "points": [260, 436, 544, 436], "path": "829fbc0c8f79", "label": [396, 436, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "edge-long-label": { "ok": true, "sides": ["right", "left"], "points": [260, 616, 544, 616], "path": "a819a7fed866", "label": [396, 616, 173, 32], "mode": "wrap", "text": "POST /orders/{id}/payments (idempotent, retries ×3)", "lines": ["POST /orders/{id}/payments", "(idempotent, retries ×3)"] },
-    "bi-ab": { "ok": true, "sides": ["right", "left"], "points": [260, 789, 544, 789], "path": "c0dc909a6d12", "label": [396, 789, 59, 19], "mode": "full", "text": "request", "lines": ["request"] },
-    "bi-ba": { "ok": true, "sides": ["left", "right"], "points": [544, 803, 260, 803], "path": "16078e331758", "label": [468, 803, 65, 19], "mode": "full", "text": "callback", "lines": ["callback"] }
+    "edge-labelled": { "ok": true, "sides": ["right", "left"], "points": [260, 436, 544, 436], "path": "829fbc0c8f79", "label": [396, 436, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "edge-long-label": { "ok": true, "sides": ["right", "left"], "points": [260, 616, 544, 616], "path": "a819a7fed866", "label": [396, 616, 174.19, 38], "mode": "wrap", "text": "POST /orders/{id}/payments (idempotent, retries ×3)", "lines": ["POST /orders/{id}/payments", "(idempotent, retries ×3)"] },
+    "bi-ab": { "ok": true, "sides": ["right", "left"], "points": [260, 789, 544, 789], "path": "c0dc909a6d12", "label": [396, 789, 58.48, 22], "mode": "full", "text": "request", "lines": ["request"] },
+    "bi-ba": { "ok": true, "sides": ["left", "right"], "points": [544, 803, 260, 803], "path": "16078e331758", "label": [468, 803, 63.690000000000005, 22], "mode": "full", "text": "callback", "lines": ["callback"] }
   }
 }

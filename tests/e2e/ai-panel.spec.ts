@@ -102,7 +102,7 @@ test.describe("AI panel dock", () => {
 
   test("docks beside the canvas, shrinking it, and remembers open state and width", async ({ page }) => {
     const before = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
-    await expect(page.getByTestId("ai-rail")).toBeVisible();
+    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
     await openAdvanced(page);
     const dock = must(await page.getByTestId("ai-dock").boundingBox(), "dock");
     const after = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
@@ -111,15 +111,15 @@ test.describe("AI panel dock", () => {
     expect(dock.x + dock.width).toBeLessThanOrEqual(1440);
 
     // Resize from the keyboard (the window-splitter pattern), then reload: open and wider.
-    await page.getByTestId("ai-resize").focus();
+    await page.getByTestId("inspector-resize").focus();
     await page.keyboard.press("ArrowLeft");
     await page.keyboard.press("ArrowLeft");
     await expect
       .poll(async () => must(await page.getByTestId("ai-dock").boundingBox(), "dock").width)
-      .toBe(dock.width + 48);
+      .toBe(dock.width + 32);
     await page.reload();
     await expect(page.getByTestId("ai-panel")).toBeVisible();
-    expect(must(await page.getByTestId("ai-dock").boundingBox(), "dock").width).toBe(dock.width + 48);
+    expect(must(await page.getByTestId("ai-dock").boundingBox(), "dock").width).toBe(dock.width + 32);
   });
 
   test("Ctrl+I opens and focuses it, and from inside hides it", async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-panel")).toBeFocused();
     await page.keyboard.press(`${MOD}+i`);
     await expect(page.getByTestId("ai-panel")).toHaveCount(0);
-    await expect(page.getByTestId("ai-rail")).toBeVisible();
+    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
     // Open but not focused: Ctrl+I focuses it.
     await page.keyboard.press(`${MOD}+i`);
     await page.getByTestId("canvas-wrap").click({ position: { x: 30, y: 300 } });
@@ -196,11 +196,13 @@ test.describe("AI panel dock", () => {
     // Snapping is on: Shift+arrow moves 50 px onto the grid.
     for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowRight");
     await expect.poll(x).toBe(start + 150);
+    await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
-    // Undo the move by hand: now the turn's step is next again, and its Undo reverses only the turn.
-    await page.keyboard.press(`${MOD}+z`);
+    // The AI tab took focus from the canvas; use the bezel Undo to reverse the move.
+    await page.getByTestId("undo-button").click();
     await expect.poll(x).toBe(start);
+    await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
     await page.getByTestId("ai-turn-0-undo").click();
     await expect.poll(() => nodeCount(page)).toBe(before);

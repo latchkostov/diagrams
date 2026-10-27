@@ -2,12 +2,12 @@
   "smoothstep": {
     "fwd-1": { "ok": true, "sides": ["right", "left"], "points": [260, 203, 330, 203, 330, 196, 400, 196], "path": "a2d03789d421" },
     "fwd-2": { "ok": true, "sides": ["right", "left"], "points": [620, 189, 690, 189, 690, 203, 760, 203], "path": "057d7c560510" },
-    "down": { "ok": true, "sides": ["bottom", "top"], "points": [870, 232, 870, 316, 863, 316, 863, 400], "path": "b83890d6418a", "label": [870, 275, 53, 19], "mode": "full", "text": "failed", "lines": ["failed"] },
-    "back": { "ok": true, "sides": ["left", "right"], "points": [760, 436, 690, 436, 690, 203, 620, 203], "path": "45aa62908614", "label": [690, 319.5, 113, 19], "mode": "full", "text": "back-edge: retry", "lines": ["back-edge: retry"] },
-    "back-far": { "ok": true, "sides": ["left", "right"], "points": [760, 189, 690, 189, 690, 122, 330, 122, 330, 189, 260, 189], "path": "22921ba5c4a7", "label": [450, 122, 107, 19], "mode": "full", "text": "back-edge: skip", "lines": ["back-edge: skip"] },
+    "down": { "ok": true, "sides": ["bottom", "top"], "points": [870, 232, 870, 316, 863, 316, 863, 400], "path": "b83890d6418a", "label": [870, 275, 47.24, 22], "mode": "full", "text": "failed", "lines": ["failed"] },
+    "back": { "ok": true, "sides": ["left", "right"], "points": [760, 436, 690, 436, 690, 203, 620, 203], "path": "45aa62908614", "label": [690, 319.5, 106.25, 22], "mode": "full", "text": "back-edge: retry", "lines": ["back-edge: retry"] },
+    "back-far": { "ok": true, "sides": ["left", "right"], "points": [760, 189, 690, 189, 690, 122, 330, 122, 330, 189, 260, 189], "path": "22921ba5c4a7", "label": [450, 122, 103.17, 22], "mode": "full", "text": "back-edge: skip", "lines": ["back-edge: skip"] },
     "up": { "ok": true, "sides": ["top", "bottom"], "points": [510, 160, 510, 64], "path": "9d157ca75998" },
     "down-2": { "ok": true, "sides": ["bottom", "top"], "points": [510, 232, 510, 400], "path": "8bcd0bc36bb7" },
-    "self": { "ok": true, "sides": ["right", "top"], "points": [980, 436, 1002, 436, 1002, 378, 877, 378, 877, 400], "path": "27350e0dd37f", "label": [939.5, 378, 71, 19], "mode": "full", "text": "self-loop", "lines": ["self-loop"] }
+    "self": { "ok": true, "sides": ["right", "top"], "points": [980, 436, 1002, 436, 1002, 378, 877, 378, 877, 400], "path": "27350e0dd37f", "label": [939.5, 378, 64.42, 22], "mode": "full", "text": "self-loop", "lines": ["self-loop"] }
   },
   "bezier": {
     "fwd-1": {
@@ -156,7 +156,7 @@
         400
       ],
       "path": "656274d306d6",
-      "label": [866.238375, 319.6571870798327, 53, 19],
+      "label": [866.238375, 319.6571870798327, 47.24, 22],
       "mode": "full",
       "text": "failed",
       "lines": ["failed"]
@@ -209,7 +209,7 @@
         203
       ],
       "path": "cc06aa60187c",
-      "label": [689.0059361703647, 310.791625, 113, 19],
+      "label": [689.0059361703647, 310.791625, 106.25, 22],
       "mode": "full",
       "text": "back-edge: retry",
       "lines": ["back-edge: retry"]
@@ -262,7 +262,7 @@
         189
       ],
       "path": "b4ce38612113",
-      "label": [332.98125000000005, 189, 107, 19],
+      "label": [332.98125000000005, 189, 103.17, 22],
       "mode": "full",
       "text": "back-edge: skip",
       "lines": ["back-edge: skip"]
@@ -365,16 +365,16 @@
       ],
       "path": "be9203133c3c"
     },
-    "self": { "ok": true, "sides": ["right", "top"], "points": [980, 436, 1002, 436, 1002, 378, 877, 378, 877, 400], "path": "27350e0dd37f", "label": [939.5, 378, 71, 19], "mode": "full", "text": "self-loop", "lines": ["self-loop"] }
+    "self": { "ok": true, "sides": ["right", "top"], "points": [980, 436, 1002, 436, 1002, 378, 877, 378, 877, 400], "path": "27350e0dd37f", "label": [939.5, 378, 64.42, 22], "mode": "full", "text": "self-loop", "lines": ["self-loop"] }
   },
   "straight": {
     "fwd-1": { "ok": true, "sides": ["right", "left"], "points": [260, 203, 400, 196], "path": "74368020ce36" },
     "fwd-2": { "ok": true, "sides": ["right", "left"], "points": [620, 189, 760, 203], "path": "ccb48a6b621e" },
-    "down": { "ok": true, "sides": ["bottom", "top"], "points": [870, 232, 863, 400], "path": "b633161ca5b4", "label": [866.7497832682731, 310.0052015614459, 53, 19], "mode": "full", "text": "failed", "lines": ["failed"] },
-    "back": { "ok": true, "sides": ["left", "right"], "points": [760, 436, 620, 203], "path": "8474f9bd0a20", "label": [693.0902199475314, 324.6430089126774, 113, 19], "mode": "full", "text": "back-edge: retry", "lines": ["back-edge: retry"] },
-    "back-far": { "ok": true, "sides": ["left", "right"], "points": [760, 189, 260, 189], "path": "d85cdb4a9d13", "label": [686, 189, 107, 19], "mode": "full", "text": "back-edge: skip", "lines": ["back-edge: skip"] },
+    "down": { "ok": true, "sides": ["bottom", "top"], "points": [870, 232, 863, 400], "path": "b633161ca5b4", "label": [866.7497832682731, 310.0052015614459, 47.24, 22], "mode": "full", "text": "failed", "lines": ["failed"] },
+    "back": { "ok": true, "sides": ["left", "right"], "points": [760, 436, 620, 203], "path": "8474f9bd0a20", "label": [693.0902199475314, 324.6430089126774, 106.25, 22], "mode": "full", "text": "back-edge: retry", "lines": ["back-edge: retry"] },
+    "back-far": { "ok": true, "sides": ["left", "right"], "points": [760, 189, 260, 189], "path": "d85cdb4a9d13", "label": [676, 189, 103.17, 22], "mode": "full", "text": "back-edge: skip", "lines": ["back-edge: skip"] },
     "up": { "ok": true, "sides": ["top", "bottom"], "points": [510, 160, 510, 64], "path": "9d157ca75998" },
     "down-2": { "ok": true, "sides": ["bottom", "top"], "points": [510, 232, 510, 400], "path": "8bcd0bc36bb7" },
-    "self": { "ok": true, "sides": ["right", "top"], "points": [980, 436, 1002, 436, 1002, 378, 877, 378, 877, 400], "path": "6200596635a5", "label": [939.5, 378, 71, 19], "mode": "full", "text": "self-loop", "lines": ["self-loop"] }
+    "self": { "ok": true, "sides": ["right", "top"], "points": [980, 436, 1002, 436, 1002, 378, 877, 378, 877, 400], "path": "6200596635a5", "label": [939.5, 378, 64.42, 22], "mode": "full", "text": "self-loop", "lines": ["self-loop"] }
   }
 }

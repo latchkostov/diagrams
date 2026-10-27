@@ -298,9 +298,8 @@
   font-size: 10px;
   color: var(--text-3);
   font-family: var(--font-mono);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  text-align: end;
 }
 
 .md-editor-body {

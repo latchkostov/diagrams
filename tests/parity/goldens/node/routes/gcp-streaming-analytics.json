@@ -1,13 +1,13 @@
 {
   "smoothstep": {
-    "app-to-collector": { "ok": true, "sides": ["right", "left"], "points": [266, 276, 420, 276], "path": "dc76297a7d5a", "label": [337, 276, 95, 19], "mode": "full", "text": "HTTPS batches", "lines": ["HTTPS batches"] },
-    "collector-to-topic": { "ok": true, "sides": ["right", "left"], "points": [654, 276, 800, 276], "path": "ad52036258d6", "label": [721, 276, 59, 19], "mode": "full", "text": "Publish", "lines": ["Publish"] },
-    "topic-to-dataflow": { "ok": true, "sides": ["right", "left"], "points": [1028, 269, 1104, 269, 1104, 156, 1180, 156], "path": "774d43c9d403", "label": [1104, 212.5, 95, 19], "mode": "full", "text": "sub: dataflow", "lines": ["sub: dataflow"] },
-    "topic-to-raw-archive": { "ok": true, "sides": ["right", "left"], "points": [1028, 283, 1104, 283, 1104, 396, 1180, 396], "path": "1262aef1e9f5", "label": [1104, 339.5, 173, 19], "mode": "full", "text": "Cloud Storage subscription", "lines": ["Cloud Storage subscription"] },
-    "dataflow-to-bigquery": { "ok": true, "sides": ["right", "left"], "points": [1421, 149, 1490.5, 149, 1490.5, 156, 1560, 156], "path": "a70171dc25b1", "label": [1466.75, 149, 65, 19], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
-    "dataflow-to-dead-letters": { "ok": true, "sides": ["right", "left"], "points": [1421, 163, 1490.5, 163, 1490.5, 276, 1560, 276], "path": "64d45108d933", "label": [1490.5, 219.5, 89, 19], "mode": "full", "text": "Parse errors", "lines": ["Parse errors"] },
-    "dead-letters-to-dead-bucket": { "ok": true, "sides": ["right", "left"], "points": [1780, 276, 1940, 276], "path": "7c5e31e7c259", "label": [1854, 276, 89, 19], "mode": "full", "text": "sub: archive", "lines": ["sub: archive"] },
-    "looker-to-bigquery": { "ok": true, "sides": ["left", "right"], "points": [1940, 156, 1780, 156], "path": "88488ed79ac2", "label": [1866, 156, 35, 19], "mode": "full", "text": "SQL", "lines": ["SQL"] }
+    "app-to-collector": { "ok": true, "sides": ["right", "left"], "points": [266, 276, 420, 276], "path": "dc76297a7d5a", "label": [337, 276, 101.55, 22], "mode": "full", "text": "HTTPS batches", "lines": ["HTTPS batches"] },
+    "collector-to-topic": { "ok": true, "sides": ["right", "left"], "points": [654, 276, 800, 276], "path": "ad52036258d6", "label": [721, 276, 57.480000000000004, 22], "mode": "full", "text": "Publish", "lines": ["Publish"] },
+    "topic-to-dataflow": { "ok": true, "sides": ["right", "left"], "points": [1028, 269, 1104, 269, 1104, 156, 1180, 156], "path": "774d43c9d403", "label": [1104, 212.5, 89.83999999999999, 22], "mode": "full", "text": "sub: dataflow", "lines": ["sub: dataflow"] },
+    "topic-to-raw-archive": { "ok": true, "sides": ["right", "left"], "points": [1028, 283, 1104, 283, 1104, 396, 1180, 396], "path": "1262aef1e9f5", "label": [1104, 339.5, 165.9, 22], "mode": "full", "text": "Cloud Storage subscription", "lines": ["Cloud Storage subscription"] },
+    "dataflow-to-bigquery": { "ok": true, "sides": ["right", "left"], "points": [1421, 149, 1490.5, 149, 1490.5, 156, 1560, 156], "path": "a70171dc25b1", "label": [1466.75, 149, 65.4, 22], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
+    "dataflow-to-dead-letters": { "ok": true, "sides": ["right", "left"], "points": [1421, 163, 1490.5, 163, 1490.5, 276, 1560, 276], "path": "64d45108d933", "label": [1490.5, 219.5, 83.27, 22], "mode": "full", "text": "Parse errors", "lines": ["Parse errors"] },
+    "dead-letters-to-dead-bucket": { "ok": true, "sides": ["right", "left"], "points": [1780, 276, 1940, 276], "path": "7c5e31e7c259", "label": [1854, 276, 82.50999999999999, 22], "mode": "full", "text": "sub: archive", "lines": ["sub: archive"] },
+    "looker-to-bigquery": { "ok": true, "sides": ["left", "right"], "points": [1940, 156, 1780, 156], "path": "88488ed79ac2", "label": [1866, 156, 40.06, 22], "mode": "full", "text": "SQL", "lines": ["SQL"] }
   },
   "bezier": {
     "app-to-collector": {
@@ -58,7 +58,7 @@
         276
       ],
       "path": "d441a57992de",
-      "label": [339.64549500000004, 276, 95, 19],
+      "label": [339.64549500000004, 276, 101.55, 22],
       "mode": "full",
       "text": "HTTPS batches",
       "lines": ["HTTPS batches"]
@@ -111,7 +111,7 @@
         276
       ],
       "path": "a929b0caecfe",
-      "label": [723.819755, 276, 59, 19],
+      "label": [723.819755, 276, 57.480000000000004, 22],
       "mode": "full",
       "text": "Publish",
       "lines": ["Publish"]
@@ -164,7 +164,7 @@
         156
       ],
       "path": "8231780124a4",
-      "label": [1101.2722458441276, 216.72337500000003, 95, 19],
+      "label": [1101.2722458441276, 216.72337500000003, 89.83999999999999, 22],
       "mode": "full",
       "text": "sub: dataflow",
       "lines": ["sub: dataflow"]
@@ -217,7 +217,7 @@
         396
       ],
       "path": "db87280a89a7",
-      "label": [1101.2722458441274, 335.276625, 173, 19],
+      "label": [1101.2722458441274, 335.276625, 165.9, 22],
       "mode": "full",
       "text": "Cloud Storage subscription",
       "lines": ["Cloud Storage subscription"]
@@ -270,7 +270,7 @@
         156
       ],
       "path": "c84d295ab891",
-      "label": [1487.4749790780486, 152.238375, 65, 19],
+      "label": [1487.4749790780486, 152.238375, 65.4, 22],
       "mode": "full",
       "text": "Sessions",
       "lines": ["Sessions"]
@@ -323,7 +323,7 @@
         276
       ],
       "path": "6d2a46db710e",
-      "label": [1488.0980658536766, 215.276625, 89, 19],
+      "label": [1488.0980658536766, 215.276625, 83.27, 22],
       "mode": "full",
       "text": "Parse errors",
       "lines": ["Parse errors"]
@@ -376,7 +376,7 @@
         276
       ],
       "path": "4e087341355a",
-      "label": [1856.5148000000002, 276, 89, 19],
+      "label": [1856.5148000000002, 276, 82.50999999999999, 22],
       "mode": "full",
       "text": "sub: archive",
       "lines": ["sub: archive"]
@@ -429,20 +429,20 @@
         156
       ],
       "path": "f409ef5e7e3e",
-      "label": [1856.5148, 156, 35, 19],
+      "label": [1856.5148, 156, 40.06, 22],
       "mode": "full",
       "text": "SQL",
       "lines": ["SQL"]
     }
   },
   "straight": {
-    "app-to-collector": { "ok": true, "sides": ["right", "left"], "points": [266, 276, 420, 276], "path": "dc76297a7d5a", "label": [337, 276, 95, 19], "mode": "full", "text": "HTTPS batches", "lines": ["HTTPS batches"] },
-    "collector-to-topic": { "ok": true, "sides": ["right", "left"], "points": [654, 276, 800, 276], "path": "ad52036258d6", "label": [721, 276, 59, 19], "mode": "full", "text": "Publish", "lines": ["Publish"] },
-    "topic-to-dataflow": { "ok": true, "sides": ["right", "left"], "points": [1028, 269, 1180, 156], "path": "65ec36b4fabb", "label": [1099.184837040141, 216.0796935162109, 95, 19], "mode": "full", "text": "sub: dataflow", "lines": ["sub: dataflow"] },
-    "topic-to-raw-archive": { "ok": true, "sides": ["right", "left"], "points": [1028, 283, 1180, 396], "path": "05c3b9034530", "label": [1099.184837040141, 335.9203064837891, 173, 19], "mode": "full", "text": "Cloud Storage subscription", "lines": ["Cloud Storage subscription"] },
-    "dataflow-to-bigquery": { "ok": true, "sides": ["right", "left"], "points": [1421, 149, 1560, 156], "path": "5cda354a487c", "label": [1484.5075938608002, 152.19822415126333, 65, 19], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
-    "dataflow-to-dead-letters": { "ok": true, "sides": ["right", "left"], "points": [1421, 163, 1560, 276], "path": "4e4e69f75270", "label": [1485.8443406909043, 215.71518343936833, 89, 19], "mode": "full", "text": "Parse errors", "lines": ["Parse errors"] },
-    "dead-letters-to-dead-bucket": { "ok": true, "sides": ["right", "left"], "points": [1780, 276, 1940, 276], "path": "7c5e31e7c259", "label": [1854, 276, 89, 19], "mode": "full", "text": "sub: archive", "lines": ["sub: archive"] },
-    "looker-to-bigquery": { "ok": true, "sides": ["left", "right"], "points": [1940, 156, 1780, 156], "path": "88488ed79ac2", "label": [1866, 156, 35, 19], "mode": "full", "text": "SQL", "lines": ["SQL"] }
+    "app-to-collector": { "ok": true, "sides": ["right", "left"], "points": [266, 276, 420, 276], "path": "dc76297a7d5a", "label": [337, 276, 101.55, 22], "mode": "full", "text": "HTTPS batches", "lines": ["HTTPS batches"] },
+    "collector-to-topic": { "ok": true, "sides": ["right", "left"], "points": [654, 276, 800, 276], "path": "ad52036258d6", "label": [721, 276, 57.480000000000004, 22], "mode": "full", "text": "Publish", "lines": ["Publish"] },
+    "topic-to-dataflow": { "ok": true, "sides": ["right", "left"], "points": [1028, 269, 1180, 156], "path": "65ec36b4fabb", "label": [1099.184837040141, 216.0796935162109, 89.83999999999999, 22], "mode": "full", "text": "sub: dataflow", "lines": ["sub: dataflow"] },
+    "topic-to-raw-archive": { "ok": true, "sides": ["right", "left"], "points": [1028, 283, 1180, 396], "path": "05c3b9034530", "label": [1099.184837040141, 335.9203064837891, 165.9, 22], "mode": "full", "text": "Cloud Storage subscription", "lines": ["Cloud Storage subscription"] },
+    "dataflow-to-bigquery": { "ok": true, "sides": ["right", "left"], "points": [1421, 149, 1560, 156], "path": "5cda354a487c", "label": [1484.5075938608002, 152.19822415126333, 65.4, 22], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
+    "dataflow-to-dead-letters": { "ok": true, "sides": ["right", "left"], "points": [1421, 163, 1560, 276], "path": "4e4e69f75270", "label": [1485.8443406909043, 215.71518343936833, 83.27, 22], "mode": "full", "text": "Parse errors", "lines": ["Parse errors"] },
+    "dead-letters-to-dead-bucket": { "ok": true, "sides": ["right", "left"], "points": [1780, 276, 1940, 276], "path": "7c5e31e7c259", "label": [1854, 276, 82.50999999999999, 22], "mode": "full", "text": "sub: archive", "lines": ["sub: archive"] },
+    "looker-to-bigquery": { "ok": true, "sides": ["left", "right"], "points": [1940, 156, 1780, 156], "path": "88488ed79ac2", "label": [1866, 156, 40.06, 22], "mode": "full", "text": "SQL", "lines": ["SQL"] }
   }
 }

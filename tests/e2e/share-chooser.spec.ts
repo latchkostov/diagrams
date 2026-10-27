@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -47,6 +48,7 @@ async function makePrivate(page: Page) {
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-privacy").click();
   await page.getByTestId("privacy-diagram").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.keyboard.press("Escape");
 }
@@ -357,6 +359,7 @@ test("the Import report's New diagrams are private is the File menu setting", as
   await page
     .getByTestId("import-input")
     .setInputFiles({ name: "docker-compose.yml", mimeType: "application/yaml", buffer: COMPOSE });
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expectNoErrors(consoleErrors);
 });

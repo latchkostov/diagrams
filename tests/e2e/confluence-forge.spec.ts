@@ -266,11 +266,11 @@ test("Forge host theme changes update React Flow, live particle colours and capt
     await expect(page.getByTestId("rf__wrapper")).toHaveClass(new RegExp(`(?:^| )${theme}(?: |$)`));
     await expect(page.getByTestId("canvas-wrap")).toHaveCSS(
       "background-color",
-      theme === "dark" ? "rgb(14, 19, 29)" : "rgb(243, 245, 248)",
+      theme === "dark" ? "rgb(18, 20, 25)" : "rgb(246, 247, 249)",
     );
     await expect(page.getByTestId("annotation-text-caption")).toHaveCSS(
       "color",
-      theme === "dark" ? "rgb(232, 236, 244)" : "rgb(34, 34, 34)",
+      theme === "dark" ? "rgb(233, 235, 239)" : "rgb(34, 34, 34)",
     );
     const gradients = await page.evaluate(
       () => (window as unknown as { forgeGradients: { offset: number; color: string }[] }).forgeGradients,
@@ -310,14 +310,14 @@ test("Forge explicit dark theme survives delayed theming and host attribute writ
       document.documentElement.dataset.theme = "dark:dark light:light";
     }, mode);
     await expect(page.getByTestId("rf__wrapper")).toHaveClass(/(?:^| )dark(?: |$)/);
-    await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", "rgb(14, 19, 29)");
+    await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", "rgb(18, 20, 25)");
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark:dark light:light");
   }
   // Forge may rewrite only data-theme, without a data-color-mode mutation.
   await page.evaluate(() => {
     document.documentElement.dataset.theme = "light:light dark:dark";
   });
-  await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", "rgb(14, 19, 29)");
+  await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", "rgb(18, 20, 25)");
 });
 
 test("Forge maximise pauses inline playback until explicitly resumed", async ({ page }) => {

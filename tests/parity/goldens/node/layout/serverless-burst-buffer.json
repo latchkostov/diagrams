@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "LR": { "requests": [40, 100], "gateway": [421, 40], "queue": [421, 160], "direct": [823, 40], "invoker": [823, 160], "direct-results": [1223, 40], "async": [1223, 160], "async-results": [1623, 100] },
+    "LR": { "requests": [40, 100], "gateway": [421, 40], "queue": [421, 160], "direct": [814.71, 40], "invoker": [814.71, 160], "direct-results": [1214.71, 40], "async": [1214.71, 160], "async-results": [1614.71, 100] },
     "TB": { "requests": [200, 40], "gateway": [40, 200], "queue": [360, 200], "direct": [40, 360], "invoker": [360, 360], "direct-results": [40, 520], "async": [360, 520], "async-results": [200, 680] }
   },
   "tidy": { "requests": [200, 40], "gateway": [40, 200], "queue": [360, 200], "direct": [40, 360], "invoker": [360, 360], "async": [360, 520], "direct-results": [40, 520], "async-results": [200, 680] },

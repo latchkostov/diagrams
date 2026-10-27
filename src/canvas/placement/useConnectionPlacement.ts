@@ -99,7 +99,9 @@ export function useConnectionPlacement(
             if (p.target !== "canvas" || live || !p.screen) return;
             const screen = p.screen;
             // Empty canvas: quick-add there; the pick lands on the drop point, connected, ready to name.
-            const point = screenToFlowPosition({ x: screen.x, y: screen.y });
+            // The editor snaps the new card's top-left after centring it. Snapping
+            // the pointer first would round twice and move it beyond the drop grid cell.
+            const point = screenToFlowPosition({ x: screen.x, y: screen.y }, { snapToGrid: false });
             menus.openMenu(
               "quickAdd",
               {

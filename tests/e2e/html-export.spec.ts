@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { chunk, holdChunk } from "./chunk";
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -364,6 +365,7 @@ test.describe("Interactive HTML export", () => {
       ),
     });
     await expect(page.getByTestId("diagram-title")).toHaveText("Ledger flow");
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await openHtmlExport(page);
     await expect(page.getByTestId("html-export-anyone")).toContainText(ANYONE);
@@ -565,6 +567,7 @@ test.describe("Interactive HTML with a password", () => {
       ),
     });
     await expect(page.getByTestId("diagram-title")).toHaveText("Sealed journal canary 7f3c");
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     // Private changes nothing here: the export is on, with or without a password.
     await openHtmlExport(page);

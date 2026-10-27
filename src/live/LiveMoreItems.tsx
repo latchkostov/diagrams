@@ -1,4 +1,4 @@
-import { useSyncExternalStore, type Dispatch, type SetStateAction } from "react";
+import { useSyncExternalStore, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { useInteraction, type MenuCloseReason } from "../canvas/interaction";
 import { t } from "../i18n";
 import type { LiveState } from "./controller";
@@ -18,11 +18,13 @@ export function LiveMoreItems({
   close,
   traceOpen,
   setTraceOpen,
+  children,
 }: {
   state: LiveState;
   close(reason: MenuCloseReason): void;
   traceOpen: boolean;
   setTraceOpen: Dispatch<SetStateAction<boolean>>;
+  children?: ReactNode;
 }) {
   const interaction = useInteraction();
   const ui = useLive();
@@ -48,6 +50,7 @@ export function LiveMoreItems({
       tabIndex={-1}
       data-testid="live-more-menu"
       onKeyDown={(e) => {
+        if (e.target instanceof Element && e.target.closest("select, input, textarea, [contenteditable]")) return;
         if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
         e.preventDefault();
         const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
@@ -61,6 +64,7 @@ export function LiveMoreItems({
         if (items[next]) interaction?.dispatch({ type: "dialog.tab", target: items[next] });
       }}
     >
+      {children}
       <button
         role="menuitemcheckbox"
         aria-checked={state.traffic}

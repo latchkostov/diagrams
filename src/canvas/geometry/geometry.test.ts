@@ -225,7 +225,7 @@ describe("labels", () => {
     expect(nodes.some((n) => intersects(boxOf(pl), n))).toBe(false);
   });
 
-  it("falls back to wrap, then truncate, then a numbered dot", () => {
+  it("wraps full words, then uses a numbered dot instead of ellipsizing", () => {
     // A 100px-wide channel between two tall nodes with a vertical route down the middle.
     const nodes = [card(0, -500, 220, 1200), card(320, -500, 220, 1200)];
     const route = [
@@ -247,7 +247,7 @@ describe("labels", () => {
       { nodes },
     );
     expect(out.get("wrap")!.mode).toBe("wrap");
-    expect(out.get("trunc")!.mode).toBe("truncate");
+    expect(out.get("trunc")!.mode).toBe("dot");
     expect(out.get("trunc")!.width).toBeLessThanOrEqual(100 - 2 * LABEL.gap);
     const tight = [card(0, -500, 260, 1200), card(280, -500, 220, 1200)];
     const dot = placeLabels(
@@ -282,8 +282,8 @@ describe("labels", () => {
     expect([...one.entries()]).toEqual([...two.entries()]);
   });
 
-  it("pill widths follow the monospace metrics", () => {
-    expect(pillWidth(10)).toBe(10 * 6 + 17);
+  it("pill estimates follow the measured font average", () => {
+    expect(pillWidth(10)).toBe(10 * 5.8 + 17);
   });
 });
 
@@ -874,4 +874,9 @@ it("handles a large fixed lane crossed by one automatic route without recursive 
   const result = nudgeRoutes(routes, [], { fixed });
   expect(result.size).toBe(routes.size);
   for (const id of fixed) expect(result.get(id)).toEqual(routes.get(id));
+});
+
+it("measures the words rather than treating narrow and wide glyphs as equal", () => {
+  expect(pillWidth("iiiiiiiiii")).toBeLessThan(pillWidth("MMMMMMMMMM") / 2);
+  expect(pillWidth("111111")).toBe(pillWidth("888888"));
 });

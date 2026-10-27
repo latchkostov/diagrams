@@ -141,6 +141,8 @@ const STARTUP_CHUNKS = [
   "jsx-runtime",
   // Shared by the optional shape engines and menu artwork, while its loader stays preloaded.
   "lazyLoad",
+  // The Workbench dock uses the shared state-machine helper before any canvas mounts.
+  "machine",
   // Catalogue, roles, schema constants and file validation share one preloaded model chunk.
   "native",
   "preload-helper",

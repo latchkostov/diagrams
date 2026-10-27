@@ -29,11 +29,17 @@ export function CardNode(p: NodeBodyProps) {
         <StencilIcon stencil={p.stencil} size={26} />
       </div>
       <div className="nb-text">
-        <div className="nb-label">{p.label}</div>
+        <div className="nb-label" data-testid="card-title">
+          {p.label}
+        </div>
         {p.sublabel ? (
-          <div className="nb-sub">{p.sublabel}</div>
+          <div className="nb-sub" data-testid="card-second-line">
+            {p.sublabel}
+          </div>
         ) : (
-          <div className="nb-kind">{p.stencilName ?? p.stencil.label}</div>
+          <div className="nb-kind" data-testid="card-second-line">
+            {p.stencilName ?? p.stencil.label}
+          </div>
         )}
       </div>
     </div>
@@ -46,7 +52,9 @@ export function CompactNode(p: NodeBodyProps) {
       <div className="nb-tile">
         <StencilIcon stencil={p.stencil} size={18} />
       </div>
-      <div className="nb-label">{p.label}</div>
+      <div className="nb-label" data-testid="card-title">
+        {p.label}
+      </div>
     </div>
   );
 }
@@ -58,8 +66,14 @@ export function IconOnlyNode(p: NodeBodyProps) {
         <StencilIcon stencil={p.stencil} size={34} />
       </div>
       <div className="nb-caption" data-testid="node-caption">
-        <div className="nb-label">{p.label}</div>
-        {p.sublabel && <div className="nb-sub">{p.sublabel}</div>}
+        <div className="nb-label" data-testid="card-title">
+          {p.label}
+        </div>
+        {p.sublabel && (
+          <div className="nb-sub" data-testid="card-second-line">
+            {p.sublabel}
+          </div>
+        )}
       </div>
     </div>
   );

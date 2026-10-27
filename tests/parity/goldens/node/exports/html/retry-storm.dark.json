@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "4e1cfc9574e27089dc52ff33671b52e34a68bd1c29794f48127d1dd54345c63f", "bytes": 14653 },
+  "file": { "sha256": "345346d62d68c000d41bb0a43aa7c88b589db894d14b7647ac4fd9e851ef26aa", "bytes": 14758 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -11,7 +11,7 @@
         ]
       },
       "title": "A retry storm",
-      "description": "Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run.",
+      "description": "Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run. Select Payments before playing to compare Throughput and Queue in This run during the first ten seconds.",
       "nodes": [
         { "id": "shop", "stencil": "client.user", "label": "Shop", "x": 0, "y": 160, "props": { "ratePerSec": 300 } },
         {

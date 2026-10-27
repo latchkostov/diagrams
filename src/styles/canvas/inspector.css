@@ -2,7 +2,7 @@
 
 .inspector {
   position: relative;
-  width: var(--sheet-width, clamp(360px, 26.5vw, 640px));
+  width: var(--sheet-width, var(--dock-w));
   flex: none;
   display: flex;
   flex-direction: column;
@@ -17,7 +17,7 @@
   inset-block: 0;
   inset-inline-start: -4px;
   width: 9px;
-  z-index: 6;
+  z-index: 20;
   cursor: col-resize;
   touch-action: none;
   user-select: none;
@@ -44,7 +44,7 @@ html[data-sheet-resizing] * {
   cursor: col-resize !important;
   user-select: none !important;
 }
-@media (max-width: 1100px) {
+@media (max-width: 639px) {
   .inspector {
     width: 296px;
   }
@@ -54,9 +54,10 @@ html[data-sheet-resizing] * {
 }
 
 .inspector.is-collapsed {
-  width: 52px;
-  align-items: center;
-  padding-top: 10px;
+  width: 0;
+  border: 0;
+  padding: 0;
+  overflow: visible;
 }
 
 .insp-head {
@@ -842,4 +843,150 @@ button.message-type-chip {
   border-inline-start: 2px solid var(--line);
   padding-inline-start: 8px;
   margin-block: 8px;
+}
+
+.inspector.is-collapsed > .icon-btn {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.dock-tabs {
+  display: flex;
+  align-self: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+.dock-tabs button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  padding-inline: 8px;
+}
+.dock-tabs button[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--text);
+  font-weight: 650;
+}
+.dock-tab-count {
+  display: inline-grid;
+  place-items: center;
+  margin-inline-start: 4px;
+  padding-inline: 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  background: var(--warning);
+  color: var(--live-ink);
+}
+.dock-ai-content {
+  height: 100%;
+  min-height: 0;
+}
+.dock-ai-content[hidden] {
+  display: none;
+}
+.inspector .ai-dock {
+  height: 100%;
+  border: 0;
+}
+.inspector .ai-resize {
+  display: none;
+}
+.inspector:is([data-dock-tab="checks"], [data-dock-tab="ai"]) .insp-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.inspector[data-dock-tab="ai"] .insp-body {
+  padding-block-end: 8px;
+}
+.checks-card.is-docked {
+  position: static;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: none;
+  max-height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Text controls use the same ground, type and chevron in both themes. */
+.inspector select.insp-input,
+.inspector .insp-body select {
+  appearance: none;
+  height: 28px;
+  padding-block: 0;
+  padding-inline: 9px 28px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background-color: var(--surface-2);
+  color: var(--text);
+  font: 450 13px var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6673' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+[data-theme="dark"] .inspector .insp-body select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa1ae' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+[dir="rtl"] .inspector .insp-body select {
+  background-position: left 9px center;
+}
+.inspector .insp-input,
+.inspector .insp-input::placeholder,
+.inspector .insp-unit {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.inspector .insp-input {
+  color: var(--text);
+}
+.inspector .insp-input.mono:not([type="number"]):is(.insp-settings),
+.inspector .insp-prop .insp-input.mono {
+  font-family: var(--font-mono);
+}
+.inspector .insp-unit {
+  font-size: 12px;
+  color: var(--text-2);
+  right: auto;
+  inset-inline-end: 9px;
+}
+.inspector .insp-unit-wrap input::placeholder {
+  color: var(--text);
+  opacity: 1;
+}
+.inspector textarea.insp-input::placeholder {
+  color: var(--text-3);
+}
+.dock-tab-count {
+  font-size: 11px;
+}
+
+.inspector [data-testid="planning-unavailable"] {
+  margin: 12px 16px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.insp-body {
+  scroll-padding-block: 16px;
+  scroll-snap-type: y proximity;
+}
+.insp-section {
+  scroll-snap-align: start;
 }

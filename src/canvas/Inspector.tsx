@@ -1,6 +1,14 @@
+import { DockTabs } from "./inspector/DockTabs";
+import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
+import { activateDock } from "./inspector/dockActions";
+import { ChecksCardView } from "./checks/ChecksViews";
+import { checksPanel, useChecksPanel } from "./checks/checksPanel";
+import { aiDock } from "../ai/ui/dock";
+import { useUnseen } from "../ai/ui/unseen";
+import { paletteHost } from "../palette/host";
 import { NodePanel } from "./inspector/NodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
-import { useLayoutEffect, useMemo, type ReactNode } from "react";
+import { memo, useId, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { GROUP_PREFIX } from "./types";
 import { Icon } from "../components/Icon";
@@ -72,12 +80,23 @@ const MultiPanel = defineLazySurface({
   retryToast: true,
 });
 
-export function Inspector(p: InspectorProps) {
+export const Inspector = memo(function Inspector(p: InspectorProps) {
   // The Lab can render an inspector without a canvas's interaction provider.
   const { controller: interaction, local } = useInteractionOrLocal();
   const within = (sheet: ReactNode) =>
     local ? <InteractionContext.Provider value={interaction}>{sheet}</InteractionContext.Provider> : sheet;
   const locale = useLocale();
+  const dock = useWorkbenchDock();
+  const snap = dock.snap;
+  const activeTab = dock.value === "closed" ? "properties" : dock.value;
+  const id = useId();
+  const warnings = useSyncExternalStore(
+    p.checksStore?.subscribe ?? emptySubscribe,
+    () => p.checksStore?.get().warnings ?? 0,
+  );
+  const checksAvailable = useChecksPanel().available;
+  const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
+  const fresh = useUnseen(documentId);
 
   // A field asked for (F2 then a name; a double-click then a name) takes focus at once, so the next key typed
   // reaches it, and again a frame later only if something took focus back meanwhile (the menu that asked for it,
@@ -157,7 +176,21 @@ export function Inspector(p: InspectorProps) {
       <>
         <SheetResizeHandle onResize={p.onResize} />
         <div className="insp-head">
-          <span className="insp-title" data-testid="inspector-title">
+          <DockTabs
+            active={activeTab}
+            warnings={warnings}
+            fresh={fresh}
+            id={id}
+            onSelect={activateDock}
+            checksAvailable={checksAvailable}
+            onEscape={() => {
+              checksPanel.close();
+              const next = workbenchDock.get().value;
+              if (next === "closed") p.checksHost?.returnFocus();
+              return next;
+            }}
+          />
+          <span className="sr-only" id={id + "-title"} data-testid="inspector-title">
             {title}
           </span>
           <button
@@ -173,7 +206,7 @@ export function Inspector(p: InspectorProps) {
       </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
-    [p.onResize, p.onToggle, locale, title],
+    [p.onResize, p.onToggle, locale, title, activeTab, warnings, fresh, id, checksAvailable],
   );
   if (p.collapsed) {
     return within(
@@ -199,21 +232,66 @@ export function Inspector(p: InspectorProps) {
   return within(
     <aside
       className="inspector"
+      data-sheet-snap={snap}
       data-testid="inspector"
       aria-label={t("inspector.inspector")}
       data-inspector-mode={mode}
+      data-dock-tab={activeTab}
       data-inspector-target={
         n === 1 ? (p.selectedNodes[0] ?? p.selectedEdges[0] ?? p.selectedGroups[0] ?? annotations[0])?.id : undefined
       }
     >
+      <div className="dock-snap-controls" data-testid="dock-snap-controls">
+        {(["peek", "half", "full"] as const).map((value) => (
+          <button
+            key={value}
+            data-testid={`dock-snap-${value}`}
+            aria-pressed={snap === value}
+            aria-label={
+              value === "peek"
+                ? t("workbench.sheetPeek")
+                : value === "half"
+                  ? t("workbench.sheetHalf")
+                  : t("workbench.sheetFull")
+            }
+            onClick={() => workbenchDock.snap(value)}
+          >
+            <span aria-hidden>{value === "peek" ? "▁" : value === "half" ? "▄" : "█"}</span>
+          </button>
+        ))}
+      </div>
       {head}
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
-      <div className="insp-body" data-testid="inspector-body" data-check-fallback-scope>
-        {n === 1 && !p.selectedNodes[0] && p.findings}
-        {content}
+      <div
+        className="insp-body"
+        data-testid="inspector-body"
+        data-check-fallback-scope
+        role="tabpanel"
+        id={id + "-panel"}
+        aria-labelledby={id + "-" + activeTab + " " + id + "-title"}
+      >
+        {activeTab === "properties" && (
+          <>
+            {n === 1 && !p.selectedNodes[0] && p.findings}
+            {content}
+          </>
+        )}
+        {activeTab === "checks" && p.checksStore && p.checksHost && (
+          <ChecksCardView
+            store={p.checksStore}
+            host={p.checksHost}
+            top={0}
+            onMount={p.onResize ?? (() => {})}
+            placement="dock"
+          />
+        )}
+        <div className="dock-ai-content" data-testid="dock-ai-content" ref={mountAiPanel} hidden={activeTab !== "ai"} />
       </div>
     </aside>,
   );
-}
+});
 
 export type { InspectorProps } from "./inspector/types";
+
+const emptySubscribe = () => () => {};
+const mountAiPanel = (element: HTMLDivElement | null) => aiDock.mount(element);

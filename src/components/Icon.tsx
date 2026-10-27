@@ -5,6 +5,10 @@ import { RELATION_GLYPHS } from "./relationGlyphs";
 
 /** Small UI glyphs (stroke icons, 16px grid). */
 const paths = {
+  pointer: "M3 2l10 6-4 1-2 4z",
+  "node-plus": "M1.5 4.5h8v7h-8zM13 5v6M10 8h6",
+  learn: "M1 6l7-3 7 3-7 3zM4 7.5V11c2 2 6 2 8 0V7.5",
+  pin: "M5 2.5h6M6 2.5v4l-2 2v1h8v-1l-2-2v-4M8 9.5V14",
   lock: "M4 7.25h8v6.5H4zM5.75 7.25V5.25a2.25 2.25 0 0 1 4.5 0v2M8 9.75v1.5",
   search: "M7.25 12.5a5.25 5.25 0 1 0 0-10.5 5.25 5.25 0 0 0 0 10.5ZM14 14l-3-3",
   panel: "M2.5 3.5h11v9h-11zM6 3.5v9",

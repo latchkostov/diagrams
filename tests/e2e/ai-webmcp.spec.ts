@@ -202,7 +202,7 @@ test("without document.modelContext nothing registers, errors or shows", async (
   expect(await page.evaluate(() => "modelContext" in document || "modelContext" in navigator)).toBe(false);
   await openAdvanced(page);
   await page.getByTestId("ai-collapse").click();
-  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-rail-open")).toBeVisible();
   await page.getByTestId("live-toggle").click();
   await page.getByTestId("live-toggle").click();
   await gotoGallery(page);

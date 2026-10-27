@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import {
   expect,
   openMissingDlq,
+  openCheckFinding,
   pageLoadTimeout,
   TEXT_END,
   pauseClock,
@@ -73,13 +74,16 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     buffer: Buffer.from(JSON.stringify(diagram)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Large", { timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("checks-count")).toHaveText(/\d+ warnings/, { timeout: 60_000 });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText(/\d+ warnings/, {
+    timeout: 60_000,
+  });
 
   // Select a node through its finding (the diagram is far bigger than the view), then close the card.
   await page.getByTestId("checks-count").click();
   await expect(page.getByTestId("checks-card")).toBeVisible();
+  await openCheckFinding(page, "sync-cycle:p0n11");
   await page.getByTestId("check-element-p0n12").first().click();
-  await page.getByTestId("checks-close").click();
+  await page.getByTestId("dock-tab-properties").click();
   const label = page.getByTestId("inspector-field-label");
   await expect(label).toHaveValue("Node 0.12");
   // A name already wider than a card can grow: typing on doesn't resize the node and re-route its edges, a

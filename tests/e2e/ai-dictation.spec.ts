@@ -27,11 +27,13 @@ test("a restored AI dock offers dictation only after its canvas is ready", async
   );
   try {
     await page.goto(`./?view=canvas&example=${SLUG}`);
-    await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "false");
-    await expect(page.getByTestId("ai-panel-waiting-canvas")).toBeAttached();
+    // The dock is hosted by the canvas now: neither it nor dictation can mount ahead of that host.
+    await expect(page.getByTestId("view-loading").filter({ visible: true })).toBeVisible();
+    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
     await expect(mic(page)).toHaveCount(0);
     releaseCanvas();
     await openAdvanced(page);
+    await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "true");
     await mic(page).click();
     await expect(page.getByTestId("ai-interim")).toContainText("Listening");
     await expect(page.getByTestId("ai-request")).toHaveValue("");

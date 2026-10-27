@@ -1,9 +1,9 @@
 {
   "autoLayout": {
-    "LR": { "async-a": [40, 40], "sync-a": [40, 160], "labelled-a": [40, 280], "long-label-a": [40, 400], "bi-a": [40, 520], "async-b": [469, 40], "sync-b": [469, 160], "labelled-b": [469, 280], "long-label-b": [469, 400], "bi-b": [469, 520] },
+    "LR": { "async-a": [40, 40], "sync-a": [40, 160], "labelled-a": [40, 280], "long-label-a": [40, 400], "bi-a": [40, 520], "async-b": [482.19, 40], "sync-b": [482.19, 160], "labelled-b": [482.19, 280], "long-label-b": [482.19, 400], "bi-b": [482.19, 520] },
     "TB": { "async-a": [40, 40], "sync-a": [320, 40], "labelled-a": [600, 40], "long-label-a": [880, 40], "bi-a": [1160, 40], "async-b": [40, 200], "sync-b": [320, 200], "labelled-b": [600, 200], "long-label-b": [880, 200], "bi-b": [1160, 200] }
   },
-  "tidy": { "async-a": [40, 40], "async-b": [469, 40], "sync-a": [40, 160], "sync-b": [469, 160], "labelled-a": [40, 280], "labelled-b": [469, 280], "long-label-a": [40, 400], "long-label-b": [469, 400], "bi-a": [40, 520], "bi-b": [469, 520] },
+  "tidy": { "async-a": [40, 40], "async-b": [482, 40], "sync-a": [40, 160], "sync-b": [482, 160], "labelled-a": [40, 280], "labelled-b": [482, 280], "long-label-a": [40, 400], "long-label-b": [482, 400], "bi-a": [40, 520], "bi-b": [482, 520] },
   "arrange": {
     "alignLeft": { "async-a": [40, 40], "async-b": [40, 40], "sync-a": [40, 220], "sync-b": [40, 220], "labelled-a": [40, 400], "labelled-b": [40, 400], "long-label-a": [40, 580], "long-label-b": [40, 580], "bi-a": [40, 760], "bi-b": [40, 760] },
     "alignMiddle": { "async-a": [40, 400], "async-b": [544, 400], "sync-a": [40, 400], "sync-b": [544, 400], "labelled-a": [40, 400], "labelled-b": [544, 400], "long-label-a": [40, 400], "long-label-b": [544, 400], "bi-a": [40, 400], "bi-b": [544, 400] },
@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": [],
     "placedNotes": [],
-    "nodes": { "async-a": [40, 40], "async-b": [469, 40], "sync-a": [40, 160], "sync-b": [469, 160], "labelled-a": [40, 280], "labelled-b": [469, 280], "long-label-a": [40, 400], "long-label-b": [469, 400], "bi-a": [40, 520], "bi-b": [469, 520] },
+    "nodes": { "async-a": [40, 40], "async-b": [482.19, 40], "sync-a": [40, 160], "sync-b": [482.19, 160], "labelled-a": [40, 280], "labelled-b": [482.19, 280], "long-label-a": [40, 400], "long-label-b": [482.19, 400], "bi-a": [40, 520], "bi-b": [482.19, 520] },
     "groups": {}
   }
 }

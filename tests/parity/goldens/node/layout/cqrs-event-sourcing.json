@@ -1,9 +1,22 @@
 {
   "autoLayout": {
-    "LR": { "app": [40, 160], "gateway": [400, 160], "command-handler": [763, 100], "query-api": [763, 220], "event-store": [1140, 160], "publisher": [1500, 40], "balance-proj": [1500, 160], "statement-proj": [1500, 280], "integration-topic": [1882, 40], "balances-db": [1882, 160], "statements": [1882, 280], "fraud": [2263, 160] },
+    "LR": {
+      "app": [40, 160],
+      "gateway": [400, 160],
+      "command-handler": [760, 100],
+      "query-api": [760, 220],
+      "event-store": [1139.3600000000001, 160],
+      "publisher": [1499.3600000000001, 40],
+      "balance-proj": [1499.3600000000001, 160],
+      "statement-proj": [1499.3600000000001, 280],
+      "integration-topic": [1880.3600000000001, 40],
+      "balances-db": [1880.3600000000001, 160],
+      "statements": [1880.3600000000001, 280],
+      "fraud": [2261.36, 160]
+    },
     "TB": { "app": [350, 40], "gateway": [350, 200], "command-handler": [200, 360], "query-api": [510, 360], "event-store": [350, 520], "publisher": [40, 680], "balance-proj": [350, 680], "statement-proj": [670, 680], "integration-topic": [40, 840], "balances-db": [350, 840], "statements": [670, 840], "fraud": [350, 1000] }
   },
-  "tidy": { "app": [40, 160], "gateway": [400, 160], "command-handler": [763, 100], "event-store": [1140, 160], "publisher": [1500, 40], "integration-topic": [1882, 40], "query-api": [763, 220], "balances-db": [1882, 160], "statements": [1882, 280], "balance-proj": [1500, 160], "statement-proj": [1500, 280], "fraud": [2263, 160] },
+  "tidy": { "app": [40, 160], "gateway": [400, 160], "command-handler": [760, 100], "event-store": [1139, 160], "publisher": [1499, 40], "integration-topic": [1880, 40], "query-api": [760, 220], "balances-db": [1880, 160], "statements": [1880, 280], "balance-proj": [1499, 160], "statement-proj": [1499, 280], "fraud": [2261, 160] },
   "arrange": {
     "alignLeft": { "app": [40, 340], "gateway": [40, 340], "command-handler": [40, 160], "event-store": [40, 160], "publisher": [40, 160], "integration-topic": [40, 160], "query-api": [40, 520], "balances-db": [40, 400], "statements": [40, 640], "balance-proj": [40, 400], "statement-proj": [40, 640], "fraud": [40, 40] },
     "alignMiddle": { "app": [40, 340], "gateway": [420, 340], "command-handler": [800, 340], "event-store": [1180, 340], "publisher": [1560, 340], "integration-topic": [1940, 340], "query-api": [800, 340], "balances-db": [1180, 340], "statements": [1180, 340], "balance-proj": [1560, 340], "statement-proj": [1560, 340], "fraud": [1940, 340] },
@@ -16,7 +29,7 @@
     "laidOut": true,
     "fitted": ["write", "read"],
     "placedNotes": [],
-    "nodes": { "app": [40, 160], "gateway": [400, 160], "command-handler": [763, -20], "event-store": [1140, -40], "publisher": [1500, -40], "integration-topic": [1882, -40], "query-api": [763, 220], "balances-db": [1882, 160], "statements": [1882, 280], "balance-proj": [1500, 160], "statement-proj": [1500, 280], "fraud": [2263, 160] },
-    "groups": { "write": [723, -104, 677, 196], "read": [723, 96, 1440, 296] }
+    "nodes": { "app": [40, 160], "gateway": [400, 160], "command-handler": [760, -20], "event-store": [1139, -40], "publisher": [1499, -40], "integration-topic": [1880, -40], "query-api": [760, 220], "balances-db": [1880.3600000000001, 160], "statements": [1880.3600000000001, 280], "balance-proj": [1499.3600000000001, 160], "statement-proj": [1499.3600000000001, 280], "fraud": [2261.36, 160] },
+    "groups": { "write": [720, -104, 679, 196], "read": [720, 96, 1441, 296] }
   }
 }

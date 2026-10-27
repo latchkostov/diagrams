@@ -1,42 +1,42 @@
 {
-  "viewport": "translate(19.1837px, 247.061px) scale(0.520408)",
+  "viewport": "translate(5.38776px, 197.796px) scale(0.665306)",
   "nodes": {
     "group:azure": { "kind": "group", "box": "translate(400px, 0px) 1600×680", "text": "Azure · prod" },
     "group:aks": { "kind": "group", "box": "translate(820px, 236px) 320×172", "text": "AKS cluster" },
-    "web": { "kind": "node", "box": "translate(40px, 300px) 223×72", "text": "Storefront Shoppers placing orders" },
+    "web": { "kind": "node", "box": "translate(40px, 300px) 220×72", "text": "Storefront Shoppers placing orders" },
     "fd": { "kind": "node", "box": "translate(440px, 300px) 220×72", "text": "Front Door WAF · TLS" },
-    "api": { "kind": "node", "box": "translate(860px, 300px) 235×72", "text": "Orders API ASP.NET Core · 3 replicas" },
+    "api": { "kind": "node", "box": "translate(860px, 300px) 221×72", "text": "Orders API ASP.NET Core · 3 replicas" },
     "sql": { "kind": "node", "box": "translate(1300px, 180px) 220×72", "text": "orders-db Azure SQL" },
     "sb": { "kind": "node", "box": "translate(1300px, 420px) 220×72", "text": "orders.created Service Bus topic" },
     "notify": { "kind": "node", "box": "translate(1720px, 420px) 220×72", "text": "Order confirmation Function · sends email" },
-    "ai": { "kind": "node", "box": "translate(860px, 60px) 223×72", "text": "Application Insights traces · logs · metrics" },
+    "ai": { "kind": "node", "box": "translate(860px, 60px) 220×72", "text": "Application Insights traces · logs · metrics" },
     "appcfg": { "kind": "node", "box": "translate(860px, 560px) 220×72", "text": "orders-config App Configuration" },
     "kv": { "kind": "node", "box": "translate(1300px, 560px) 220×72", "text": "orders-kv Key Vault" },
     "mi": { "kind": "node", "box": "translate(440px, 560px) 220×72", "text": "orders-api-id Workload identity" },
     "entra": { "kind": "node", "box": "translate(40px, 560px) 220×72", "text": "Entra ID Token issuer" }
   },
   "edges": {
-    "web-to-fd": "M263,336 L440,336",
+    "web-to-fd": "M260,336 L440,336",
     "fd-to-api": "M660,336 L860,336",
-    "api-to-sql": "M1095,329 L1187.5,329 Q1197.5,329 1197.5,319 L1197.5,226 Q1197.5,216 1207.5,216 L1300,216",
-    "api-to-sb": "M1095,343 L1187.5,343 Q1197.5,343 1197.5,353 L1197.5,446 Q1197.5,456 1207.5,456 L1300,456",
+    "api-to-sql": "M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216",
+    "api-to-sb": "M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456",
     "sb-to-notify": "M1520,456 L1720,456",
-    "api-to-appcfg": "M984.5,372 L984.5,458.8 Q984.5,466 977.3,466 L977.3,466 Q970,466 970,473.3 L970,560",
+    "api-to-appcfg": "M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560",
     "appcfg-to-kv": "M1080,596 L1300,596",
-    "api-to-mi": "M970.5,372 L970.5,456 Q970.5,466 960.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596",
+    "api-to-mi": "M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596",
     "mi-to-entra": "M440,596 L260,596",
-    "api-to-ai": "M977.5,300 L977.5,193 Q977.5,190 974.5,190 L974.5,190 Q971.5,190 971.5,187 L971.5,132"
+    "api-to-ai": "M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132"
   },
   "labels": {
-    "web-to-fd": { "style": "transform: translate(-50%, -50%) translate(345.5px, 336px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
-    "fd-to-api": { "style": "transform: translate(-50%, -50%) translate(754px, 336px); --fe-w: 89px; --fe-h: 19px;", "text": "POST /orders" },
-    "api-to-sql": { "style": "transform: translate(-50%, -50%) translate(1197.5px, 272.5px); --fe-w: 59px; --fe-h: 19px;", "text": "EF Core" },
-    "api-to-sb": { "style": "transform: translate(-50%, -50%) translate(1197.5px, 399.5px); --fe-w: 89px; --fe-h: 19px;", "text": "OrderCreated" },
-    "sb-to-notify": { "style": "transform: translate(-50%, -50%) translate(1614px, 456px); --fe-w: 89px; --fe-h: 19px;", "text": "Subscription" },
-    "api-to-appcfg": { "style": "transform: translate(-50%, -50%) translate(970px, 506px); --fe-w: 159px; --fe-h: 19px;", "text": "4 settings · 2 secret" },
-    "appcfg-to-kv": { "style": "transform: translate(-50%, -50%) translate(1184px, 596px); --fe-w: 105px; --fe-h: 19px;", "text": "2 references" },
-    "api-to-mi": { "style": "transform: translate(-50%, -50%) translate(858.75px, 466px); --fe-w: 75px; --fe-h: 19px;", "text": "runs as" },
-    "mi-to-entra": { "style": "transform: translate(-50%, -50%) translate(356px, 596px); --fe-w: 123px; --fe-h: 19px;", "text": "OIDC federation" },
-    "api-to-ai": { "style": "transform: translate(-50%, -50%) translate(977.5px, 244px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
+    "web-to-fd": { "style": "transform: translate(-50%, -50%) translate(344px, 336px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
+    "fd-to-api": { "style": "transform: translate(-50%, -50%) translate(754px, 336px); --fe-w: 90.3px; --fe-h: 22px;", "text": "POST /orders" },
+    "api-to-sql": { "style": "transform: translate(-50%, -50%) translate(1190.5px, 272.5px); --fe-w: 59.71px; --fe-h: 22px;", "text": "EF Core" },
+    "api-to-sb": { "style": "transform: translate(-50%, -50%) translate(1190.5px, 399.5px); --fe-w: 92.47999999999999px; --fe-h: 22px;", "text": "OrderCreated" },
+    "sb-to-notify": { "style": "transform: translate(-50%, -50%) translate(1614px, 456px); --fe-w: 86.43999999999998px; --fe-h: 22px;", "text": "Subscription" },
+    "api-to-appcfg": { "style": "transform: translate(-50%, -50%) translate(970px, 506px); --fe-w: 140.9px; --fe-h: 22px;", "text": "4 settings · 2 secret" },
+    "appcfg-to-kv": { "style": "transform: translate(-50%, -50%) translate(1184px, 596px); --fe-w: 100.22px; --fe-h: 22px;", "text": "2 references" },
+    "api-to-mi": { "style": "transform: translate(-50%, -50%) translate(855.25px, 466px); --fe-w: 73.02000000000001px; --fe-h: 22px;", "text": "runs as" },
+    "mi-to-entra": { "style": "transform: translate(-50%, -50%) translate(356px, 596px); --fe-w: 121.02999999999999px; --fe-h: 22px;", "text": "OIDC federation" },
+    "api-to-ai": { "style": "transform: translate(-50%, -50%) translate(970px, 202px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
   }
 }

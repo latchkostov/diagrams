@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { goToNode, waitForCameraIdle } from "./fixtures";
 import {
   test,
   expect,
@@ -92,7 +93,9 @@ test.describe("editor", () => {
     ]);
 
     // Edge labels open the edge menu too (a straight edge's <g> has no height to click).
-    await fitDiagram(page);
+    await goToNode(page, "shopper");
+    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await waitForCameraIdle(page);
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
     await expect(menuItem(page, "edge.relationship")).toBeVisible();
     await expect(menuItem(page, "edge.route")).toBeVisible();
@@ -349,10 +352,12 @@ test.describe("editor", () => {
     await waitForStableViewport(page);
     const before = await settledBox(node);
     for (const id of ["inspector-field-stencil", "inspector-field-group", "theme-toggle"]) {
+      if (id === "theme-toggle") await page.getByTestId("view-button").click();
       await page.getByTestId(id).focus();
       await page.keyboard.press("ArrowRight");
       await page.keyboard.press("Delete");
       await page.keyboard.press("Escape");
+      if (id === "theme-toggle") await page.keyboard.press("Escape");
       await expect(page.getByTestId("inspector-title")).toHaveText("Node");
       await expect(node).toBeVisible();
       expect((await requiredBox(node)).x).toBe(before.x);

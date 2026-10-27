@@ -1,3 +1,4 @@
+import { livePropertiesGoal } from "./liveProperties";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { studyRun } from "./studyShared";
@@ -122,7 +123,7 @@ export const studyDispatch: Tutorial = {
     {
       id: "fix-partition-ceiling",
       title: msg("tutorials.studyDispatch.fixTitle"),
-      goal: msg("tutorials.studyDispatch.fixGoal"),
+      goal: livePropertiesGoal(msg("tutorials.studyDispatch.fixGoal")),
       hint: msg("tutorials.studyDispatch.fixHint"),
       done: msg("tutorials.studyDispatch.fixDone"),
       sticky: true,
@@ -141,7 +142,14 @@ export const studyDispatch: Tutorial = {
           { kind: "metric", subject: "dispatcher", field: "processed", op: ">=", value: 10 },
         ],
       },
-      targets: [{ testId: "node-{topic}", tip: msg("tutorials.studyDispatch.fixHint") }],
+      targets: [
+        {
+          testId: "dock-edit-properties",
+          tip: livePropertiesGoal(msg("tutorials.studyDispatch.fixGoal")),
+          selected: "topic",
+        },
+        { testId: "node-{topic}", tip: msg("tutorials.studyDispatch.fixHint") },
+      ],
       demo: [
         {
           kind: "patch",
@@ -159,9 +167,11 @@ export const studyDispatch: Tutorial = {
       ],
       solution: [
         { dblclick: "node-{dispatcher}" },
+        { open: "dock-edit-properties" },
         { fill: "inspector-field-replicas", text: "4" },
         { press: "Enter" },
         { dblclick: "node-{topic}" },
+        { open: "dock-edit-properties" },
         { fill: "inspector-field-partitions", text: "4" },
         { press: "Enter" },
         { select: "live-sim-picker", value: "more-partitions" },

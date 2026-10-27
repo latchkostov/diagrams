@@ -1,6 +1,6 @@
 {
   "smoothstep": {
-    "ab": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 400, 36], "path": "70b224da214f", "label": [304, 36, 53, 19], "mode": "full", "text": "writes", "lines": ["writes"] }
+    "ab": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 400, 36], "path": "70b224da214f", "label": [304, 36, 49.690000000000005, 22], "mode": "full", "text": "writes", "lines": ["writes"] }
   },
   "bezier": {
     "ab": {
@@ -51,13 +51,13 @@
         36
       ],
       "path": "d8ae685677dc",
-      "label": [306.07915, 36, 53, 19],
+      "label": [306.07915, 36, 49.690000000000005, 22],
       "mode": "full",
       "text": "writes",
       "lines": ["writes"]
     }
   },
   "straight": {
-    "ab": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 400, 36], "path": "70b224da214f", "label": [304, 36, 53, 19], "mode": "full", "text": "writes", "lines": ["writes"] }
+    "ab": { "ok": true, "sides": ["right", "left"], "points": [220, 36, 400, 36], "path": "70b224da214f", "label": [304, 36, 49.690000000000005, 22], "mode": "full", "text": "writes", "lines": ["writes"] }
   }
 }

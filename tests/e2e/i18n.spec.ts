@@ -1,3 +1,6 @@
+import { openDiagramProperties } from "./fixtures";
+import { openAnnotate } from "./fixtures";
+import { openLibrary, pinLibrary } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
@@ -11,6 +14,8 @@ import {
   waitForStableViewport,
   waitForSelectionSettled,
   fitDiagram,
+  goToNode,
+  waitForCameraIdle,
   pauseClock,
 } from "./fixtures";
 import en from "../../src/i18n/en";
@@ -48,9 +53,10 @@ const SLUG = "kafka-order-pipeline";
 
 test("a pending catalog locale refresh keeps search and stored node names", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
-    await page.getByTestId("palette-toggle").click();
+  await expect(page.getByTestId("palette")).toHaveCount(0);
+  await openLibrary(page);
   await page.getByTestId("palette-search").fill("generic.database");
+  await pinLibrary(page);
   await page.getByTestId("palette-item-generic.database").click();
   await expect(page.getByTestId("inspector-field-stencil")).toContainText("Database");
   let release = () => {};
@@ -66,10 +72,13 @@ test("a pending catalog locale refresh keeps search and stored node names", asyn
     await page.getByTestId("language-option-de").click();
     await expect.poll(() => asked).toBe(true);
     await page.keyboard.press("Escape");
+    await pinLibrary(page);
     await page.getByTestId("palette-search").fill(de["stencil.genericDatabaseName"]);
     await expect(page.getByTestId("palette-item-generic.database")).toHaveCount(0);
     release();
+    await pinLibrary(page);
     await expect(page.getByTestId("palette-item-generic.database")).toContainText(de["stencil.genericDatabaseName"]);
+    await pinLibrary(page);
     await expect(page.getByTestId("palette-search")).toHaveValue(de["stencil.genericDatabaseName"]);
     await expect(page.getByTestId("inspector-field-stencil")).toContainText(de["stencil.genericDatabaseName"]);
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Database");
@@ -113,15 +122,18 @@ test("expanded catalog names wrap in the library, inspector and gallery previews
   await page.setViewportSize({ width: 1280, height: 800 });
   await remember(page, "en-XA");
   await gotoCanvas(page, SLUG);
-  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
-    await page.getByTestId("palette-toggle").click();
+  await pinLibrary(page);
   for (const id of ["generic.identity-provider", "generic.secret-store", "generic.vector-db"]) {
+    await pinLibrary(page);
     await page.getByTestId("palette-search").fill(id);
+    await pinLibrary(page);
     const item = page.getByTestId(`palette-item-${id}`);
     await expect(item).toContainText("[");
     await expectNothingCut(item, `expanded library name: ${id}`);
   }
+  await pinLibrary(page);
   await page.getByTestId("palette-search").fill("generic.identity-provider");
+  await pinLibrary(page);
   await page.getByTestId("palette-item-generic.identity-provider").click();
   await expectNothingCut(page.getByTestId("inspector-field-stencil"), "expanded inspector name");
   await page.goto("./?view=gallery");
@@ -144,10 +156,10 @@ for (const code of ["de", "ja", "ar"] as const) {
     const external = text["stencil.genericExternalApiName"];
     await remember(page, code);
     await gotoCanvas(page, SLUG);
-    if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
-      await page.getByTestId("palette-toggle").click();
+    await pinLibrary(page);
     const search = page.getByTestId("palette-search");
     await search.fill(database);
+    await pinLibrary(page);
     const item = page.getByTestId("palette-item-generic.database");
     await expect(item).toContainText(database);
     await expect(item).toHaveAttribute(
@@ -155,15 +167,20 @@ for (const code of ["de", "ja", "ar"] as const) {
       `${database} (${text["stencil.vendorGeneric"]})\n${text["stencil.genericDatabaseDescription"]}`,
     );
     await search.fill(external);
+    await pinLibrary(page);
     await expect(page.getByTestId("palette-item-generic.external-api")).toContainText(external);
     await search.fill("external api");
+    await pinLibrary(page);
     await expect(page.getByTestId("palette-item-generic.external-api")).toBeVisible();
     await search.fill("pg");
+    await pinLibrary(page);
     await expect(page.getByTestId("palette-item-postgres")).toContainText("PostgreSQL");
     await search.fill("Stripe");
+    await pinLibrary(page);
     await expect(page.getByTestId("palette-item-stripe")).toContainText("Stripe");
 
     await search.fill(database);
+    await pinLibrary(page);
     await page.getByTestId("palette-item-generic.database").click();
     // A translated preview never becomes the person's diagram content.
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Database");
@@ -314,6 +331,9 @@ for (const code of ["de", "ar", "en-XA"]) {
       await expectNothingCut(page.getByTestId("context-menu"), `${code}: node menu`);
       await page.keyboard.press("Escape");
 
+      await goToNode(page, "shopper");
+      await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+      await waitForCameraIdle(page);
       await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
       await expect(page.getByTestId("context-menu-item-edge.relationship")).toContainText(words("chrome.relationship"));
       await expectNothingCut(page.getByTestId("context-menu"), `${code}: edge menu`);
@@ -399,22 +419,23 @@ for (const code of ["de", "ar", "en-XA"]) {
       consoleErrors,
     }, testInfo) => {
       await gotoCanvas(page, SLUG);
-      if (
-        await page
-          .getByTestId("palette")
-          .getAttribute("class")
-          .then((c) => c?.includes("is-collapsed"))
-      )
-        await page.getByTestId("palette-toggle").click();
+      await pinLibrary(page);
       await expect(page.getByTestId("palette-search")).toHaveAttribute("placeholder", words("library.findAStencil"));
+      await pinLibrary(page);
       await expect(page.getByTestId("palette-section-messaging")).toContainText(words("chrome.messaging"));
+      await pinLibrary(page);
       await page.getByTestId("palette-section-messaging").click();
       await expectNothingCut(page.getByTestId("palette"), `${code}: stencil library`);
+      await openAnnotate(page);
       await expect(page.getByTestId("palette-annotate")).toContainText(words("menu.annotate"));
+      await openAnnotate(page);
       await page.getByTestId("palette-annotate").scrollIntoViewIfNeeded();
+      await openAnnotate(page);
       await expectNothingCut(page.getByTestId("palette-annotate"), `${code}: annotation rail`);
       await page.screenshot({ path: testInfo.outputPath("annotation-rail.png") });
+      await pinLibrary(page);
       await page.getByTestId("palette-family").selectOption("aws");
+      await pinLibrary(page);
       await page.getByTestId("palette-search").fill("pg");
       await expect(page.getByTestId("palette-empty")).toBeVisible();
       await expectNothingCut(page.getByTestId("palette"), `${code}: library empty`);
@@ -773,9 +794,9 @@ test("Arabic dock resize keys move its canvas-facing edge in the physical direct
   await waitForStableBox(page.getByTestId("ai-dock"));
   const before = await page.getByTestId("ai-dock").boundingBox();
   if (!before) throw new Error("The AI dock has no box");
-  await page.getByTestId("ai-resize").press("ArrowRight");
-  await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width + 24);
-  await page.getByTestId("ai-resize").press("ArrowLeft");
+  await page.getByTestId("inspector-resize").press("ArrowRight");
+  await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width + 16);
+  await page.getByTestId("inspector-resize").press("ArrowLeft");
   await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width);
 });
 
@@ -1096,7 +1117,7 @@ test.describe("choosing a language", () => {
     // The start card, the top bar and its menus, under the dialog all along.
     await expect(page.getByTestId("start-blank")).toHaveText(de["start.blank"]);
     await expect(page.getByTestId("start-card").getByRole("heading", { level: 2 })).toHaveText(de["start.title"]);
-    await expect(page.getByTestId("view-canvas")).toHaveText(de["topbar.diagram"]);
+    await expect(page.getByTestId("file-button")).toHaveText(de["file.menu"]);
     await page.getByTestId("file-button").click();
     await expect(page.getByTestId("file-new")).toContainText(de["file.new"]);
     await expect(page.getByTestId("file-open")).toContainText(de["file.open"]);
@@ -1478,6 +1499,7 @@ test.describe("the pseudo-locale", () => {
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-privacy").click();
     await page.getByTestId("privacy-diagram").click();
+    await openDiagramProperties(page);
     await page.getByTestId("private-badge").click();
     await expect(page.getByTestId("privacy-dialog")).toBeVisible();
     await expectNothingCut(page.getByTestId("privacy-dialog"), "Private diagram");
@@ -1534,8 +1556,7 @@ for (const surface of ["command", "context", "rail", "rail-role", "gallery"] as 
         await page.getByTestId("context-menu").press("ArrowDown");
         await expect(page.getByTestId("context-menu-item-node.rename")).toHaveAttribute("data-active", "true");
       } else if (surface === "rail" || surface === "rail-role") {
-        if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
-          await page.getByTestId("palette-toggle").click();
+        await pinLibrary(page);
         await page
           .getByTestId("palette-search")
           .fill(surface === "rail" ? de["chrome.roundedRectangle"] : de["gallery.store"]);
@@ -1557,10 +1578,13 @@ for (const surface of ["command", "context", "rail", "rail-role", "gallery"] as 
         await expect(
           page.getByTestId(surface === "rail" ? "palette-annotate-shape-rounded" : "palette-item-postgres"),
         ).toBeVisible();
+        await pinLibrary(page);
         await expect(page.getByTestId("palette-search")).toHaveValue(
           surface === "rail" ? de["chrome.roundedRectangle"] : de["gallery.store"],
         );
+        await pinLibrary(page);
         await page.getByTestId("palette-search").fill(de["gallery.store"]);
+        await pinLibrary(page);
         await expect(page.getByTestId("palette-item-postgres")).toBeVisible();
       } else {
         await expect(page.getByTestId("stencil-tile-postgres")).toBeVisible();
@@ -1586,8 +1610,7 @@ test("RTL quick-add preserves physical placement and expanded chevrons point dow
   if (!outline || !menu) throw new Error("Missing quick-add geometry");
   expect(menu.x).toBeGreaterThanOrEqual(outline.x + outline.width);
   await page.keyboard.press("Escape");
-  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
-    await page.getByTestId("palette-toggle").click();
+  await pinLibrary(page);
   const head = page.getByTestId("palette-section-messaging");
   if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
   const style = () =>

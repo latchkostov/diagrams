@@ -1,9 +1,9 @@
 {
   "autoLayout": {
-    "LR": { "partners": [40, 100], "operator": [40, 220], "edge": [421, 160], "receiver": [796, 160], "raw": [1158, 40], "exchange": [1158, 160], "vault": [1158, 280], "queue": [1526, 160], "workers": [1907, 100], "dlq": [1907, 220], "dedupe": [2267, 40], "integration-db": [2267, 160], "replay": [2267, 280] },
+    "LR": { "partners": [40, 100], "operator": [40, 220], "edge": [421, 160], "receiver": [791.76, 160], "raw": [1153.76, 40], "exchange": [1153.76, 160], "vault": [1153.76, 280], "queue": [1521.76, 160], "workers": [1902.76, 100], "dlq": [1902.76, 220], "dedupe": [2262.76, 40], "integration-db": [2262.76, 160], "replay": [2262.76, 280] },
     "TB": { "partners": [200, 40], "operator": [510, 40], "edge": [350, 200], "receiver": [350, 360], "raw": [40, 520], "exchange": [350, 520], "vault": [670, 520], "queue": [350, 680], "dlq": [200, 840], "workers": [510, 840], "replay": [40, 1000], "dedupe": [350, 1000], "integration-db": [670, 1000] }
   },
-  "tidy": { "partners": [40, 180], "edge": [421, 240], "raw": [1158, 120], "receiver": [796, 240], "exchange": [1158, 240], "replay": [2267, 360], "queue": [1526, 240], "dlq": [1907, 300], "workers": [1907, 180], "dedupe": [2267, 120], "integration-db": [2267, 240], "operator": [40, 300], "vault": [1158, 360] },
+  "tidy": { "partners": [40, 180], "edge": [421, 240], "raw": [1154, 120], "receiver": [792, 240], "exchange": [1154, 240], "replay": [2263, 360], "queue": [1522, 240], "dlq": [1903, 300], "workers": [1903, 180], "dedupe": [2263, 120], "integration-db": [2263, 240], "operator": [40, 300], "vault": [1154, 360] },
   "arrange": {
     "alignLeft": { "partners": [40, 280], "edge": [40, 280], "raw": [40, 120], "receiver": [40, 280], "exchange": [40, 280], "replay": [40, 440], "queue": [40, 280], "dlq": [40, 440], "workers": [40, 280], "dedupe": [40, 120], "integration-db": [40, 280], "operator": [40, 600], "vault": [40, 440] },
     "alignMiddle": { "partners": [40, 360], "edge": [420, 360], "raw": [800, 360], "receiver": [800, 360], "exchange": [1180, 360], "replay": [1180, 360], "queue": [1560, 360], "dlq": [1560, 360], "workers": [1940, 360], "dedupe": [1940, 360], "integration-db": [2320, 360], "operator": [1180, 360], "vault": [800, 360] },
@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": ["k8s"],
     "placedNotes": [],
-    "nodes": { "partners": [40, 100], "edge": [421, 160], "raw": [1158, -80], "receiver": [796, 160], "exchange": [1158, 160], "replay": [2267, 280], "queue": [1526, 160], "dlq": [1907, 220], "workers": [1907, 100], "dedupe": [2267, -80], "integration-db": [2267, 440], "operator": [40, 220], "vault": [1158, 280] },
-    "groups": { "k8s": [756, 36, 1771, 356] }
+    "nodes": { "partners": [40, 100], "edge": [421, 160], "raw": [1154, -80], "receiver": [791.76, 160], "exchange": [1153.76, 160], "replay": [2262.76, 280], "queue": [1521.76, 160], "dlq": [1902.76, 220], "workers": [1902.76, 100], "dedupe": [2263, -80], "integration-db": [2263, 440], "operator": [40, 220], "vault": [1153.76, 280] },
+    "groups": { "k8s": [752, 36, 1771, 356] }
   }
 }

@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import {
   waitForCameraIdle,
   waitForInteractionIdle,
@@ -214,6 +215,7 @@ test.describe("self-hosted build", () => {
 
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-new").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
 
     await page.getByTestId("file-button").click();
@@ -243,6 +245,9 @@ test.describe("self-hosted build", () => {
       mimeType: "application/yaml",
       buffer: readFileSync("tests/fixtures/imports/compose/docker-compose.yml"),
     });
+    // File selection returns before the lazy importer replaces the current diagram.
+    await expect(page.getByTestId("node-storefront")).toBeVisible();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("toast-import-details").click();
     await expect(page.getByTestId("import-report")).toBeVisible();
@@ -335,7 +340,7 @@ test.describe("self-hosted build with two languages, for a French browser", () =
     await gotoCanvas(page, SLUG);
     // VITE_LOCALES=en,de: English first, so a French browser reads English.
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByTestId("view-canvas")).toHaveText("Diagram");
+    await expect(page.getByTestId("file-button")).toHaveText("File");
     expectNoErrors(consoleErrors);
   });
 });

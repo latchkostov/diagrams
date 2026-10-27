@@ -17,7 +17,7 @@ test("layout waits for background warning chrome, even when its worker result is
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { heldChecks(): number }).heldChecks()))
     .toBeGreaterThan(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   let ready = false;
   const chrome = checksChrome(page, "shared-api-quotas").then(() => {
     ready = true;

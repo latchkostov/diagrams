@@ -1,4 +1,5 @@
-import { currentDiagram } from "./fixtures";
+import { openDiagramProperties } from "./fixtures";
+import { currentDiagram, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia, waitForHtmlTemplate } from "./fixtures";
@@ -38,6 +39,7 @@ async function makePrivate(page: Page) {
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-privacy").click();
   await page.getByTestId("privacy-diagram").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 }
 
@@ -211,8 +213,9 @@ test("a link dialog closed because the diagram turned private meanwhile offers I
   await template;
   const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
   expect(file.suggestedFilename()).toBe("Refused plan.html");
-  const path = test.info().outputPath(file.suggestedFilename());
-  await file.saveAs(path);
+  // Read the completed browser download directly; no report copy is needed for the payload assertions.
+  const path = await file.path();
+  if (!path) throw new Error("The completed HTML download has no local path");
   const { diagram } = filePayload(readFileSync(path, "utf8"));
   expect(diagram.title).toBe("Refused plan");
   expect(diagram.private).toBe(true);
@@ -248,6 +251,22 @@ test("the refusal's Interactive HTML… explains itself when no diagram is open"
   );
   await expect(page.getByTestId("html-export-dialog")).toHaveCount(0);
   expectNoErrors(consoleErrors);
+});
+
+test("Escape cancels pending submenu hover instead of reopening it", async ({ page }) => {
+  await page.clock.install();
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("file-button").click();
+  await pauseClock(page);
+  const privacy = page.getByTestId("file-privacy");
+  await privacy.hover();
+  await privacy.click();
+  await expect(page.getByTestId("file-privacy-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("file-privacy-menu")).toHaveCount(0);
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("file-privacy-menu")).toHaveCount(0);
+  await expect(privacy).toBeFocused();
 });
 
 test("a private diagram's Share… says why its links are gone, and how to change it, from the keyboard", async ({
@@ -288,6 +307,7 @@ test("a private diagram's Share… says why its links are gone, and how to chang
   await expect(page.getByTestId("privacy-keep")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("privacy-dialog")).toHaveCount(0);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 
   // The Privacy submenu and the dialog name the way to share it.
@@ -295,7 +315,10 @@ test("a private diagram's Share… says why its links are gone, and how to chang
   await page.getByTestId("file-privacy").click();
   await expect(page.getByTestId("file-privacy-menu")).toContainText("export Interactive HTML");
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("file-privacy-menu")).toHaveCount(0);
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("file-menu")).toHaveCount(0);
+  await openDiagramProperties(page);
   await page.getByTestId("private-badge").click();
   await expect(page.getByTestId("privacy-dialog")).toContainText("export Interactive HTML");
   await expect(page.getByTestId("privacy-dialog-list")).toContainText("embeds only where your own app supplies it");

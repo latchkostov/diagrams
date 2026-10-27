@@ -2,13 +2,14 @@
 
 .start-card {
   position: absolute;
-  top: 50%;
+  top: calc(50% - 32px);
   left: 50%;
   transform: translate(-50%, -50%);
   /* Reserve 80px per side: the controls' 16px inset + 56px width + 8px gap,
      even on a narrow pane with the AI panel open. */
   width: min(468px, calc(100% - 160px));
-  max-height: calc(100% - 48px);
+  /* With the centre raised 32px, this leaves 8px above and 72px for controls below. */
+  max-height: calc(100% - 80px);
   overflow: auto;
   padding: 22px 22px 18px;
   border-radius: var(--radius-l);
@@ -280,4 +281,47 @@
 [dir="rtl"] .start-example > svg:last-child,
 [dir="rtl"] .start-all svg {
   transform: scaleX(-1);
+}
+/* The bottom-right view control and minimap retain their own lane on a first visit too. */
+.canvas-wrap:has(.workbench-view-controls) .first-hint-slot {
+  bottom: 58px;
+  justify-content: flex-start;
+  padding-inline-start: 16px;
+}
+.canvas-wrap:has(.workbench-view-controls) .first-hint {
+  max-width: calc(100% - 220px);
+}
+
+.start-card {
+  border-radius: 14px;
+  padding: 30px 30px 22px;
+  box-shadow: var(--shadow-2);
+  border-color: var(--line);
+}
+.start-card h2 {
+  font-size: 25px;
+  font-weight: 650;
+  font-stretch: var(--stretch-wide);
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+.start-card [data-testid="start-tutorial"] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 10px 0 16px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  background: var(--bezel);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+[data-theme="dark"] .start-card [data-testid="start-tutorial"] {
+  background: #fff;
+  color: #111;
+}
+.start-heading h3 {
+  font-stretch: 108%;
+  font-weight: 650;
 }

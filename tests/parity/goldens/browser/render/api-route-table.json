@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(4.69978px, 40px) scale(0.994048)",
+  "viewport": "translate(42.6696px, 32px) scale(1.09673)",
   "nodes": {
     "app": { "kind": "node", "box": "translate(40px, 120px) 220×72", "text": "Parcelpoint app 40 req/s · 4 routes" },
     "carriers": { "kind": "node", "box": "translate(40px, 420px) 220×72", "text": "Carrier webhooks 30 events/s" },
@@ -20,12 +20,12 @@
     "to-events": "M600,332 L659,332 Q669,332 669,342 L669,626 Q669,636 679,636 L760,636"
   },
   "labels": {
-    "app-gateway": { "style": "transform: translate(-50%, -50%) translate(320px, 227.5px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
-    "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(320px, 384.5px); --fe-w: 59px; --fe-h: 19px;", "text": "Webhook" },
-    "to-tracking": { "style": "transform: translate(-50%, -50%) translate(674.5px, 158px); --fe-w: 47px; --fe-h: 19px;", "text": "Track" },
-    "to-pricing": { "style": "transform: translate(-50%, -50%) translate(715.75px, 186px); --fe-w: 47px; --fe-h: 19px;", "text": "Quote" },
-    "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(656.5px, 306px); --fe-w: 89px; --fe-h: 19px;", "text": "Quote canary" },
-    "to-labels": { "style": "transform: translate(-50%, -50%) translate(713px, 486px); --fe-w: 47px; --fe-h: 19px;", "text": "Label" },
-    "to-events": { "style": "transform: translate(-50%, -50%) translate(669px, 514px); --fe-w: 95px; --fe-h: 19px;", "text": "Carrier event" }
+    "app-gateway": { "style": "transform: translate(-50%, -50%) translate(320px, 227.5px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
+    "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(320px, 384.5px); --fe-w: 69.09px; --fe-h: 22px;", "text": "Webhook" },
+    "to-tracking": { "style": "transform: translate(-50%, -50%) translate(674.5px, 158px); --fe-w: 48.56px; --fe-h: 22px;", "text": "Track" },
+    "to-pricing": { "style": "transform: translate(-50%, -50%) translate(715.75px, 186px); --fe-w: 50.83px; --fe-h: 22px;", "text": "Quote" },
+    "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(656.5px, 306px); --fe-w: 91.67999999999999px; --fe-h: 22px;", "text": "Quote canary" },
+    "to-labels": { "style": "transform: translate(-50%, -50%) translate(713px, 486px); --fe-w: 46.760000000000005px; --fe-h: 22px;", "text": "Label" },
+    "to-events": { "style": "transform: translate(-50%, -50%) translate(669px, 514px); --fe-w: 88.12px; --fe-h: 22px;", "text": "Carrier event" }
   }
 }

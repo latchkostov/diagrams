@@ -1,3 +1,4 @@
+import { openLibrary, goToNode, waitForCameraIdle } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors } from "./fixtures";
 
@@ -13,6 +14,7 @@ test.describe("network devices", () => {
     consoleErrors,
   }) => {
     await gotoCanvas(page, SLUG);
+    await openLibrary(page);
     const search = page.getByTestId("palette-search");
     await expect(search).toBeVisible();
     for (const q of ["3825", "ISR"]) {
@@ -48,6 +50,7 @@ test.describe("network devices", () => {
     consoleErrors,
   }) => {
     await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+    await goToNode(page, "firewall");
     await expect(page.getByTestId("node-metric-firewall")).toBeVisible();
     await expect
       .poll(async () => Number(await page.getByTestId("node-badge-firewall").getAttribute("data-processed")))
@@ -78,6 +81,7 @@ test.describe("network devices", () => {
 
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toBeVisible();
+    await goToNode(page, "firewall");
     const blocked = page.getByTestId("node-blocked-firewall");
     await expect(blocked).toBeVisible();
     await expect(blocked).toContainText("blocked");
@@ -107,6 +111,7 @@ test.describe("network devices", () => {
   test("device settings stay editable as custom properties where no control shows them", async ({ page }) => {
     // An ordinary gateway given a throughput keeps it in Custom properties, to see, change or remove.
     await gotoCanvas(page, "cell-based-bookings");
+    await goToNode(page, "east-alb");
     await page.getByTestId("node-east-alb").click();
     await page.getByTestId("inspector-section-node-properties").click();
     await page.getByTestId("inspector-prop-new").fill("gbps");
@@ -118,6 +123,9 @@ test.describe("network devices", () => {
     await page.getByTestId("inspector-section-node-properties").click();
     await expect(page.getByTestId("inspector-prop-remove-ha")).toHaveCount(0);
     // A connection that isn't a firewall's has no rule control, so its deny stays a custom property.
+    await goToNode(page, "web-1");
+    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await waitForCameraIdle(page);
     await page.getByTestId("edge-label-web-1-payments").click();
     await expect(page.getByTestId("inspector-field-rule")).toHaveCount(0);
     await page.getByTestId("inspector-section-edge-advanced").click();

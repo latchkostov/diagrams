@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { routingSummaryFixture, sheetRoutingFixture } from "../../src/lab/routingFixture";
 import {
@@ -16,6 +17,7 @@ import {
   cameraJournalMark,
   cameraMoves,
   waitForCameraIdle,
+  openAnnotate,
 } from "./fixtures";
 
 const ids = ["app", "kong", "orders", "canary", "search"];
@@ -54,7 +56,7 @@ async function inPane(page: Page, nodes = ids) {
 const zoom = async (page: Page) => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
 /** The fits that moved the view since `mark`: the canvas's, Live's whole-diagram fit and a note's close-up. */
 const fits = async (page: Page, mark: number) =>
-  (await cameraMoves(page, mark)).filter((m) => /^(fit|liveFit|noteFit)/.test(m));
+  (await cameraMoves(page, mark)).filter((m) => /^(fit|liveFit|noteFit|follow)/.test(m));
 
 test("Edit zoom then entering Live gives the automatic fit ownership of Inspector changes", async ({ page }) => {
   await open(page, false, false, 2);
@@ -94,8 +96,11 @@ test("Inspector resize preserves keyboard-only Live zoom", async ({ page }) => {
   expect(await fits(page, mark)).toEqual([]);
 });
 
-test("narration takes ownership after a manual pan and yields to later keyboard zoom", async ({ page }) => {
+test("explicit Follow takes ownership after a manual pan and yields to later keyboard zoom", async ({ page }) => {
   await open(page, true);
+  // Keep the narrated pair inside the Follow floor even with the dock at its widest.
+  await page.setViewportSize({ width: 2200, height: 1000 });
+  await waitForCameraIdle(page);
   const pane = await boxOf(page.getByTestId("canvas-wrap"));
   const point = await emptyCanvasPoint(page);
   await page.mouse.move(pane.x + point.x, pane.y + point.y);
@@ -104,6 +109,9 @@ test("narration takes ownership after a manual pan and yields to later keyboard 
   const mark = await cameraJournalMark(page);
   await page.getByTestId("live-sim-picker").selectOption("inspector-note");
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  // A manual pan stays Custom until the person explicitly resumes Follow.
+  await page.getByTestId("live-view-menu").click();
+  await page.getByTestId("view-follow").click();
   await waitForCameraIdle(page);
   await page.getByTestId("inspector-toggle").click();
   await waitForCameraIdle(page);
@@ -112,9 +120,12 @@ test("narration takes ownership after a manual pan and yields to later keyboard 
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
   expect(await inPane(page, ["kong", "orders"])).toBe(true);
-  // The note took the view from the pan by hand (L1); each pane change refits to its focus (L6).
-  expect((await fits(page, mark)).slice(0, 2)).toEqual(["noteFit:narration", "noteFit:pane"]);
-  expect(await fits(page, resized)).toEqual(["noteFit:pane"]);
+  // Explicit Follow takes the view back; each pane change reframes its subject.
+  expect((await fits(page, mark)).slice(0, 2), JSON.stringify(await cameraJournal(page, mark))).toEqual([
+    "follow",
+    "follow",
+  ]);
+  expect(await fits(page, resized)).toEqual(["follow"]);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
   await page.clock.runFor(1500);
@@ -152,7 +163,7 @@ for (const locale of ["en", "ar", "en-XA"])
 for (const live of [false, true]) {
   test(`opening and closing the Inspector refits a fitted ${live ? "Live" : "edit"} view`, async ({ page }) => {
     await open(page, live);
-    await page.getByTestId("fit-view-button").click();
+    await clickFitView(page);
     await waitForCameraIdle(page);
     await pauseClock(page);
     const mark = await cameraJournalMark(page);
@@ -372,6 +383,7 @@ test("a new shape owns the Inspector reveal without a naming editor", async ({ p
   await pauseClock(page);
   await countPaneFits(page);
   const beforeZoom = await zoom(page);
+  await openAnnotate(page);
   await page.getByTestId("palette-annotate-shape").click();
   await page.clock.runFor(1500);
   await expect(page.getByTestId("annotation-shape-1")).toBeVisible();
@@ -440,12 +452,28 @@ test("Inspector resize retains narration focus", async ({ page }) => {
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
-  expect(await inPane(page, ["kong", "orders"])).toBe(true);
+  await waitForCameraIdle(page);
+  await page.clock.runFor(16);
+  const pane = await boxOf(page.getByTestId("canvas-wrap"));
+  for (const id of ["kong", "orders"]) {
+    const pin = page.getByTestId(`focus-offscreen-${id}`);
+    const target = (await pin.isVisible()) ? pin : page.getByTestId(`node-${id}`).getByTestId("card-title");
+    await expect(target).toBeVisible();
+    const box = await boxOf(target);
+    expect(box.x).toBeGreaterThanOrEqual(pane.x + 28);
+    expect(box.y).toBeGreaterThanOrEqual(pane.y + 28);
+    expect(box.x + box.width).toBeLessThanOrEqual(pane.x + pane.width - 28);
+    expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height - 28);
+    if (await pin.isVisible())
+      await expect(page.getByTestId(`rf__node-${id}`)).toHaveAttribute("data-detail-hidden", "");
+  }
+  expect(await zoom(page)).toBeGreaterThanOrEqual(0.9);
+  expect(await zoom(page)).toBeLessThanOrEqual(1);
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
   expect(await fits(page, mark)).toEqual(["noteFit:pane"]);
   // The explicit focus remains closer than fitting the entire boundary and its source.
   const focusedZoom = await zoom(page);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await page.clock.runFor(1500);
   expect(focusedZoom).toBeGreaterThan(await zoom(page));
 });

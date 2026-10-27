@@ -284,14 +284,16 @@ for (const renderer of ["worker", "main"] as const) {
       // Paused: the particles stay put and the march with them.
       await page.getByTestId("live-play").click();
       await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-still", "1");
+      if (renderer === "worker") await expect(page.getByTestId("live-toggle-glow")).toBeVisible();
       await record(page);
       for (const layer of ["base", "march"] as const) expectInVideo(layer, await layerInVideo(page, layer));
       // The Live toggle (and with it the dot's breath) stays out of the take, as before.
-      await expect(page.getByTestId("live-toggle")).toHaveCSS("visibility", "hidden");
+      await expect(page.getByTestId("live-toggle")).toBeHidden();
+      await expect(page.getByTestId("topbar")).toHaveCount(0);
       if (renderer === "worker") {
-        const glow = await layerInVideo(page, "glow");
-        expect(glow.points).toBeGreaterThan(30);
-        expect(glow.changed).toBe(0);
+        // Presentation removes the top bar and its worker canvas. The excluded
+        // layer must leave the compositor, rather than merely stop animating.
+        await expect(page.getByTestId("live-toggle-glow")).toHaveCount(0);
       }
 
       await page.getByTestId("record-stop").click();

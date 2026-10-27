@@ -1,12 +1,15 @@
+import { t } from "../i18n";
 import { runEndResult } from "./runEndResult";
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { usePhone } from "../lib/usePhone";
 import { useStore } from "@xyflow/react";
 import { useInteraction } from "../canvas/interaction";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { formatClock } from "./format";
 import { LiveIcon } from "./icons";
-import { NOTE_GAP, placeNote, type Box } from "./notePlacement";
+import { NOTE_GAP, freeNoteOffset, placeNote, type Box } from "./notePlacement";
 
 /** Keep clear of the control bar at the bottom. */
 const BOTTOM_RESERVE = 170;
@@ -16,12 +19,29 @@ const BOTTOM_RESERVE = 170;
  * space so it stays the same size whatever the zoom; the session dims everything else and pans to
  * the focus. A pausing note waits for Continue (or Space / Enter).
  */
-export function NoteCallout({ state }: { state: LiveState }) {
+export function NoteCallout({
+  state,
+  docked = false,
+  subject: troubleSubject,
+}: {
+  state: LiveState;
+  docked?: boolean;
+  subject?: string;
+}) {
   const ui = useLive();
+  const maskId = useId();
+  const phone = usePhone();
+  const [expanded, setExpanded] = useState(false);
+  const expandRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const restoreNoteFocus = useRef(false);
+  const noteNavigation = useRef<HTMLButtonElement | null>(null);
   const interaction = useInteraction();
   const result = runEndResult(state, ui.controller.currentDiagram);
   const note = result ? { text: result, focus: [], atMs: state.run!.time } : state.run?.note;
   const waiting = !!state.run?.waiting;
+  const subject = troubleSubject ?? note?.focus[0];
+  const subjectNode = subject ? ui.controller.currentDiagram.nodes.find((n) => n.id === subject) : undefined;
   const transform = useStore((s) => s.transform);
   const paneWidth = useStore((s) => s.width);
   const height = useStore((s) => s.height);
@@ -31,6 +51,36 @@ export function NoteCallout({ state }: { state: LiveState }) {
   const continueRef = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState({ w: 420, h: 110 });
   const noteKey = note ? `${note.atMs}:${note.text}` : "";
+  const open = expanded && phone && docked;
+  const close = () => {
+    restoreNoteFocus.current = true;
+    setExpanded(false);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      restoreNoteFocus.current = true;
+      setExpanded(false);
+    };
+    window.addEventListener("keydown", escape, true);
+    return () => window.removeEventListener("keydown", escape, true);
+  }, [open, interaction]);
+
+  useLayoutEffect(() => {
+    const target = open ? closeRef.current : restoreNoteFocus.current ? expandRef.current : null;
+    restoreNoteFocus.current = false;
+    if (target) interaction?.dispatch({ type: "dialog.tab", target });
+  }, [open, interaction]);
+
+  useLayoutEffect(() => {
+    const target = noteNavigation.current;
+    noteNavigation.current = null;
+    if (open && target)
+      interaction?.dispatch({ type: "dialog.tab", target: target.disabled ? (closeRef.current ?? target) : target });
+  }, [noteKey, open, interaction]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -107,49 +157,174 @@ export function NoteCallout({ state }: { state: LiveState }) {
     style = { left, top: Math.max(16, top), "--arrow": `${arrow}px` } as CSSProperties;
   } else {
     // No focus: a caption just above the control bar, clear of the title card.
-    style = { left: Math.max(16, width / 2 - size.w / 2), top: height - BOTTOM_RESERVE + 70 - size.h };
+    const desired = {
+      x: Math.max(16, width / 2 - size.w / 2),
+      y: height - BOTTOM_RESERVE + 70 - size.h,
+      width: size.w,
+      height: size.h,
+    };
+    const obstacles = [...others, ...keepClear].map((b) => ({
+      x: b.l,
+      y: b.t,
+      width: b.r - b.l,
+      height: b.b - b.t,
+    }));
+    // In a short presentation the preferred breathing room may not fit, while
+    // the caption itself still fits clear of every card. Prefer that to overlap.
+    const offset = freeNoteOffset(desired, { width, height }, obstacles);
+    style = { left: desired.x + (offset?.dx ?? 0), top: desired.y + (offset?.dy ?? 0) };
   }
 
+  const hud = pane?.querySelector<HTMLElement>(".lv-hud");
+  const hudBox = hud?.getBoundingClientRect();
+  const holes = hudBox
+    ? [
+        ...(pane?.parentElement?.querySelectorAll<HTMLElement>(
+          ".react-flow__node-diagram:not([data-live-dim]):not([data-detail-hidden])",
+        ) ?? []),
+      ].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left - hudBox.left - 2, y: r.top - hudBox.top - 2, width: r.width + 4, height: r.height + 4 };
+      })
+    : [];
+
+  const notes = state.simulation?.timeline?.filter((step) => step.action.do === "note") ?? [];
+  const index = notes.findIndex((n) => n.atMs === note.atMs);
   return (
-    <div
-      ref={ref}
-      key={`${note.atMs}:${note.text}`}
-      className={`lv-note is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
-      style={style}
-      role="status"
-      aria-live="polite"
-      data-testid="live-note"
-      data-placement={placement}
-      data-waiting={waiting ? "1" : undefined}
-      data-editor-overlay
-    >
-      {!result && (
-        <div className="lv-note-head">
-          <LiveIcon name="note" size={13} />
-          <span>{state.simulation?.title ?? "Note"}</span>
-          <span className="lv-note-time mono">{formatClock(note.atMs)}</span>
-        </div>
-      )}
-      <p className="lv-note-text" data-testid={result ? "live-run-result" : "live-note-text"}>
-        {note.text}
-      </p>
-      {waiting && (
-        <div className="lv-note-actions">
+    <>
+      {open &&
+        hud &&
+        createPortal(
+          <>
+            <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
+              <defs>
+                <mask
+                  id={maskId}
+                  maskUnits="userSpaceOnUse"
+                  x="0"
+                  y="0"
+                  width={hudBox?.width ?? 0}
+                  height={hudBox?.height ?? 0}
+                >
+                  <rect width={hudBox?.width ?? 0} height={hudBox?.height ?? 0} fill="white" />
+                  {holes.map((rect, index) => (
+                    <rect key={index} {...rect} rx={12 * zoom} fill="black" />
+                  ))}
+                </mask>
+              </defs>
+            </svg>
+            <button
+              className="lv-note-scrim"
+              data-testid="live-note-scrim"
+              aria-label={t("common.close")}
+              style={{ maskImage: `url("#${maskId}")` }}
+              onClick={close}
+            />
+          </>,
+          hud,
+        )}
+      <div
+        ref={ref}
+        className={`lv-note${docked ? " is-docked" : ""}${open ? " is-expanded" : ""} is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
+        style={docked ? undefined : style}
+        role={open ? "dialog" : "status"}
+        aria-label={open ? state.simulation?.title : undefined}
+        aria-live="polite"
+        data-testid="live-note"
+        data-placement={placement}
+        data-waiting={waiting ? "1" : undefined}
+        data-editor-overlay
+        data-expanded={open ? "1" : "0"}
+      >
+        {!result && (
+          <div className="lv-note-head">
+            <LiveIcon name="note" size={13} />
+            <span>{state.simulation?.title ?? "Note"}</span>
+            <span className="lv-note-time" data-testid="live-note-time">
+              {t("workbench.noteAt", { time: formatClock(note.atMs).replace("s", " s") })}
+            </span>
+          </div>
+        )}
+        {open && (
           <button
-            ref={continueRef}
-            className="lv-note-continue"
-            onClick={() => ui.controller.resume()}
-            disabled={state.needsRestart}
-            data-testid="live-note-continue"
+            ref={closeRef}
+            className="lv-note-close"
+            data-testid="live-note-close"
+            aria-label={t("common.close")}
+            onClick={close}
           >
-            Continue <LiveIcon name="play" size={10} />
+            ×
           </button>
-          <span className="lv-note-hint">
-            or press <kbd>Space</kbd>
-          </span>
-        </div>
-      )}
-    </div>
+        )}
+        <p className="lv-note-text" data-testid={result ? "live-run-result" : "live-note-text"}>
+          {note.text}
+        </p>
+        {waiting && (
+          <div className="lv-note-actions">
+            <button
+              ref={continueRef}
+              className="lv-note-continue"
+              onClick={() => ui.controller.resume()}
+              disabled={state.needsRestart}
+              data-testid="live-note-continue"
+            >
+              Continue <LiveIcon name="play" size={10} />
+            </button>
+            <span className="lv-note-hint">
+              or press <kbd>Space</kbd>
+            </span>
+          </div>
+        )}
+        {docked && subjectNode && ui.canEdit && ui.openNodeDetails && (
+          <button
+            className="lv-note-details"
+            data-testid="live-note-details"
+            onClick={() => {
+              setExpanded(false);
+              ui.openNodeDetails?.(subjectNode.id);
+            }}
+          >
+            {t("workbench.nodeDetails", { name: subjectNode.label || subjectNode.id })} ›
+          </button>
+        )}
+        {phone && docked && !open && (
+          <button
+            ref={expandRef}
+            className="lv-note-expand"
+            data-testid="live-note-expand"
+            aria-expanded={open}
+            onClick={() => setExpanded(true)}
+          >
+            {t("workbench.readNote")}
+          </button>
+        )}
+        {open && index >= 0 && (
+          <div className="lv-note-navigation">
+            <button
+              data-testid="live-note-earlier"
+              disabled={index === 0}
+              onClick={(e) => {
+                noteNavigation.current = e.currentTarget;
+                ui.controller.seek(notes[index - 1].atMs);
+              }}
+            >
+              ‹ {t("workbench.earlier")}
+            </button>
+            <span>{t("workbench.noteIndex", { index: index + 1, total: notes.length })}</span>
+            <button
+              data-testid="live-note-later"
+              disabled={index === notes.length - 1}
+              onClick={(e) => {
+                noteNavigation.current = e.currentTarget;
+                ui.controller.seek(notes[index + 1].atMs);
+              }}
+            >
+              {t("workbench.later")} ›
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

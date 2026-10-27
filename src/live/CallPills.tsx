@@ -155,10 +155,27 @@ export const CallPills = memo(
           className={`lv-call-pill${timedOut ? " is-timeout" : ""}`}
           style={{ left: box.x, top: box.y, transform: `scale(${readoutScale})`, transformOrigin: "top left" }}
           data-call-edge={id}
+          data-detail-measure={text.length}
           aria-label={`${text} · ${title}`}
           data-testid={`call-pill-${id}`}
         >
-          <bdi>{text}</bdi>
+          <span className={`lv-pill-glyph${timedOut ? " is-loss" : ""}`} aria-hidden>
+            {timedOut ? "✕" : "↗"}
+          </span>{" "}
+          <bdi>
+            {text
+              .replace(/^[↗✕]\s*/, "")
+              .split(/(↻)/)
+              .map((part, index) =>
+                part === "↻" ? (
+                  <span key={index} className="lv-pill-glyph is-retry" aria-hidden>
+                    ↻
+                  </span>
+                ) : (
+                  part
+                ),
+              )}
+          </bdi>
         </span>
       );
     });

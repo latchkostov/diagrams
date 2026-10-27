@@ -1,4 +1,5 @@
 import { openLiveNodeDetails } from "./fixtures";
+import type { Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -12,7 +13,17 @@ import type { ViewerAdapter } from "../../src/export/viewer/adapter";
 import latencyDiagram from "../../src/examples/where-the-time-goes.json" with { type: "json" };
 import { autoscalingFixture } from "../../src/lab/autoscalingFixture";
 import { hpaLesson } from "../../src/model/autoscalingLessons";
+import { CATCH_UP_MS } from "../../src/live/frameClock";
 import { exportHtml } from "../../src/export/inject";
+
+/** Set up engine state before capture without drawing every idle frame. */
+async function advanceSetupClock(page: Page, duration: number) {
+  for (let remaining = duration; remaining > 0;) {
+    const step = Math.min(remaining, CATCH_UP_MS);
+    await page.clock.fastForward(step);
+    remaining -= step;
+  }
+}
 
 // Keep this independent of editor controls: the built viewers must retain the playback runtime
 // even when their routing/autoscaling authoring modules are swapped out.
@@ -81,10 +92,10 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
     await page.getByTestId("live-speed").selectOption("1");
     const badge = page.getByTestId("node-badge-worker");
     await expect(badge).toHaveAttribute("data-ready", "1");
-    await page.clock.runFor(1500);
+    await advanceSetupClock(page, 1500);
     await expect.poll(async () => Number(await badge.getAttribute("data-desired"))).toBeGreaterThan(1);
     await expect.poll(async () => Number(await badge.getAttribute("data-starting"))).toBeGreaterThan(0);
-    await page.clock.runFor(1500);
+    await advanceSetupClock(page, 1500);
     await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(1);
     await openLiveNodeDetails(page, "worker", "resources");
     const details = page.getByTestId("node-detail-worker");
@@ -94,7 +105,7 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
     // A subsequent controller tick can already have requested another replica. The
     // badge then reports Starting instead of Desired; both must match the fleet.
     const fleetText = starting ? `Ready: ${ready} · Starting: ${starting}` : `Ready: ${ready} → Desired: ${desired}`;
-    await expect(page.getByTestId("node-fleet-worker")).toHaveText(new RegExp(`^${fleetText}( · Max reached)?$`));
+    await expect(page.getByTestId("node-fleet-worker")).toHaveText(new RegExp(`^◷${fleetText}( · Max reached)?$`));
     await expect(page.getByTestId("hover-section-resources")).toContainText(`${ready} ready → ${desired} desired`);
     await expect(details).toContainText(/CPU: [1-9]\d*%/);
     await expect(details).toContainText(/Memory: [1-9]\d* MiB/);
@@ -102,7 +113,7 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-record").click();
     await expect(page.getByTestId("record-opt-from-start")).toBeChecked();
-    await recordFor(page, 0);
+    await recordFor(page, 0, { countdown: "ticks" });
     await expect(badge).toHaveAttribute("data-ready", "1");
     await page.clock.runFor(3000);
     await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(1);
@@ -136,6 +147,9 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
         video.requestVideoFrameCallback(frame);
       };
       video.currentTime = 0;
+      // Capture time varies with load. Decode the full replay at 4x while retaining
+      // the changed-frame, natural completion and paused-at-end assertions below.
+      video.playbackRate = 4;
       video.requestVideoFrameCallback(frame);
       await video.play();
     });

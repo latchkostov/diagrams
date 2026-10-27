@@ -2,8 +2,8 @@
   "layout": {
     "status": 0,
     "stdout": "<tmp>/laid.json: placed 9 nodes, fitted 1 boundary.\n",
-    "nodes": { "app": [40, 320], "collector": [409, 100], "pubsub-topic": [783, 100], "dataflow": [1154, 40], "raw-archive": [1154, 160], "bigquery": [1535, 40], "looker": [40, 40], "dead-letters": [1535, 160], "dead-bucket": [1895, 100] },
-    "groups": { "gcp": [0, -24, 2155, 296] }
+    "nodes": { "app": [40, 320], "collector": [415.55, 100], "pubsub-topic": [789.55, 100], "dataflow": [1160.8899999999999, 40], "raw-archive": [1160.8899999999999, 160], "bigquery": [1541.8899999999999, 40], "looker": [40, 40], "dead-letters": [1541.8899999999999, 160], "dead-bucket": [1901.8899999999999, 100] },
+    "groups": { "gcp": [0, -24, 2162, 296] }
   },
   "shareLink": {
     "status": 0,

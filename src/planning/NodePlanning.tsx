@@ -25,6 +25,8 @@ export function NodePlanning({
   paused = false,
   counts,
   readDiagram,
+  liveOnly = false,
+  configuredOnly = false,
 }: {
   diagram?: DiagramFile;
   id: string;
@@ -35,6 +37,8 @@ export function NodePlanning({
   paused?: boolean;
   counts?: { nodes: number; edges: number };
   readDiagram?: () => DiagramFile;
+  liveOnly?: boolean;
+  configuredOnly?: boolean;
 }) {
   useLocale();
   // Name fields save every key, but planning reads once after naming ends. Check the cheap
@@ -65,12 +69,23 @@ export function NodePlanning({
   // Replica rows read the current engine. Keep resource totals on that same clock when an inspector opens
   // between UI publications; explicitly provided snapshots still retain their caller's observation time.
   const observed = published?.resources && live && !provided ? live.controller.realSnapshot().nodes[id] : published;
+  if (liveOnly)
+    return observed && d ? (
+      <LiveDetails
+        live={live ?? undefined}
+        state={state ?? undefined}
+        metrics={observed}
+        diagram={d}
+        readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+        simulation={state?.simulation?.id}
+      />
+    ) : null;
   const configured = d ? configuredPlanning(d, state) : undefined;
   if (!configured && hover)
     return (
       <div className="planning-explanation">
         <p className="insp-note" data-testid="planning-unavailable">
-          {t("planning.analysisLimit")}
+          <span aria-hidden>ⓘ</span> {t("planning.analysisLimit")}
         </p>
         {observed && (
           <p data-testid="planning-observed">
@@ -90,9 +105,9 @@ export function NodePlanning({
     return (
       <>
         <p className="insp-note" data-testid="planning-unavailable">
-          {t("planning.analysisLimit")}
+          <span aria-hidden>ⓘ</span> {t("planning.analysisLimit")}
         </p>
-        {!hover && observed && d && (
+        {!hover && !configuredOnly && observed && d && (
           <LiveDetails
             key={id}
             live={live ?? undefined}
@@ -169,7 +184,7 @@ export function NodePlanning({
         </section>
       )}
       <PlanningConnections configured={configured} id={id} />
-      {observed && d && (
+      {!configuredOnly && observed && d && (
         <LiveDetails
           key={id}
           live={live ?? undefined}
