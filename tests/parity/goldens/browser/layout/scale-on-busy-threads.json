@@ -2,7 +2,7 @@
   "autoLayout": {
     "viewport": "translate(1.9019px, 321.666px) scale(0.752452)",
     "nodes": {
-      "source": { "kind": "node", "box": "translate(40px, 100px) 233×72", "text": "Applications submitted User" },
+      "source": { "kind": "node", "box": "translate(40px, 100px) 233×72", "text": "Applications submitt… User" },
       "applications": { "kind": "node", "box": "translate(428px, 100px) 220×72", "text": "Applications Topic" },
       "caller": { "kind": "node", "box": "translate(788px, 100px) 232×72", "text": "Decision service 4 replicas · 16 threads each" },
       "partner": { "kind": "node", "box": "translate(1187px, 40px) 220×72", "text": "Partner scoring API External API" },
@@ -15,7 +15,7 @@
   "tidy": {
     "viewport": "translate(1.9019px, 279.793px) scale(0.752452)",
     "nodes": {
-      "source": { "kind": "node", "box": "translate(0px, 240px) 233×72", "text": "Applications submitted User" },
+      "source": { "kind": "node", "box": "translate(0px, 240px) 233×72", "text": "Applications submitt… User" },
       "applications": { "kind": "node", "box": "translate(310px, 240px) 220×72", "text": "Applications Topic" },
       "caller": { "kind": "node", "box": "translate(610px, 240px) 232×72", "text": "Decision service 4 replicas · 16 threads each" },
       "partner": { "kind": "node", "box": "translate(930px, 180px) 220×72", "text": "Partner scoring API External API" },

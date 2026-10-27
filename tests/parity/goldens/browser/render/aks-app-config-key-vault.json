@@ -9,7 +9,7 @@
     "sql": { "kind": "node", "box": "translate(1300px, 180px) 220×72", "text": "orders-db Azure SQL" },
     "sb": { "kind": "node", "box": "translate(1300px, 420px) 220×72", "text": "orders.created Service Bus topic" },
     "notify": { "kind": "node", "box": "translate(1720px, 420px) 220×72", "text": "Order confirmation Function · sends email" },
-    "ai": { "kind": "node", "box": "translate(860px, 60px) 220×72", "text": "Application Insights traces · logs · metrics" },
+    "ai": { "kind": "node", "box": "translate(860px, 60px) 220×72", "text": "Application Insigh… traces · logs · metrics" },
     "appcfg": { "kind": "node", "box": "translate(860px, 560px) 220×72", "text": "orders-config App Configuration" },
     "kv": { "kind": "node", "box": "translate(1300px, 560px) 220×72", "text": "orders-kv Key Vault" },
     "mi": { "kind": "node", "box": "translate(440px, 560px) 220×72", "text": "orders-api-id Workload identity" },

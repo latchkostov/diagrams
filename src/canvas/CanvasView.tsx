@@ -1215,9 +1215,11 @@ function CanvasInner({
     () => (
       <>
         <ZoomVar host={wrapper} />
-        {!readOnly && !presenting && (
-          <FrameDetail host={wrapper} routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }} />
-        )}
+        <FrameDetail
+          host={wrapper}
+          routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }}
+          decorate={!readOnly && !presenting}
+        />
         {!readOnly && <ConnectionRadius />}
         {prefs.grid && <DotGrid />}
         {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}

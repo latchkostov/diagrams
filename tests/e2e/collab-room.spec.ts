@@ -165,9 +165,15 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
     await expect(chip(page)).toContainText("2 here");
 
     await rename(guest, "gateway", "Renamed by the guest");
-    await expect(page.getByTestId("node-gateway")).toContainText("Renamed by the guest");
+    await expect(page.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Renamed by the guest",
+    );
     await rename(page, "orders", "Renamed by the creator");
-    await expect(guest.getByTestId("node-orders")).toContainText("Renamed by the creator");
+    await expect(guest.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Renamed by the creator",
+    );
 
     // A reload keeps the guest in the room (this tab only), without asking again, with the room's latest.
     await guest.reload();
@@ -178,9 +184,15 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
     await expect(chip(guest)).toHaveAttribute("data-peers", "1");
     await expect(chip(page)).toHaveAttribute("data-peers", "1");
     await rename(page, "gateway", "After the guest's reload");
-    await expect(guest.getByTestId("node-gateway")).toContainText("After the guest's reload");
+    await expect(guest.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "After the guest's reload",
+    );
     await rename(guest, "orders", "Guest after reload");
-    await expect(page.getByTestId("node-orders")).toContainText("Guest after reload");
+    await expect(page.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Guest after reload",
+    );
 
     // A hard drop (the guest's browser goes, no goodbye): the creator keeps editing; presence lapses on its clock.
     await pauseClock(page);
@@ -188,7 +200,10 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
     await page.clock.fastForward(COLLAB_LIMITS.presenceTtlMs + COLLAB_LIMITS.presenceHeartbeatMs);
     await expect(chip(page)).toHaveAttribute("data-present", "0");
     await rename(page, "orders", "Kept after the drop");
-    await expect(page.getByTestId("node-orders")).toContainText("Kept after the drop");
+    await expect(page.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Kept after the drop",
+    );
     expect(guestErrors).toEqual([]);
     expectNoErrors(consoleErrors);
   } finally {
@@ -227,7 +242,10 @@ test("Leave keeps your copy in Your diagrams, and Don't join leaves nothing behi
     await rename(page, "gateway", "Kept after leaving");
     await roomAction(page, "room-leave");
     await expect(chip(page)).toHaveCount(0);
-    await expect(page.getByTestId("node-gateway")).toContainText("Kept after leaving");
+    await expect(page.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Kept after leaving",
+    );
     await page.reload();
     await expect(page.getByTestId("node-gateway")).toContainText("Kept after leaving", { timeout: pageLoadTimeout() });
     await expect(chip(page)).toHaveCount(0);
@@ -376,7 +394,10 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
   await page.keyboard.press("Escape");
   await page.mouse.click(4, 4);
   await expect(dialog).toBeVisible();
-  await expect(page.getByTestId("node-gateway")).toContainText("Unsaved room edit");
+  await expect(page.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
+    "data-label",
+    "Unsaved room edit",
+  );
   const downloading = page.waitForEvent("download");
   await page.getByTestId("room-unsaved-file").click();
   const chunks: Buffer[] = [];
@@ -472,7 +493,10 @@ test("Clear everything stops the room's writers, an encryption started before it
     });
     const held = () => late.evaluate(() => (window as unknown as { __recoveryHeld: number }).__recoveryHeld);
     await rename(guest, "orders", "Pending at the wipe");
-    await expect(late.getByTestId("node-orders")).toContainText("Pending at the wipe");
+    await expect(late.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Pending at the wipe",
+    );
     await expect.poll(held).toBeGreaterThan(0);
 
     await page.getByTestId("file-button").click();
@@ -492,7 +516,10 @@ test("Clear everything stops the room's writers, an encryption started before it
     // The late tab takes the room's later edits on; its checkpoint writes abort too.
     const after = await attempts();
     await rename(guest, "gateway", "Written after the wipe");
-    await expect(late.getByTestId("node-gateway")).toContainText("Written after the wipe");
+    await expect(late.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Written after the wipe",
+    );
     await expect.poll(attempts).toBeGreaterThan(after);
     await expect.poll(() => recoveryRecords(late)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
     expect(lateErrors).toEqual([]);
@@ -563,7 +590,10 @@ test("a peer deleting the right-clicked node closes the menu (remote), the canva
     );
     // A peer's rename and deletion moved nothing on the guest's side.
     await rename(page, "gateway", "Renamed by the creator");
-    await expect(guest.getByTestId("node-gateway")).toContainText("Renamed by the creator");
+    await expect(guest.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Renamed by the creator",
+    );
     expect((await cameraJournal(guest, camera)).filter((e) => e.moved)).toEqual([]);
     expect(await viewportTransform(guest)).toBe(view);
     expectNoErrors(consoleErrors);

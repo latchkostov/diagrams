@@ -17,6 +17,7 @@ import {
   waitForHtmlTemplate,
   liveKeyLevels,
   interactionJournalMark,
+  edgePoint,
 } from "./fixtures";
 
 async function sectionsInsideClip(card: Locator) {
@@ -620,7 +621,17 @@ for (const slug of ["retry-storm", "webhook-ingestion"])
         : ["node-receiver", "node-exchange", "node-queue", "node-dlq", "node-workers", "edge-queue-to-dlq"];
     for (const item of items) {
       await page.getByTestId("diagram-title").hover();
-      await page.getByTestId(item).hover({ force: true });
+      if (item.startsWith("edge-")) {
+        // Overview omits dormant paths. Focus this path's source before inspecting it.
+        if (item === "edge-queue-to-dlq") {
+          await goToNode(page, "queue");
+          await expect
+            .poll(() => page.getByTestId(item).evaluate((edge) => getComputedStyle(edge).visibility))
+            .toBe("visible");
+        }
+        const point = await edgePoint(page, item.slice(5));
+        await page.mouse.move(point.x, point.y);
+      } else await page.getByTestId(item).hover({ force: true });
       const card = page.getByTestId(item.replace(/^(node|edge)-/, "$1-detail-"));
       await expect(card).toHaveAttribute("data-pinned", "false");
       // The card is its own scroll container: a summary fits it in both directions, so no scroll bar shows.

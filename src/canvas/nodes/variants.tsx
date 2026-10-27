@@ -22,16 +22,29 @@ function cls(base: string, p: NodeBodyProps) {
   return [base, p.selected && "is-selected", p.unknown && "is-unknown"].filter(Boolean).join(" ");
 }
 
+/** Natural-size ink reserves geometry; only the painted title counter-scales. `data-label` keeps the
+ * full name for restoring a fitted title (never a native tooltip: nodes use the app's own). */
+function NodeTitle({ label }: { label: string }) {
+  return (
+    <div className="nb-name">
+      <span className="nb-name-size" aria-hidden="true">
+        {label}
+      </span>
+      <div className="nb-label" data-testid="card-title" data-label={label}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
 export function CardNode(p: NodeBodyProps) {
   return (
     <div className={cls("nb nb-card", p)} style={accentStyle(p.stencil)}>
-      <div className="nb-tile">
+      <div className="nb-tile" data-testid="card-icon">
         <StencilIcon stencil={p.stencil} size={26} />
       </div>
       <div className="nb-text">
-        <div className="nb-label" data-testid="card-title">
-          {p.label}
-        </div>
+        <NodeTitle label={p.label} />
         {p.sublabel ? (
           <div className="nb-sub" data-testid="card-second-line">
             {p.sublabel}
@@ -49,12 +62,10 @@ export function CardNode(p: NodeBodyProps) {
 export function CompactNode(p: NodeBodyProps) {
   return (
     <div className={cls("nb nb-compact", p)} style={accentStyle(p.stencil)}>
-      <div className="nb-tile">
+      <div className="nb-tile" data-testid="card-icon">
         <StencilIcon stencil={p.stencil} size={18} />
       </div>
-      <div className="nb-label" data-testid="card-title">
-        {p.label}
-      </div>
+      <NodeTitle label={p.label} />
     </div>
   );
 }
@@ -62,13 +73,11 @@ export function CompactNode(p: NodeBodyProps) {
 export function IconOnlyNode(p: NodeBodyProps) {
   return (
     <div className={cls("nb nb-icon", p)} style={accentStyle(p.stencil)}>
-      <div className="nb-tile">
+      <div className="nb-tile" data-testid="card-icon">
         <StencilIcon stencil={p.stencil} size={34} />
       </div>
       <div className="nb-caption" data-testid="node-caption">
-        <div className="nb-label" data-testid="card-title">
-          {p.label}
-        </div>
+        <NodeTitle label={p.label} />
         {p.sublabel && (
           <div className="nb-sub" data-testid="card-second-line">
             {p.sublabel}

@@ -81,6 +81,11 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
             !scope.querySelector("[data-route-pending]") &&
             scope.dataset.fitPending !== "true" &&
             scope.dataset.panePending !== "true" &&
+            // The camera can settle before its deferred detail pass fits the titles.
+            // Blank diagrams and standalone viewers need no editor detail layer.
+            (!!document.querySelector('[data-testid="html-viewer"]') ||
+              scope.dataset.detailView === undefined ||
+              scope.dataset.detailZoom === (scope.style.getPropertyValue("--rf-zoom-exact") || "1")) &&
             [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((el) => {
               // A saved empty boundary has no measurable area; its descendants are checked
               // independently. Do not confuse it with a card whose measurement is still missing.

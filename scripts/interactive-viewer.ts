@@ -244,7 +244,10 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
   {
     name: "the editor frame detail",
     path: "/src/canvas/FrameDetail.tsx",
-    stub: () => "export const FrameDetail = () => null;",
+    stub: (root) =>
+      `export { IdentityDetail as FrameDetail } from ${JSON.stringify(
+        normalizePath(resolve(root, "src/canvas/IdentityDetail.tsx")),
+      )};`,
   },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {

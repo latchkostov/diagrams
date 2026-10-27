@@ -30,7 +30,6 @@
 }
 .frame-pin,
 .detail-group-chip,
-.detail-title-chip,
 .overview-dig-hint {
   position: absolute;
   pointer-events: auto;
@@ -53,8 +52,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.frame-pin.is-spotlit,
-.detail-title-chip {
+.frame-pin.is-spotlit {
   border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--line));
 }
 .frame-pin:hover {
@@ -66,12 +64,6 @@
   background: color-mix(in oklab, var(--board) 90%, transparent);
   cursor: pointer;
   padding: 0 4px;
-}
-.detail-title-chip {
-  transform: translate(-50%, -100%);
-  border-radius: 5px;
-  padding: 2px 6px;
-  white-space: nowrap;
 }
 .overview-dig-hint {
   top: 12px;
@@ -111,9 +103,6 @@
   opacity: 1;
 }
 
-[data-detail-far] .react-flow__node-diagram .nb-tile {
-  visibility: hidden;
-}
 [data-detail-far] .react-flow__node-diagram[data-live-dim] .nb {
   border-color: var(--dim-stroke);
   background: var(--surface-3);
@@ -138,4 +127,23 @@
 [data-detail-view] .react-flow__edge[data-detail-selected-edge] .fe-path.react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: min(2px, calc(2px / var(--rf-zoom-exact, 1)));
+}
+
+/* Large Overview keeps individual cards, tinted zones and contrasting outlines. */
+[data-detail-overview] .grp,
+[data-detail-overview] .ann-zone {
+  background: color-mix(in srgb, var(--tone, var(--ann)) 5%, transparent);
+  outline: calc(1.5px / var(--rf-zoom)) solid var(--text-2);
+  border-color: var(--text-2);
+}
+[data-detail-overview] .react-flow__node-diagram .nb {
+  outline: calc(1.5px / var(--rf-zoom)) solid var(--text-2);
+}
+[data-detail-overview]
+  .react-flow[data-live]
+  .react-flow__edge:is([data-live-main], [data-live-near])
+  .fe-path.react-flow__edge-path {
+  stroke: var(--text-2);
+  stroke-width: calc(1.5px / var(--rf-zoom));
+  opacity: 1;
 }

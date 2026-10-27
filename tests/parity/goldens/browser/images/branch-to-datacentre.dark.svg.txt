@@ -194,104 +194,130 @@ svg width=1116 height=1639 viewBox=0 0 1116 1639
 == node-adc
           div #node-adc .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.886559 0.0330614 0.00661228) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…ef2c89e6 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:117px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:117px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Load balancer"
-                div #card-second-line .nb-sub width:117px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "BIG-IP pair · VIP shop"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.886559 0.0330614 0.00661228) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…ef2c89e6 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Load balancer"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Load balancer"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "BIG-IP pair · VIP shop"
 == node-branch-router
           div #node-branch-router .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.899733 -0.0142098 -0.0262779) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…f3915aef width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:133px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:133px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Branch router"
-                div #card-second-line .nb-sub width:133px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Catalyst 8200 · SD-WAN"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.899733 -0.0142098 -0.0262779) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…f3915aef width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Branch router"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Branch router"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Catalyst 8200 · SD-WAN"
 == node-customers
           div #node-customers .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.903408 -0.0139757 -0.0285051) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…685f7c02 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:69.7969px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:69.7969px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Customers"
-                div #card-second-line .nb-sub width:69.7969px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "internet"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.903408 -0.0139757 -0.0285051) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…685f7c02 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Customers"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Customers"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "internet"
 == node-edge-router
           div #node-edge-router .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.887552 -0.0161035 0.00897778) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…f3915aef width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:92px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:92px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Edge routers"
-                div #card-second-line .nb-sub width:92px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "2 × MX204 · BGP"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.887552 -0.0161035 0.00897778) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…f3915aef width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Edge routers"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Edge routers"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "2 × MX204 · BGP"
 == node-firewall
           div #node-firewall .dn.dn-card width:222px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:222px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.901548 0.0255804 0.010428) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…1ee1040e width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.901548 0.0255804 0.010428) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…1ee1040e width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
               div .nb-text width:137px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:137px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Firewall pair"
+                div .nb-name width:137px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Firewall pair"
+                  div #card-title .nb-label width:137px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Firewall pair"
                 div #card-second-line .nb-sub width:137px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "PA-3440 · active-standby"
 == node-leaf
           div #node-leaf .dn.dn-card width:229px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:229px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.899733 -0.0142098 -0.0262779) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…f9fc8115 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.899733 -0.0142098 -0.0262779) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…f9fc8115 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
               div .nb-text width:144px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:144px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Services leaf"
+                div .nb-name width:144px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Services leaf"
+                  div #card-title .nb-label width:144px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Services leaf"
                 div #card-second-line .nb-sub width:144px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Nexus 93180YC · vPC pair"
 == node-orders-db
           div #node-orders-db .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.873429 -0.00706616 -0.0213077) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:64.7969px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:64.7969px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Orders DB"
-                div #card-second-line .nb-sub width:64.7969px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "primary"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.873429 -0.00706616 -0.0213077) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Orders DB"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Orders DB"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "primary"
 == node-payments
           div #node-payments .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.867747 0.00687546 -0.0453632) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:90.3906px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:90.3906px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Payments API"
-                div #card-second-line .nb-sub width:90.3906px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "PCI zone"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.867747 0.00687546 -0.0453632) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Payments API"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Payments API"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "PCI zone"
 == node-spine-1
           div #node-spine-1 .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.870748 -0.00660926 -0.0296079) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…f9fc8115 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:85px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:85px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Spine 1"
-                div #card-second-line .nb-sub width:85px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Arista 7050SX3"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.870748 -0.00660926 -0.0296079) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…f9fc8115 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Spine 1"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Spine 1"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Arista 7050SX3"
 == node-spine-2
           div #node-spine-2 .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.870748 -0.00660926 -0.0296079) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…f9fc8115 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:85px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:85px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Spine 2"
-                div #card-second-line .nb-sub width:85px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Arista 7050SX3"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.870748 -0.00660926 -0.0296079) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…f9fc8115 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Spine 2"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Spine 2"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Arista 7050SX3"
 == node-staff
           div #node-staff .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.893551 -0.00652228 -0.0381992) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…9b66f9aa width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:77.3906px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:77.3906px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Branch staff"
-                div #card-second-line .nb-sub width:77.3906px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "120 desks"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.893551 -0.00652228 -0.0381992) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…9b66f9aa width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Branch staff"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Branch staff"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "120 desks"
 == node-web-1
           div #node-web-1 .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.901481 0.0164286 0.0132106) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…bff3f045 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:72.3906px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:72.3906px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront 1"
-                div #card-second-line .nb-sub width:72.3906px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "web pool"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.901481 0.0164286 0.0132106) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…bff3f045 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront 1"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront 1"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "web pool"
 == node-web-2
           div #node-web-2 .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.901481 0.0164286 0.0132106) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…bff3f045 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:75.3906px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:75.3906px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront 2"
-                div #card-second-line .nb-sub width:75.3906px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "web pool"
+              div #card-icon .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.901481 0.0164286 0.0132106) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…bff3f045 width:36px height:26px left:22px top:22px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+              div .nb-text width:135px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div .nb-name width:135px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239)
+                  span .nb-name-size width:auto height:auto color:rgb(233, 235, 239) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront 2"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront 2"
+                div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "web pool"

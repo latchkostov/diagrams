@@ -6,7 +6,7 @@
       "gateway": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "API Gateway Managed account preset" },
       "queue": { "kind": "node", "box": "translate(360px, 200px) 223×72", "text": "Async buffer Wait here for a free worker" },
       "direct": { "kind": "node", "box": "translate(40px, 360px) 260×72", "text": "Direct function 2 concurrent executions · 1 s each" },
-      "invoker": { "kind": "node", "box": "translate(360px, 360px) 233×72", "text": "Bounded async invoker 2 slots · one-second pacing" },
+      "invoker": { "kind": "node", "box": "translate(360px, 360px) 233×72", "text": "Bounded async invok… 2 slots · one-second pacing" },
       "async": { "kind": "node", "box": "translate(360px, 520px) 260×72", "text": "Buffered function 2 concurrent executions · 250 ms" },
       "direct-results": { "kind": "node", "box": "translate(40px, 520px) 220×72", "text": "Direct results Admitted requests only" },
       "async-results": { "kind": "node", "box": "translate(200px, 680px) 220×72", "text": "Async results Every queued job" }
@@ -37,7 +37,7 @@
       "gateway": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "API Gateway Managed account preset" },
       "queue": { "kind": "node", "box": "translate(360px, 200px) 223×72", "text": "Async buffer Wait here for a free worker" },
       "direct": { "kind": "node", "box": "translate(40px, 360px) 260×72", "text": "Direct function 2 concurrent executions · 1 s each" },
-      "invoker": { "kind": "node", "box": "translate(360px, 360px) 233×72", "text": "Bounded async invoker 2 slots · one-second pacing" },
+      "invoker": { "kind": "node", "box": "translate(360px, 360px) 233×72", "text": "Bounded async invok… 2 slots · one-second pacing" },
       "async": { "kind": "node", "box": "translate(360px, 520px) 260×72", "text": "Buffered function 2 concurrent executions · 250 ms" },
       "direct-results": { "kind": "node", "box": "translate(40px, 520px) 220×72", "text": "Direct results Admitted requests only" },
       "async-results": { "kind": "node", "box": "translate(200px, 680px) 220×72", "text": "Async results Every queued job" }

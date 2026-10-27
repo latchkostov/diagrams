@@ -15,7 +15,7 @@
     "payment-events": { "kind": "node", "box": "translate(1180px, 520px) 260×72", "text": "payments.completed.v1 PaymentCompleted · keyed by orderId" },
     "order-db": { "kind": "node", "box": "translate(800px, 520px) 260×72", "text": "Orders database Order state · transactional outbox" },
     "schemas": { "kind": "node", "box": "translate(1180px, 40px) 233×72", "text": "Schema registry Avro · backward compatible" },
-    "metrics": { "kind": "node", "box": "translate(1560px, 640px) 220×72", "text": "Commerce metrics Scrape interval: 15s" },
+    "metrics": { "kind": "node", "box": "translate(1560px, 640px) 220×72", "text": "Commerce metr… Scrape interval: 15s" },
     "dashboard": { "kind": "node", "box": "translate(1940px, 640px) 251×72", "text": "Order operations Lag · checkout latency · failures" }
   },
   "edges": {

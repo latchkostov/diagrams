@@ -64,7 +64,10 @@ test.describe("with WebMCP", () => {
     const text = await clipboard(page);
     expect(text).toBe("Add a dead-letter queue after Inventory service");
     await expect(page.getByTestId("ai-example-request")).toHaveText(text);
-    await expect(page.getByTestId("node-inventory")).toContainText("Inventory service");
+    await expect(page.getByTestId("node-inventory").getByTestId("card-title")).toHaveAttribute(
+      "data-label",
+      "Inventory service",
+    );
     // The diagram's own description names it too: the request works as it is.
     expect((await callTool(page, "describe_diagram")).text).toContain("Inventory service");
   });

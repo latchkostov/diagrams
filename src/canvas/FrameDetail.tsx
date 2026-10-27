@@ -28,16 +28,35 @@ import {
 import type { Rect } from "./geometry/rect";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
+import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
+import { IdentityDetail } from "./IdentityDetail";
 
-type Chip = { id: string; name: string; x: number; y: number; group: boolean };
+type Chip = { id: string; name: string; x: number; y: number };
 type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
 const empty: Drawing = { pins: [], chips: [], hint: false };
 
 /** Screen-space detail after a settled move. It changes presentation only, never the document or viewport. */
-export const FrameDetail = memo(
-  function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
+export const FrameDetail = memo(function FrameDetail({
+  host,
+  routing,
+  decorate,
+}: {
+  host: RefObject<HTMLElement | null>;
+  routing: RouteOptions;
+  decorate: boolean;
+}) {
+  return (
+    <>
+      <IdentityDetail host={host} />
+      {decorate && <FrameDecoration host={host} routing={routing} />}
+    </>
+  );
+});
+
+const FrameDecoration = memo(
+  function FrameDecoration({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
     const locale = useLocale();
     const { style, direction, captions, hideDependencies } = useRoutingOptions(routing);
     const camera = useCameraController();
@@ -77,6 +96,7 @@ export const FrameDetail = memo(
         // Cull only for a camera-owned Focus/Follow, never merely because selecting opened a dock.
         const view = camera.state.view;
         const far = zoom < FAR_ZOOM;
+        const overview = far && view === "overview" && camera.state.mode === "live";
         const origin = root.getBoundingClientRect();
         const phone = window.innerWidth < 640;
         if (!origin.width || !origin.height) return;
@@ -114,6 +134,7 @@ export const FrameDetail = memo(
         if (selected.size || camera.state.zone) dismissed.current = true;
         root.dataset.detailView = view;
         root.toggleAttribute("data-detail-far", far);
+        root.toggleAttribute("data-detail-overview", overview);
         root.toggleAttribute("data-detail-dock", dock);
         const flagged = new Set(
           [...root.querySelectorAll<HTMLElement>('[data-testid^="check-marker-"]')].map((el) =>
@@ -138,7 +159,7 @@ export const FrameDetail = memo(
         const frameNodes = [...root.querySelectorAll<HTMLElement>(".react-flow__node[data-id]")].flatMap((el) => {
           const id = el.dataset.id!;
           const n = s.nodeLookup.get(id);
-          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb-card, .nb-compact") }];
+          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb") }];
         });
         const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
         // Reset every changed card before measuring any of them. Alternating a width
@@ -152,9 +173,14 @@ export const FrameDetail = memo(
             const key = n.data;
             if (cardWidths.get(body)?.key !== key) {
               body.style.removeProperty("width");
+              body.style.setProperty("--rf-zoom-exact", "1");
               for (const text of body.querySelectorAll<HTMLElement>(".nb-label,.nb-sub,.nb-kind")) {
                 const original = fonts.get(text);
-                if (original) text.style.fontSize = `${original}px`;
+                if (text.classList.contains("nb-label")) {
+                  text.style.removeProperty("font-size");
+                  // A data-only edit must measure the full name, not the prior frame's abbreviation.
+                  if ("label" in n.data && text.textContent !== n.data.label) text.textContent = n.data.label;
+                } else if (original) text.style.fontSize = `${original}px`;
               }
               widths.push({ body, key });
             }
@@ -162,10 +188,14 @@ export const FrameDetail = memo(
         }
         for (const { body, key } of widths) cardWidths.set(body, { key, width: body.offsetWidth });
         for (const { body, n } of frameNodes)
-          if (body && n.type === "diagram") body.style.width = `${cardWidths.get(body)!.width}px`;
+          if (body && n.type === "diagram") {
+            body.style.width = `${cardWidths.get(body)!.width}px`;
+            body.style.removeProperty("--rf-zoom-exact");
+          }
         // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
+        // Card titles are not secondary text: the `.nb-label` rule in app-shared.css alone sizes them.
         for (const el of root.querySelectorAll<HTMLElement>(
-          ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
+          ".nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
         )) {
           if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
           const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
@@ -175,7 +205,7 @@ export const FrameDetail = memo(
             edgeLabel &&
             edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
           const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
-          const title = el.classList.contains("nb-label") || el.classList.contains("grp-label");
+          const title = el.classList.contains("grp-label");
           const detail =
             el.classList.contains("lv-alert") && id && lit.has(id)
               ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
@@ -225,17 +255,9 @@ export const FrameDetail = memo(
           if (n.type === "diagram") {
             cards.set(id, el);
             if (!hidden) blockers.push(card);
-            if (far && !hidden && (selected.has(id) || lit.has(id) || zone.has(id)))
-              chips.push({
-                id,
-                name: "label" in n.data ? n.data.label : "",
-                x: card.x + card.width / 2,
-                y: card.y - 8,
-                group: false,
-              });
           }
           if (n.type === "boundary" && far)
-            chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8, group: true });
+            chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8 });
         }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
@@ -398,7 +420,13 @@ export const FrameDetail = memo(
             states.get(edge.target) ?? "out",
             active.has(edge.source) || active.has(edge.target),
           );
-          setHidden(el, cropped && !ends.draw);
+          setHidden(
+            el,
+            (cropped && !ends.draw) ||
+              (overview &&
+                camera.state.mode === "live" &&
+                !overviewConnection(near, el.hasAttribute("data-live-main"))),
+          );
           el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
           const pin = pins.find((p) => (p.id === edge.source || p.id === edge.target) && states.get(p.id) === "pinned");
           const route = routes.get(edge.id);
@@ -516,7 +544,11 @@ export const FrameDetail = memo(
             badge.toggleAttribute("data-detail-dim", !!lit.size && !active.has(id));
           }
         }
-        const next = { pins, chips, hint: far && !dismissed.current };
+        const next = {
+          pins,
+          chips,
+          hint: far && !dismissed.current,
+        };
         // Names subscribe with the editor commit; only frame geometry needs a deferred commit.
         const key = JSON.stringify({
           ...next,
@@ -527,6 +559,9 @@ export const FrameDetail = memo(
           lastDrawing = key;
           setDrawing(next);
         }
+        // Identity refits on this signal: publish it only when the zoom or a card's measured width changed,
+        // never on a translation-only pan.
+        if (widths.length || root.dataset.detailZoom !== String(zoom)) root.dataset.detailZoom = String(zoom);
       };
       const schedule = () => {
         if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
@@ -550,13 +585,30 @@ export const FrameDetail = memo(
           schedule();
       });
       const uncam = camera.subscribe(schedule);
-      const observer = new MutationObserver(schedule);
+      const observer = new MutationObserver((records) => {
+        // Rate ranking changes at the UI clock. Only flip edge ink here: traffic
+        // must never remeasure a settled frame or rebuild its labels and routes.
+        if (records.every((record) => record.attributeName === "data-live-main")) {
+          if (root.hasAttribute("data-detail-overview"))
+            for (const record of records)
+              if (record.target instanceof SVGElement)
+                setHidden(
+                  record.target,
+                  !overviewConnection(
+                    record.target.hasAttribute("data-live-near"),
+                    record.target.hasAttribute("data-live-main"),
+                  ),
+                );
+          return;
+        }
+        schedule();
+      });
       observer.observe(root, {
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-live-spotlight", "data-live-dim", "data-detail-measure"],
+        attributeFilter: ["data-live-spotlight", "data-live-dim", "data-live-main", "data-detail-measure"],
       });
-      const viewport = root.querySelector(".react-flow__viewport");
+      const viewport = root.querySelector<HTMLElement>(".react-flow__viewport");
       if (viewport) observer.observe(viewport, { subtree: true, childList: true });
       const key = (e: KeyboardEvent) => {
         if (e.key === "Escape" && camera.state.zone) camera.dispatch({ type: "view.requested", view: "overview" });
@@ -593,8 +645,7 @@ export const FrameDetail = memo(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
         ))
           text.style.removeProperty("font-size");
-        for (const body of root.querySelectorAll<HTMLElement>(".nb-card,.nb-compact"))
-          body.style.removeProperty("width");
+        for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
@@ -603,13 +654,16 @@ export const FrameDetail = memo(
           label.style.removeProperty("line-height");
         }
         delete root.dataset.detailView;
+        delete root.dataset.detailZoom;
         root.removeAttribute("data-detail-far");
+        root.removeAttribute("data-detail-overview");
         root.removeAttribute("data-detail-dock");
         root.removeAttribute("data-detail-single-selection");
       };
       const unregister = viewport
         ? registerFrameCapture(viewport, () => {
             suspended = true;
+            // suspendFrameCapture normalizes the identity scale for capture in every view.
             reset();
             return () => {
               suspended = false;
@@ -637,23 +691,17 @@ export const FrameDetail = memo(
             {t("camera.dig")}
           </div>
         )}
-        {drawing.chips.map((chip) =>
-          chip.group ? (
-            <button
-              key={chip.id}
-              className="detail-group-chip"
-              data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
-              style={{ left: chip.x, top: chip.y }}
-              onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
-            >
-              <FrameTitle id={chip.id} fallback={chip.name} />
-            </button>
-          ) : (
-            <span key={chip.id} className="detail-title-chip" style={{ left: chip.x, top: chip.y }}>
-              <FrameTitle id={chip.id} fallback={chip.name} />
-            </span>
-          ),
-        )}
+        {drawing.chips.map((chip) => (
+          <button
+            key={chip.id}
+            className="detail-group-chip"
+            data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
+            style={{ left: chip.x, top: chip.y }}
+            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
+          >
+            <FrameTitle id={chip.id} fallback={chip.name} />
+          </button>
+        ))}
         {drawing.pins.map((pin) => (
           <button
             key={pin.id}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { drawTile, textDetail, frameView } from "./detail";
+import { readFileSync } from "node:fs";
+import { textDetail, frameView } from "./detail";
+import { iconDetail, titleText } from "./identity";
 import {
   cullLabel,
   fitRectangle,
@@ -247,8 +249,60 @@ describe("Workbench frame detail", () => {
     expect(textDetail(11, 0.75, true, "focus").show).toBe(true);
     expect(textDetail(11, 0.75, false, "focus").show).toBe(false);
     expect(textDetail(11, 0.25, true, "overview").show).toBe(false);
-    expect(drawTile(40, 0.25, false)).toBe(false);
-    expect(drawTile(40, 0.25, true)).toBe(true);
+  });
+  it("always sizes titles at 9.5 screen pixels in every view from 10 to 150 percent", () => {
+    // The stylesheet is the one title-size contract for every view, including presentation and embeds.
+    const css = readFileSync(new URL("../styles/app-shared.css", import.meta.url), "utf8");
+    const rule =
+      /\.react-flow__node \.nb-label \{\s*font-size: max\(var\(--title-font, ([\d.]+)px\), calc\(([\d.]+)px \/ var\(--rf-zoom-exact, 1\)\)\);\s*\}/.exec(
+        css,
+      );
+    expect(rule).not.toBeNull();
+    const floor = Number(rule![2]);
+    const fonts = [Number(rule![1]), ...[...css.matchAll(/--title-font: ([\d.]+)px/g)].map((m) => Number(m[1]))];
+    expect(fonts.length).toBeGreaterThan(1);
+    for (let step = 1; step <= 15; step++)
+      for (const font of fonts) {
+        const zoom = step / 10;
+        const size = Math.max(font, floor / zoom);
+        expect(size * zoom).toBeGreaterThanOrEqual(9.5 - 1e-10);
+        expect(size).toBeGreaterThanOrEqual(font);
+      }
+  });
+  it("draws icons at fourteen screen pixels or fills the height of a smaller card", () => {
+    for (const height of [40, 72])
+      for (const size of [18, 26, 34])
+        for (let step = 1; step <= 15; step++) {
+          const zoom = step / 10;
+          const icon = iconDetail(size, height, zoom);
+          expect(icon * zoom).toBeGreaterThanOrEqual(Math.min(14, height * zoom) - 1e-10);
+          expect(icon).toBeLessThanOrEqual(height);
+        }
+  });
+  it("fits titles with a measured ellipsis and falls back to word initials", () => {
+    const measure = (text: string) => [...text].length * 6;
+    expect(titleText("Delivery dispatch", 42, measure)).toBe("Delive…");
+    expect(titleText("Delivery dispatch", 6, measure)).toBe("D");
+    expect(titleText("Delivery dispatch", 11, measure)).toBe("D");
+    expect(titleText("😀 Route", 12, measure)).toBe("😀…");
+    for (let width = 6; width <= 180; width++) {
+      const label = titleText("Delivery dispatch", width, measure);
+      expect([...label].length).toBeGreaterThan(0);
+      expect(measure(label)).toBeLessThanOrEqual(width);
+    }
+  });
+  it("fits a 10,000-character imported title with bounded shaping work", () => {
+    const name = "W".repeat(10_000);
+    const measured: string[] = [];
+    const label = titleText(name, 42, (text) => {
+      measured.push(text);
+      return [...text].length * 6;
+    });
+    expect(label).toBe("WWWWWW…");
+    expect(measured.length).toBeLessThanOrEqual(24);
+    expect(Math.max(...measured.map((text) => [...text].length))).toBeLessThanOrEqual(257);
+    expect(new Set(measured).size).toBe(measured.length);
+    expect(name).toHaveLength(10_000);
   });
   it("classifies every endpoint pair, including two off-frame near endpoints", () => {
     for (const a of ["in", "pinned", "out"] as const)
