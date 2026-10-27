@@ -6,11 +6,32 @@ import type { DiagramFile, SimRole } from "../model/types";
 import type { MessageTrace, TraceStep } from "../sim/types";
 import { entryNode, traceOnce } from "./headless";
 import { buildJourney, formatDuration, formatOffset } from "./journey";
+import { tracePath } from "./path";
 import { sequenceText, toMermaid } from "./mermaid";
 import { buildSequence, type SequenceArrow, type SequenceNote } from "./sequence";
 import { estimateWidth, SEQUENCE_THEMES, toSvg } from "./svg";
 
 const kafka = kafkaJson as DiagramFile;
+it("collects only reached nodes and sent edges, in first-use order, without journey construction", () => {
+  const trace: MessageTrace = {
+    ...tinyTrace,
+    origin: "api",
+    steps: [
+      step(1, "copy", { node: "copy-only", parent: 1 }),
+      step(2, "send", { node: "api", edge: "in-flight" }),
+      step(3, "arrive", { node: "worker", edge: "not-sent" }),
+      step(4, "send", { edge: "in-flight" }),
+      step(5, "arrive", { node: "api" }),
+      step(6, "park", { node: "park-only" }),
+      step(7, "send"),
+      step(8, "arrive"),
+      step(9, "send", { edge: "retry", via: "retry" }),
+      step(10, "arrive", { node: "worker" }),
+    ],
+  };
+  expect(tracePath(trace)).toEqual({ nodes: ["api", "worker"], edges: ["in-flight", "retry"] });
+  expect(tracePath({ ...trace, origin: "", steps: [] })).toEqual({ nodes: [], edges: [] });
+});
 it.each([10_000, 40_000])("bounds measurements when truncating a %i character Unicode participant label", (length) => {
   const label = "😀".repeat(length);
   const model = buildSequence(tinyTrace, tiny);

@@ -2,7 +2,8 @@ import { t, useLocale } from "../../i18n";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MessageTrace } from "../../sim/types";
-import { buildJourney, formatDuration as formatSpan } from "../../trace/journey";
+import { tracePath } from "../../trace/path";
+import { formatDuration as formatSpan } from "../../trace/format";
 import { type TraceChoice } from "../context";
 import { downstreamOfEdge, edgesWithin } from "../graph";
 import { PACING } from "../slowmo/pacing";
@@ -29,14 +30,13 @@ export function useTraceSpotlight({ session, camera }: { session: LiveSessionSta
   // A traced message lights the path it has taken so far (or the node it's awaited at).
   const tracedNow = state.trace?.current;
   const awaitedAt = state.trace?.pending?.next === "message" ? state.trace.pending.node : undefined;
-  const tracedDiagram = controller.currentDiagram;
   const tracedPath = useMemo(() => {
     if (tracedNow) {
-      const j = buildJourney(tracedNow, tracedDiagram);
+      const j = tracePath(tracedNow);
       return { nodes: new Set(j.nodes), edges: new Set(j.edges) };
     }
     return awaitedAt ? { nodes: new Set([awaitedAt]), edges: new Set<string>() } : null;
-  }, [tracedNow, awaitedAt, tracedDiagram]);
+  }, [tracedNow, awaitedAt]);
   // Slow motion owns the camera and the spotlight while it's on (see useSlowMotion).
   const slowRef = useRef<SlowMotionView | null>(null);
   const [slowPath, setSlowPath] = useState<SlowMotionView["path"]>(null);
