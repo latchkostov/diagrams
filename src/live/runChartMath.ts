@@ -1,5 +1,4 @@
 import type { TimelineMarker } from "../sim/types";
-import type { RunSample } from "./runHistory";
 import { placeMarkers, timeToFraction } from "./timelineMath";
 
 export const chartWindow = (time: number, total: number) =>
@@ -38,23 +37,4 @@ export function groupRunFlags(
     }
   }
   return groups;
-}
-/** Keep each series' extrema in each display bin, bounding SVG work without losing short spikes. */
-export function plotSamples(samples: readonly RunSample[], bins = 150): RunSample[] {
-  if (samples.length <= bins * 4) return [...samples];
-  const size = Math.ceil(samples.length / bins);
-  const kept = new Set([0, samples.length - 1]);
-  for (let start = 0; start < samples.length; start += size) {
-    for (const key of ["rate", "queue"] as const) {
-      let low = start,
-        high = start;
-      for (let i = start + 1; i < Math.min(samples.length, start + size); i++) {
-        if (samples[i][key] < samples[low][key]) low = i;
-        if (samples[i][key] > samples[high][key]) high = i;
-      }
-      kept.add(low);
-      kept.add(high);
-    }
-  }
-  return [...kept].sort((a, b) => a - b).map((i) => samples[i]);
 }

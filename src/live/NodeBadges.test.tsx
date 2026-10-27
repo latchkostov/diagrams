@@ -70,6 +70,8 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
     );
     health.observe({ ...state.snapshot, time: 1000 }, 0);
     const html = renderToStaticMarkup(<NodeBadges state={state} presenting={false} />);
+    expect(html.includes('data-processed="1"')).toBe(import.meta.env.VITE_E2E === "1");
+    expect(html.includes('data-failed="12"')).toBe(import.meta.env.VITE_E2E === "1");
     expect(html).toContain('data-testid="node-alert-caller">Lost 5</div>');
     expect(html).toMatch(/class="lv-alert is-lost"[^>]*data-testid="node-alert-caller"/);
     const healthy = {

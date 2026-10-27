@@ -6,6 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import console from "node:console";
 import zlib from "node:zlib";
+import { checkLocaleSizes, localeSizes, LOCALE_BUDGET } from "./locale-budget.mjs";
 
 /** Entry chunk gzip budget in bytes: 107,278 B measured on 2026-10-12, plus about 15%. */
 const BUDGET = 123_500;
@@ -32,6 +33,12 @@ if (gz > BUDGET) {
   process.exit(1);
 }
 console.log(`bundle-budget: ok. ${line}`);
+const locale = checkLocaleSizes(localeSizes(outDir));
+console.log(
+  locale
+    ? `bundle-budget: locales ok. Largest ${locale.file}: ${locale.gzip} B gzip; budget ${LOCALE_BUDGET} B.`
+    : "bundle-budget: no locale catalogs emitted.",
+);
 
 // The platform viewer is deliberately independent of the app entry. Count every JS/CSS/font asset once.
 // 698.1 kB measured with the full stencil icon catalog and both fonts, plus about 15%.

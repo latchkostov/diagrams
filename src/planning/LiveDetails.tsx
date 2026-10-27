@@ -221,7 +221,6 @@ export function LiveDetails({
               s={s}
               configuration={state.configuration}
               concurrency={Number(resolved?.concurrency ?? 1)}
-              peak={0}
               hovered={false}
               pinned
               properties={false}

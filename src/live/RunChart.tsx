@@ -1,9 +1,10 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t } from "../i18n";
 import type { TimelineMarker } from "../sim/types";
 import type { HoverFact } from "./hoverSummary";
 import type { RunHistory } from "./runHistory";
-import { chartWindow, groupRunFlags, niceMaximum, plotSamples } from "./runChartMath";
+import { chartWindow, groupRunFlags, niceMaximum } from "./runChartMath";
+import { chartSamples } from "./chartSamples";
 import { formatCount, formatRate, formatSeconds } from "./format";
 import { timeToFraction } from "./timelineMath";
 
@@ -37,15 +38,26 @@ export function RunChart({
   }, []);
   // A reset forgets probes; the still-open readout becomes a probe of the new run.
   useLayoutEffect(() => history.probe(node));
-  const samples = history.samples(node);
   const end = chartWindow(time, total);
-  const points = plotSamples(samples.filter((s) => s.t <= end));
-  const rateMax = niceMaximum(Math.max(0, ...samples.map((s) => s.rate)));
-  const queueMax = niceMaximum(Math.max(0, ...samples.map((s) => s.queue)));
+  const version = history.version;
+  const { samples, low, high, rateMax, queueMax, values } = useMemo(() => {
+    const samples = chartSamples(history, node, W, end);
+    const rates = samples.map((s) => s.rate);
+    const high = Math.max(0, ...rates);
+    return {
+      version,
+      samples,
+      low: rates.length ? Math.min(...rates) : 0,
+      high,
+      rateMax: niceMaximum(high),
+      queueMax: niceMaximum(Math.max(0, ...samples.map((s) => s.queue))),
+      values: rates.map(formatRate).join(", "),
+    };
+  }, [history, node, version, W, end]);
   const x = (t: number) => timeToFraction(t, end) * W;
   const y = (v: number, max: number) => FLAGS + H - (v / max) * H;
   const line = (key: "rate" | "queue", max: number) =>
-    points.map((p, i) => `${i ? "L" : "M"}${x(p.t)} ${y(p[key], max)}`).join(" ");
+    samples.map((p, i) => `${i ? "L" : "M"}${x(p.t)} ${y(p[key], max)}`).join(" ");
   const rate = vitals.find((v) => v.key === "rate")?.value ?? "—";
   const queue = vitals.find((v) => v.key === "queue")?.value ?? "—";
   const windowLabel = t("workbench.runWindow", { end: Math.ceil(end / 1000), total: Math.ceil(total / 1000) });
@@ -121,10 +133,10 @@ export function RunChart({
           />
         ))}
         <line x1={0} x2={W} y1={FLAGS + H / 2} y2={FLAGS + H / 2} className="run-grid" strokeDasharray="2 3" />
-        {points.length > 0 && (
+        {samples.length > 0 && (
           <path
             className="run-queue-area"
-            d={`${queuePath} L${x(points.at(-1)!.t)} ${FLAGS + H} L${x(points[0].t)} ${FLAGS + H} Z`}
+            d={`${queuePath} L${x(samples.at(-1)!.t)} ${FLAGS + H} L${x(samples[0].t)} ${FLAGS + H} Z`}
           />
         )}
         <path className="run-rate-line" d={line("rate", rateMax)} data-testid="hover-history-line" />
@@ -183,13 +195,13 @@ export function RunChart({
         </span>
       </div>
       <span className="sr-only" id={id} data-testid="hover-history-values">
-        {samples.map((s) => formatRate(s.rate)).join(", ")}
+        {values}
       </span>
       <span className="sr-only" data-testid="hover-history-summary">
         {t("hover.historySummary", {
           latest: rate,
-          low: formatRate(samples.length ? Math.min(...samples.map((s) => s.rate)) : 0),
-          peak: formatRate(Math.max(0, ...samples.map((s) => s.rate))),
+          low: formatRate(low),
+          peak: formatRate(high),
         })}
       </span>
     </section>

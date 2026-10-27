@@ -1,6 +1,7 @@
+import { chartSamples } from "./chartSamples";
 import { expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { chartWindow, groupRunFlags, niceMaximum, plotSamples } from "./runChartMath";
+import { chartWindow, groupRunFlags, niceMaximum } from "./runChartMath";
 import { RunChart } from "./RunChart";
 import { RunHistory } from "./runHistory";
 import type { TimelineMarker } from "../sim/types";
@@ -29,11 +30,43 @@ it("bounds plotted points while preserving brief peaks of either series", () => 
     rate: i === 233 ? 1000 : 10,
     queue: i === 2501 ? 9000 : 0,
   }));
-  const plot = plotSamples(samples);
+  const history = new RunHistory();
+  history.sample({ time: 0, inSystem: 0, nodes: {} }, 1);
+  history.probe("api");
+  for (const sample of samples.slice(1))
+    history.sample(
+      { time: sample.t, inSystem: 0, nodes: { api: { throughput: sample.rate, backlog: sample.queue } } },
+      1,
+    );
+  const plot = chartSamples(history, "api", 150, samples.at(-1)!.t);
   expect(plot.length).toBeLessThanOrEqual(602);
   expect(Math.max(...plot.map((s) => s.rate))).toBe(1000);
   expect(Math.max(...plot.map((s) => s.queue))).toBe(9000);
   expect(plot.at(-1)).toEqual(samples.at(-1));
+});
+it("keeps extrema in time-based pixel columns when observations are unevenly spaced", () => {
+  const history = new RunHistory();
+  history.sample({ time: 0, inSystem: 0, nodes: {} }, 1);
+  history.probe("api");
+  for (const [time, rate] of [
+    [200, 10],
+    [400, 1000],
+    [600, 0],
+    [800, 10],
+    [1000, 10],
+    [1200, 10],
+    [1400, 10],
+    [1600, 10],
+    [1800, 20],
+    [8000, 50],
+    [8200, 900],
+    [8400, 600],
+  ]) {
+    history.sample({ time, inSystem: 0, nodes: { api: { throughput: rate, backlog: 0 } } }, 1);
+  }
+  const plot = chartSamples(history, "api", 2, 10000);
+  expect(plot.filter((s) => s.t < 5000).map((s) => s.rate)).toEqual([10, 1000, 0]);
+  expect(plot.filter((s) => s.t >= 5000).map((s) => s.rate)).toEqual([50, 900, 600]);
 });
 it("uses the vitals' now values and the transport's playhead fraction", () => {
   const html = renderToStaticMarkup(

@@ -227,8 +227,16 @@ for (const n of uiSizes([100, 500, 1_500], [100, 500]))
     s.count("live/commits", perSecond(r.commits), { w: w.info, unit: "per second" });
     s.count("live/total", perSecond(r.total), { w: w.info, unit: "per second" });
     s.count("live/rendersPerCommit", Math.round((r.total / Math.max(1, r.commits)) * 10) / 10, { w: w.info });
-    for (const [name, count] of Object.entries(r.byName)
-      .sort((a, c) => c[1] - a[1])
-      .slice(0, 15))
-      s.count(`live/${name}`, perSecond(count), { w: w.info, unit: "per second" });
+    const names = new Set([
+      ...Object.entries(r.byName)
+        .sort((a, c) => c[1] - a[1])
+        .slice(0, 15)
+        .map(([name]) => name),
+      // Keep the optimized leaves visible even when they fall out of the hottest fifteen.
+      "IdleChip",
+      "LiveIcon",
+      "NodeBadge",
+    ]);
+    for (const name of names)
+      s.count(`live/${name}`, perSecond(r.byName[name] ?? 0), { w: w.info, unit: "per second" });
   });
