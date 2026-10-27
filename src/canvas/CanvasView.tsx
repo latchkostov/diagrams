@@ -1130,6 +1130,7 @@ function CanvasInner({
         tools.open("closed");
     };
     const detachEscape = interaction.attachEscape(() => {
+      if (document.querySelector<HTMLInputElement>('[data-testid="palette-search"]:focus')?.value) return false;
       tools.open("closed");
       const target = document.querySelector<HTMLElement>(
         toolSurface === "library" ? '[data-testid="rail-add"]' : '[data-testid="rail-annotate"]',

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, useState, type ComponentProps } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useSyncExternalStore, useState, type ComponentProps } from "react";
 import { defineLazySurface } from "../lib/lazySurface";
 import { rememberCanvas, takePendingStencils } from "../lib/canvasBridge";
 import type { Palette as PaletteComponent } from "./Palette";
@@ -8,14 +8,14 @@ import { t, useLocale } from "../i18n";
 type Props = ComponentProps<typeof PaletteComponent>;
 const Contents = defineLazySurface<Props>({
   id: "canvas.stencils",
-  load: () => import("./Palette").then((m) => m.Palette),
+  load: () => import("./Palette").then((m) => m.paletteWhenReady()),
   placeholder: { render: (props, status) => <PaletteLoading {...props} failed={status.failed} /> },
   focus: { field: "palette-search", panel: "palette" },
   export: "skip",
   retryToast: true,
 });
 
-export function Palette(props: Props) {
+export const Palette = memo(function Palette(props: Props) {
   useLocale();
   const [query, setQuery] = useState("");
   // Gallery handoff belongs to the canvas even when its stencil library has never opened.
@@ -32,11 +32,11 @@ export function Palette(props: Props) {
     return () => clearTimeout(timer);
   }, []);
   const state = useSyncExternalStore(Contents.subscribe, Contents.getSnapshot);
-  // Once downloaded, keep the instance across folding so its query, family and scroll survive.
+  // Once downloaded, keep the instance across folding so its query and family survive.
   return !props.collapsed || state.value === "loaded" ? (
     <Contents {...props} initialQuery={query} onInitialQuery={setQuery} />
   ) : null;
-}
+});
 
 function PaletteLoading(props: Props & { failed: boolean }) {
   const interaction = useInteraction();

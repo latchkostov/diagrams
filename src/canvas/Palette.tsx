@@ -28,10 +28,28 @@ import { STENCIL_DND_MIME } from "../lib/canvasBridge";
 import { Icon } from "../components/Icon";
 import { safeStorage } from "../lib/storage";
 import { formatCombo, shortcutKeys } from "../editor/shortcuts";
+import { modalLayers } from "../lib/modalLayers";
 
 import { AnnotateGroup, matchAnnotate } from "./AnnotateGroup";
 
 export { STENCIL_DND_MIME };
+
+// Keep a modal's search-field return target mounted until it has handed focus back.
+// eslint-disable-next-line react-refresh/only-export-components -- readiness belongs with the downloaded view
+export async function paletteWhenReady() {
+  while (modalLayers.top) {
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (modalLayers.top) return;
+        modalLayers.listeners.delete(check);
+        resolve();
+      };
+      modalLayers.listeners.add(check);
+      check();
+    });
+  }
+  return Palette;
+}
 
 const FAMILY_KEY = "diagrams.paletteFamily.v1";
 const SECTIONS_KEY = "diagrams.paletteSections.v1";
