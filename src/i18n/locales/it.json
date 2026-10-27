@@ -1,4 +1,13 @@
 {
+  "rail.select": "Seleziona",
+  "rail.add": "Aggiungi",
+  "rail.annotate": "Annotare",
+  "rail.checks": "Controlli",
+  "rail.stencils": "Stencil",
+  "rail.tutorials": "Tutorial",
+  "rail.shortcuts": "Scorciatoie",
+  "rail.ai": "IA",
+  "rail.diagram": "Schema",
   "workbench.thisRun": "Questa esecuzione",
   "workbench.wholeRun": "Intera esecuzione",
   "workbench.runWindow": "0–{end, number} s di {total, number} s",

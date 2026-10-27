@@ -1,4 +1,13 @@
 {
+  "rail.select": "선택",
+  "rail.add": "추가",
+  "rail.annotate": "주석 추가",
+  "rail.checks": "검사",
+  "rail.stencils": "스텐실",
+  "rail.tutorials": "튜토리얼",
+  "rail.shortcuts": "단축키",
+  "rail.ai": "AI",
+  "rail.diagram": "다이어그램",
   "workbench.thisRun": "이번 실행",
   "workbench.wholeRun": "전체 실행",
   "workbench.runWindow": "전체 {total, number}초 중 0–{end, number}초",

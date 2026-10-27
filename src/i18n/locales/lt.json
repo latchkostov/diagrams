@@ -1,4 +1,13 @@
 {
+  "rail.select": "Pasirinkti",
+  "rail.add": "Pridėti",
+  "rail.annotate": "Anotuoti",
+  "rail.checks": "Patikros",
+  "rail.stencils": "Trafaretai",
+  "rail.tutorials": "Pamokos",
+  "rail.shortcuts": "Spartieji",
+  "rail.ai": "DI",
+  "rail.diagram": "Diagrama",
   "workbench.thisRun": "Šis vykdymas",
   "workbench.wholeRun": "Visas vykdymas",
   "workbench.runWindow": "0–{end, number} s iš {total, number} s",

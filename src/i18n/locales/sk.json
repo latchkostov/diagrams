@@ -1,4 +1,13 @@
 {
+  "rail.select": "Výber",
+  "rail.add": "Pridať",
+  "rail.annotate": "Anotovať",
+  "rail.checks": "Kontroly",
+  "rail.stencils": "Vzorkovnice",
+  "rail.tutorials": "Návody",
+  "rail.shortcuts": "Skratky",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Tento beh",
   "workbench.wholeRun": "Celý beh",
   "workbench.runWindow": "0–{end, number} s z {total, number} s",

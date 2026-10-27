@@ -1,4 +1,13 @@
 {
+  "rail.select": "Selecteren",
+  "rail.add": "Toevoegen",
+  "rail.annotate": "Annoteer",
+  "rail.checks": "Controles",
+  "rail.stencils": "Stencils",
+  "rail.tutorials": "Uitleg",
+  "rail.shortcuts": "Sneltoetsen",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Deze uitvoering",
   "workbench.wholeRun": "Hele uitvoering",
   "workbench.runWindow": "0–{end, number} s van {total, number} s",
