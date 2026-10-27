@@ -65,6 +65,17 @@ export class Decorator {
 
   apply({ snapshot, health, spotlight, still }: DecorationInput): void {
     const root = this.root;
+    // One membership read before any decoration writes; never three whole-canvas selector walks.
+    const nodes: HTMLElement[] = [],
+      boundaries: HTMLElement[] = [],
+      edges: HTMLElement[] = [];
+    for (const el of root.querySelectorAll<HTMLElement>(
+      ".react-flow__node-diagram[data-id], .grp[data-caption-root], .react-flow__edge[data-id]",
+    )) {
+      if (el.hasAttribute("data-caption-root")) boundaries.push(el);
+      else if (el.classList.contains("react-flow__node-diagram")) nodes.push(el);
+      else edges.push(el);
+    }
     const stats = this.stats;
     stats.applies++;
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
@@ -95,7 +106,7 @@ export class Decorator {
     const seen = new Set<Element>();
     let elements = 0;
 
-    for (const el of root.querySelectorAll<HTMLElement>(".react-flow__node-diagram[data-id]")) {
+    for (const el of nodes) {
       const id = el.dataset.id!;
       const n = snapshot.nodes[id];
       if (!n) continue;
@@ -117,12 +128,12 @@ export class Decorator {
 
     const downBoundaries = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "boundary" ? [f.boundary] : [])));
     const cutLinks = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
-    for (const el of root.querySelectorAll<HTMLElement>(".grp[data-caption-root]")) {
+    for (const el of boundaries) {
       const down = downBoundaries.has(el.dataset.captionRoot!);
       setAttr(el, "data-live-status", down ? "down" : null);
     }
 
-    for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
+    for (const el of edges) {
       const id = el.getAttribute("data-id")!;
       const e = snapshot.edges[id];
       elements++;

@@ -92,6 +92,7 @@ describe("static platform viewer", () => {
     expect(icons.every((name) => /^assets\/[\w.-]+-[\w-]+\.svg$/.test(name))).toBe(true);
     expect.soft(js.includes("data:image/svg+xml,")).toBe(false);
     expect(js).not.toMatch(/new Worker\(|indexedDB\.open|particleWorker/);
+    expect(js).not.toMatch(/sentGeometryRevision|transferControlToOffscreen|particle worker couldn't/);
     // Fail closed if future imports pull the editor or a worker into this build (viewerSwaps checks modules).
     expect([...files.keys()].filter((f) => /worker.*\.js$/i.test(f))).toEqual([]);
   }, 120_000);

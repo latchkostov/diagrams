@@ -400,15 +400,18 @@ const FrameDecoration = memo(
         // Test enlarged ink against labels that have not been placed yet too.
         // In Overview/Custom a rejected neighbour keeps its original position.
         const originalLabels = new Map<string, Rect>();
-        for (const [id, label] of edgeLabels) {
+        for (const label of edgeLabels.values()) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
           label.style.removeProperty("width");
           label.style.removeProperty("height");
           label.style.removeProperty("line-height");
           // Keep the dependency text's counter-scaled font from textDetail above.
-          originalLabels.set(id, box(label, origin));
+          if (far) setHidden(label, true);
         }
+        // Reset all labels before reading any geometry. Overview hides them entirely: neither
+        // their boxes nor per-edge copies of all label homes are needed when a panel closes.
+        if (!far) for (const [id, label] of edgeLabels) originalLabels.set(id, box(label, origin));
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {
           const edge = edges.get(el.dataset.id ?? "");
           if (!edge) continue;
@@ -445,7 +448,7 @@ const FrameDecoration = memo(
           }
 
           const label = edgeLabels.get(edge.id);
-          if (!label) continue;
+          if (!label || far) continue;
           label.style.removeProperty("translate");
           const text =
             label.querySelector<HTMLElement>(".fe-label-text") ??
@@ -487,10 +490,18 @@ const FrameDecoration = memo(
           }
           const b = box(label, origin);
           const path = lanes.get(edge.id);
-          const homes = [...originalLabels].filter(([id]) => id !== edge.id).map(([, home]) => home);
           const placed =
             floorPlacement ??
-            (cropped && ends.pill && path?.length ? placeFrameLabel(b, path, inner, blockers, undefined, homes) : b);
+            (cropped && ends.pill && path?.length
+              ? placeFrameLabel(
+                  b,
+                  path,
+                  inner,
+                  blockers,
+                  undefined,
+                  [...originalLabels].filter(([id]) => id !== edge.id).map(([, home]) => home),
+                )
+              : b);
           const hidden =
             far ||
             (cropped &&
@@ -586,11 +597,23 @@ const FrameDecoration = memo(
       });
       const uncam = camera.subscribe(schedule);
       const observer = new MutationObserver((records) => {
+        // Overview already hides node readouts in CSS. Their changing numbers do not change
+        // frame geometry; remeasuring every card for every publish makes Live scale with layout.
+        const relevant = records.filter(
+          (record) =>
+            !(
+              record.type === "childList" &&
+              root.hasAttribute("data-detail-far") &&
+              record.target instanceof Element &&
+              record.target.closest('[data-testid^="node-badge-"]')
+            ),
+        );
+        if (!relevant.length) return;
         // Rate ranking changes at the UI clock. Only flip edge ink here: traffic
         // must never remeasure a settled frame or rebuild its labels and routes.
-        if (records.every((record) => record.attributeName === "data-live-main")) {
+        if (relevant.every((record) => record.attributeName === "data-live-main")) {
           if (root.hasAttribute("data-detail-overview"))
-            for (const record of records)
+            for (const record of relevant)
               if (record.target instanceof SVGElement)
                 setHidden(
                   record.target,

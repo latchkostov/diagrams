@@ -11,6 +11,7 @@ interface FakePath {
 }
 
 function fakeDom(edges: Map<string, FakePath>) {
+  const groups = new Map<string, ReturnType<typeof g>>();
   const g = (id: string, p: FakePath) => ({
     dataset: { id },
     hasAttribute: () => false,
@@ -25,7 +26,12 @@ function fakeDom(edges: Map<string, FakePath>) {
   const root = {
     hasAttribute: () => false,
     querySelectorAll: (selector: string) =>
-      selector === ".react-flow__edge[data-id]" ? [...edges].map(([id, p]) => g(id, p)) : [],
+      selector === ".react-flow__edge[data-id]"
+        ? [...edges].map(([id, p]) => {
+            if (!groups.has(id)) groups.set(id, g(id, p));
+            return groups.get(id)!;
+          })
+        : [],
     querySelector: () => null,
   } as unknown as HTMLElement;
   const store: FlowStoreLike = {
@@ -51,7 +57,7 @@ it.each(["measurement", "detail styling"])("invalidates cached trace obstacles a
   );
   let height = 72;
   let nodes = [{}];
-  const card = { getBoundingClientRect: () => ({ left: 20, top: 30, width: 220, height }) };
+  const card = { matches: () => true, getBoundingClientRect: () => ({ left: 20, top: 30, width: 220, height }) };
   const root = {
     hasAttribute: () => false,
     getBoundingClientRect: () => ({ left: 0, top: 0 }),

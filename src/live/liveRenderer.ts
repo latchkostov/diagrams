@@ -74,7 +74,7 @@ export interface LiveRenderer {
   frame(input: FrameInput): void;
   /** The message under a pane point (CSS px), from the last drawn frame. */
   hitTest(x: number, y: number, radius?: number): number | undefined;
-  /** The UI clock, right after the decorator ran: re-read the marching edges, node boxes and paths. */
+  /** The UI clock, right after the decorator ran: flush pending scene invalidations. */
   tick(): void;
   /** Particles in the last drawn frame. */
   readonly drawn: number;
@@ -326,8 +326,7 @@ class MainThreadRenderer implements LiveRenderer {
     }
   }
   tick(): void {
-    this.scene.refresh(true);
-    this.scene.readMarch();
+    this.scene.refresh();
     keepLast(this.marchCanvas, this.setup.root);
   }
   hitTest(x: number, y: number, radius?: number): number | undefined {
@@ -586,8 +585,7 @@ class WorkerRenderer implements LiveRenderer {
   }
 
   tick(): void {
-    this.scene.refresh(true);
-    this.scene.readMarch();
+    this.scene.refresh();
     keepLast(this.host?.march ?? null, this.setup.root);
     this.readGlow();
   }
