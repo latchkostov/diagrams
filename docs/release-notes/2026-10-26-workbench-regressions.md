@@ -57,4 +57,4 @@ All files in the following table are under `tests/parity/goldens/browser/layout/
 
 ## Card and trace geometry
 
-Selecting a card with a short subtitle keeps its size; longer subtitles still grow to two lines. Trace labels use refreshed card obstacles and wait for a repaint when their previously drawn geometry becomes stale, keeping labels clear as active cards expand.
+Selecting a card with a short subtitle keeps its size; longer subtitles still grow to two lines. Trace labels use refreshed card obstacles and wait for a repaint when their previously drawn geometry becomes stale, keeping labels clear as active cards expand. Card growth also avoids duplicate work during selection and editing.

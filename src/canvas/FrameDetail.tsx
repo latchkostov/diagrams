@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { useStore, useStoreApi, useUpdateNodeInternals } from "@xyflow/react";
+import { useStore, useStoreApi } from "@xyflow/react";
 import type { RefObject } from "react";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { useCameraController } from "./camera/useCameraCore";
@@ -30,7 +30,6 @@ const empty: Drawing = { pins: [], chips: [], hint: false };
 export const FrameDetail = memo(
   function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
     const locale = useLocale();
-    const updateNodeInternals = useUpdateNodeInternals();
     const { style, direction, captions, hideDependencies } = routing;
     const camera = useCameraController();
     const store = useStoreApi<FlowNode, DiagramFlowEdge>();
@@ -108,7 +107,6 @@ export const FrameDetail = memo(
             el.dataset.testid!.slice("check-marker-".length),
           ),
         );
-        const remeasure = new Set<string>();
         const cards = new Map<string, HTMLElement>();
         const states = new Map<string, FrameEnd>();
         const blockers: Rect[] = [];
@@ -136,7 +134,6 @@ export const FrameDetail = memo(
           const expanded = selected.has(id) || lit.has(id) || flagged.has(id);
           if (n.type === "diagram" && el.hasAttribute("data-detail-expanded") !== expanded) {
             el.toggleAttribute("data-detail-expanded", expanded);
-            remeasure.add(id);
           }
           if (body && n.type === "diagram") {
             const key = n.data;
@@ -196,7 +193,6 @@ export const FrameDetail = memo(
           }
           if (el.hasAttribute("data-detail-wrapped") !== wrapped) {
             el.toggleAttribute("data-detail-wrapped", wrapped);
-            remeasure.add(id);
           }
         }
         const cardBoxes = new Map(frameNodes.map(({ id, el }) => [id, box(el, origin)]));
@@ -228,13 +224,8 @@ export const FrameDetail = memo(
           if (n.type === "boundary" && far)
             chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8, group: true });
         }
-        const resized = frameNodes
-          .filter(
-            ({ id, n, el }) =>
-              remeasure.has(id) && (el.offsetWidth !== n.measured.width || el.offsetHeight !== n.measured.height),
-          )
-          .map(({ id }) => id);
-        if (resized.length) updateNodeInternals(resized);
+        // React Flow's ResizeObserver measures the resized wrappers once. An explicit
+        // updateNodeInternals here schedules a second forced measurement of the same cards.
         const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
         const screen = (p: { x: number; y: number }) => ({ x: p.x * zoom + tx, y: p.y * zoom + ty });
         const candidates: Omit<FramePin, "box">[] = [];
@@ -477,7 +468,7 @@ export const FrameDetail = memo(
         root.removeAttribute("data-detail-dock");
         root.removeAttribute("data-detail-single-selection");
       };
-    }, [camera, host, store, style, direction, captions, hideDependencies, locale, updateNodeInternals]);
+    }, [camera, host, store, style, direction, captions, hideDependencies, locale]);
     return (
       <div className="frame-detail" data-testid="frame-detail" data-export="skip">
         {drawing.hint && (

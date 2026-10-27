@@ -96,3 +96,9 @@ The minimal fix also passes the original no-overlap browser case with the existi
 ## Overlay bundle size
 
 The complete benchmark recheck on `b6bce9769` passed both originally failing render-count cases, the Live gate and all four memory cases. It passed 94 of 95 numeric gates: Live's gzip bundle was 135,011 bytes against its unchanged 135,000-byte cap. Removing duplicate pending flags recovered eight bytes; using the canvas's native `hidden` state and keeping the worker-only revision in the worker renderer recovered the rest. The final targeted bundle check passes all four gates, with 24 bytes of Live headroom and the original 19 startup chunks in the enabled configuration. All 42 related unit cases still pass, and the original browser no-overlap case passes with native `hidden`. The existing P05 bundle-trim follow-up remains applicable; no cap, timeout or baseline changed.
+
+## Resize measurement ownership
+
+All 95 benchmark gates passed on `4bb1a73ac`. Its first loaded repeat completed 679 cases with 677 passed, one failed, zero flaky and the existing skip. Every earlier failing case passed; selection rendered 16 node wrappers against the unchanged fewer-than-16 guard. React Flow already measures wrapper size changes in its ResizeObserver. Frame Detail also read those wrappers and scheduled a forced update, duplicating that work. The frame now leaves size measurement to the observer.
+
+All ten development performance cases and all 55 production fit, trace, typography and frame cases pass. A new operation-count regression confirms positive observer measurements during subtitle growth and zero forced wrapper-height reads. Temporarily restoring the old frame produces one forbidden forced read and fails the regression; the fixed source was restored afterward. Card growth and its existing remeasurement assertions remain intact. No render budget or assertion was loosened.

@@ -1,4 +1,67 @@
-import { test, expect, gotoLive, pauseClock, waitForCameraIdle, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  pauseClock,
+  waitForCameraIdle,
+  waitForStableBox,
+  waitForStableViewport,
+} from "./fixtures";
+
+test("subtitle growth is measured by the resize observer without a second forced measurement", async ({ page }) => {
+  await page.addInitScript(() => {
+    const counts = { observed: 0, forced: 0 };
+    (window as unknown as { cardMeasurements: typeof counts }).cardMeasurements = counts;
+    let observing = false;
+    const Observer = window.ResizeObserver;
+    window.ResizeObserver = class extends Observer {
+      constructor(callback: ResizeObserverCallback) {
+        super((entries, observer) => {
+          const previous = observing;
+          observing = true;
+          try {
+            callback(entries, observer);
+          } finally {
+            observing = previous;
+          }
+        });
+      }
+    };
+    const height = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    if (!height?.get) throw new Error("HTMLElement.offsetHeight must expose its getter");
+    const readHeight = height.get;
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      ...height,
+      get(this: HTMLElement) {
+        if (this.dataset.testid === "rf__node-payments") counts[observing ? "observed" : "forced"]++;
+        return readHeight.call(this);
+      },
+    });
+  });
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("node-payments").click();
+  const subtitle = page.getByTestId("inspector-field-sublabel");
+  await subtitle.fill("Worker");
+  await subtitle.press("Tab");
+  await waitForCameraIdle(page);
+  const node = page.getByTestId("rf__node-payments");
+  await waitForStableBox(node);
+  await page.evaluate(() => {
+    const counts = (window as unknown as { cardMeasurements: { observed: number; forced: number } }).cardMeasurements;
+    counts.observed = counts.forced = 0;
+  });
+  await subtitle.fill("Twelve workers handle every request with a bounded queue and a shared connection pool");
+  await subtitle.press("Tab");
+  await expect(node).toHaveAttribute("data-detail-wrapped", "");
+  const counts = () =>
+    page.evaluate(
+      () => (window as unknown as { cardMeasurements: { observed: number; forced: number } }).cardMeasurements,
+    );
+  await expect.poll(async () => (await counts()).observed).toBeGreaterThan(0);
+  await waitForStableBox(node);
+  expect((await counts()).forced).toBe(0);
+});
 
 test("card width measurement avoids repeated layout invalidations within one frame", async ({ page }) => {
   await page.addInitScript(() => {
