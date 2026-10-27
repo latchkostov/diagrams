@@ -121,7 +121,9 @@ function canvasChunks() {
       const canvas = ids.find((id) => /[/\\]src[/\\]canvas[/\\]CanvasView\.tsx$/.test(id));
       if (!canvas) return;
       const initial = reach(ids.filter((id) => info(id)?.isEntry));
-      for (const id of initial) if (/[/\\]src[/\\]/.test(id)) eager.add(id);
+      // Group scripts only: moving our CSS ahead of the entry's React Flow stylesheet reverses
+      // equal-specificity overrides (node move and editing-pane default cursors, among others).
+      for (const id of initial) if (/[/\\]src[/\\].*\.tsx?$/.test(id)) eager.add(id);
       const own = [...reach([canvas])].filter((id) => !initial.has(id));
       // Code that only ever loads with the canvas: its own modules, what they alone import dynamically (the
       // live session, its dialogs, ...), and the Lab (a development tool made of canvases).

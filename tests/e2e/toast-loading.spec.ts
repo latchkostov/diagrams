@@ -1,9 +1,39 @@
-import { test, expect, gotoCanvas, shareVia, expectNoErrors, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, shareVia, expectNoErrors, waitForStableBox, pinLibrary } from "./fixtures";
 import { SLUG, callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
 
 const TOASTER = chunk("Toaster", "src/interop/ui/Toaster.tsx");
 const IMAGE = chunk("image", "src/interop/image.ts");
+
+test("node, palette and pane cursors survive a held toast download", async ({ page }) => {
+  const held = await holdChunk(page, TOASTER);
+  try {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+    });
+    await gotoCanvas(page, SLUG);
+    await pinLibrary(page);
+    const cursors = async () => {
+      await expect(page.getByTestId("node-shopper")).toHaveCSS("cursor", "move");
+      await expect(page.getByTestId("palette-item-kafka.topic")).toHaveCSS("cursor", "grab");
+      await expect(page.getByTestId("palette-section-messaging")).toHaveCSS("cursor", "pointer");
+      await expect(page.getByTestId("palette-search")).toHaveCSS("cursor", "text");
+      await expect(page.getByTestId("canvas-pane")).toHaveCSS("cursor", "default");
+    };
+    await cursors();
+    const downloaded = page.waitForEvent("download");
+    await page.keyboard.press("ControlOrMeta+s");
+    expect((await downloaded).suggestedFilename()).toBe(`${SLUG}.diagram.json`);
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("toast")).toHaveCount(0);
+    await cursors();
+    await releaseAndEvaluate(page, TOASTER, held.release);
+    await expect(page.getByTestId("toast")).toBeVisible();
+    await cursors();
+  } finally {
+    held.release();
+  }
+});
 
 test("a held toast download preserves Undo, canvas input, focus and file export", async ({ page, consoleErrors }) => {
   const held = await holdChunk(page, TOASTER);
