@@ -1000,98 +1000,99 @@ for (const abortAfter of [1, 2]) {
   });
 }
 
-test("a peer edit between image export slices aborts with a retry toast and preserves scoped Undo", async ({
-  browser,
-  context,
-  page,
-  baseURL,
-  consoleErrors,
-}) => {
-  const other = await browser.newContext({ baseURL });
-  const b = await other.newPage();
-  const errors: string[] = [];
-  b.on("pageerror", (e) => errors.push(e.message));
-  const initial = demoDiagram();
-  initial.nodes.push(
-    ...Array.from({ length: 45 }, (_, i) => ({
-      id: `service-${i}`,
-      stencil: "service.go",
-      label: `Service ${i}`,
-      x: (i % 5) * 260,
-      y: 250 + Math.floor(i / 5) * 120,
-    })),
-  );
-  await relay([context, other], 163, initial);
-  await context.addInitScript(() => {
-    if (window.__collabC1) window.__collabC1.imageExport = true;
-  });
-  let downloads = 0;
-  page.on("download", () => downloads++);
-  try {
-    await Promise.all([open(page), open(b, true)]);
-    await name(page, "api", "My local API");
-    await expect(b.getByTestId("node-api")).toContainText("My local API");
-    // SVG paint preparation can yield at 0%, before cloning. Hold a continuation only after
-    // the app reports clone progress, rather than assuming the first macrotask is a clone slice.
-    await page.evaluate(() => {
-      const NativeChannel = window.MessageChannel;
-      const w = window as unknown as { __exportSliceHeld: boolean; __resumeExportSlice: () => void };
-      w.__exportSliceHeld = false;
-      window.MessageChannel = class extends NativeChannel {
-        constructor() {
-          super();
-          const post = this.port2.postMessage.bind(this.port2);
-          this.port2.postMessage = (message: unknown) => {
-            // Let React commit the progress published before this yield, even on a slow machine.
-            requestAnimationFrame(() => {
-              const progress = Number(
-                document.querySelector('[data-testid="toast-progress"]')?.getAttribute("aria-valuenow"),
-              );
-              if (!(progress > 0 && progress < 70)) {
-                post(message);
-                return;
-              }
-              window.MessageChannel = NativeChannel;
-              w.__exportSliceHeld = true;
-              w.__resumeExportSlice = () => post(message);
-            });
-          };
-        }
-      };
+for (const phase of ["clone", "raster"] as const)
+  test(`a peer edit between image export ${phase} slices aborts with a retry toast and preserves scoped Undo`, async ({
+    browser,
+    context,
+    page,
+    baseURL,
+    consoleErrors,
+  }) => {
+    const other = await browser.newContext({ baseURL });
+    const b = await other.newPage();
+    const errors: string[] = [];
+    b.on("pageerror", (e) => errors.push(e.message));
+    const initial = demoDiagram();
+    initial.nodes.push(
+      ...Array.from({ length: 45 }, (_, i) => ({
+        id: `service-${i}`,
+        stencil: "service.go",
+        label: `Service ${i}`,
+        x: (i % 5) * 260,
+        y: 250 + Math.floor(i / 5) * 120,
+      })),
+    );
+    await relay([context, other], 163, initial);
+    await context.addInitScript(() => {
+      if (window.__collabC1) window.__collabC1.imageExport = true;
     });
-    await page.getByTestId("collab-export-png").click();
-    await page.waitForFunction(() => (window as unknown as { __exportSliceHeld: boolean }).__exportSliceHeld);
-    const progress = Number(await page.getByTestId("toast-progress").getAttribute("aria-valuenow"));
-    expect(progress).toBeGreaterThan(0);
-    expect(progress).toBeLessThan(70);
-    await b.getByTestId("fit-view-button").click();
-    await waitForStableViewport(b);
-    await name(b, "db", "Database by peer during export");
-    await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "data-label",
-      "Database by peer during export",
-    );
-    await page.evaluate(() => (window as unknown as { __resumeExportSlice: () => void }).__resumeExportSlice());
-    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
-    await expect(page.getByTestId("toast")).toContainText("Couldn't export the PNG. Try again");
-    expect(downloads).toBe(0);
-    await expect(page.getByTestId("export-header")).toHaveCount(0);
-    await page.getByTestId("undo-button").click();
-    await expect(b.getByTestId("node-api")).toContainText("API");
-    await expect(b.getByTestId("node-api")).not.toContainText("My local");
-    await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "data-label",
-      "Database by peer during export",
-    );
-    await page.getByTestId("redo-button").click();
-    await expect(b.getByTestId("node-api")).toContainText("My local API");
-    await expect(b.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "data-label",
-      "Database by peer during export",
-    );
-    expectNoErrors(consoleErrors);
-    expectNoErrors(errors);
-  } finally {
-    await other.close();
-  }
-});
+    let downloads = 0;
+    page.on("download", () => downloads++);
+    try {
+      await Promise.all([open(page), open(b, true)]);
+      await name(page, "api", "My local API");
+      await expect(b.getByTestId("node-api")).toContainText("My local API");
+      // Hold the requested phase after React publishes progress. The raster case exercises a
+      // peer edit between strip draws, beyond the earlier clone-version checks.
+      await page.evaluate((phase) => {
+        const NativeChannel = window.MessageChannel;
+        const w = window as unknown as { __exportSliceHeld: boolean; __resumeExportSlice: () => void };
+        w.__exportSliceHeld = false;
+        window.MessageChannel = class extends NativeChannel {
+          constructor() {
+            super();
+            const post = this.port2.postMessage.bind(this.port2);
+            this.port2.postMessage = (message: unknown) => {
+              // Let React commit the progress published before this yield, even on a slow machine.
+              requestAnimationFrame(() => {
+                const progress = Number(
+                  document.querySelector('[data-testid="toast-progress"]')?.getAttribute("aria-valuenow"),
+                );
+                if (!(phase === "clone" ? progress > 0 && progress < 70 : progress > 90 && progress < 98)) {
+                  post(message);
+                  return;
+                }
+                window.MessageChannel = NativeChannel;
+                w.__exportSliceHeld = true;
+                w.__resumeExportSlice = () => post(message);
+              });
+            };
+          }
+        };
+      }, phase);
+      await page.getByTestId("collab-export-png").click();
+      await page.waitForFunction(() => (window as unknown as { __exportSliceHeld: boolean }).__exportSliceHeld);
+      const progress = Number(await page.getByTestId("toast-progress").getAttribute("aria-valuenow"));
+      expect(progress).toBeGreaterThan(phase === "clone" ? 0 : 90);
+      expect(progress).toBeLessThan(phase === "clone" ? 70 : 98);
+      await b.getByTestId("fit-view-button").click();
+      await waitForStableViewport(b);
+      await name(b, "db", "Database by peer during export");
+      await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
+        "data-label",
+        "Database by peer during export",
+      );
+      await page.evaluate(() => (window as unknown as { __resumeExportSlice: () => void }).__resumeExportSlice());
+      await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+      await expect(page.getByTestId("toast")).toContainText("Couldn't export the PNG. Try again");
+      expect(downloads).toBe(0);
+      await expect(page.getByTestId("export-header")).toHaveCount(0);
+      await page.getByTestId("undo-button").click();
+      await expect(b.getByTestId("node-api")).toContainText("API");
+      await expect(b.getByTestId("node-api")).not.toContainText("My local");
+      await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
+        "data-label",
+        "Database by peer during export",
+      );
+      await page.getByTestId("redo-button").click();
+      await expect(b.getByTestId("node-api")).toContainText("My local API");
+      await expect(b.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
+        "data-label",
+        "Database by peer during export",
+      );
+      expectNoErrors(consoleErrors);
+      expectNoErrors(errors);
+    } finally {
+      await other.close();
+    }
+  });

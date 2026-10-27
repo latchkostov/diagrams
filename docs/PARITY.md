@@ -632,8 +632,13 @@ per checkout, and the pnpm store live in Docker volumes, not in the checkout). I
 production bundle (`vite build`, no test hooks) and serves it with `vite preview` on port 6200.
 
 In that image, two runs give identical numbers and pixel-identical images, so the canvas and SVG goldens compare
-exactly. The PNG comparison keeps a tolerance: both images are downscaled by 4 and at most 0.1% of the pixels may
-differ by more than 16 of 255 in a channel. It absorbs rasteriser differences between host CPUs (the same image on
+exactly. Image-export PNGs keep the existing 4× downscaled references and allow at most
+`min(floor(width × height × 0.001), 600)` pixels to differ by more than 16 of 255 in any RGBA channel.
+The image-slices E2E comparison uses the same cap at full resolution. Dimensions must match exactly.
+This PNG-only allowance covers anti-aliased seams from clipped raster strips; moved-card and missing-label
+mutation controls must fail at both resolutions. No PNG goldens were re-recorded for slicing.
+SVG bytes and structure, HTML text and payload, and the existing HTML viewer screenshot comparison stay unchanged.
+The existing raster tolerance also absorbs rasteriser differences between host CPUs (the same image on
 another machine); Windows against Linux differed by 1.2 to 1.5%, and a 1 px change to the card's gap gave 0.37%. A
 single thin line can hide under it, which is what the SVG structure is for.
 

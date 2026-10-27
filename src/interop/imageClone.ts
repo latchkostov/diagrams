@@ -25,7 +25,7 @@ SOFTWARE.
 // html-to-image's toSvg and toPng (1.11.13, MIT, https://github.com/bubkoo/html-to-image), with the canvas cloned in
 // time slices: the library clones the whole element tree in one chain of promises that never lets the page paint or
 // take input (a 1,500-node diagram froze the tab for tens of seconds). This port makes the same calls in the same
-// order, on the same nodes, so the same image comes out; between nodes it hands the thread back once a slice has run
+// order, on the same nodes, so SVG stays byte-identical; between nodes it hands the thread back once a slice has run
 // its time, reports how far it has got and stops if the export was cancelled. The image embedding and the
 // serialising are sliced too; the library's other helpers (pseudo-elements, fonts, sizes) are used as they are.
 //
@@ -659,10 +659,57 @@ async function prepare(node: HTMLElement, options: Options, slicer: Slicer): Pro
   return clonedNode;
 }
 
-/** The library's toPng, sliced up to the drawing (decoding and drawing the picture is one task of the browser's). */
+/**
+ * The PNG decoder need not parse the same complete declaration block thousands of times. Share
+ * repeated blocks through rules in its private SVG; the downloadable SVG keeps its original bytes.
+ * Every declaration remains explicit, so inheritance and browser defaults are unchanged.
+ */
+async function shareRasterStyles(root: HTMLElement, slicer: Slicer) {
+  const styles = new Map<string, { name: string; values: string[] }>();
+  const blocks = new Map<string, { name: string; differences: string }>();
+  const rules: string[] = [];
+  for (const element of [root, ...root.getElementsByTagName("*")]) {
+    const css = element.getAttribute("style");
+    if (css) {
+      let block = blocks.get(css);
+      if (!block) {
+        const style = (element as HTMLElement).style;
+        const names = Array.from(style);
+        const key = JSON.stringify([element.namespaceURI, element.localName, names]);
+        const values = names.map((name) => {
+          const priority = style.getPropertyPriority(name);
+          return style.getPropertyValue(name) + (priority ? ` !${priority}` : "");
+        });
+        let entry = styles.get(key);
+        if (!entry) {
+          entry = { name: `ld-raster-${styles.size}`, values };
+          styles.set(key, entry);
+          rules.push(`.${entry.name}{${style.cssText}}`);
+        }
+        const differences: string[] = [];
+        for (let i = 0; i < names.length; i++) {
+          const value = values[i];
+          if (value !== entry.values[i]) differences.push(`${names[i]}:${value};`);
+        }
+        block = { name: entry.name, differences: differences.join("") };
+        blocks.set(css, block);
+      }
+      element.setAttribute("class", `${element.getAttribute("class") ?? ""} ${block.name}`);
+      element.setAttribute("style", block.differences);
+    }
+    await slicer.breathe();
+  }
+  const style = document.createElement("style");
+  style.textContent = rules.join("\n");
+  root.prepend(style);
+}
+
+/** PNG-only style sharing, clipped raster strips and asynchronous encoding keep yielding through the final phases. */
 export async function toPng(node: HTMLElement, options: Options, slicer: Slicer): Promise<string> {
   const { width, height } = getImageSize(node, options);
-  const svg = await toSvg(node, options, slicer);
+  const clone = await prepare(node, options, slicer);
+  await shareRasterStyles(clone, slicer);
+  const svg = await nodeToDataURL(clone, width, height, slicer);
   await slicer.pause();
   slicer.progress(0.9);
   const img = await slicer.wait(createImage(svg, slicer));
@@ -681,8 +728,41 @@ export async function toPng(node: HTMLElement, options: Options, slicer: Slicer)
     context.fillStyle = options.backgroundColor;
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
-  context.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const png = canvas.toDataURL();
+  // Keep one full-image transform; cropping the source changes SVG foreignObject scaling.
+  // Chromium may anti-alias a few pixels differently at these destination clip boundaries.
+  const stripHeight = 128;
+  for (let y = 0; y < canvas.height; y += stripHeight) {
+    context.save();
+    context.beginPath();
+    context.rect(0, y, canvas.width, Math.min(stripHeight, canvas.height - y));
+    context.clip();
+    context.drawImage(img, 0, 0, canvas.width, canvas.height);
+    context.restore();
+    slicer.progress(0.9 + 0.08 * Math.min(1, (y + stripHeight) / canvas.height));
+    await slicer.pause();
+  }
+  const blob = await slicer.wait(
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => (result ? resolve(result) : reject(new Error("Image encode failed"))));
+    }),
+  );
+  const reader = new FileReader();
+  const abort = () => reader.abort();
+  slicer.signal.addEventListener("abort", abort, { once: true });
+  let png: string;
+  try {
+    png = await slicer.wait(
+      new Promise<string>((resolve, reject) => {
+        reader.onerror = reject;
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }),
+    );
+  } finally {
+    slicer.signal.removeEventListener("abort", abort);
+    reader.onload = null;
+    reader.onerror = null;
+  }
   slicer.stopIfAsked();
   return png;
 }
