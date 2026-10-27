@@ -1,6 +1,6 @@
 {
   "ar": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1079,
     "areas": {
       "admission": "121edeb22016",
@@ -9,7 +9,7 @@
       "broker": "f5d42b383610",
       "camera": "e95c812e9279",
       "canvas": "254825751491",
-      "chrome": "cf2cb742e865",
+      "chrome": "39310f64b7bf",
       "clear": "7052f081d17e",
       "cloud": "b72847aa935a",
       "collab": "66a83782fdb6",
@@ -77,7 +77,7 @@
       "view": "c4fc417ad54a",
       "viewerForge": "4d3bcbf516ea",
       "waitChecks": "60157056f935",
-      "workbench": "3b7afb513f18",
+      "workbench": "67ef6687c346",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -85,7 +85,7 @@
     }
   },
   "bg": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1231,
     "areas": {
       "admission": "def06fe38e15",
@@ -94,7 +94,7 @@
       "broker": "c2285b4b209f",
       "camera": "43de9c45d1a1",
       "canvas": "2e2ddf5140f6",
-      "chrome": "aa009dce9cd1",
+      "chrome": "97fe55e4c0c5",
       "clear": "4aceb49f616a",
       "cloud": "90ffa94ecac4",
       "collab": "79885eaacd56",
@@ -162,7 +162,7 @@
       "view": "584e25e11a7c",
       "viewerForge": "64bee278d220",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "937cf7a5d808",
+      "workbench": "c90fda2fed0f",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -170,7 +170,7 @@
     }
   },
   "cs": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1236,
     "areas": {
       "admission": "066588ffecd0",
@@ -179,7 +179,7 @@
       "broker": "acab48ce0be7",
       "camera": "402a9595acc4",
       "canvas": "4e14fd49b2df",
-      "chrome": "c2087fae0745",
+      "chrome": "6397a2958214",
       "clear": "afc0d46e8d96",
       "cloud": "400a0a1bc313",
       "collab": "e3ab2b4d1802",
@@ -247,7 +247,7 @@
       "view": "0ad0289db97f",
       "viewerForge": "5e26de923e3f",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "39d0dd9e763d",
+      "workbench": "204484671d15",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -255,7 +255,7 @@
     }
   },
   "da": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1213,
     "areas": {
       "admission": "8d54b2ff603b",
@@ -264,7 +264,7 @@
       "broker": "8b204714298e",
       "camera": "12e4e058cb08",
       "canvas": "35cf7853d643",
-      "chrome": "fbb2ca345d70",
+      "chrome": "08b2e9ccc7c9",
       "clear": "505424a1a99a",
       "cloud": "1d1ce85c77ec",
       "collab": "8e5e5371a280",
@@ -332,7 +332,7 @@
       "view": "81799e312a30",
       "viewerForge": "f94da429f104",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "3ecfc69d131b",
+      "workbench": "7b81c422b282",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -340,7 +340,7 @@
     }
   },
   "de": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1218,
     "areas": {
       "admission": "168ce3bd30f9",
@@ -349,7 +349,7 @@
       "broker": "74ee3d884708",
       "camera": "f0cafe4e6168",
       "canvas": "3cdfa621c3bf",
-      "chrome": "5e97daeb88e3",
+      "chrome": "460ec4b44579",
       "clear": "bced4ab6f102",
       "cloud": "c119367a1c80",
       "collab": "a5866463d562",
@@ -417,7 +417,7 @@
       "view": "9c266495cfb8",
       "viewerForge": "8848d4978e10",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "b97cc6dd3042",
+      "workbench": "7e9ecf640fa0",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -425,7 +425,7 @@
     }
   },
   "el": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1228,
     "areas": {
       "admission": "a9b1a9673fb3",
@@ -434,7 +434,7 @@
       "broker": "276c35a5cf51",
       "camera": "f90ddb1ff67c",
       "canvas": "21c0b554744f",
-      "chrome": "b06754bdb366",
+      "chrome": "aa59a507b8e5",
       "clear": "3409a67358e5",
       "cloud": "578df76008d3",
       "collab": "0750ebeb81a4",
@@ -502,7 +502,7 @@
       "view": "9768da1398c2",
       "viewerForge": "8dd98344588f",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "41f6aaa90f7f",
+      "workbench": "8dd8b058e33a",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -510,7 +510,7 @@
     }
   },
   "en-XA": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 0,
     "areas": {
       "admission": "1da83bed3b5a",
@@ -519,7 +519,7 @@
       "broker": "dd16f518c35c",
       "camera": "9616a642b96f",
       "canvas": "eaad7f668ee2",
-      "chrome": "41aca8317fa2",
+      "chrome": "4d677b253308",
       "clear": "59b65d650ed0",
       "cloud": "855529070b7d",
       "collab": "87ac39760500",
@@ -587,7 +587,7 @@
       "view": "9a1eebb66b6e",
       "viewerForge": "9f91d360961f",
       "waitChecks": "04abb63af9c0",
-      "workbench": "ecd806f55fad",
+      "workbench": "1ce3b32df6bf",
       "workspaceInspector": "cccdd5b245b6",
       "workspaceLive": "114e9c8ba30a",
       "workspaceRoom": "6fc06899d7de",
@@ -595,7 +595,7 @@
     }
   },
   "es": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1241,
     "areas": {
       "admission": "dacc268e5f2c",
@@ -604,7 +604,7 @@
       "broker": "a4567406a078",
       "camera": "88a4f0d96f9a",
       "canvas": "b14e6391fc52",
-      "chrome": "f8efba7a5358",
+      "chrome": "4194a1a9e157",
       "clear": "67f0ef80c72d",
       "cloud": "7015496d4b04",
       "collab": "e41074a3f41b",
@@ -672,7 +672,7 @@
       "view": "ca61fccea3e0",
       "viewerForge": "57601855d5cf",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "f722ea4f75bd",
+      "workbench": "18a3edb78ee5",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -680,7 +680,7 @@
     }
   },
   "et": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1235,
     "areas": {
       "admission": "0ae56a092762",
@@ -689,7 +689,7 @@
       "broker": "0c94c40fa2b5",
       "camera": "85d80169db68",
       "canvas": "417d954ff382",
-      "chrome": "97e88c9bc59e",
+      "chrome": "57efc9642f10",
       "clear": "e1fa436a6cc9",
       "cloud": "1eb248749157",
       "collab": "5fabd462bcbe",
@@ -757,7 +757,7 @@
       "view": "1ca5fe8e446d",
       "viewerForge": "b90b85595733",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "00e0fab1d3b1",
+      "workbench": "00ba1e477b3b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -765,7 +765,7 @@
     }
   },
   "fi": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1229,
     "areas": {
       "admission": "bf60c3fe037d",
@@ -774,7 +774,7 @@
       "broker": "c9a0598fa964",
       "camera": "aa0ae60afbfd",
       "canvas": "40e087ce9690",
-      "chrome": "cc18baf65157",
+      "chrome": "c28a34aa142a",
       "clear": "0307a74980c6",
       "cloud": "64c9aeac535b",
       "collab": "7793cd306f34",
@@ -842,7 +842,7 @@
       "view": "9731ec8da6eb",
       "viewerForge": "e91fe1f64b97",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "49196beb9960",
+      "workbench": "022ed1995aec",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -850,7 +850,7 @@
     }
   },
   "fr": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1229,
     "areas": {
       "admission": "bb0eadf5ab52",
@@ -859,7 +859,7 @@
       "broker": "ddd1d83d8edf",
       "camera": "834aafacd337",
       "canvas": "a6bbc82dec09",
-      "chrome": "7b84c383ee61",
+      "chrome": "82a720f2a0d0",
       "clear": "ebfa4fbb7765",
       "cloud": "c127f9334062",
       "collab": "67e7eba77d50",
@@ -927,7 +927,7 @@
       "view": "80a8faf01d71",
       "viewerForge": "a36422dc6bd7",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "45f1230753cf",
+      "workbench": "12ae25d8fc09",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -935,7 +935,7 @@
     }
   },
   "he": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1241,
     "areas": {
       "admission": "602fa127a059",
@@ -944,7 +944,7 @@
       "broker": "2c29042b4c08",
       "camera": "0cf2e7f85c3a",
       "canvas": "bab60d0efa1e",
-      "chrome": "dd5889e2ce10",
+      "chrome": "03f7c7c8af70",
       "clear": "7634e787d609",
       "cloud": "0b1b322a8e49",
       "collab": "1e087d086086",
@@ -1012,7 +1012,7 @@
       "view": "cd31b0f75835",
       "viewerForge": "8d70607e9494",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "b0f3ec639c01",
+      "workbench": "5a6ad208ab08",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1020,7 +1020,7 @@
     }
   },
   "hi": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1237,
     "areas": {
       "admission": "4ec4a9cccfbb",
@@ -1029,7 +1029,7 @@
       "broker": "48608388990e",
       "camera": "bb39cc0960ac",
       "canvas": "335963b5e4ee",
-      "chrome": "951f4a6e945b",
+      "chrome": "cce12400a5e5",
       "clear": "9d29df0462a5",
       "cloud": "003e89f05fca",
       "collab": "95a3576446eb",
@@ -1097,7 +1097,7 @@
       "view": "461573e69e61",
       "viewerForge": "8f4009516378",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "c563d237a79d",
+      "workbench": "124560a3cc5d",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1105,7 +1105,7 @@
     }
   },
   "hr": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1220,
     "areas": {
       "admission": "1b8bc555e482",
@@ -1114,7 +1114,7 @@
       "broker": "33c20c340aa9",
       "camera": "cadd5d6be220",
       "canvas": "487af354a55e",
-      "chrome": "dee6fcc011ee",
+      "chrome": "375a83d247d9",
       "clear": "46b0abc5a335",
       "cloud": "d886cf868b9f",
       "collab": "7534d531b5e5",
@@ -1182,7 +1182,7 @@
       "view": "370fba9f2e1d",
       "viewerForge": "588351633f4e",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "6eff6fa0960f",
+      "workbench": "ee660e513d6b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1190,7 +1190,7 @@
     }
   },
   "hu": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1214,
     "areas": {
       "admission": "8e346cdb7fce",
@@ -1199,7 +1199,7 @@
       "broker": "11712e341b05",
       "camera": "1ef77cf9d098",
       "canvas": "81a382db8d62",
-      "chrome": "80c374e5cc94",
+      "chrome": "dd463f21d82c",
       "clear": "9f0815298681",
       "cloud": "8c992a64fcb6",
       "collab": "e34c0c45febb",
@@ -1267,7 +1267,7 @@
       "view": "720ee6692d5f",
       "viewerForge": "f830295118d9",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "d0fa2428d1ea",
+      "workbench": "f93fa22a7ae3",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1275,7 +1275,7 @@
     }
   },
   "id": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1235,
     "areas": {
       "admission": "8f0966817eba",
@@ -1284,7 +1284,7 @@
       "broker": "b80cb9b38721",
       "camera": "32dc4b778791",
       "canvas": "2fda290dc14c",
-      "chrome": "96e7273090c4",
+      "chrome": "90066c963c1a",
       "clear": "6a490e267875",
       "cloud": "9485b3763d56",
       "collab": "3e81781ca99c",
@@ -1352,7 +1352,7 @@
       "view": "53c962267399",
       "viewerForge": "e7d37c99e2d6",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "8755d451f615",
+      "workbench": "1aa294f140d4",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1360,7 +1360,7 @@
     }
   },
   "it": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1216,
     "areas": {
       "admission": "fb4977929365",
@@ -1369,7 +1369,7 @@
       "broker": "1e1b6beffa1a",
       "camera": "73cc422a0a65",
       "canvas": "e2c9a91a0072",
-      "chrome": "3f1943faed4f",
+      "chrome": "75642d7fc5e5",
       "clear": "4d5fe344f73b",
       "cloud": "e7cc1b2a2b8d",
       "collab": "c89bd349efad",
@@ -1437,7 +1437,7 @@
       "view": "f3c5dd66e8a7",
       "viewerForge": "a70484a837bd",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "a251945d22ef",
+      "workbench": "af23b30b303c",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1445,7 +1445,7 @@
     }
   },
   "ja": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1213,
     "areas": {
       "admission": "70c62834aa0d",
@@ -1454,7 +1454,7 @@
       "broker": "c8f5a8b68f7e",
       "camera": "0f341a5f7e3c",
       "canvas": "9da9d2835a24",
-      "chrome": "092d4887ae8b",
+      "chrome": "4dcc43526d01",
       "clear": "b75cf3e662c8",
       "cloud": "e01dd1aab509",
       "collab": "babce0b2ba21",
@@ -1522,7 +1522,7 @@
       "view": "41683011b4a8",
       "viewerForge": "476667bc1597",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "106dbd52219e",
+      "workbench": "dd1e86a66bbf",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1530,7 +1530,7 @@
     }
   },
   "ko": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1190,
     "areas": {
       "admission": "fb802d28f5cc",
@@ -1539,7 +1539,7 @@
       "broker": "47886d6b6de4",
       "camera": "bc9b963d472b",
       "canvas": "14bf51cdb387",
-      "chrome": "59101cc243c0",
+      "chrome": "3561ca827f37",
       "clear": "1972f875cc48",
       "cloud": "48d32f11c18d",
       "collab": "8ec613fa71e0",
@@ -1607,7 +1607,7 @@
       "view": "a524e7670a1d",
       "viewerForge": "7cc445d8d713",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "24fd0e31a7cb",
+      "workbench": "dd2e5a89dc2e",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1615,7 +1615,7 @@
     }
   },
   "lt": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1250,
     "areas": {
       "admission": "b8be855f86e3",
@@ -1624,7 +1624,7 @@
       "broker": "a6b34ba75b3b",
       "camera": "68cbe4ab602f",
       "canvas": "55234b234890",
-      "chrome": "4b35860ca92c",
+      "chrome": "01e3d04e180e",
       "clear": "17da608d5eb5",
       "cloud": "1bc90b3fd9ad",
       "collab": "e25befa17e45",
@@ -1692,7 +1692,7 @@
       "view": "bd0f81625b77",
       "viewerForge": "22c899349986",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "60ad553328ed",
+      "workbench": "c654519184e2",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1700,7 +1700,7 @@
     }
   },
   "lv": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1246,
     "areas": {
       "admission": "cc8ad95b3519",
@@ -1709,7 +1709,7 @@
       "broker": "32c2f016e0b9",
       "camera": "0df8f61417ae",
       "canvas": "56c202d22f57",
-      "chrome": "53d6d38eb910",
+      "chrome": "065301d737c0",
       "clear": "84c32082ea93",
       "cloud": "72ff4208950e",
       "collab": "577097f78f28",
@@ -1777,7 +1777,7 @@
       "view": "26dec6cefd4d",
       "viewerForge": "d0f7be3bf9a2",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "0a4644a6b04b",
+      "workbench": "d368cab03180",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1785,7 +1785,7 @@
     }
   },
   "nb": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1225,
     "areas": {
       "admission": "69c76ff37ebc",
@@ -1794,7 +1794,7 @@
       "broker": "3531a562d619",
       "camera": "aa6244f729e8",
       "canvas": "89484ca81ced",
-      "chrome": "f16f5231067a",
+      "chrome": "b141faf74c9d",
       "clear": "b8ba44f0f64d",
       "cloud": "b05356c26c45",
       "collab": "0528ed8ff7d2",
@@ -1862,7 +1862,7 @@
       "view": "e8ed4c3e2cfe",
       "viewerForge": "e8981ee121bf",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "3c1863c883ba",
+      "workbench": "074a610f6030",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1870,7 +1870,7 @@
     }
   },
   "nl": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1220,
     "areas": {
       "admission": "a0d535143838",
@@ -1879,7 +1879,7 @@
       "broker": "d508f900c835",
       "camera": "ce614b4f0ec2",
       "canvas": "0d55c0be3737",
-      "chrome": "610af2fd0d48",
+      "chrome": "32ceaee22f8e",
       "clear": "af4958252cad",
       "cloud": "f3ec5f3295c8",
       "collab": "33889396976c",
@@ -1947,7 +1947,7 @@
       "view": "7090c0d9d7ac",
       "viewerForge": "dac110756068",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "2b1b482d197a",
+      "workbench": "b9547ec96f06",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1955,7 +1955,7 @@
     }
   },
   "pl": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1233,
     "areas": {
       "admission": "e997456a041d",
@@ -1964,7 +1964,7 @@
       "broker": "30921f4bdb9c",
       "camera": "5d4f7822dbb5",
       "canvas": "4df13e6160ea",
-      "chrome": "55cb3213be41",
+      "chrome": "29ebd86e3858",
       "clear": "b3cf507fd0fd",
       "cloud": "300bfbfc5d70",
       "collab": "a81a65c82c2c",
@@ -2032,7 +2032,7 @@
       "view": "52245f57ee3c",
       "viewerForge": "12c126390fac",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "273f7509706f",
+      "workbench": "39fd84c358ae",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2040,7 +2040,7 @@
     }
   },
   "pt-BR": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1237,
     "areas": {
       "admission": "e6ad0a691675",
@@ -2049,7 +2049,7 @@
       "broker": "44f9a3fc6f78",
       "camera": "779aee982a06",
       "canvas": "6dfc0a02461e",
-      "chrome": "e234e0131b4e",
+      "chrome": "5ccb8a10dbf9",
       "clear": "3021ec2aa8da",
       "cloud": "f9923e928a37",
       "collab": "ed7ee85d72e4",
@@ -2117,7 +2117,7 @@
       "view": "78c66bf35c24",
       "viewerForge": "e0b3251bfa40",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "770c751a2b5e",
+      "workbench": "5073a2673539",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2125,7 +2125,7 @@
     }
   },
   "pt-PT": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1237,
     "areas": {
       "admission": "81395bb7060b",
@@ -2134,7 +2134,7 @@
       "broker": "7e73bb2c945f",
       "camera": "fa1aa4adba58",
       "canvas": "ad9e85bff0c6",
-      "chrome": "1d660c9b4844",
+      "chrome": "d743cf1814a9",
       "clear": "e211bdefdac6",
       "cloud": "654726331cce",
       "collab": "6b79d9b640d6",
@@ -2202,7 +2202,7 @@
       "view": "91a652688523",
       "viewerForge": "839ba9b26afe",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "09e6253f2d26",
+      "workbench": "2b482bd48743",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2210,7 +2210,7 @@
     }
   },
   "ro": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1211,
     "areas": {
       "admission": "3fcadcd08687",
@@ -2219,7 +2219,7 @@
       "broker": "c88ed99d2904",
       "camera": "50370b9fd778",
       "canvas": "588812a1de8a",
-      "chrome": "d521f62fb151",
+      "chrome": "d9d62fdcace2",
       "clear": "b4c4e12e940b",
       "cloud": "7fcb9f8e7e56",
       "collab": "ac7df77bfaff",
@@ -2287,7 +2287,7 @@
       "view": "7a5365f6d38a",
       "viewerForge": "4648a1fbd346",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "788ca76c9580",
+      "workbench": "69a5bac1cd17",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2295,7 +2295,7 @@
     }
   },
   "ru": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1254,
     "areas": {
       "admission": "7813e4e0dc3e",
@@ -2304,7 +2304,7 @@
       "broker": "defa09e14bed",
       "camera": "006b88e53ab6",
       "canvas": "15b578745447",
-      "chrome": "c06d3e1a2916",
+      "chrome": "0dd57abc5867",
       "clear": "9153e0dd2c1f",
       "cloud": "40c4bc75d269",
       "collab": "10c623203b21",
@@ -2372,7 +2372,7 @@
       "view": "25d7e0addfa3",
       "viewerForge": "e791eeb89ed3",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "5ec63961c9b1",
+      "workbench": "83386001c537",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2380,7 +2380,7 @@
     }
   },
   "sk": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1242,
     "areas": {
       "admission": "a2f3f4ec56a8",
@@ -2389,7 +2389,7 @@
       "broker": "e44f86fe31c7",
       "camera": "ce71fe5faf7f",
       "canvas": "d86828a10d00",
-      "chrome": "e0805209b699",
+      "chrome": "fa56443fe131",
       "clear": "07edd87e9908",
       "cloud": "b178788d3ab0",
       "collab": "c6cffdfa2bc5",
@@ -2457,7 +2457,7 @@
       "view": "0aa61ce55954",
       "viewerForge": "f4eb36e8ae21",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "6bd35352e482",
+      "workbench": "1ad1a9dd1ae3",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2465,7 +2465,7 @@
     }
   },
   "sl": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1223,
     "areas": {
       "admission": "d812b216e3d3",
@@ -2474,7 +2474,7 @@
       "broker": "24fea16334a8",
       "camera": "5f542df8054e",
       "canvas": "93728f084a27",
-      "chrome": "171d8bdc82b9",
+      "chrome": "9192326aee4d",
       "clear": "4565356e2b6a",
       "cloud": "b856a5103588",
       "collab": "d01244249302",
@@ -2542,7 +2542,7 @@
       "view": "6fb21d2e1c8e",
       "viewerForge": "080a4e49daf3",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "8fa7910b0824",
+      "workbench": "fed1c8cd66f6",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2550,7 +2550,7 @@
     }
   },
   "sr-Latn": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1235,
     "areas": {
       "admission": "5c6599b6aad0",
@@ -2559,7 +2559,7 @@
       "broker": "9efdaa7c4c65",
       "camera": "0e0d786904e7",
       "canvas": "7ce51a2e614f",
-      "chrome": "43c5234673c7",
+      "chrome": "05e1e1bc4503",
       "clear": "ad6a6230ed98",
       "cloud": "746f09644e3f",
       "collab": "25b5c3884c71",
@@ -2627,7 +2627,7 @@
       "view": "40a3a35f1d53",
       "viewerForge": "a07f86b5bf62",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "d61ee6a6552b",
+      "workbench": "daf8ba2ca3bc",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2635,7 +2635,7 @@
     }
   },
   "sv": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1221,
     "areas": {
       "admission": "b6d059ceea0b",
@@ -2644,7 +2644,7 @@
       "broker": "bb3004dcedcf",
       "camera": "45d856dfe3de",
       "canvas": "e229cb2a101d",
-      "chrome": "55c7f0077ffc",
+      "chrome": "829eeb279858",
       "clear": "49b8d2a2ba71",
       "cloud": "294ff7d73ef6",
       "collab": "2a08bb1e9b55",
@@ -2712,7 +2712,7 @@
       "view": "b969f3f3b733",
       "viewerForge": "5c8b593ab979",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "4450d4b4ff7c",
+      "workbench": "53ca8264ec8c",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2720,7 +2720,7 @@
     }
   },
   "th": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1248,
     "areas": {
       "admission": "5c9e712f50f6",
@@ -2729,7 +2729,7 @@
       "broker": "006f226776f8",
       "camera": "b7980d45746a",
       "canvas": "f96766d37a59",
-      "chrome": "7aec68f6574d",
+      "chrome": "4046147ef839",
       "clear": "9500fccd1a35",
       "cloud": "a8be55aceebb",
       "collab": "3479daea5aac",
@@ -2797,7 +2797,7 @@
       "view": "24a0b35079e8",
       "viewerForge": "ec9d4bc7213f",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "5782a44d0bd1",
+      "workbench": "2f9ff54a67da",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2805,7 +2805,7 @@
     }
   },
   "tr": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1240,
     "areas": {
       "admission": "b1fe3a48378c",
@@ -2814,7 +2814,7 @@
       "broker": "6ac7d93b8b69",
       "camera": "ff1c519a8291",
       "canvas": "40a1775f62b9",
-      "chrome": "f742a7754601",
+      "chrome": "585710891fc5",
       "clear": "7b073b22d41e",
       "cloud": "b16bc41d84ce",
       "collab": "92c422ef69bd",
@@ -2882,7 +2882,7 @@
       "view": "581204ffb774",
       "viewerForge": "677f4f4b227b",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "61443db92f7e",
+      "workbench": "37764e33a8f0",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2890,7 +2890,7 @@
     }
   },
   "uk": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1226,
     "areas": {
       "admission": "b52b23521706",
@@ -2899,7 +2899,7 @@
       "broker": "43024a75a936",
       "camera": "3a52a51bc37b",
       "canvas": "6fcccf14826e",
-      "chrome": "3aedb6303f76",
+      "chrome": "cc35a261e438",
       "clear": "dbc3753ea6c4",
       "cloud": "c7db739efffb",
       "collab": "d1f03781cc0c",
@@ -2967,7 +2967,7 @@
       "view": "85fc18d651c8",
       "viewerForge": "684acb05142a",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "cbdcaba075e3",
+      "workbench": "d66e0a9f54dc",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2975,7 +2975,7 @@
     }
   },
   "vi": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1230,
     "areas": {
       "admission": "c9572d0ee7aa",
@@ -2984,7 +2984,7 @@
       "broker": "29be0d811866",
       "camera": "99841e967feb",
       "canvas": "b2cbedf2595c",
-      "chrome": "6932400e4d1d",
+      "chrome": "cae40fec6b1b",
       "clear": "1715cc54fae9",
       "cloud": "c0051b59c72c",
       "collab": "4e972294964c",
@@ -3052,7 +3052,7 @@
       "view": "7ee2243cf8b7",
       "viewerForge": "60d0f3ab0fac",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "092d31c63b65",
+      "workbench": "b39091d39b89",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -3060,7 +3060,7 @@
     }
   },
   "zh-CN": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1230,
     "areas": {
       "admission": "73ac7006d6ca",
@@ -3069,7 +3069,7 @@
       "broker": "d2e8c8d65536",
       "camera": "908bc40968d1",
       "canvas": "aed4ac3fbf38",
-      "chrome": "77398c7a9d34",
+      "chrome": "4a788d1aa256",
       "clear": "c27c0626e770",
       "cloud": "b7a9a10f5f64",
       "collab": "3be7cbef446b",
@@ -3137,7 +3137,7 @@
       "view": "513660a908ec",
       "viewerForge": "cc2f5374e68d",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "e3fa553fc9ce",
+      "workbench": "7dadb1096252",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -3145,7 +3145,7 @@
     }
   },
   "zh-TW": {
-    "messages": 4064,
+    "messages": 4066,
     "fallback": 1232,
     "areas": {
       "admission": "8cd77def2e44",
@@ -3154,7 +3154,7 @@
       "broker": "4a47ec750e03",
       "camera": "22553d9cfced",
       "canvas": "9e0b62a504f7",
-      "chrome": "0a12ecc560dd",
+      "chrome": "893a15869823",
       "clear": "104c0850cf58",
       "cloud": "eab3c52670c3",
       "collab": "d9f7b185f280",
@@ -3222,7 +3222,7 @@
       "view": "d21359af73e2",
       "viewerForge": "490e554bfa68",
       "waitChecks": "dd6a426cc5b6",
-      "workbench": "ded7bd4ba4cf",
+      "workbench": "f71e859f525f",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",

@@ -43,6 +43,7 @@ export const tools = {
   },
   connect(value: ToolHost) {
     host = value;
+    if (value.live) machine.send({ type: "closed" });
     emit();
     return () => {
       if (host === value) {

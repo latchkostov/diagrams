@@ -1858,8 +1858,8 @@ const en = {
   "camera.more": "+{count} more",
   "chrome.zoomIn": "Zoom in",
   "chrome.zoomOut": "Zoom out",
-  "chrome.collapseToolbar": "Collapse toolbar",
-  "chrome.expandToolbar": "Expand toolbar",
+  "chrome.hideZoomControls": "Hide zoom controls",
+  "chrome.showZoomControls": "Show zoom controls",
   "chrome.doubleClickTheCanvasToAddANodeOrOpen":
     "Double-click the canvas to add a node, or open the stencil panel on the left.",
   "chrome.dragAStencilFromTheLeftOrDoubleClickThe":
@@ -4605,6 +4605,8 @@ const en = {
   "workbench.systemTheme": "Match system",
   "workbench.tools": "Tools",
   "workbench.select": "Select",
+  "workbench.addInLive": "Back to editing to add parts",
+  "workbench.annotateInLive": "Back to editing to add notes",
   "workbench.checks": "Checks",
   "workbench.common": "Common",
   "workbench.pin": "Pin open",

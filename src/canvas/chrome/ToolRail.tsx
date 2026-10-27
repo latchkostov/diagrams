@@ -18,6 +18,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   useLocale();
   const phone = usePhone();
   const host = useToolHost();
+  const live = host?.live;
   const dock = useWorkbenchDock();
   const surface = useToolSurface();
   const checks = useChecksPanel();
@@ -58,8 +59,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
     run: () => void,
     active = false,
     extra?: ReactNode,
-    disabled = false,
+    disabled?: boolean,
     name = label,
+    title = name,
   ) => (
     <button
       key={id}
@@ -67,12 +69,13 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       data-testid={id}
       className={active ? "is-on" : undefined}
       aria-label={name}
-      title={id === "ai-rail-open" ? aiPanelTitle() : name}
+      title={title}
       aria-pressed={active}
       tabIndex={-1}
       disabled={disabled}
       onClick={run}
-      {...(id === "rail-add" ? { draggable: true, onDragStart: () => tools.open("library") } : {})}
+      draggable={id === "rail-add" && !disabled}
+      onDragStart={id === "rail-add" ? () => tools.open("library") : undefined}
     >
       <Icon name={icon} size={20} />
       <span className="tool-rail-label">{label}</span>
@@ -138,7 +141,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         () => tools.toggle("library"),
         surface === "library" || !!host?.pinned,
         undefined,
-        !host,
+        !host || live,
+        undefined,
+        live ? t("workbench.addInLive") : undefined,
       )}
       {item(
         "rail-annotate",
@@ -147,7 +152,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         () => tools.toggle("annotate"),
         surface === "annotate",
         undefined,
-        !host || host.live,
+        !host || live,
+        undefined,
+        live ? t("workbench.annotateInLive") : undefined,
       )}
       {item(
         "checks-count",
@@ -200,6 +207,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
               ),
               !host,
               railLabel(fresh),
+              aiPanelTitle(),
             )}
         </div>
       </details>

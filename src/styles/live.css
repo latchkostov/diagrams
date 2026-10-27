@@ -3744,8 +3744,15 @@ details[open] > summary .lv-disclosure-chevron {
   z-index: 5;
 }
 [dir="rtl"] .workbench-view-controls.react-flow__controls {
+  direction: rtl;
   inset-inline-end: 16px;
   inset-inline-start: auto;
+}
+.zoom-controls-chevron {
+  display: flex;
+}
+[dir="rtl"] .zoom-controls-chevron {
+  transform: scaleX(-1);
 }
 .workbench-view-controls > button {
   height: 28px;

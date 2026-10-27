@@ -695,7 +695,6 @@ function CanvasInner({
   );
   const canUndo = editor.canUndo(history.canUndo);
   const canRedo = editor.canRedo(history.canRedo);
-  const labHistory = useMemo(() => (bezel ? undefined : { canUndo, canRedo }), [bezel, canUndo, canRedo]);
   useCanvasHost(editor, {
     live,
     canUndo,
@@ -1230,7 +1229,9 @@ function CanvasInner({
             menu={menu}
             fit={fit}
             zoomedByButton={zoomedByButton}
-            history={labHistory}
+            history={
+              (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && !bezel ? { canUndo, canRedo } : undefined
+            }
           />
         )}
         {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
@@ -1275,7 +1276,8 @@ function CanvasInner({
       transport,
       localTransport,
       bezel,
-      labHistory,
+      canUndo,
+      canRedo,
       wrapper,
       readOnly,
       prefs.grid,
