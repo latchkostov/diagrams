@@ -103,6 +103,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["collaboration", /[/\\]src[/\\]collab[/\\]/],
   ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
+  ["production badge attributes", /[/\\]src[/\\]live[/\\]badgeAttributes\.ts$/],
   [
     "hover and docked Live readouts",
     /[/\\]src[/\\]live[/\\](?:NodeDetails|HoverCard|HoverReadout|EdgeDetailSection|BreakerReadout|hoverSummary|lazyNodeSections|DockedLive|verdictSection)\.tsx?$/,
@@ -257,6 +258,12 @@ describe("production bundle split", () => {
     const code = b.chunks.map((c) => c.code).join("\n");
     expect(code).not.toContain("data-processed");
     expect(code).not.toContain("data-utilization");
+    expect(
+      found(
+        bundled(closure([live!], b)),
+        NOT_AT_STARTUP.filter(([what]) => what === "production badge attributes"),
+      ),
+    ).toEqual(["production badge attributes"]);
     expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192);
     // The app bezel owns history; the fallback strip is only for the development/E2E Lab.
     expect(canvasChunk(b).code.includes("bezel-history")).toBe(false);
