@@ -8,8 +8,46 @@ import {
   pauseClock,
   viewportTransform,
   waitForCameraIdle,
+  goToNode,
+  currentDiagram,
 } from "./fixtures";
 import { expectFittedIdentity } from "./node-identity";
+
+for (const width of [1280, 390])
+  test(`a Live click selects, never connects, and reveals its readout (${width})`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=shared-api-quotas&live=1");
+    await waitForCameraIdle(page);
+    await pauseClock(page);
+    await page.getByTestId("live-restart").click();
+    await page.clock.runFor(8000);
+    const before = await currentDiagram(page);
+    await goToNode(page, "answer", true);
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-viewport-moving");
+    await expect(page.getByTestId("node-badge-answer")).toBeVisible();
+    await page.clock.resume();
+    await page.getByTestId("inspector-toggle").click();
+    await waitForCameraIdle(page);
+    await page.getByTestId("node-answer").click();
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-single-selection", "");
+    await expect
+      .poll(() => page.getByTestId("node-answer").evaluate((el) => el.parentElement?.classList.contains("selected")))
+      .toBe(true);
+    // Disabled dots still bubble a click to selection; neither dot may arm a connection.
+    for (const id of ["answer", "review"]) {
+      await page.getByTestId(`handle-${id}-bottom`).dispatchEvent("click");
+      await waitForCameraIdle(page);
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+      await expect
+        .poll(() => page.getByTestId(`node-${id}`).evaluate((el) => el.parentElement?.classList.contains("selected")))
+        .toBe(true);
+    }
+    if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) === "1")
+      await page.getByTestId("inspector-toggle").click();
+    await expect(page.getByTestId("inspector")).toContainText("Review model");
+    expect(await currentDiagram(page)).toEqual(before);
+  });
 
 for (const nodeVariant of ["card", "compact", "iconOnly"])
   for (const platform of ["Win32", "MacIntel"])

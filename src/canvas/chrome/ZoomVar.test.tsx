@@ -83,3 +83,50 @@ it("keeps repeated starts and late ends well-defined", () => {
   for (const path of machinePaths(identityZoom, { maxDepth: 4 }))
     expect(path.state.value).toBe(path.events.at(-1)?.type === "start" ? "moving" : "settled");
 });
+
+it("settles identity with a completed camera animation, without waiting for quiet frames", () => {
+  const frames = new Map<number, FrameRequestCallback>();
+  vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+    frames.set(1, run);
+    return 1;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  let state = { transform: [0, 0, 0.5] };
+  let transformChanged = (_state: typeof state, _old: typeof state) => {};
+  let cameraChanged = () => {};
+  const camera = {
+    phase: "animating",
+    state: { owner: "manual", view: "custom" },
+    subscribe(listener: () => void) {
+      cameraChanged = listener;
+      return vi.fn();
+    },
+  };
+  const host = document.createElement("div");
+  const unmount = mountIdentityZoom(
+    host,
+    {
+      getState: () => state,
+      subscribe(listener) {
+        transformChanged = listener;
+        return vi.fn();
+      },
+    },
+    camera,
+  );
+  try {
+    cameraChanged();
+    const old = state;
+    state = { transform: [0, 0, 0.9] };
+    transformChanged(state, old);
+    expect(host.hasAttribute("data-viewport-moving")).toBe(true);
+    camera.phase = "idle";
+    cameraChanged();
+    expect(host.hasAttribute("data-viewport-moving")).toBe(false);
+    expect(host.style.getPropertyValue("--rf-zoom-exact")).toBe("0.9");
+    expect(frames.size).toBe(0);
+  } finally {
+    unmount();
+    vi.unstubAllGlobals();
+  }
+});

@@ -30,7 +30,11 @@ export function mountIdentityZoom(
     getState(): { transform: number[] };
     subscribe(listener: (state: { transform: number[] }, previous: { transform: number[] }) => void): () => void;
   },
-  camera: { readonly phase: string; readonly state?: { owner: string; view: string } } | null,
+  camera: {
+    readonly phase: string;
+    readonly state?: { owner: string; view: string };
+    subscribe?(listener: () => void): () => void;
+  } | null,
 ) {
   const gesture = createMachine(identityZoom);
   let frame = 0;
@@ -49,6 +53,19 @@ export function mountIdentityZoom(
   };
   root.dataset.identityZoom = "1";
   update();
+  const end = () => {
+    cancelAnimationFrame(frame);
+    gesture.send({ type: "end" });
+    root.removeAttribute("data-viewport-moving");
+    update();
+  };
+  let animating = camera?.phase === "animating";
+  const uncam = camera?.subscribe?.(() => {
+    // Camera-owned animations already have a completion signal. Detail must be
+    // ready with that signal, including when the page clock stops at idle.
+    if (animating && camera.phase === "idle") end();
+    animating = camera.phase === "animating";
+  });
   const unsubscribe = store.subscribe((s, old) => {
     if (s.transform[2] === old.transform[2]) return;
     cancelAnimationFrame(frame);
@@ -66,9 +83,7 @@ export function mountIdentityZoom(
         frame = requestAnimationFrame(() => {
           if (remaining > 1) settle(remaining - 1);
           else {
-            gesture.send({ type: "end" });
-            root?.removeAttribute("data-viewport-moving");
-            update();
+            end();
           }
         });
       };
@@ -77,6 +92,7 @@ export function mountIdentityZoom(
   });
   return () => {
     unsubscribe();
+    uncam?.();
     cancelAnimationFrame(frame);
     root.removeAttribute("data-viewport-moving");
     root.removeAttribute("data-identity-zoom");
