@@ -56,10 +56,10 @@ for (const view of ["presentation", "embed"])
 for (const view of ["presentation", "embed"])
   test(`read-only views preserve identity size and containment at low zoom (${view})`, async ({ page }) => {
     const diagram = textFieldsFixture;
-    await page.addInitScript(
-      ({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)),
-      { key: STORAGE_KEYS.autosavePrefix + KAFKA, diagram },
-    );
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + KAFKA,
+      diagram,
+    });
     if (view === "presentation") {
       await gotoCanvas(page, KAFKA);
       await page.getByTestId("present-toggle").click();
@@ -94,8 +94,8 @@ async function presentedSvg(page: Page) {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
     const svg = new DOMParser().parseFromString(text, "image/svg+xml");
     const size = (selector: string, pattern: RegExp) =>
-      [...svg.querySelectorAll<SVGElement | HTMLElement>(selector)].map((el) =>
-        (el.getAttribute("style") ?? "").match(pattern)?.[1],
+      [...svg.querySelectorAll<SVGElement | HTMLElement>(selector)].map(
+        (el) => (el.getAttribute("style") ?? "").match(pattern)?.[1],
       );
     return {
       digest: [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join(""),

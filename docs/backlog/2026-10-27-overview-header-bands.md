@@ -1,4 +1,4 @@
-# Follow-up: Overview zone header bands (own PR)
+## Follow-up: Overview zone header bands (own PR)
 
 Removed from PR #363 to land the always-readable node identity fix. Overview currently names zones with
 master's plain focus chip at each boundary's top-left corner. It keeps the 5% zone tints, the 3:1 outlines

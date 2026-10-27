@@ -43,7 +43,8 @@ export async function expectFittedIdentity(page: Page, id: string, name: string)
         const box = el.getBoundingClientRect();
         const bounds = card.getBoundingClientRect();
         const second = card.querySelector<HTMLElement>('[data-testid="card-second-line"]');
-        const line = second && getComputedStyle(second).visibility === "visible" ? second.getBoundingClientRect() : null;
+        const line =
+          second && getComputedStyle(second).visibility === "visible" ? second.getBoundingClientRect() : null;
         const failures = [
           !el.textContent?.trim() || el.textContent === "…" ? "empty" : "",
           measure.measureText(el.textContent ?? "").width * zoom > box.width + 0.5 ? "overflows its width" : "",

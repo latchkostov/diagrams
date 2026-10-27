@@ -7,9 +7,7 @@ import diagram from "../../src/examples/black-friday-commerce.json" with { type:
 import delivery from "../../src/examples/delivery-dispatch.json" with { type: "json" };
 
 for (const theme of ["light", "dark"])
-  test(`large Overview names every individual card and zone, and filters routes (${theme})`, async ({
-    page,
-  }, info) => {
+  test(`large Overview names every individual card and zone, and filters routes (${theme})`, async ({ page }, info) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(
       (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
