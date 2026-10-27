@@ -241,6 +241,8 @@ describe("production bundle split", () => {
     const gzip = (set: Iterable<Rollup.OutputChunk>) =>
       [...set].reduce((bytes, c) => bytes + gzipSync(c.code, { level: 9 }).length, 0);
     expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192);
+    // The app bezel owns history; the fallback strip is only for the development/E2E Lab.
+    expect(canvasChunk(b).code.includes("bezel-history")).toBe(false);
     expect(gzip(extra)).toBeLessThanOrEqual(135_000 - 3_000);
     expect(
       found(
