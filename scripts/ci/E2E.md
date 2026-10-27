@@ -18,6 +18,13 @@ and apt. Nightly keeps the action's default local-build/browser-install path, in
 its dev target and independent self-host selection. See the upstream
 [Playwright Docker instructions](https://playwright.dev/docs/docker).
 
+Dev-target shards also build and verify the e2e production artifact: framed-header
+tests proxy production HTML even while the editor runs against Vite dev. Playwright,
+the local CI builder and prebuilt verification share `requiredProfiles` from
+`scripts/e2e-profiles.mjs`; `build dev <specs...>` builds the same variants that
+`check dev <specs...>` requires. Without `E2E_PREBUILT=1`, Playwright builds each
+production artifact before starting its preview server.
+
 ## Refresh duration estimates
 
 Download all six `e2e-durations-*` artifacts from a successful, representative CI run

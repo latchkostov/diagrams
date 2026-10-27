@@ -29,8 +29,8 @@ function macro(viewer: string, source: string, clickToPlay: boolean) {
 for (const source of ["attachment", "inline"] as const) {
   test(`Confluence macro: ${source} with saved simulations plays the first simulation under framed headers`, async ({
     page,
-    baseURL,
-  }) => {
+  }, testInfo) => {
+    const baseURL = testInfo.config.metadata.productionBaseURL as string;
     const requests: { url: string; body: string }[] = [];
     const cookies: string[] = [];
     let deferredFetches = 0;

@@ -27,6 +27,15 @@ export const E2E_PROFILES = {
   },
 };
 
+/** Every target needs production HTML for framed-header tests, including Vite dev runs. */
+export function requiredProfiles(target, specs, { skipPreview = false, selfHost = selfHostProfiles(specs) } = {}) {
+  if (target !== "build" && target !== "dev") throw new Error(`Unknown E2E target: ${target}`);
+  return [
+    "e2e",
+    ...(skipPreview ? [] : ["preview", ...selfHostProfiles(specs).filter((name) => selfHost.includes(name))]),
+  ];
+}
+
 /** An empty or nonliteral filter can match either spec, as in Playwright. */
 export function selfHostProfiles(specs) {
   const unfiltered = !specs.length || specs.some((spec) => !/^tests\/e2e\/[\w/-]+\.spec\.ts$/.test(spec));
