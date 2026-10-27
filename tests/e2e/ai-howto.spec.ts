@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { downloadSkill } from "./skill-download";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import { SLUG, toolNames, callTool, installFakeModelContext, openAiPanel } from "./ai-helpers";
 
@@ -152,9 +153,9 @@ test.describe("without WebMCP", () => {
     await expect(skill.getByTestId("skill-copy-install")).toHaveText("Copied");
     expect(await clipboard(skill)).toBe("/plugin install livediagrams@livediagrams");
     // Its relative links reach the skill and its zip.
-    for (const id of ["skill-md", "skill-zip"]) {
-      const href = await skill.getByTestId(id).evaluate((a) => (a as HTMLAnchorElement).href);
-      expect((await skill.request.get(href)).status(), href).toBe(200);
-    }
+    const href = await skill.getByTestId("skill-md").evaluate((a) => (a as HTMLAnchorElement).href);
+    expect((await skill.request.get(href)).status(), href).toBe(200);
+    // Dev builds the archive on demand. Observe the real download through completion.
+    await downloadSkill(skill);
   });
 });

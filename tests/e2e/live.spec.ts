@@ -22,6 +22,7 @@ import {
   liveKeyLevels,
 } from "./fixtures";
 import type { Page } from "@playwright/test";
+import { chunk, holdChunk } from "./chunk";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
 // flow, presentation mode and the Lab presets. Selectors are data-testid only. Runs are seeded, and
@@ -839,23 +840,19 @@ test.describe("live view", () => {
   });
 
   test("a held timeline chunk leaves Live controls usable until the timeline arrives", async ({ page }) => {
-    let release!: () => void;
-    const held = new Promise<void>((resolve) => (release = resolve));
-    await page.route("**/Timeline-*.js", async (route) => {
-      await held;
-      await route.continue();
-    });
+    const timeline = await holdChunk(page, chunk("Timeline", "src/live/Timeline.tsx"));
     try {
       await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+      await expect.poll(timeline.requested).toBe(true);
       await expect(page.getByTestId("live-timeline-loading")).toBeVisible();
       await expect(page.getByTestId("live-timeline")).toHaveCount(0);
       await expect(page.getByTestId("live-play")).toBeEnabled();
       await page.getByTestId("live-play").click();
       await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
-      release();
+      timeline.release();
       await expect(page.getByTestId("live-timeline")).toBeVisible();
     } finally {
-      release();
+      timeline.release();
     }
   });
 
