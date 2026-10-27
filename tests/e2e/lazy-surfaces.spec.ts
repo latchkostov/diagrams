@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { lazySurfaces, type LazySurfaceId } from "../../src/lib/lazySurfaces";
 import { readFileSync } from "node:fs";
 import { chunk, holdChunk } from "./chunk";
-import { openSurface as open, surfaceContract } from "./lazy-surface-helpers";
+import { openSurface as open, surfaceChunk } from "./lazy-surface-helpers";
 import { pauseClock } from "./fixtures";
 
 test("simulation keyboard setup waits for the independently held identity and rename focus", async ({ page }) => {
@@ -43,8 +43,7 @@ test("simulation keyboard setup waits for the independently held identity and re
 });
 
 async function exportHeldSvg(page: Page, id: LazySurfaceId) {
-  const [, name, source] = surfaceContract(id);
-  const { release } = await holdChunk(page, chunk(name, `src/${source}.tsx`));
+  const { release } = await holdChunk(page, surfaceChunk(id));
   try {
     if (id === "live.calls") await page.clock.install();
     await open(page, id);
@@ -93,7 +92,7 @@ test("live.note: exported SVG excludes awaited narration", async ({ page }) => {
   expect(svg).not.toContain("Follow a request through the decision service.");
 });
 
-for (const [id, name, source, policy] of lazySurfaces) {
+for (const [id, , , policy] of lazySurfaces) {
   if (policy === "await")
     test(`${id}: image export waits for its real chunk`, async ({ page }) => {
       const svg = await exportHeldSvg(page, id);
@@ -122,7 +121,7 @@ for (const [id, name, source, policy] of lazySurfaces) {
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route(chunk(name, `src/${source}.tsx`), async (route) => {
+    await page.route(surfaceChunk(id), async (route) => {
       requested = true;
       if (mode === "hold") await held;
       if (mode === "fail") await route.abort("failed");

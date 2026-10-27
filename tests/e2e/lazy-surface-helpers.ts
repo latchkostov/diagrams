@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 import { lazySurfaces, type LazySurfaceId } from "../../src/lib/lazySurfaces";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { chunk } from "./chunk";
 import type { DiagramFile } from "../../src/model/types";
 import {
   gotoCanvas,
@@ -23,6 +24,14 @@ export function surfaceContract(id: LazySurfaceId) {
   const contract = lazySurfaces.find(([key]) => key === id);
   if (!contract) throw new Error(`Missing lazy surface contract: ${id}`);
   return contract;
+}
+
+/** Surface modules include both TS and TSX; hold the actual dev module as well as its build chunk. */
+export function surfaceChunk(id: LazySurfaceId) {
+  const [, name, source] = surfaceContract(id);
+  const file = ["tsx", "ts"].map((extension) => `src/${source}.${extension}`).find((file) => existsSync(file));
+  if (!file) throw new Error(`Missing lazy surface source: ${source}`);
+  return chunk(name, file);
 }
 
 /** Real entry points, rather than test-only component replacements. Every registration must supply one. */

@@ -8,6 +8,7 @@ export function useDialogInteraction(
   /** Hands focus back through an interaction controller instead (it gets what had focus as the dialog opened). */
   restoreFocus?: (opener: HTMLElement | null) => void,
 ) {
+  const opener = useRef<HTMLElement | null | undefined>(undefined);
   const restoreRef = useRef(restoreFocus);
   useLayoutEffect(() => {
     restoreRef.current = restoreFocus;
@@ -56,7 +57,11 @@ export function useDialogInteraction(
     panelEl.addEventListener("keydown", onKeyDown);
     backdropEl.addEventListener("mousedown", onMouseDown);
     backdropEl.addEventListener("contextmenu", onContextMenu);
-    const prev = document.activeElement as HTMLElement | null;
+    // Outgoing dialogs restore focus in cleanup, after this dialog rendered. Capture only after that
+    // handoff, and keep the original opener when StrictMode replays this effect.
+    if (opener.current === undefined)
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const prev = opener.current;
     // A primary action that's still getting ready (Copy link while the link is made) can't take focus: the panel
     // does, so Esc and Tab work at once, and the dialog hands focus on when it's ready (dialogs.tsx, useFocusWhenReady).
     const auto = panelEl.querySelector<HTMLElement>("[data-autofocus]");
@@ -72,6 +77,8 @@ export function useDialogInteraction(
       backdropEl.removeEventListener("mousedown", onMouseDown);
       backdropEl.removeEventListener("contextmenu", onContextMenu);
       background.forEach((el, i) => (el.inert = wasInert[i]));
+      // StrictMode replays the effect while the dialog is still mounted; it has not closed.
+      if (panelEl.isConnected) return;
       if (restoreRef.current) return restoreRef.current(prev && prev !== document.body ? prev : null);
       // What opened it may be gone (a toast's button: the toast closes as it acts, or fades): the canvas, not the
       // page, gets the keyboard back.
