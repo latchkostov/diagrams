@@ -1,6 +1,7 @@
 // Glyphs for the live view (16px grid, 1.5 stroke) in the same style as components/Icon.tsx.
 
 import { TRAFFIC_PATH } from "../components/glyphPaths";
+import { memo } from "react";
 
 const paths = {
   play: "M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2Z",
@@ -39,8 +40,16 @@ const paths = {
 
 export type LiveIconName = keyof typeof paths;
 
-export function LiveIcon({ name, size = 16, className }: { name: LiveIconName; size?: number; className?: string }) {
-  const filled = name === "play" || name === "pause" || name === "more";
+export const LiveIcon = memo(function LiveIcon({
+  name,
+  size = 16,
+  className,
+}: {
+  name: LiveIconName;
+  size?: number;
+  className?: string;
+}) {
+  const filled = ["play", "pause", "more"].includes(name);
   return (
     <svg
       width={size}
@@ -57,4 +66,4 @@ export function LiveIcon({ name, size = 16, className }: { name: LiveIconName; s
       <path d={paths[name]} />
     </svg>
   );
-}
+});

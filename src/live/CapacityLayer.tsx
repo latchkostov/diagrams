@@ -10,8 +10,7 @@ import type { CapacityView, NodeHeat } from "./capacityModel";
 // it ("82% · 4.1k/s of 5k/s"), "3/6 idle" for consumers starved of partitions, and the bottleneck
 // callout. Live mode draws these inside NodeBadges; edit mode uses <CapacityLayer>.
 
-const LEVEL_WORD: Record<NodeHeat["level"], string> = {
-  idle: "no traffic",
+const LEVEL_WORD: Record<Exclude<NodeHeat["level"], "idle">, string> = {
   ok: "healthy",
   warn: "busy",
   hot: "near capacity",
@@ -32,7 +31,9 @@ export function CapacityChip({ heat }: { heat: NodeHeat }) {
       className={`cap-chip is-${heat.level}`}
       data-testid={`capacity-label-${heat.id}`}
       data-level={heat.level}
-      data-utilization={Number.isFinite(heat.utilization) ? heat.utilization.toFixed(3) : "inf"}
+      {...(import.meta.env.VITE_E2E === "1"
+        ? { "data-utilization": Number.isFinite(heat.utilization) ? heat.utilization.toFixed(3) : "inf" }
+        : {})}
       aria-label={`${heat.label}: ${LEVEL_WORD[heat.level]}, ${heat.text}`}
     >
       <i aria-hidden />
@@ -42,7 +43,7 @@ export function CapacityChip({ heat }: { heat: NodeHeat }) {
 }
 
 /** "3/6 idle", with a hover explanation (the chip takes the pointer; the rest of the layer doesn't). */
-export function IdleChip({
+export const IdleChip = memo(function IdleChip({
   id,
   idle,
   replicas,
@@ -53,6 +54,7 @@ export function IdleChip({
   replicas: number;
   assignment?: BrokerSpec;
 }) {
+  useLocale();
   if (!(idle > 0)) return null;
   return (
     <span className="cap-idle" data-testid={`capacity-idle-${id}`} data-idle={idle}>
@@ -65,10 +67,10 @@ export function IdleChip({
       </span>
     </span>
   );
-}
+});
 
 /** Edit mode: the heat map over the canvas (live mode renders the same marks in NodeBadges). */
-export function CapacityLayer({ view, presenting = false }: { view: CapacityView; presenting?: boolean }) {
+export function CapacityLayer({ view, presenting }: { view: CapacityView; presenting?: boolean }) {
   const nodes = useNodes<FlowNode>();
   const zoom = useStore((s) => s.transform[2]);
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));

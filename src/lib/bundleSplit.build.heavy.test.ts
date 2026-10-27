@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
 import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
 import { productionBuild } from "../test/productionBuild";
+import { checkLocaleSizes } from "../../scripts/locale-budget.mjs";
 
 // What the production build loads up front, checked on the real build: the code that only some sessions
 // use stays out of the startup JavaScript (the entry and the chunks it preloads), and out of the canvas's
@@ -102,6 +103,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["collaboration", /[/\\]src[/\\]collab[/\\]/],
   ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
+  ["production badge attributes", /[/\\]src[/\\]live[/\\]badgeAttributes\.ts$/],
   [
     "hover and docked Live readouts",
     /[/\\]src[/\\]live[/\\](?:NodeDetails|HoverCard|HoverReadout|EdgeDetailSection|BreakerReadout|hoverSummary|lazyNodeSections|DockedLive|verdictSection)\.tsx?$/,
@@ -236,6 +238,15 @@ const canvasChunk = (b: Build = plain()) => {
 };
 
 describe("production bundle split", () => {
+  it("keeps every emitted locale catalog within its gzip budget", () => {
+    const catalogs = plain().chunks.filter((c) =>
+      Object.keys(c.modules).some((id) => id.includes("virtual:i18n/catalog/")),
+    );
+    expect(catalogs.length).toBeGreaterThan(20);
+    expect(() =>
+      checkLocaleSizes(catalogs.map((c) => ({ file: c.fileName, gzip: gzipSync(c.code, { level: 9 }).length }))),
+    ).not.toThrow();
+  });
   it("keeps the dedicated trim's canvas and Live headroom without deferring another surface", () => {
     const b = plain();
     const canvas = closure([...startup(b), canvasChunk(b)], b);
@@ -244,6 +255,15 @@ describe("production bundle split", () => {
     const extra = [...closure([live!], b)].filter((c) => !canvas.has(c));
     const gzip = (set: Iterable<Rollup.OutputChunk>) =>
       [...set].reduce((bytes, c) => bytes + gzipSync(c.code, { level: 9 }).length, 0);
+    const code = b.chunks.map((c) => c.code).join("\n");
+    expect(code).not.toContain("data-processed");
+    expect(code).not.toContain("data-utilization");
+    expect(
+      found(
+        bundled(closure([live!], b)),
+        NOT_AT_STARTUP.filter(([what]) => what === "production badge attributes"),
+      ),
+    ).toEqual(["production badge attributes"]);
     expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192);
     // The app bezel owns history; the fallback strip is only for the development/E2E Lab.
     expect(canvasChunk(b).code.includes("bezel-history")).toBe(false);

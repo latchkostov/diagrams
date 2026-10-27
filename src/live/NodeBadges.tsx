@@ -1,3 +1,5 @@
+import { BROKERS, sameBadge } from "./badgeMemo";
+import { badgeAttributes } from "./badgeAttributes";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useWorkbenchDock } from "../canvas/inspector/dockState";
 import { inHoverBridge } from "./hoverBridge";
@@ -16,7 +18,7 @@ import type { BrokerSpec } from "../model/brokers";
 import { t, useLocale } from "../i18n";
 import { memo, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
-import type { DiagramFile, SimRole } from "../model/types";
+import type { DiagramFile } from "../model/types";
 import type { NodeSimState } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import type { DiagramFlowNode, FlowNode } from "../canvas/types";
@@ -65,8 +67,6 @@ const EdgeDetails = defineLazySurface({
   export: "skip",
   retryToast: true,
 });
-
-const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 
 /**
  * Per-node live readouts in React Flow's viewport (they pan and zoom with the diagram). Each node
@@ -119,49 +119,31 @@ export function NodeBadges({
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
-  const inputs = [state, nodes, ui, hovered, zoom, presenting];
-  const [peaks, setPeaks] = useState(() => ({
-    inputs,
-    values: new Map(Object.entries(state.snapshot.nodes).map(([id, s]) => [id, Math.max(20, s.backlog)])),
-  }));
-  if (inputs.some((input, i) => input !== peaks.inputs[i])) {
-    const values = new Map(peaks.values);
-    for (const n of nodes) {
-      if (n.type !== "diagram") continue;
-      const s = state.snapshot.nodes[n.id];
-      if (!s || s.role === "none") continue;
-      values.set(n.id, Math.max(20, s.backlog, (values.get(n.id) ?? 0) * 0.995));
-    }
-    setPeaks({ inputs, values });
-  }
-  const boundaryFault = state.snapshot.faults?.some((fault) => fault.kind === "boundary") ?? false;
+  const boundaryFault = faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
-  const activeCalls = diagram.edges.flatMap((e) => {
-    const calls = state.snapshot.edges[e.id]?.calls;
-    const breaker = state.snapshot.edges[e.id]?.breaker;
-    if (!calls) return [];
+  const activeCalls = [];
+  for (const e of diagram.edges) {
+    const { calls, breaker } = state.snapshot.edges[e.id] ?? {};
+    if (!calls) continue;
     const queued = ui.controller.queuedCalls(e.id);
     const timedOut = currentHealth(calls).timedOut;
     if (
       !(breaker && breaker.state !== "closed") &&
       !(calls.held || calls.inFlight || timedOut || retryPressure(calls) || queued)
     )
-      return [];
+      continue;
     // Pills only read the pool; source wait semantics are already measured by held/inFlight.
-    const policy = callPolicy("", e.props?.caller as EdgeSimProps["caller"]);
-    return [
-      {
-        id: e.id,
-        ...calls,
-        timedOut,
-        breaker,
-        queued,
-        pool: policy.pool,
-        from: names.get(e.from) ?? e.from,
-        to: names.get(e.to) ?? e.to,
-      },
-    ];
-  });
+    activeCalls.push({
+      id: e.id,
+      ...calls,
+      timedOut,
+      breaker,
+      queued,
+      pool: callPolicy("", e.props?.caller as EdgeSimProps["caller"]).pool,
+      from: names.get(e.from) ?? e.from,
+      to: names.get(e.to) ?? e.to,
+    });
+  }
   return (
     <div
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
@@ -183,7 +165,6 @@ export function NodeBadges({
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];
         if (!s || s.role === "none") return null;
-        const peak = Math.max(20, s.backlog, peaks.values.get(n.id) ?? 0);
         // Concurrency and units only show in the hover breakdown: resolve them for the hovered node alone.
         const props =
           hovered === n.id && (s.role === "processor" || s.role === "gateway")
@@ -199,7 +180,6 @@ export function NodeBadges({
             showOutageLoss={boundaryFault}
             fault={labels.get(n.id) ?? ""}
             properties={ui.canEdit && !presenting}
-            peak={peak}
             hovered={hovered === n.id}
             pinned={pointed?.pinned ?? false}
             focusClaim={hovered === n.id ? focusClaim : undefined}
@@ -321,7 +301,6 @@ export interface BadgeProps {
   properties: boolean;
   node: DiagramFlowNode;
   s: NodeSimState;
-  peak: number;
   hovered: boolean;
   pinned: boolean;
   concurrency: number;
@@ -336,7 +315,11 @@ export interface BadgeProps {
 }
 
 const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
-  const { node, s, peak, hovered, cap, assignment, showOutageLoss, fault } = props;
+  const { node, s, hovered, cap, assignment, showOutageLoss, fault } = props;
+  // Each broker owns one immutable peak observation; publishing no longer clones a diagram-wide Map.
+  const broker = BROKERS.has(s.role);
+  const [[previous, peak], setDepth] = useState(() => [s, Math.max(20, s.backlog)] as const);
+  if (broker && previous !== s) setDepth([s, Math.max(20, s.backlog, peak * 0.995)]);
   useLocale();
   const threadNoun = t("threads.noun", {
     kind: profileOf(node.data.stencil)?.family === "serverless" ? "execution" : "thread",
@@ -345,12 +328,10 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
   const threadBusy = s.threads ? s.threads.working + s.threads.waiting : 0;
   const w = node.measured?.width ?? node.width ?? 220;
   const h = node.measured?.height ?? node.height ?? 72;
-  const broker = BROKERS.has(s.role);
-  const heat = heatOf(s.backlog);
-  const problems = currentHealth(s).dropped;
+  const recent = currentHealth(s);
+  const problems = recent.dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
-  const recent = currentHealth(s);
   const rejected = Math.max(0, recent.rejected - recent.shed);
   const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0 || blocked > 0 || rejected > 0;
   // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
@@ -372,19 +353,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       className={`lv-node is-${s.status}${hovered ? " is-hovered" : ""}`}
       style={style}
       data-testid={`node-badge-${node.id}`}
-      data-status={s.status}
-      data-ready={s.fleet?.ready}
-      data-starting={s.fleet?.starting}
-      data-desired={s.fleet?.desired}
-      data-cpu={s.resources?.cpuRequestPct}
-      data-processed={s.processed}
-      data-backlog={s.backlog}
-      data-inflight={s.inFlight}
-      data-failed={s.failed}
-      data-dropped={s.dropped}
-      data-dlq={s.deadLettered}
-      data-blocked={blocked}
-      data-rejected={rejected}
+      {...badgeAttributes(s, rejected)}
     >
       {s.status !== "up" && <div className={`lv-ring is-${s.status}`} />}
       {cap && s.status === "up" && <CapacityRing heat={cap} />}
@@ -398,13 +367,13 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           <LiveIcon name="pause" size={9} /> paused
         </div>
       )}
-      {showOutageLoss && s.status === "down" && currentHealth(s).dropped > 0 && (
+      {showOutageLoss && s.status === "down" && problems > 0 && (
         <div
           className="lv-alert is-lost"
-          title={t("fault.droppedCount", { count: currentHealth(s).dropped })}
+          title={t("fault.droppedCount", { count: problems })}
           data-testid={`node-loss-${node.id}`}
         >
-          {`${t("hover.lost")} ${formatCount(currentHealth(s).dropped)}`}
+          {`${t("hover.lost")} ${formatCount(problems)}`}
         </div>
       )}
       {problems > 0 && s.status !== "down" && (
@@ -449,9 +418,9 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           )}
           {!showMetric ? null : broker ? (
             <span
-              className={`lv-metric is-backlog${currentHealth(s).growing ? " is-hot" : ""}`}
+              className={`lv-metric is-backlog${recent.growing ? " is-hot" : ""}`}
               // Kept, not falling behind: the backlog's amber, never heating towards red.
-              style={{ "--heat": unread ? "0" : heat.toFixed(3) } as CSSProperties}
+              style={{ "--heat": unread ? "0" : heatOf(s.backlog).toFixed(3) } as CSSProperties}
               data-testid={`node-metric-${node.id}`}
             >
               <span className="lv-pill-glyph" aria-hidden>
@@ -530,4 +499,4 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       {hovered && <NodeDetails {...props} />}
     </div>
   );
-});
+}, sameBadge);
