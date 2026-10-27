@@ -13,6 +13,7 @@ import {
   routeToPin,
   placeTextFloor,
   frameLanes,
+  frameObstacles,
   clipFrameRoute,
   stackPins,
 } from "./camera/frameEdges";
@@ -111,6 +112,69 @@ describe("Workbench frame detail", () => {
       expect(lanes.get(id)![0]).toEqual(path[0]);
       expect(lanes.get(id)!.at(-1)).toEqual(path.at(-1));
     }
+  });
+  it.each([0, 5])("preserves hand-shaped interior tracks at separation %i", (offset) => {
+    const points = (x: number) => [
+      { x: 0, y: 0 },
+      { x, y: 0 },
+      { x, y: 200 },
+      { x: 300, y: 200 },
+    ];
+    const routes = new Map([
+      ["custom", points(100)],
+      ["automatic", points(100 + offset)],
+    ]);
+    const before = structuredClone(routes);
+    const lanes = frameLanes(routes, [], new Set(["custom"]));
+    expect(lanes.get("custom")).toEqual(before.get("custom"));
+    expect(Math.abs(lanes.get("automatic")![1].x - 100)).toBeGreaterThanOrEqual(8);
+    expect(routes).toEqual(before);
+  });
+  it("reroutes pins around solid annotations, captions and boundary headers from the main route input", () => {
+    const blocks = [
+      { x: 180, y: 75, width: 60, height: 100 },
+      { x: 280, y: 75, width: 60, height: 100 },
+      { x: 380, y: 75, width: 60, height: 100 },
+    ];
+    const obstacles = frameObstacles(
+      {
+        nodes: [
+          { id: "note", rect: blocks[0] },
+          { id: "shape", rect: blocks[1], extra: blocks[2] },
+        ],
+        groups: [
+          {
+            id: "boundary",
+            rect: { x: 0, y: 0, width: 900, height: 900 },
+            header: { x: 100, y: 0, width: 100, height: 24 },
+          },
+        ],
+        edges: [],
+      },
+      (p) => ({ x: p.x * 0.75 + 20, y: p.y * 0.75 + 10 }),
+    );
+    expect(obstacles).toHaveLength(4);
+    expect(obstacles[0]).toEqual({ x: 155, y: 66.25, width: 45, height: 75 });
+    const pin = {
+      id: "next",
+      name: "Next",
+      side: "right" as const,
+      crossing: { x: 550, y: 100 },
+      width: 80,
+      spotlit: false,
+      box: { x: 470, y: 86, width: 80, height: 28 },
+    };
+    const route = routeToPin(
+      [
+        { x: 100, y: 100 },
+        { x: 700, y: 100 },
+      ],
+      { x: 0, y: 0, width: 550, height: 300 },
+      pin,
+      obstacles,
+    );
+    for (let i = 1; i < route.length; i++)
+      for (const block of obstacles) expect(segmentHitsRect(route[i - 1], route[i], block)).toBe(false);
   });
   it("offers larger text only in a clear slot, searching past crossing edges", () => {
     const frame = { x: 0, y: 0, width: 500, height: 150 };

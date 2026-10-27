@@ -2,7 +2,9 @@ import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForCameraIdle } fro
 
 for (const width of [1440, 390])
   for (const theme of ["light", "dark"])
-    test(`council frame preserves whole cards and reserved legend (${width}, ${theme})`, async ({ page }, info) => {
+    test(`${width === 390 ? "phone Follow keeps every narrated card visible" : "council frame preserves whole cards and reserved legend"} (${width}, ${theme})`, async ({
+      page,
+    }, info) => {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       await page.addInitScript(
         (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
@@ -42,11 +44,28 @@ for (const width of [1440, 390])
       if (width === 390) {
         // Both cards are narrated. Follow must now frame the caller too.
         await expect(page.getByTestId("focus-offscreen-checkout")).toHaveCount(0);
+        const assertNarrated = async () => {
+          for (const id of ["checkout", "payments"]) {
+            const node = page.getByTestId(`rf__node-${id}`);
+            await expect(node).toBeVisible();
+            await expect(node).not.toHaveAttribute("data-detail-hidden", "");
+            const box = await node.boundingBox();
+            if (!box) throw new Error(`Expected narrated ${id}`);
+            expect(box.x).toBeGreaterThanOrEqual(frame.x);
+            expect(box.y).toBeGreaterThanOrEqual(frame.y);
+            expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width);
+            expect(box.y + box.height).toBeLessThan(legend.y);
+          }
+        };
+        await assertNarrated();
         const caller = await page.getByTestId("node-checkout").boundingBox();
         const card = await page.getByTestId("node-payments").boundingBox();
         if (!caller || !card) throw new Error("Expected narrated caller and subject");
         expect(card.x - caller.x - caller.width).toBeGreaterThan(24);
         await page.getByTestId("live-note-expand").click();
+        await page.clock.runFor(1400);
+        await waitForCameraIdle(page);
+        await assertNarrated();
         for (const id of ["live-note-earlier", "live-note-later"]) {
           const target = await page.getByTestId(id).boundingBox();
           expect(target?.height).toBeGreaterThanOrEqual(44);

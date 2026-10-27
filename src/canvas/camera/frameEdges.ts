@@ -2,13 +2,31 @@ import { intersects, segmentHitsRect, type Rect } from "../geometry/rect";
 import { pointAlong } from "../geometry/path";
 import { nudgeRoutes } from "../geometry/nudge";
 import { routeOrthogonal } from "../geometry/orthogonal";
+import type { RouteInput } from "../geometry/router";
 
 export type FrameEnd = "in" | "pinned" | "out";
 export type FrameSide = "left" | "right" | "top" | "bottom";
 export type Point = { x: number; y: number };
 /** Frame-only lanes use screen pixels, independent of the camera's zoom. */
-export function frameLanes(routes: ReadonlyMap<string, Point[]>, blockers: readonly Rect[]) {
-  return nudgeRoutes(routes, blockers, { separation: 8, tolerance: 8 });
+export function frameLanes(
+  routes: ReadonlyMap<string, Point[]>,
+  blockers: readonly Rect[],
+  fixed: ReadonlySet<string> = new Set(),
+) {
+  return nudgeRoutes(routes, blockers, { separation: 8, tolerance: 8, fixed });
+}
+
+/** The main router's solid cards, annotations, captions and boundary headers, in screen pixels. */
+export function frameObstacles(input: RouteInput, screen: (p: Point) => Point): Rect[] {
+  const rect = (r: Rect): Rect => {
+    const a = screen(r),
+      b = screen({ x: r.x + r.width, y: r.y + r.height });
+    return { ...a, width: b.x - a.x, height: b.y - a.y };
+  };
+  return [
+    ...input.nodes.flatMap((n) => [rect(n.rect), ...(n.extra ? [rect(n.extra)] : [])]),
+    ...(input.groups ?? []).map((g) => rect(g.header)),
+  ];
 }
 export const contains = (outer: Rect, inner: Rect) =>
   inner.x >= outer.x &&

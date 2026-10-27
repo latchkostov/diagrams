@@ -61,14 +61,14 @@
       "to-db": "M320,952 L320,1040"
     },
     "labels": {
-      "web-in": { "style": "transform: translate(-50%, -50%) translate(245.75px, 196px); --fe-w: 41.82px; --fe-h: 22px; font-size: 15.041px;", "text": "Web" },
-      "probe-in": { "style": "transform: translate(-50%, -50%) translate(402.75px, 196px); --fe-w: 49.19px; --fe-h: 22px; font-size: 15.041px;", "text": "Probe" },
-      "perimeter": { "style": "transform: translate(-50%, -50%) translate(328.5px, 335px); --fe-w: 57.349999999999994px; --fe-h: 22px; font-size: 15.041px;", "text": "Inspect" },
-      "allow-web": { "style": "transform: translate(-50%, -50%) translate(241.5px, 516px); --fe-w: 71.32px; --fe-h: 22px; font-size: 15.041px;", "text": "Allow web" },
-      "deny-admin": { "style": "transform: translate(-50%, -50%) translate(398.75px, 544px); --fe-w: 82.74999999999999px; --fe-h: 22px; font-size: 15.041px;", "text": "Deny admin" },
-      "to-switch": { "style": "transform: translate(-50%, -50%) translate(215.25px, 704px); --fe-w: 62.41px; --fe-h: 22px; font-size: 15.041px;", "text": "Forward" },
-      "to-app": { "style": "transform: translate(-50%, -50%) translate(328.5px, 815px); --fe-w: 41.82px; --fe-h: 22px; font-size: 15.041px;", "text": "Web" },
-      "to-db": { "style": "transform: translate(-50%, -50%) translate(320px, 990px); --fe-w: 50.33px; --fe-h: 22px; font-size: 15.041px;", "text": "Query" }
+      "web-in": { "style": "transform: translate(-50%, -50%) translate(245.75px, 196px); --fe-w: 41.82px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Web" },
+      "probe-in": { "style": "transform: translate(-50%, -50%) translate(402.75px, 196px); --fe-w: 49.19px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Probe" },
+      "perimeter": { "style": "transform: translate(-50%, -50%) translate(328.5px, 335px); --fe-w: 57.349999999999994px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Inspect" },
+      "allow-web": { "style": "transform: translate(-50%, -50%) translate(241.5px, 516px); --fe-w: 71.32px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Allow web" },
+      "deny-admin": { "style": "transform: translate(-50%, -50%) translate(398.75px, 544px); --fe-w: 82.74999999999999px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Deny admin" },
+      "to-switch": { "style": "transform: translate(-50%, -50%) translate(215.25px, 704px); --fe-w: 62.41px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Forward" },
+      "to-app": { "style": "transform: translate(-50%, -50%) translate(328.5px, 815px); --fe-w: 41.82px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Web" },
+      "to-db": { "style": "transform: translate(-50%, -50%) translate(320px, 990px); --fe-w: 50.33px; --fe-h: 22px; font-size: 15.041px; width: max-content; height: auto; line-height: 22px;", "text": "Query" }
     }
   }
 }

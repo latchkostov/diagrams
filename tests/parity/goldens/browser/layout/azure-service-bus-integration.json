@@ -105,18 +105,18 @@
     "labels": {
       "partner-to-apim": { "style": "transform: translate(-50%, -50%) translate(339px, 256px); --fe-w: 54.7px; --fe-h: 22px;", "text": "" },
       "apim-to-ingest": { "style": "transform: translate(-50%, -50%) translate(719px, 256px); --fe-w: 118.13px; --fe-h: 22px;", "text": "" },
-      "ingest-to-invoices": { "style": "transform: translate(-50%, -50%) translate(1126.75px, 196px); --fe-w: 108.27999999999999px; --fe-h: 22px; font-size: 12.223px;", "text": "InvoiceAccepted" },
-      "invoices-to-approval-sub": { "style": "transform: translate(-50%, -50%) translate(1510px, 189px); --fe-w: 107.86000000000003px; --fe-h: 22px; font-size: 12.223px;", "text": "amount > 10000" },
-      "invoices-to-posting-sub": { "style": "transform: translate(-50%, -50%) translate(1528px, 259.5px); --fe-w: 78.35px; --fe-h: 22px; font-size: 12.223px;", "text": "All invoices" },
+      "ingest-to-invoices": { "style": "transform: translate(-50%, -50%) translate(1126.75px, 196px); --fe-w: 108.27999999999999px; --fe-h: 22px; font-size: 12.223px; width: max-content; height: auto; line-height: 18px;", "text": "InvoiceAccepted" },
+      "invoices-to-approval-sub": { "style": "transform: translate(-50%, -50%) translate(1510px, 189px); --fe-w: 107.86000000000003px; --fe-h: 22px; font-size: 12.223px; width: max-content; height: auto; line-height: 18px;", "text": "amount > 10000" },
+      "invoices-to-posting-sub": { "style": "transform: translate(-50%, -50%) translate(1528px, 259.5px); --fe-w: 78.35px; --fe-h: 22px; font-size: 12.223px; width: max-content; height: auto; line-height: 18px;", "text": "All invoices" },
       "approval-sub-to-workflow": { "style": "transform: translate(-50%, -50%) translate(1936px, 162.5px); --fe-w: 116.55px; --fe-h: 22px;", "text": "" },
       "posting-sub-to-worker": { "style": "transform: translate(-50%, -50%) translate(2086.75px, 309px); --fe-w: 116.55px; --fe-h: 22px;", "text": "" },
       "workflow-to-commands": { "style": "transform: translate(-50%, -50%) translate(2283.5px, 136px); --fe-w: 80.61px; --fe-h: 22px;", "text": "" },
       "commands-to-worker": { "style": "transform: translate(-50%, -50%) translate(2713.75px, 256px); --fe-w: 120.25999999999998px; --fe-h: 22px;", "text": "" },
       "commands-to-dlq": { "style": "transform: translate(-50%, -50%) translate(2703.25px, 189px); --fe-w: 140.74px; --fe-h: 22px;", "text": "" },
       "worker-to-cosmos": { "style": "transform: translate(-50%, -50%) translate(3077px, 316px); --fe-w: 90.00999999999999px; --fe-h: 22px;", "text": "" },
-      "ingest-to-blob": { "style": "transform: translate(-50%, -50%) translate(1106.75px, 263px); --fe-w: 127.66px; --fe-h: 22px; font-size: 12.223px; translate: -102.283px 53px;", "text": "Archive original PDF" },
+      "ingest-to-blob": { "style": "transform: translate(-50%, -50%) translate(1106.75px, 263px); --fe-w: 127.66px; --fe-h: 22px; font-size: 12.223px; width: max-content; height: auto; line-height: 18px; translate: -102.283px 53px;", "text": "Archive original PDF" },
       "ingest-to-vault": { "style": "transform: translate(-50%, -50%) translate(1106.5px, 155.5px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-      "ingest-to-insights": { "style": "transform: translate(-50%, -50%) translate(1106.5px, 356.5px); --fe-w: 140.12px; --fe-h: 22px;", "text": "Traces / exceptions" },
+      "ingest-to-insights": { "style": "transform: translate(-50%, -50%) translate(1106.5px, 356.5px); --fe-w: 140.12px; --fe-h: 22px; width: max-content; height: auto; line-height: 18px;", "text": "Traces / exceptions" },
       "approval-sub-to-approval-dlq": { "style": "transform: translate(-50%, -50%) translate(1928px, 203px); --fe-w: 115px; --fe-h: 22px;", "text": "" },
       "posting-sub-to-posting-dlq": { "style": "transform: translate(-50%, -50%) translate(1944px, 376px); --fe-w: 115px; --fe-h: 22px;", "text": "" }
     }

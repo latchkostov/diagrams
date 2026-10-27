@@ -3,7 +3,7 @@ import { useStore, useStoreApi } from "@xyflow/react";
 import type { RefObject } from "react";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { useCameraController } from "./camera/useCameraCore";
-import { selectRoutes, useRoutingOptions, type RouteOptions } from "./edges/useEdgeRoute";
+import { selectRoutes, routeInputFromStore, useRoutingOptions, type RouteOptions } from "./edges/useEdgeRoute";
 import { registerFrameCapture } from "./camera/frameCapture";
 import {
   cullLabel,
@@ -18,6 +18,7 @@ import {
   routeToPin,
   placeTextFloor,
   frameLanes,
+  frameObstacles,
   clipFrameRoute,
   stackPins,
   type FrameEnd,
@@ -304,9 +305,18 @@ export const FrameDetail = memo(
         // Space lanes in screen pixels, including after clipping to pins. This
         // presentation pass never changes authored routes or exported geometry.
         const screenRoutes = new Map<string, { x: number; y: number }[]>();
-        const routeObstacles = [...cards.keys()]
-          .filter((id) => states.get(id) === "in")
-          .map((id) => cardBoxes.get(id)!);
+        const routeObstacles = frameObstacles(
+          routeInputFromStore(
+            [...s.nodeLookup.values()].filter((n) => states.get(n.id) === "in"),
+            [],
+            { style, direction, captions, hideDependencies },
+          ),
+          screen,
+        );
+        // Expanded cards can paint beyond their measured routing bounds.
+        routeObstacles.push(
+          ...[...cards.keys()].filter((id) => states.get(id) === "in").map((id) => cardBoxes.get(id)!),
+        );
         routeObstacles.push(...pins.map((p) => p.box));
         for (const edge of s.edges) {
           const route = routes.get(edge.id);
@@ -327,7 +337,9 @@ export const FrameDetail = memo(
           }
           screenRoutes.set(edge.id, points);
         }
-        const lanes = cropped && style === "smoothstep" ? frameLanes(screenRoutes, blockers) : screenRoutes;
+        const fixed = new Set([...routes].filter(([, route]) => route.custom).map(([id]) => id));
+        const lanes =
+          cropped && style === "smoothstep" ? frameLanes(screenRoutes, routeObstacles, fixed) : screenRoutes;
         // Subtitle ink may grow inside its existing slot, never its card. A
         // rejected candidate restores exactly the current detail behaviour.
         for (const [id, card] of cards) {
@@ -348,6 +360,14 @@ export const FrameDetail = memo(
           )
             subtitle.style.fontSize = before;
         }
+        for (const badge of root.querySelectorAll<HTMLElement>('[data-testid^="node-badge-"]')) {
+          const id = badge.dataset.testid!.slice("node-badge-".length);
+          if (!far && states.get(id) === "in")
+            for (const chip of badge.querySelectorAll<HTMLElement>(".lv-metric, .lv-alert")) {
+              const rect = box(chip, origin);
+              if (rect.width && rect.height) blockers.push(rect);
+            }
+        }
         const edgeLabels = new Map(
           [...root.querySelectorAll<HTMLElement>('[data-testid^="edge-label-"]')].map((el) => [
             el.dataset.testid!.slice("edge-label-".length),
@@ -360,6 +380,11 @@ export const FrameDetail = memo(
         for (const [id, label] of edgeLabels) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
+          label.style.removeProperty("width");
+          label.style.removeProperty("height");
+          label.style.removeProperty("line-height");
+          const text = label.querySelector<HTMLElement>(".fe-label-text");
+          if (text && fonts.has(text)) text.style.fontSize = `${fonts.get(text)}px`;
           originalLabels.set(id, box(label, origin));
         }
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {
@@ -405,7 +430,19 @@ export const FrameDetail = memo(
           const baselineFont = text ? (fonts.get(text) ?? parseFloat(getComputedStyle(text).fontSize)) : 0;
           let floorPlacement: Rect | null = null;
           if (!far && text && (active.has(edge.source) || active.has(edge.target)) && baselineFont * zoom < 11) {
-            text.style.fontSize = `${Math.ceil((11 / zoom) * 1000) / 1000}px`;
+            const enlargedFont = Math.ceil((11 / zoom) * 1000) / 1000;
+            const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
+            text.style.fontSize = `${enlargedFont}px`;
+            // Measure the complete enlarged text in a natural-size pill, rather
+            // than the router's fixed --fe-w/--fe-h box that clips its ink.
+            label.style.width = "max-content";
+            label.style.height = "auto";
+            const ink = document.createRange();
+            ink.selectNodeContents(text);
+            let inkHeight = lineHeight * (enlargedFont / baselineFont);
+            for (const rect of ink.getClientRects()) inkHeight = Math.max(inkHeight, rect.height / zoom);
+            // Reserve leading past the measured ink, including transform rounding.
+            label.style.lineHeight = `${Math.round(inkHeight) + 1}px`;
             floorPlacement = placeTextFloor(
               box(label, origin),
               inner,
@@ -413,7 +450,12 @@ export const FrameDetail = memo(
               [...lanes].filter(([id]) => id !== edge.id).map(([, points]) => points),
               lanes.get(edge.id),
             );
-            if (!floorPlacement) text.style.fontSize = baseline!;
+            if (!floorPlacement) {
+              text.style.fontSize = baseline!;
+              label.style.removeProperty("width");
+              label.style.removeProperty("height");
+              label.style.removeProperty("line-height");
+            }
           }
           const b = box(label, origin);
           const path = lanes.get(edge.id);
@@ -554,6 +596,9 @@ export const FrameDetail = memo(
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
+          label.style.removeProperty("width");
+          label.style.removeProperty("height");
+          label.style.removeProperty("line-height");
         }
         delete root.dataset.detailView;
         root.removeAttribute("data-detail-far");
