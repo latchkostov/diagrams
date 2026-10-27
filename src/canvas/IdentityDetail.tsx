@@ -4,6 +4,7 @@ import type { DiagramFlowEdge, FlowNode } from "./types";
 import { iconDetail, titleText } from "./identity";
 import { registerFrameCapture } from "./camera/frameCapture";
 import { useCameraController } from "./camera/useCameraCore";
+import { FAR_ZOOM } from "./detail";
 
 /** Identity belongs to every canvas, including presentation, embeds and offline viewers. */
 export const IdentityDetail = memo(function IdentityDetail({ host }: { host: RefObject<HTMLElement | null> }) {
@@ -22,6 +23,9 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
       frame = 0;
       if (!ready || suspended || disposed || (camera && (camera.phase !== "idle" || camera.interacting))) return;
       const { nodes, transform } = store.getState();
+      // Counter-scaled titles outgrow their natural row: secondary card text keeps the far-zoom
+      // floor in every view, including presentation, embeds and the offline viewer.
+      const far = transform[2] < FAR_ZOOM;
       // Read the whole canvas before writing: interleaving clientWidth and icon
       // mutations forces one complete layout per card.
       const identity = nodes.flatMap((n) => {
@@ -42,6 +46,7 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
         measure.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
         return [
           {
+            body,
             title,
             icon,
             height,
@@ -49,7 +54,8 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
           },
         ];
       });
-      for (const { title, icon, height, label } of identity) {
+      for (const { body, title, icon, height, label } of identity) {
+        if (body.hasAttribute("data-identity-far") !== far) body.toggleAttribute("data-identity-far", far);
         if (icon) icon.style.height = `${height}px`;
         if (title.textContent !== label) title.textContent = label;
       }
@@ -62,7 +68,8 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
       schedule();
     });
     const unsubscribe = store.subscribe((s, old) => {
-      if (s.transform !== old.transform || s.nodes !== old.nodes) schedule();
+      // Panning moves the frame without changing any fitting input.
+      if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes) schedule();
     });
     const uncam = camera?.subscribe(schedule);
     // FrameDetail may resize cards after our store notification. React may also
@@ -87,13 +94,21 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
       for (const title of root.querySelectorAll<HTMLElement>('[data-testid="card-title"]'))
         title.textContent = title.title;
       for (const icon of root.querySelectorAll<HTMLElement>(".nb .stencil-icon")) icon.style.removeProperty("height");
+      for (const body of root.querySelectorAll<HTMLElement>(".nb[data-identity-far]"))
+        body.removeAttribute("data-identity-far");
     };
     const viewport = root.querySelector<HTMLElement>(".react-flow__viewport");
     const unregister = viewport
       ? registerFrameCapture(viewport, () => {
           suspended = true;
+          // Capture replaces the viewport transform with scale(1), so identity ink must use that scale
+          // too: every image, including one started from presentation, shows natural-size names and icons.
+          const scale = viewport.style.getPropertyValue("--rf-zoom-exact");
+          viewport.style.setProperty("--rf-zoom-exact", "1");
           reset();
           return () => {
+            if (scale) viewport.style.setProperty("--rf-zoom-exact", scale);
+            else viewport.style.removeProperty("--rf-zoom-exact");
             suspended = false;
             schedule();
           };

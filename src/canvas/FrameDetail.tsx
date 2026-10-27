@@ -180,11 +180,7 @@ const FrameDecoration = memo(
               body.style.removeProperty("width");
               body.style.setProperty("--rf-zoom-exact", "1");
               for (const text of body.querySelectorAll<HTMLElement>(".nb-label,.nb-sub,.nb-kind")) {
-                const original =
-                  fonts.get(text) ??
-                  (text.classList.contains("nb-label")
-                    ? parseFloat(getComputedStyle(text).getPropertyValue("--title-font")) || 13.5
-                    : undefined);
+                const original = fonts.get(text);
                 if (text.classList.contains("nb-label")) {
                   text.style.removeProperty("font-size");
                   // A data-only edit must measure the full name, not the prior frame's abbreviation.
@@ -202,18 +198,11 @@ const FrameDecoration = memo(
             body.style.removeProperty("--rf-zoom-exact");
           }
         // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
+        // Card titles are not secondary text: the `.nb-label` rule in app-shared.css alone sizes them.
         for (const el of root.querySelectorAll<HTMLElement>(
-          ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
+          ".nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
         )) {
-          if (!fonts.has(el)) {
-            const cs = getComputedStyle(el);
-            fonts.set(
-              el,
-              el.classList.contains("nb-label")
-                ? parseFloat(cs.getPropertyValue("--title-font")) || 13.5
-                : parseFloat(cs.fontSize),
-            );
-          }
+          if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
           const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
           const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
           const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
@@ -221,14 +210,14 @@ const FrameDecoration = memo(
             edgeLabel &&
             edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
           const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
-          const title = el.classList.contains("nb-label") || el.classList.contains("grp-label");
+          const title = el.classList.contains("grp-label");
           const detail =
             el.classList.contains("lv-alert") && id && lit.has(id)
               ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-              : textDetail(fonts.get(el)!, zoom, title || isActive, view, el.classList.contains("nb-label"));
+              : textDetail(fonts.get(el)!, zoom, title || isActive, view);
           const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
           whole.toggleAttribute("data-detail-text-hidden", !detail.show);
-          if (!el.classList.contains("nb-label")) el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
+          el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
         }
         // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
         // Reserve two lines only when the original text needs them at the card's measured width.
@@ -597,7 +586,9 @@ const FrameDecoration = memo(
           lastDrawing = key;
           setDrawing(next);
         }
-        root.dataset.detailZoom = String(zoom);
+        // Identity refits on this signal: publish it only when the zoom or a card's measured width changed,
+        // never on a translation-only pan.
+        if (widths.length || root.dataset.detailZoom !== String(zoom)) root.dataset.detailZoom = String(zoom);
       };
       const schedule = () => {
         if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
@@ -699,13 +690,9 @@ const FrameDecoration = memo(
       const unregister = viewport
         ? registerFrameCapture(viewport, () => {
             suspended = true;
-            // Capture replaces the viewport transform with scale(1). Identity ink uses that same scale.
-            const scale = viewport.style.getPropertyValue("--rf-zoom-exact");
-            viewport.style.setProperty("--rf-zoom-exact", "1");
+            // IdentityDetail normalizes the identity scale for capture in every view.
             reset();
             return () => {
-              if (scale) viewport.style.setProperty("--rf-zoom-exact", scale);
-              else viewport.style.removeProperty("--rf-zoom-exact");
               suspended = false;
               selectionStyle();
               schedule();

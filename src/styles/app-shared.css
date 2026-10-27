@@ -696,6 +696,10 @@ kbd {
 .react-flow__node .nb-label {
   font-size: max(var(--title-font, 13.5px), calc(9.5px / var(--rf-zoom-exact, 1)));
 }
+/* Below the far zoom the enlarged title outgrows its row; secondary card text yields in every view. */
+.react-flow__node .nb[data-identity-far] :is(.nb-sub, .nb-kind) {
+  visibility: hidden;
+}
 .react-flow__node .nb-tile {
   position: relative;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { textDetail, frameView } from "./detail";
 import { iconDetail, titleText } from "./identity";
 import {
@@ -249,17 +250,24 @@ describe("Workbench frame detail", () => {
     expect(textDetail(11, 0.75, false, "focus").show).toBe(false);
     expect(textDetail(11, 0.25, true, "overview").show).toBe(false);
   });
-  it("always shows titles at 9.5 screen pixels in every view from 10 to 150 percent", () => {
-    for (const view of ["overview", "focus", "follow", "custom"] as const)
-      for (const active of [true, false])
-        for (let step = 1; step <= 15; step++)
-          for (const font of [8, 11, 13.5, 16]) {
-            const zoom = step / 10;
-            const detail = textDetail(font, zoom, active, view, true);
-            expect(detail.show).toBe(true);
-            expect(font * zoom * detail.scale).toBeGreaterThanOrEqual(9.5 - 1e-10);
-            expect(detail.scale).toBeGreaterThanOrEqual(1);
-          }
+  it("always sizes titles at 9.5 screen pixels in every view from 10 to 150 percent", () => {
+    // The stylesheet is the one title-size contract for every view, including presentation and embeds.
+    const css = readFileSync(new URL("../styles/app-shared.css", import.meta.url), "utf8");
+    const rule =
+      /\.react-flow__node \.nb-label \{\s*font-size: max\(var\(--title-font, ([\d.]+)px\), calc\(([\d.]+)px \/ var\(--rf-zoom-exact, 1\)\)\);\s*\}/.exec(
+        css,
+      );
+    expect(rule).not.toBeNull();
+    const floor = Number(rule![2]);
+    const fonts = [Number(rule![1]), ...[...css.matchAll(/--title-font: ([\d.]+)px/g)].map((m) => Number(m[1]))];
+    expect(fonts.length).toBeGreaterThan(1);
+    for (let step = 1; step <= 15; step++)
+      for (const font of fonts) {
+        const zoom = step / 10;
+        const size = Math.max(font, floor / zoom);
+        expect(size * zoom).toBeGreaterThanOrEqual(9.5 - 1e-10);
+        expect(size).toBeGreaterThanOrEqual(font);
+      }
   });
   it("draws icons at fourteen screen pixels or fills the height of a smaller card", () => {
     for (const height of [40, 72])

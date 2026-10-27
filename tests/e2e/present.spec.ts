@@ -52,6 +52,82 @@ for (const view of ["presentation", "embed"])
     await expect(page.getByTestId("node-c").getByTestId("card-title")).toHaveText("W");
   });
 
+for (const view of ["presentation", "embed"])
+  test(`read-only views preserve identity size and containment at low zoom (${view})`, async ({ page }) => {
+    const diagram = textFieldsFixture;
+    await page.addInitScript(
+      ({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)),
+      { key: STORAGE_KEYS.autosavePrefix + KAFKA, diagram },
+    );
+    if (view === "presentation") {
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+    } else {
+      const token = await encodeShare(diagram);
+      await page.goto(`./?embed=1#d=${token}`);
+      await expect(page.getByTestId("node-a")).toBeVisible();
+    }
+    await zoomIdentity(page, 1);
+    // At natural size the second line is part of the card.
+    await expect(page.getByTestId("node-a").getByTestId("card-second-line")).toBeVisible();
+    for (const target of [0.24, 0.15]) {
+      await zoomIdentity(page, target);
+      for (const node of diagram.nodes) await expectFittedIdentity(page, node.id, node.label);
+      // Below the far zoom the enlarged title takes the card; secondary text keeps the editor's floor.
+      for (const node of diagram.nodes)
+        await expect(page.getByTestId(`node-${node.id}`).getByTestId("card-second-line")).toBeHidden();
+    }
+  });
+
+/** The saved SVG, canonicalized, plus the painted title and icon sizes inside it. */
+async function presentedSvg(page: Page) {
+  return page.evaluate(async () => {
+    const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+    const text = await (await image.renderDiagramImage("svg")).text();
+    const names = new Map<string, string>();
+    const canonical = text.replace(/\bu[0-9a-z]{4}\d+\b/g, (name) => {
+      if (!names.has(name)) names.set(name, `pseudo${names.size}`);
+      return names.get(name) ?? name;
+    });
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+    const svg = new DOMParser().parseFromString(text, "image/svg+xml");
+    const size = (selector: string, pattern: RegExp) =>
+      [...svg.querySelectorAll<SVGElement | HTMLElement>(selector)].map((el) =>
+        (el.getAttribute("style") ?? "").match(pattern)?.[1],
+      );
+    return {
+      digest: [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join(""),
+      // The clone writes the title's size inside the `font` shorthand: "font: 620 13px / 16.875px …".
+      titles: size('[data-testid="card-title"]', /(?:^|;)\s*font: [^;]*?([\d.]+)px \//),
+      icons: size('[data-testid="card-icon"] > *', /(?:^|;)\s*height: ([\d.]+)px/),
+      seconds: size('[data-testid="card-second-line"]', /(?:^|;)\s*visibility: ([^;]+)/),
+    };
+  });
+}
+
+test("presentation image exports capture natural identity at any zoom @dev", async ({ page }) => {
+  await gotoCanvas(page, KAFKA);
+  await zoomIdentity(page, 1);
+  const editor = await presentedSvg(page);
+  // At 100% the editor's export is the natural drawing (what the parity goldens pin).
+  expect(editor.titles.length).toBeGreaterThan(0);
+  for (const size of editor.titles) expect(Number(size)).toBeLessThanOrEqual(13.5);
+  for (const size of editor.icons) expect(Number(size)).toBeLessThanOrEqual(34);
+  expect(new Set(editor.seconds)).toEqual(new Set(["visible"]));
+  await page.getByTestId("present-toggle").click();
+  await expect(page.getByTestId("present-exit")).toBeVisible();
+  await zoomIdentity(page, 1);
+  const natural = await presentedSvg(page);
+  // Presentation's own chrome styles may differ from the editor's; its identity sizes may not.
+  expect({ ...natural, digest: "" }).toEqual({ ...editor, digest: "" });
+  for (const target of [0.35, 0.24]) {
+    await zoomIdentity(page, target);
+    // The whole image, byte for byte, is independent of the presentation zoom.
+    expect({ ...(await presentedSvg(page)), target }).toEqual({ ...natural, target });
+  }
+});
+
 const fullscreen = (page: Page) => page.evaluate(() => document.fullscreenElement === document.documentElement);
 
 /** Nodes of the diagram that aren't wholly inside the canvas. */
