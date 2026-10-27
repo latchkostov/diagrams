@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_PROFILES, type E2EProfileName } from "./scripts/e2e-profiles.mjs";
+import { E2E_PROFILES, requiredProfiles, type E2EProfileName } from "./scripts/e2e-profiles.mjs";
 import { chromiumLaunchArgs } from "./scripts/e2e-chromium";
 import { slowmoDiagnosticEnabled, SLOWMO_DIAGNOSTIC_GREP } from "./tests/e2e/slowmo-diagnostic";
 
@@ -100,6 +100,7 @@ const serve = (name: E2EProfileName, extra: string) =>
  * CI serves (and builds) only those its shard's spec files need.
  */
 const SELF_HOST_WANTED = (process.env.E2E_SELF_HOST ?? "internal,locked").split(",").map((v) => v.trim());
+const buildProfiles = requiredProfiles(TARGET, [], { skipPreview, selfHost: SELF_HOST_WANTED });
 const selfHost = [
   { name: "internal", spec: /self-host\.spec\.ts/, at: internal, ...E2E_PROFILES.internal },
   { name: "locked", spec: /self-host-locked\.spec\.ts/, at: locked, ...E2E_PROFILES.locked },
@@ -207,41 +208,44 @@ export default defineConfig({
   webServer: [
     // The smoke needs only the e2e build (BUILD is always true with it).
     ...((BUILD && chromiumOnly) || smoke ? [] : [devWebServer]),
-    {
-      // The e2e build: also supplies production HTML for framed-header tests in dev-target runs.
-      command: serve("e2e", `--port ${productionApp.port} --strictPort`),
-      url: `http://localhost:${productionApp.port}`,
-      env: E2E_PROFILES.e2e.env,
-      reuseExistingServer: reuseServer(productionApp.explicit),
-      timeout: 180_000,
-      stdout: "ignore" as const,
-      stderr: "pipe" as const,
-    },
-    ...(skipPreview
-      ? []
-      : [
-          {
-            // The production build, exactly as it ships (no VITE_E2E).
-            command: serve("preview", `--port ${preview.port} --strictPort --base ${PREVIEW_BASE}`),
-            url: `http://localhost:${preview.port}${PREVIEW_BASE}`,
-            env: E2E_PROFILES.preview.env,
-            reuseExistingServer: reuseServer(preview.explicit),
-            timeout: 180_000,
-            stdout: "ignore" as const,
-            stderr: "pipe" as const,
-          },
-          // The self-hosting builds: production as it ships (no VITE_E2E), with the switches set.
-          // Served with a self-hosted copy's headers (scripts/self-host-headers.ts), not the public site's.
-          ...selfHost.map(({ name, at, env }) => ({
-            command: serve(name as E2EProfileName, `--port ${at.port} --strictPort`),
-            url: `http://localhost:${at.port}/`,
-            // Embeds framed by the host pages tests/e2e/self-host-helpers.ts serves on 127.0.0.1.
-            env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", PREVIEW_FRAME_ANCESTORS: "http://127.0.0.1:*", ...env },
-            reuseExistingServer: reuseServer(at.explicit),
-            timeout: 180_000,
-            stdout: "ignore" as const,
-            stderr: "pipe" as const,
-          })),
-        ]),
+    ...buildProfiles.map((name) => {
+      if (name === "e2e")
+        return {
+          // The e2e build: also supplies production HTML for framed-header tests in dev-target runs.
+          command: serve("e2e", `--port ${productionApp.port} --strictPort`),
+          url: `http://localhost:${productionApp.port}`,
+          env: E2E_PROFILES.e2e.env,
+          reuseExistingServer: reuseServer(productionApp.explicit),
+          timeout: 180_000,
+          stdout: "ignore" as const,
+          stderr: "pipe" as const,
+        };
+      if (name === "preview")
+        return {
+          // The production build, exactly as it ships (no VITE_E2E).
+          command: serve("preview", `--port ${preview.port} --strictPort --base ${PREVIEW_BASE}`),
+          url: `http://localhost:${preview.port}${PREVIEW_BASE}`,
+          env: E2E_PROFILES.preview.env,
+          reuseExistingServer: reuseServer(preview.explicit),
+          timeout: 180_000,
+          stdout: "ignore" as const,
+          stderr: "pipe" as const,
+        };
+      // The self-hosting builds: production as it ships (no VITE_E2E), with the switches set.
+      // Served with a self-hosted copy's headers (scripts/self-host-headers.ts), not the public site's.
+      const profile = selfHost.find((profile) => profile.name === name);
+      if (!profile) throw new Error(`Missing self-host server for build profile: ${name}`);
+      const { at, env } = profile;
+      return {
+        command: serve(name, `--port ${at.port} --strictPort`),
+        url: `http://localhost:${at.port}/`,
+        // Embeds framed by the host pages tests/e2e/self-host-helpers.ts serves on 127.0.0.1.
+        env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", PREVIEW_FRAME_ANCESTORS: "http://127.0.0.1:*", ...env },
+        reuseExistingServer: reuseServer(at.explicit),
+        timeout: 180_000,
+        stdout: "ignore" as const,
+        stderr: "pipe" as const,
+      };
+    }),
   ],
 });

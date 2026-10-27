@@ -62,36 +62,16 @@ runs:
       env:
         TARGET: ${{ inputs.target }}
         BROWSER_SETUP: ${{ inputs.browser-setup }}
+        SHARD: ${{ inputs.shard }}
+        TOTAL: ${{ inputs.total }}
       run: |
-        e2e=""
-        if [ "$TARGET" = "build" ]; then
-          node scripts/e2e-build.mjs e2e > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
-          e2e=$!
-        fi
-        node scripts/e2e-build.mjs preview > "$RUNNER_TEMP/prod-build.log" 2>&1 &
-        prod=$!
-        internal=""
-        locked=""
-        case ",$E2E_SELF_HOST," in *,internal,*)
-          node scripts/e2e-build.mjs internal > "$RUNNER_TEMP/internal-build.log" 2>&1 &
-          internal=$! ;;
-        esac
-        case ",$E2E_SELF_HOST," in *,locked,*)
-          node scripts/e2e-build.mjs locked > "$RUNNER_TEMP/locked-build.log" 2>&1 &
-          locked=$! ;;
-        esac
+        list="$(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL")"
+        read -ra specs <<< "$list"
+        node scripts/ci/e2e-builds.mjs build "$TARGET" "${specs[@]}" > "$RUNNER_TEMP/e2e-builds.log" 2>&1 &
+        builds=$!
         if [ "$BROWSER_SETUP" = "install" ]; then pnpm exec playwright install-deps chromium; fi
         status=0
-        if [ -n "$e2e" ]; then
-          wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
-        fi
-        wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
-        if [ -n "$internal" ]; then
-          wait "$internal" || { echo "::error::internal build failed"; cat "$RUNNER_TEMP/internal-build.log"; status=1; }
-        fi
-        if [ -n "$locked" ]; then
-          wait "$locked" || { echo "::error::locked build failed"; cat "$RUNNER_TEMP/locked-build.log"; status=1; }
-        fi
+        wait "$builds" || { echo "::error::E2E builds failed"; cat "$RUNNER_TEMP/e2e-builds.log"; status=1; }
         exit "$status"
     - name: Browser system dependencies
       if: inputs.browser-setup == 'install' && inputs.builds-artifact != ''

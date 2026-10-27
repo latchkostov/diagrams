@@ -25,7 +25,7 @@ it("builds each required variant once and preserves conditional self-host profil
   const build = vi.fn().mockResolvedValue(0);
   await buildArtifacts(specs, build);
   expect(build.mock.calls.map(([name]) => name)).toEqual(["e2e", "preview", "internal", "locked"]);
-  expect(requiredProfiles("dev", [specs[1]])).toEqual(["preview", "locked"]);
+  expect(requiredProfiles("dev", [specs[1]])).toEqual(["e2e", "preview", "locked"]);
   expect(requiredProfiles("build", ["tests/e2e/smoke.spec.ts"])).toEqual(["e2e", "preview"]);
   expect(() => requiredProfiles("other", specs)).toThrow("target");
   build.mockReset().mockImplementation(async (name) => (name === "preview" ? 1 : 0));
@@ -46,7 +46,7 @@ it("fails on missing shared builds and requires only the self-host variants a sh
   );
   rmSync(join(root, E2E_PROFILES.e2e.outDir, "index.html"));
   expect(() => verifyArtifacts("build", ["tests/e2e/smoke.spec.ts"], root)).toThrow("Missing prebuilt e2e");
-  expect(() => verifyArtifacts("dev", ["tests/e2e/smoke.spec.ts"], root)).not.toThrow();
+  expect(() => verifyArtifacts("dev", ["tests/e2e/smoke.spec.ts"], root)).toThrow("Missing prebuilt e2e");
 });
 
 it("uses whole-file greedy duration bins with disjoint and complete coverage", () => {
@@ -166,6 +166,9 @@ it("wires six unchanged check names to one artifact producer and skips browser i
   ))
     expect(step.if).toContain("inputs.browser-setup == 'install'");
   expect(steps.find((s) => s.name === "Local builds")?.run).toContain('if [ "$BROWSER_SETUP" = "install" ]; then');
+  expect(steps.find((s) => s.name === "Local builds")?.run).toContain(
+    'node scripts/ci/e2e-builds.mjs build "$TARGET" "${specs[@]}"',
+  );
   expect(steps.find((s) => s.name === "Playwright")?.env).toMatchObject({
     E2E_PREBUILT: "1",
     E2E_GATE: "1",

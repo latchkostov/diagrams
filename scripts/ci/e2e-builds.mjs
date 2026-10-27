@@ -5,17 +5,14 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import console from "node:console";
 import { buildE2E } from "../e2e-build.mjs";
-import { E2E_PROFILES, selfHostProfiles } from "../e2e-profiles.mjs";
+import { E2E_PROFILES, requiredProfiles } from "../e2e-profiles.mjs";
 import { shardFiles } from "../e2e-shard.mjs";
 import { imageName } from "../gate/doctor.mjs";
 
-export function requiredProfiles(target, specs) {
-  if (target !== "build" && target !== "dev") throw new Error(`Unknown E2E target: ${target}`);
-  return [...(target === "build" ? ["e2e"] : []), "preview", ...selfHostProfiles(specs)];
-}
+export { requiredProfiles };
 
-export async function buildArtifacts(specs, build = buildE2E) {
-  const results = await Promise.all(requiredProfiles("build", specs).map(async (name) => [name, await build(name)]));
+export async function buildArtifacts(specs, build = buildE2E, target = "build") {
+  const results = await Promise.all(requiredProfiles(target, specs).map(async (name) => [name, await build(name)]));
   const failed = results.filter(([, code]) => code !== 0).map(([name]) => name);
   if (failed.length) throw new Error(`E2E builds failed: ${failed.join(", ")}`);
 }
@@ -29,8 +26,8 @@ export function verifyArtifacts(target, specs, root = process.cwd()) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [mode, target, ...specs] = process.argv.slice(2);
-  if (mode === "build") await buildArtifacts(shardFiles(1, 1));
+  if (mode === "build") await buildArtifacts(target ? specs : shardFiles(1, 1), buildE2E, target ?? "build");
   else if (mode === "check") verifyArtifacts(target, specs);
   else if (mode === "image") console.log(`playwright-image=${imageName(process.cwd())}`);
-  else throw new Error("Usage: e2e-builds.mjs build | image | check <build|dev> <specs...>");
+  else throw new Error("Usage: e2e-builds.mjs build [<build|dev> <specs...>] | image | check <build|dev> <specs...>");
 }
