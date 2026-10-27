@@ -46,3 +46,11 @@ These meet the +200 B per-payload and +1,000 B total gzip limits. The actual ski
 833,609 B, 93 B above the merge-base and 1,391 B below the unchanged 835,000 B cap.
 No budget or compression policy was changed. Live's fixed 135,000 B budget has 4 B headroom;
 [the dedicated trim follow-up](../backlog/2026-10-27-engine-split-live-headroom.md) records that warning.
+
+### Verification limitation
+
+The full Linux gate passed all unit/heavy tests and parity but reported seven browser failures.
+Clean-master probes of the affected files passed twice (402 tests), and the implementation's
+line-targeted probe passed all nine selected cases. The failures remain unexplained, not established
+as pre-existing. [The browser follow-up](../backlog/2026-10-27-engine-split-e2e-probe.md) records the
+exact summaries and requires investigation using PR CI before merge.
