@@ -134,28 +134,6 @@
     "failurePattern": "waiting for getByTestId\\('room-retry'\\)"
   },
   {
-    "id": "nightly-1027-bb8b80d3f0",
-    "spec": "tests/e2e/edge-shaping.spec.ts",
-    "title": "Control drag preserves an off-grid position while an unmodified drag snaps",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('route-preview'\\)"
-  },
-  {
-    "id": "nightly-1027-763bdc2b38",
-    "spec": "tests/e2e/naming-handover.spec.ts",
-    "title": "buffered quick-add: clicking another node saves before measurement and never reopens naming",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "Error: Expected the newly placed node"
-  },
-  {
     "id": "nightly-1027-bacfdd5708",
     "spec": "tests/e2e/planning-p1.spec.ts",
     "title": "P1: live group details stay reachable in a short viewport",
@@ -563,39 +541,6 @@
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
   },
   {
-    "id": "nightly-1027-90da26aae4",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "thread expectation chips and metric picker work by keyboard in en",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('sim-panel-expectation-0-field'\\)"
-  },
-  {
-    "id": "nightly-1027-129d63ff52",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "thread expectation chips and metric picker work by keyboard in ar",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('sim-panel-expectation-0-field'\\)"
-  },
-  {
-    "id": "nightly-1027-3104b37c94",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "thread expectation chips and metric picker work by keyboard in en-XA",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('sim-panel-expectation-0-field'\\)"
-  },
-  {
     "id": "nightly-1027-f36cc7f0d9",
     "spec": "tests/e2e/review-358.spec.ts",
     "title": "R-caf692ac78 phone Speed retains native navigation keys",
@@ -651,17 +596,6 @@
     "failurePattern": "getByTestId\\('trouble-action'\\)"
   },
   {
-    "id": "nightly-1027-0067160ca1",
-    "spec": "tests/e2e/smoke.spec.ts",
-    "title": "canvas: black-friday-commerce",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('node-web'\\)"
-  },
-  {
     "id": "nightly-1027-f6313570dc",
     "spec": "tests/e2e/host-embed.spec.ts",
     "title": "the host page supplies the diagram: it renders, plays, takes commands and reports back",
@@ -673,28 +607,6 @@
     "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*>(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*0[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*0"
   },
   {
-    "id": "nightly-1027-0526d25850",
-    "spec": "tests/e2e/lazy-live-fixes.spec.ts",
-    "title": "a failed trouble callout download offers Retry; Retry brings it and gives the keyboard back",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('trouble-action'\\)"
-  },
-  {
-    "id": "nightly-1027-f55a47457a",
-    "spec": "tests/e2e/lazy-live-fixes.spec.ts",
-    "title": "a failed trouble callout keeps a persistent Retry through toast expiry and export, then brings the callout",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('trouble-action'\\)"
-  },
-  {
     "id": "nightly-1027-8e42829945",
     "spec": "tests/e2e/live-render.spec.ts",
     "title": "the worker path draws nothing on the main thread and runs no endless animation while live",
@@ -704,17 +616,6 @@
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*>(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*4(?:\\x1b\\[[0-9;]*m)*\\.(?:\\x1b\\[[0-9;]*m)*7(?:\\x1b\\[[0-9;]*m)*5[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*3"
-  },
-  {
-    "id": "nightly-1027-a377e5e4de",
-    "spec": "tests/e2e/showcase-examples.spec.ts",
-    "title": "ev-charging-network: “deny rule stops” brings its cards into view",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*r(?:\\x1b\\[[0-9;]*m)*u(?:\\x1b\\[[0-9;]*m)*e[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*f(?:\\x1b\\[[0-9;]*m)*a(?:\\x1b\\[[0-9;]*m)*l(?:\\x1b\\[[0-9;]*m)*s(?:\\x1b\\[[0-9;]*m)*e"
   },
   {
     "id": "nightly-1027-ce1948e1c0",
@@ -750,17 +651,6 @@
     "failurePattern": "getByTestId\\('trouble-action'\\)"
   },
   {
-    "id": "nightly-1027-063447b65e",
-    "spec": "tests/e2e/lab.spec.ts",
-    "title": "every preset renders without errors (part 2 of 8)",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "Test timeout of 120000ms exceeded"
-  },
-  {
     "id": "nightly-1027-6de9d77d16",
     "spec": "tests/e2e/requests-wait-review.spec.ts",
     "title": "a resumed narration still offers the same verified timeout",
@@ -783,83 +673,6 @@
     "failurePattern": "Test timeout of 30000ms exceeded"
   },
   {
-    "id": "nightly-1027-5b8f343e98",
-    "spec": "tests/e2e/tutorials.spec.ts",
-    "title": "faults: Restore completes with an additional slowdown (menu)",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "Test timeout of 30000ms exceeded"
-  },
-  {
-    "id": "nightly-1027-795a768950",
-    "spec": "tests/e2e/tutorials.spec.ts",
-    "title": "faults: Restore completes with an additional slowdown (Skip)",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "Test timeout of 30000ms exceeded"
-  },
-  {
-    "id": "nightly-1027-822d970ba1",
-    "spec": "tests/e2e/tutorials.spec.ts",
-    "title": "webhooks: Skip continues the paused note so watching finishes expect-parked",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('tutorial-step'\\)"
-  },
-  {
-    "id": "nightly-1027-6e0e1f49a1",
-    "spec": "tests/e2e/tutorials.spec.ts",
-    "title": "outbox: its solution plays through the real UI",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('live-more'\\)"
-  },
-  {
-    "id": "nightly-1027-8db610fecb",
-    "spec": "tests/e2e/tutorials.spec.ts",
-    "title": "partitions: its solution plays through the real UI",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*r(?:\\x1b\\[[0-9;]*m)*u(?:\\x1b\\[[0-9;]*m)*e[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*f(?:\\x1b\\[[0-9;]*m)*a(?:\\x1b\\[[0-9;]*m)*l(?:\\x1b\\[[0-9;]*m)*s(?:\\x1b\\[[0-9;]*m)*e"
-  },
-  {
-    "id": "nightly-1027-0e3b0ccd6e",
-    "spec": "tests/e2e/tutorials.spec.ts",
-    "title": "trace-slowmo: its solution plays through the real UI",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('tutorial-step'\\)"
-  },
-  {
-    "id": "nightly-1027-9210cc3e56",
-    "spec": "tests/e2e/latency.spec.ts",
-    "title": "latency hover stays above the live bar at 1280×720 in embed",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('node-detail-billing'\\)"
-  },
-  {
     "id": "nightly-1027-6c85edc024",
     "spec": "tests/e2e/skill-html.spec.ts",
     "title": "playback checks preserve the viewer's existing animation-clock origin",
@@ -869,83 +682,6 @@
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "Test timeout of 30000ms exceeded"
-  },
-  {
-    "id": "nightly-1027-86ae321684",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "Checks expose the verified primary fix and keyboard option chips in en",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('check-fix-blocked-threads:caller'\\)"
-  },
-  {
-    "id": "nightly-1027-755e58e274",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "an inspector alternative that removes two findings keeps keyboard focus in en",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('inspector-check-fix-option-0-blocked-threads:caller'\\)"
-  },
-  {
-    "id": "nightly-1027-aaea8e7580",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "replica alternative replaces autoscaling with a fixed fleet in one undo step in ar",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('check-fix-option-1-blocked-threads:caller'\\)"
-  },
-  {
-    "id": "nightly-1027-a8ed1b8a15",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "Checks expose the verified primary fix and keyboard option chips in en-XA",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('check-fix-blocked-threads:caller'\\)"
-  },
-  {
-    "id": "nightly-1027-8d7d42df9a",
-    "spec": "tests/e2e/requests-wait-checks.spec.ts",
-    "title": "replica alternative replaces autoscaling with a fixed fleet in one undo step in en-XA",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('check-fix-option-1-blocked-threads:caller'\\)"
-  },
-  {
-    "id": "nightly-1027-bbf32a2329",
-    "spec": "tests/e2e/confluence-dc.spec.ts",
-    "title": "Confluence macro: attachment with saved simulations plays the first simulation under framed headers",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('confluence-diagram'\\)"
-  },
-  {
-    "id": "nightly-1027-74c91b89f4",
-    "spec": "tests/e2e/confluence-dc.spec.ts",
-    "title": "Confluence macro: inline with saved simulations plays the first simulation under framed headers",
-    "firstSeen": "2026-10-27",
-    "lastSeen": "2026-10-27",
-    "count": 1,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
-    "failurePattern": "getByTestId\\('confluence-diagram'\\)"
   },
   {
     "id": "nightly-1027-d4729bcdf2",
