@@ -624,8 +624,10 @@ class WorkerRenderer implements LiveRenderer {
     for (const id of dict?.edges ?? []) this.scene.want(id);
     if (f.slow && slowChanged) for (const id of slowEdges(f.slow.frame)) this.scene.want(id);
     const changes = sync ? this.scene.everything() : this.scene.takeChanges();
+    // Detail geometry needs its own ack even when a paused snapshot has no other changes.
     if (
       !sync &&
+      this.sentGeometryRevision === this.geometryRevision &&
       !changes &&
       !snapChanged &&
       !this.scene.backlog &&
