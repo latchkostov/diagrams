@@ -9,6 +9,8 @@ import { EditorBinding } from "./binding";
 import type { CollabSession } from "./session";
 
 const STEP = Symbol("editor-step");
+/** A local step's identity, for an Undo notification: kept by the step Undo or Redo makes of it. */
+const ENTRY = Symbol("editor-entry");
 interface LocalStep extends RoomStepMeta {
   capture?: string;
 }
@@ -150,6 +152,7 @@ export class CollaborativeEditorRoom implements EditorRoom {
     if (!changed) return;
     const inverse = (direction === "undo" ? manager.redoStack : manager.undoStack).at(-1);
     if (inverse && meta) inverse.meta.set(STEP, meta);
+    if (inverse && item?.meta.has(ENTRY)) inverse.meta.set(ENTRY, item.meta.get(ENTRY));
     const projected = this.session.doc.project();
     const next = this.stepped ?? (projected.diagram ? toFlow(projected.diagram) : undefined);
     if (!next) return;
@@ -162,6 +165,16 @@ export class CollaborativeEditorRoom implements EditorRoom {
   }
   top(): string | undefined {
     return (this.session.doc.undoManager.undoStack.at(-1)?.meta.get(STEP) as LocalStep | undefined)?.mergeKey;
+  }
+  /**
+   * The local undo-stack item Undo would reverse. Peers' edits never enter this stack, and a merged local edit
+   * extends the same item, so neither changes what an Undo notification is bound to.
+   */
+  undoEntryId(): object | undefined {
+    const item = this.session.doc.undoManager.undoStack.at(-1);
+    if (!item) return undefined;
+    if (!item.meta.has(ENTRY)) item.meta.set(ENTRY, {});
+    return item.meta.get(ENTRY) as object;
   }
   flushRemote() {
     if (!this.checkPrivacy()) return;

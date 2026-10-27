@@ -359,7 +359,6 @@ export function Recorder({
   }, [capturing]);
 
   // The finished video is released when it's downloaded (after the browser has it) or discarded.
-  const releases = useRef(new Map<string, number>());
   const result = rec.result;
   const download = () => {
     if (!result) return;
@@ -377,19 +376,17 @@ export function Recorder({
   const discard = () => {
     if (!result) return;
     dispatch({ type: "close" });
-    const timer = window.setTimeout(() => {
-      URL.revokeObjectURL(result.url);
-      releases.current.delete(result.url);
-    }, UNDO_MS + 500);
-    releases.current.set(result.url, timer);
+    let restored = false;
     notify("Discarded the recording.", {
       duration: UNDO_MS,
+      onDismiss: () => {
+        if (!restored) URL.revokeObjectURL(result.url);
+      },
       action: {
         label: "Undo",
         testId: "record-discard-undo",
         run: () => {
-          window.clearTimeout(releases.current.get(result.url));
-          releases.current.delete(result.url);
+          restored = true;
           dispatch({ type: "reopen", result });
         },
       },

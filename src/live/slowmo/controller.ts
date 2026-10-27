@@ -16,8 +16,8 @@ import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
 import { isRecordingActive } from "../record/framing";
 import type { CameraPlan, FlowBox, Insets, View } from "./camera";
 import { waitingOverlay, type PaintedLabel, type SlowOverlay } from "./overlay";
-import { loadSlowScript, slowPainter, slowScript } from "./scriptChunk";
-import { LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
+import { slowPainter, slowScript } from "./scriptChunk";
+import { LOAD_FAILED } from "../../lib/lazyLoad";
 import { notify, toast } from "../../interop/ui/toast";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
 
@@ -120,8 +120,8 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
       });
     },
   });
-  // The script code downloads once Live is idle, so the first start rarely waits; a start before then waits for it.
-  connecting.push(() => whenIdle(() => void loadSlowScript().catch(() => {})));
+  // SlowMotion.start owns the replay download. Ordinary Live sessions must not schedule it:
+  // a late idle prefetch leaves module-preload links behind across otherwise settled Live cycles.
   connecting.push(() => {
     const unwatch = session.watch();
     return () => {

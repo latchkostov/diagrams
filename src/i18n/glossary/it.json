@@ -98,8 +98,8 @@
     "diagram": {
       "use": "diagramma",
       "match": ["diagramm"],
-      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
-      "note": "Diagrams in these cloud errors is the existing folder name."
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan", "rail.diagram"],
+      "note": "Diagrams in these cloud errors is the existing folder name. rail.diagram: short rail label; full name remains in tooltip and accessible name."
     },
     "node": {
       "use": "nodo",

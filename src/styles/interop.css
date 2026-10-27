@@ -23,7 +23,7 @@
 
 .ix-menu {
   position: fixed;
-  z-index: 220;
+  z-index: var(--layer-menu);
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 80px);
@@ -190,13 +190,19 @@
 
 /* ---------- toasts ---------- */
 
+/* Workbench's flyouts, transport menus and phone sheets share the page's stacking context. */
+[data-toast-host] > [data-toast-layer] {
+  position: relative;
+  z-index: 7;
+  animation: none;
+}
+
 .ix-toast {
   position: fixed;
   left: 50%;
   /* Lifted above the canvas's bottom bars by the Toaster (toastStack.ts). */
   bottom: 24px;
-  transition: bottom var(--dur-2) var(--ease-out);
-  z-index: 300;
+  z-index: var(--layer-notification);
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -213,10 +219,59 @@
   animation: ix-toast-in var(--dur-2) var(--ease-out);
 }
 
+/* Out of reach but in place: behind a task's toast, or under a modal (whose sweep makes the page layer inert). */
+.ix-toast[data-suspended],
+[data-toast-layer][inert] > .ix-toast,
+[inert] [data-toast-layer] > .ix-toast {
+  visibility: hidden;
+}
+
+/* A task holds the page's input: its progress and Cancel are above everything. */
+.ix-toast[data-blocking] {
+  z-index: var(--layer-task);
+}
+
+/* A dialog's own feedback: in the dialog's layer, beside its panel, never over its controls (toastStack.ts). */
+.ix-dialog-feedback {
+  display: flex;
+  flex-direction: column;
+}
+
+.ix-toast[data-layer="dialog"] {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+
+/* The panel kept its height: the body gives up the room, so the header and footer stay where they were. */
+.ix-toast[data-layer="dialog"][data-place="inside"] {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  max-width: none;
+  margin: 0 16px 12px;
+}
+
+/* An inline slot adds no grid row (or gap) until its feedback arrives. */
+.ix-dialog-feedback[data-feedback="inline"] {
+  display: contents;
+}
+
+[data-feedback="inline"] > .ix-toast[data-layer="dialog"] {
+  margin: 0;
+}
+
 @keyframes ix-toast-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ix-toast {
+    animation: none;
   }
 }
 
@@ -312,7 +367,7 @@
 .ix-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 250;
+  z-index: var(--layer-dialog);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -328,6 +383,8 @@
 }
 
 .ix-dialog {
+  /* Its feedback is placed against it (.ix-toast[data-layer="dialog"]). */
+  position: relative;
   max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
@@ -719,7 +776,7 @@
 .ix-drop {
   position: fixed;
   inset: 0;
-  z-index: 280;
+  z-index: var(--layer-drop);
   display: grid;
   place-items: center;
   padding: 24px;

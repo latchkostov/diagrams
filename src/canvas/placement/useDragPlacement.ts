@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type {
   EdgeChange,
@@ -349,14 +350,16 @@ export function useDragPlacement(
         }
         endGesture();
         if (!ids.length && !draggedGroups.length) return;
-        if (ids.length) {
-          const left = editor.settleMembership(ids);
-          if (!copies && editGestures) sayLeft(left);
-        }
-        if (draggedGroups.length) {
-          const targetFlowIds = draggedGroups.map((g) => copies?.get(g.id) ?? g.id);
-          editor.settleBoundaryMembership(targetFlowIds.map((id) => id.slice(GROUP_PREFIX.length)));
-        }
+        let left = new Map<string, string[]>();
+        flushSync(() => {
+          if (ids.length) left = editor.settleMembership(ids);
+          if (draggedGroups.length) {
+            const targetFlowIds = draggedGroups.map((g) => copies?.get(g.id) ?? g.id);
+            editor.settleBoundaryMembership(targetFlowIds.map((id) => id.slice(GROUP_PREFIX.length)));
+          }
+        });
+        // Capturing Undo flushes history: every part of this drop must be settled first.
+        if (!copies && editGestures) sayLeft(left);
       });
     },
     [editor, guides, editGestures, sayLeft, droppedNodes, endGesture, menus],

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
+import { flushSync } from "react-dom";
+import { HISTORY_PENDING, toast } from "../interop/ui/toast";
 import { HistoryController } from "./historyController";
 import { selectionOf, snapshotDiagram, withSelection, type FlowSelection } from "./historySelection";
 import type { EditorRoom } from "./room";
@@ -85,8 +87,15 @@ export function useHistory(
   const applyRef = useRef(apply);
   const onStepRef = useRef(onStep);
   const stateKey = useMemo(() => ctl.key(state), [ctl, state]);
+  const latestKey = useRef({ snapshot: state, key: stateKey });
+  const currentKey = useCallback(() => {
+    if (latestKey.current.snapshot !== latest.current)
+      latestKey.current = { snapshot: latest.current, key: ctl.key(latest.current) };
+    return latestKey.current.key;
+  }, [ctl]);
   useLayoutEffect(() => {
     latest.current = state;
+    latestKey.current = { snapshot: state, key: stateKey };
     privacyRef.current = privacy;
     applyRef.current = apply;
     onStepRef.current = onStep;
@@ -117,6 +126,35 @@ export function useHistory(
     room?.flushRemote();
     return true;
   }, [ctl, room]);
+
+  useLayoutEffect(() => {
+    /** The entry Undo would reverse; pending while the document is ahead of it (an edit not yet recorded). */
+    const entry = () => {
+      const h = ctl.history;
+      if (!(ctl.collaborative ? room?.canUndo : canUndo(h))) return undefined;
+      return currentKey() === present(h).key ? ctl.undoEntryId() : HISTORY_PENDING;
+    };
+    return toast.bindHistory({
+      capture: () => {
+        // Toasts can follow a queued mutation in the same event. Record that edit before
+        // binding to its unique entry ID (never its reusable merge tag or stack index).
+        flushSync(() => {});
+        // Recording early must not split the step: what settles after it (a text's measure) keeps the step's
+        // tag, so it merges into the step the Undo names, as it would have without this flush.
+        const tag = mergeKey.current;
+        flush();
+        // Only for as long as the debounce would have kept it: a later, unrelated edit is a step of its own.
+        if (tag !== undefined && mergeKey.current === undefined) {
+          mergeKey.current = tag;
+          timer.current = window.setTimeout(flush, DEBOUNCE_MS);
+        }
+        const id = entry();
+        // Still ahead once recorded: no entry this Undo can name.
+        return id === HISTORY_PENDING ? undefined : id;
+      },
+      current: entry,
+    });
+  }, [ctl, flush, room, currentKey]);
 
   useLayoutEffect(
     () =>
@@ -150,6 +188,7 @@ export function useHistory(
       mergeKey.current = undefined;
       room?.flushRemote();
     }
+    toast.invalidateUndo();
   }, [ctl, state, stateKey, history, room, privacy]);
 
   useEffect(() => {

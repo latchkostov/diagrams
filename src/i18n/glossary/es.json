@@ -182,7 +182,9 @@
     },
     "checks": {
       "use": "comprobaciones",
-      "match": ["comprobaci"]
+      "match": ["comprobaci"],
+      "except": ["rail.checks"],
+      "note": "rail.checks: short rail label; full name remains in tooltip and accessible name."
     },
     "annotation": {
       "use": "anotación",

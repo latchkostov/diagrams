@@ -1,4 +1,13 @@
 {
+  "rail.select": "Επιλογή",
+  "rail.add": "Προσθήκη",
+  "rail.annotate": "Σχολιασμός",
+  "rail.checks": "Έλεγχοι",
+  "rail.stencils": "Στένσιλ",
+  "rail.tutorials": "Φροντιστήρια",
+  "rail.shortcuts": "Συντομεύσεις",
+  "rail.ai": "ΤΝ",
+  "rail.diagram": "Σχέδιο",
   "workbench.thisRun": "Αυτή η εκτέλεση",
   "workbench.wholeRun": "Ολόκληρη η εκτέλεση",
   "workbench.runWindow": "0–{end, number} δ από {total, number} δ",

@@ -3,6 +3,7 @@ import { runEndResult } from "./runEndResult";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { usePhone } from "../lib/usePhone";
+import { modalLayers } from "../lib/modalLayers";
 import { useStore } from "@xyflow/react";
 import { useInteraction } from "../canvas/interaction";
 import type { LiveState } from "./controller";
@@ -59,7 +60,7 @@ export function NoteCallout({
   useEffect(() => {
     if (!open) return;
     const escape = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || modalLayers.top) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       restoreNoteFocus.current = true;

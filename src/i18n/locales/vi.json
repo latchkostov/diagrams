@@ -1,4 +1,13 @@
 {
+  "rail.select": "Chọn",
+  "rail.add": "Thêm",
+  "rail.annotate": "Chú thích",
+  "rail.checks": "Kiểm tra",
+  "rail.stencils": "Mẫu hình",
+  "rail.tutorials": "Hướng dẫn",
+  "rail.shortcuts": "Phím tắt",
+  "rail.ai": "AI",
+  "rail.diagram": "Sơ đồ",
   "workbench.thisRun": "Lần chạy này",
   "workbench.wholeRun": "Toàn bộ lần chạy",
   "workbench.runWindow": "0–{end, number} giây trên {total, number} giây",

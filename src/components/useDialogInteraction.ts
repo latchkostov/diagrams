@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { openModalLayer } from "../lib/modalLayers";
 
 /** Shared keyboard, inertness and opener lifecycle for modal surfaces. */
 export function useDialogInteraction(
@@ -7,15 +8,14 @@ export function useDialogInteraction(
   onClose: () => void,
   /** Hands focus back through an interaction controller instead (it gets what had focus as the dialog opened). */
   restoreFocus?: (opener: HTMLElement | null) => void,
+  /** The panel's feedback slot: the dialog's own toasts render there (src/lib/modalLayers.ts). */
+  feedback?: RefObject<HTMLElement | null>,
 ) {
   const opener = useRef<HTMLElement | null | undefined>(undefined);
-  const restoreRef = useRef(restoreFocus);
+  const layer = useRef<ReturnType<typeof openModalLayer> | null>(null);
+  const callbacks = useRef({ onClose, restoreFocus });
   useLayoutEffect(() => {
-    restoreRef.current = restoreFocus;
-  });
-  const closeRef = useRef(onClose);
-  useLayoutEffect(() => {
-    closeRef.current = onClose;
+    callbacks.current = { onClose, restoreFocus };
   });
 
   // Native listeners (like ShortcutsDialog): Escape closes, Tab stays inside, the page behind is inert.
@@ -29,7 +29,7 @@ export function useDialogInteraction(
       e.stopPropagation();
       if (e.key === "Escape") {
         e.preventDefault();
-        closeRef.current();
+        callbacks.current.onClose();
       } else if (e.key === "Tab") {
         const controls = Array.from(
           panelEl.querySelectorAll<HTMLElement>(
@@ -50,18 +50,23 @@ export function useDialogInteraction(
     const onMouseDown = (e: MouseEvent) => {
       if (e.target === backdropEl) {
         e.preventDefault();
-        closeRef.current();
+        callbacks.current.onClose();
       }
     };
     const onContextMenu = (e: Event) => e.preventDefault();
-    panelEl.addEventListener("keydown", onKeyDown);
-    backdropEl.addEventListener("mousedown", onMouseDown);
-    backdropEl.addEventListener("contextmenu", onContextMenu);
+    const events = [
+      [panelEl, "keydown", onKeyDown as EventListener],
+      [backdropEl, "mousedown", onMouseDown as EventListener],
+      [backdropEl, "contextmenu", onContextMenu],
+    ] as const;
+    for (const [element, type, listener] of events) element.addEventListener(type, listener);
     // Outgoing dialogs restore focus in cleanup, after this dialog rendered. Capture only after that
     // handoff, and keep the original opener when StrictMode replays this effect.
     if (opener.current === undefined)
       opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prev = opener.current;
+    // Ownership must survive the opener's blur when autofocus moves the keyboard into this modal.
+    layer.current ??= openModalLayer(panelEl, { feedback: feedback?.current, opener: prev });
     // A primary action that's still getting ready (Copy link while the link is made) can't take focus: the panel
     // does, so Esc and Tab work at once, and the dialog hands focus on when it's ready (dialogs.tsx, useFocusWhenReady).
     const auto = panelEl.querySelector<HTMLElement>("[data-autofocus]");
@@ -73,17 +78,16 @@ export function useDialogInteraction(
     const wasInert = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
     return () => {
-      panelEl.removeEventListener("keydown", onKeyDown);
-      backdropEl.removeEventListener("mousedown", onMouseDown);
-      backdropEl.removeEventListener("contextmenu", onContextMenu);
+      for (const [element, type, listener] of events) element.removeEventListener(type, listener);
       background.forEach((el, i) => (el.inert = wasInert[i]));
-      // StrictMode replays the effect while the dialog is still mounted; it has not closed.
+      // StrictMode replays setup while the dialog is still mounted. Keep its ownership as well as its opener.
       if (panelEl.isConnected) return;
-      if (restoreRef.current) return restoreRef.current(prev && prev !== document.body ? prev : null);
-      // What opened it may be gone (a toast's button: the toast closes as it acts, or fades): the canvas, not the
-      // page, gets the keyboard back.
-      if (prev && prev !== document.body && prev.isConnected && !prev.closest("[data-toast]")) prev.focus();
+      if (callbacks.current.restoreFocus) callbacks.current.restoreFocus(prev && prev !== document.body ? prev : null);
+      // Keep modal ownership until its opener has received focus, including a retained toast control.
+      else if (prev && prev !== document.body && prev.isConnected) prev.focus();
       else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
+      layer.current?.();
+      layer.current = null;
     };
-  }, [panel, backdrop]);
+  }, [panel, backdrop, feedback]);
 }

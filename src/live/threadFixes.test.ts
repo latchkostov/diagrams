@@ -7,6 +7,7 @@ import { selectionOf } from "../editor/historySelection";
 import type { CanvasSnapshot } from "../editor/useHistory";
 import { effectiveCallerPolicy } from "../editor/callerPolicy";
 import { toast } from "../interop/ui/toast";
+import { toast as interaction } from "../interop/ui/toastRuntime";
 import { LiveController } from "./controller";
 import type { LiveUi } from "./context";
 import { planningHost } from "./planningHost";
@@ -76,8 +77,8 @@ it.each([false, true])("applies a shedding fix and undoes both policies together
       expect(h.api.getEdge("call")!.props).toEqual({ ...before.edges[1].props, caller: action.caller });
       expect(h.api.getNode("partner")!.props).toEqual({ ...before.nodes[2].props, queue: action.queue!.policy });
     }
-    expect(toast.current?.action?.testId).toBe("thread-fix-undo");
-    toast.current!.action!.run();
+    expect(interaction.current?.action?.testId).toBe("thread-fix-undo");
+    interaction.current!.action!.run();
     synchronize();
     expect(h.api.getDiagram()).toEqual(before);
     expect(controller.getState().running).toEqual(beforeRun);

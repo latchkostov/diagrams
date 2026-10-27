@@ -1,4 +1,13 @@
 {
+  "rail.select": "Vali",
+  "rail.add": "Lisa",
+  "rail.annotate": "Märkmed",
+  "rail.checks": "Kontrollid",
+  "rail.stencils": "Trafaretid",
+  "rail.tutorials": "Õpetused",
+  "rail.shortcuts": "Otseteed",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagramm",
   "workbench.thisRun": "See käitus",
   "workbench.wholeRun": "Kogu käitus",
   "workbench.runWindow": "0–{end, number} s / {total, number} s",

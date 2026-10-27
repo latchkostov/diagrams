@@ -1,4 +1,13 @@
 {
+  "rail.select": "चुनें",
+  "rail.add": "जोड़ें",
+  "rail.annotate": "एनोटेट करें",
+  "rail.checks": "जाँचें",
+  "rail.stencils": "स्टेंसिल",
+  "rail.tutorials": "ट्यूटोरियल",
+  "rail.shortcuts": "शॉर्टकट",
+  "rail.ai": "AI",
+  "rail.diagram": "डायग्राम",
   "workbench.thisRun": "यह रन",
   "workbench.wholeRun": "पूरा रन",
   "workbench.runWindow": "कुल {total, number} सेकंड में से 0–{end, number} सेकंड",

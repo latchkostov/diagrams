@@ -1,4 +1,13 @@
 {
+  "rail.select": "Izberi",
+  "rail.add": "Dodaj",
+  "rail.annotate": "Opomba",
+  "rail.checks": "Preverjanja",
+  "rail.stencils": "Šablone",
+  "rail.tutorials": "Vadnice",
+  "rail.shortcuts": "Bližnjice",
+  "rail.ai": "UI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Ta zagon",
   "workbench.wholeRun": "Celoten zagon",
   "workbench.runWindow": "0–{end, number} s od {total, number} s",

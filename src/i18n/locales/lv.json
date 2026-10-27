@@ -1,4 +1,13 @@
 {
+  "rail.select": "Atlasīt",
+  "rail.add": "Pievienot",
+  "rail.annotate": "Anotēt",
+  "rail.checks": "Pārbaudes",
+  "rail.stencils": "Trafareti",
+  "rail.tutorials": "Apmācības",
+  "rail.shortcuts": "Īsceļi",
+  "rail.ai": "MI",
+  "rail.diagram": "Diagramma",
   "workbench.thisRun": "Šī izpilde",
   "workbench.wholeRun": "Visa izpilde",
   "workbench.runWindow": "0–{end, number} s no {total, number} s",

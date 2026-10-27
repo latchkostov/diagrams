@@ -1,4 +1,13 @@
 {
+  "rail.select": "Selectare",
+  "rail.add": "Adaugă",
+  "rail.annotate": "Adnotați",
+  "rail.checks": "Verificări",
+  "rail.stencils": "Șabloane",
+  "rail.tutorials": "Tutoriale",
+  "rail.shortcuts": "Scurtături",
+  "rail.ai": "IA",
+  "rail.diagram": "Diagramă",
   "workbench.thisRun": "Această rulare",
   "workbench.wholeRun": "Întreaga rulare",
   "workbench.runWindow": "0–{end, number} s din {total, number} s",

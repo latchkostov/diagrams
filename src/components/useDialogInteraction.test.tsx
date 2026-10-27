@@ -1,8 +1,71 @@
+import { toast as interaction } from "../interop/ui/toastRuntime";
 // @vitest-environment happy-dom
 import { act, Fragment, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Dialog } from "../interop/ui/Dialog";
+import { ShortcutsDialog } from "./ShortcutsDialog";
+import { Toaster } from "../interop/ui/Toaster";
+import { notify, toast } from "../interop/ui/toast";
+import { modalLayers } from "../lib/modalLayers";
+
+it.each([
+  { surface: "dialog", strict: false },
+  { surface: "dialog", strict: true },
+  { surface: "shortcuts", strict: false },
+  { surface: "shortcuts", strict: true },
+])(
+  "$surface owns a focused toast before autofocus releases it to a waiting notification (strict=$strict)",
+  async ({ surface, strict }) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const host = document.createElement("div");
+    const outside = document.createElement("button");
+    document.body.append(host, outside);
+    const root = createRoot(host);
+    const dismissed = vi.fn();
+    const Wrapper = strict ? StrictMode : Fragment;
+    const render = (open: boolean) =>
+      root.render(
+        <Wrapper>
+          <Toaster />
+          {open &&
+            (surface === "dialog" ? (
+              <Dialog title="Test" testId="test-dialog" onClose={() => {}}>
+                <input data-autofocus data-testid="test-dialog-input" />
+              </Dialog>
+            ) : (
+              <ShortcutsDialog onClose={() => {}} />
+            ))}
+        </Wrapper>,
+      );
+    try {
+      await act(() => render(false));
+      await act(() => notify("First", { action: { label: "Undo", run() {} }, onDismiss: dismissed }));
+      const action = document.querySelector<HTMLButtonElement>('[data-testid="toast-action"]')!;
+      await act(() => action.focus());
+      await act(() => toast.info("Waiting"));
+      await act(() => render(true));
+      expect(modalLayers.top?.opener).toBe(action);
+      expect(modalLayers.top?.panel.contains(document.activeElement)).toBe(true);
+      expect(action.isConnected).toBe(true);
+      expect(dismissed).not.toHaveBeenCalled();
+      await act(() => render(false));
+      expect(modalLayers.top).toBeNull();
+      expect(document.activeElement).toBe(action);
+      expect(dismissed).not.toHaveBeenCalled();
+      await act(() => outside.focus());
+      expect(interaction.current?.text).toBe("Waiting");
+      expect(dismissed).toHaveBeenCalledTimes(1);
+    } finally {
+      await act(() => root.unmount());
+      interaction.release();
+      toast.dismiss();
+      host.remove();
+      outside.remove();
+      vi.unstubAllGlobals();
+    }
+  },
+);
 
 it.each([false, true])(
   "restores the original opener only on actual dialog close (controller=%s)",

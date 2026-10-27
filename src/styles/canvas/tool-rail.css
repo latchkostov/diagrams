@@ -2,6 +2,7 @@
   width: var(--frame-rail-w);
   flex: none;
   min-height: 0;
+  overflow-y: auto;
   z-index: 8;
   display: flex;
   flex-direction: column;
@@ -13,13 +14,15 @@
 }
 .tool-rail button {
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   width: 60px;
-  min-height: 52px;
+  padding: 4px;
+  min-height: 56px;
   flex: none;
   border: 0;
   border-radius: 9px;
@@ -29,6 +32,15 @@
   font-weight: 560;
   font-stretch: var(--stretch-legend);
   line-height: 1.15;
+}
+.tool-rail-label {
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-size: clamp(10.5px, 24cqi, 12px);
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .tool-rail button svg {
   color: var(--rail-ink);
@@ -177,7 +189,8 @@
   }
   .tool-rail {
     width: 100%;
-    height: 56px;
+    overflow: visible;
+    height: 64px;
     flex-direction: row;
     justify-content: space-evenly;
     padding: 4px;
@@ -185,8 +198,20 @@
     border-block-start: 1px solid var(--line);
   }
   .tool-rail > button {
-    width: 44px;
-    min-height: 44px;
+    flex: 1;
+    width: 60px;
+    min-width: 44px;
+    max-width: 60px;
+    min-height: 56px;
+    gap: 2px;
+  }
+  .tool-rail-label {
+    display: block;
+  }
+  .rail-overflow-items button {
+    width: 60px;
+    min-height: 56px;
+    gap: 2px;
   }
   .rail-overflow {
     display: block;
@@ -201,7 +226,7 @@
   }
   .rail-overflow-items {
     position: absolute;
-    inset-block-end: 60px;
+    inset-block-end: 68px;
     inset-inline-end: 8px;
     display: flex;
     padding: 8px;

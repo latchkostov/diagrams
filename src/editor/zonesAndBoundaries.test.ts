@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { toast } from "../interop/ui/toast";
+import { toast } from "../interop/ui/toastRuntime";
 import { ANNOTATION_LIMITS } from "../model/annotations";
 import { toFlow } from "../canvas/convert";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "../canvas/types";

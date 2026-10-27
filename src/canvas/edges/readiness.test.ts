@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import { requireEdgeModules } from "./readiness";
 import { loadShapedRoutes } from "../geometry/shapedRuntime";
 import { loadEdgeDetails } from "./edgeDetailsRuntime";
-import { toast } from "../../interop/ui/toast";
+import { toast } from "../../interop/ui/toastRuntime";
 const state = vi.hoisted(() => ({ online: false }));
 vi.mock("../geometry/shapedRuntime", () => ({
   loadShapedRoutes: vi.fn(() => (state.online ? Promise.resolve() : Promise.reject(new Error("offline")))),

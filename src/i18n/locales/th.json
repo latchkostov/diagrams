@@ -1,4 +1,13 @@
 {
+  "rail.select": "เลือก",
+  "rail.add": "เพิ่ม",
+  "rail.annotate": "จดบันทึก",
+  "rail.checks": "ตรวจสอบ",
+  "rail.stencils": "สเตนซิล",
+  "rail.tutorials": "บทช่วยสอน",
+  "rail.shortcuts": "ทางลัด",
+  "rail.ai": "AI",
+  "rail.diagram": "ไดอะแกรม",
   "workbench.thisRun": "การรันนี้",
   "workbench.wholeRun": "การรันทั้งหมด",
   "workbench.runWindow": "0–{end, number} วินาที จาก {total, number} วินาที",
