@@ -1,6 +1,16 @@
 import { TEXT_END } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox, fitDiagram } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  waitForStableBox,
+  fitDiagram,
+  waitForCameraIdle,
+  waitForStableViewport,
+  goToNode,
+} from "./fixtures";
 
 // "App, not page": drawing on the canvas never selects text or icons in the nodes (the user's report:
 // connecting nodes highlighted labels and icons across the diagram). React Flow marks every node and edge
@@ -23,6 +33,8 @@ const centre = async (locator: Locator) => {
 
 /** Drags a new connection from a handle with real mouse events, via a detour, to a handle or a point. */
 async function connect(page: Page, from: string, to: string | { x: number; y: number }, steps = 8) {
+  await waitForCameraIdle(page);
+  await waitForStableViewport(page);
   const a = await centre(page.getByTestId(from));
   const b = typeof to === "string" ? await centre(page.getByTestId(to)) : to;
   await page.mouse.move(a.x, a.y);
@@ -123,6 +135,7 @@ test.describe("no text selection on the canvas", () => {
     await connect(page, "handle-payments-right", "handle-inventory-left");
     await expectNoSelection(page);
     // Connecting while the name is still focused takes focus from it and selects nothing.
+    await goToNode(page, "inventory");
     await page.getByTestId("node-inventory").dblclick();
     await expect(label).toBeFocused();
     await connect(page, "handle-inventory-bottom", "handle-orders-top");

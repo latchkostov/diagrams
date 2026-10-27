@@ -81,6 +81,10 @@ for (const theme of ["light", "dark"])
       page,
     }, info) => {
       await page.setViewportSize({ width: 1440, height: 900 });
+      await page.addInitScript(
+        (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
+        theme,
+      );
       await page.clock.install();
       await gotoLive(
         page,

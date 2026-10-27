@@ -107,3 +107,42 @@ it("resolves library and dock controls across the canvas column", () => {
   expect(port.resolve({ kind: "paletteSearch" })).toEqual({ state: "ready", el: search });
   expect(port.resolve({ kind: "inspectorToggle" })).toEqual({ state: "ready", el: toggle });
 });
+
+it("R-081d6234ae keyboard focus survives multiple frames of camera culling", () => {
+  vi.stubGlobal("CSS", { escape: (s: string) => s });
+  class Card {
+    style = { visibility: "visible" };
+    hidden = true;
+    closest() {
+      return this.hidden ? this : null;
+    }
+  }
+  vi.stubGlobal("HTMLElement", Card);
+  const card = new Card();
+  const root = { querySelector: () => card } as unknown as HTMLElement;
+  const dom = createDomPort({ root: () => root, hasNode: () => true });
+  const frames: (() => void)[] = [];
+  const focus = vi.fn(() => true);
+  const controller = createInteractionController(
+    { ...dom, active: () => null, focus },
+    {
+      frame(run) {
+        frames.push(run);
+        return () => {
+          const at = frames.indexOf(run);
+          if (at >= 0) frames.splice(at, 1);
+        };
+      },
+      microtask: (run) => run(),
+    },
+  );
+  controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "next" } });
+  for (let i = 0; i < 5; i++) {
+    frames.shift()?.();
+    expect(controller.phase).toBe("focus-pending");
+    expect(focus).not.toHaveBeenCalled();
+  }
+  card.hidden = false;
+  frames.shift()!();
+  expect(focus).toHaveBeenCalledExactlyOnceWith(card, undefined);
+});

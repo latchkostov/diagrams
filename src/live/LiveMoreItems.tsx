@@ -50,6 +50,7 @@ export function LiveMoreItems({
       tabIndex={-1}
       data-testid="live-more-menu"
       onKeyDown={(e) => {
+        if (e.target instanceof Element && e.target.closest("select, input, textarea, [contenteditable]")) return;
         if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
         e.preventDefault();
         const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));

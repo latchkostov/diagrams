@@ -1,7 +1,7 @@
 import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBoundariesFixture";
 import { settledCanvas } from "../parity/browser/canvas";
 import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
-import { toggleTheme, expectTheme, gotoLab } from "./fixtures";
+import { toggleTheme, expectTheme, setTheme, gotoLab } from "./fixtures";
 import { MERGE_WINDOW_MS } from "../../src/editor/history";
 import {
   test,
@@ -467,6 +467,7 @@ for (const tint of [undefined, "#ff0000", "#00ff00", "#0000ff"]) {
       })),
     });
     for (const theme of ["light", "dark"]) {
+      if (theme === "light") await setTheme(page, theme);
       await expectTheme(page, theme);
       await expect
         .poll(() =>

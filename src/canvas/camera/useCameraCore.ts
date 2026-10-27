@@ -136,7 +136,7 @@ function createCanvasCamera(
         ? null
         : request.workbench === "zone" && request.zone
           ? zoneViewport(root, store.getState(), request.zone)
-          : request.workbench === "focus"
+          : request.workbench === "focus" && !request.onlyEdges?.size
             ? focusSelectionViewport(root, store.getState(), routing, request.only)
             : overlayFitViewport(root, store.getState(), routing, request),
     focusTarget: (ids) => (root && routing ? focusSelectionViewport(root, store.getState(), routing, ids) : null),

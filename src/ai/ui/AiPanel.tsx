@@ -57,7 +57,7 @@ const SNAP_MS = 200;
 const hasModelContext = () =>
   typeof document !== "undefined" && ("modelContext" in document || "modelContext" in navigator);
 
-export default function AiPanel({ request: opened }: { request: PanelRequest | null }) {
+export default function AiPanel({ request: opened, active }: { request: PanelRequest | null; active: boolean }) {
   useLocale();
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
   const canvas = host.canvas;
@@ -408,6 +408,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         {onDevice && OnDeviceInput && (
           <Suspense fallback={null}>
             <OnDeviceInput
+              active={active}
               availability={model}
               onAvailability={setModel}
               documentId={documentId}
@@ -435,6 +436,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             />
 
             <Advanced
+              active={active}
               open={advancedOpen}
               onOpenChange={setAdvancedOpen}
               focusSeq={focusSeq}

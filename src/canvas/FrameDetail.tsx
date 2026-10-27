@@ -3,7 +3,8 @@ import { useStore, useStoreApi } from "@xyflow/react";
 import type { RefObject } from "react";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { useCameraController } from "./camera/useCameraCore";
-import { selectRoutes, type RouteOptions } from "./edges/useEdgeRoute";
+import { selectRoutes, useRoutingOptions, type RouteOptions } from "./edges/useEdgeRoute";
+import { registerFrameCapture } from "./camera/frameCapture";
 import {
   cullLabel,
   contains,
@@ -30,7 +31,7 @@ const empty: Drawing = { pins: [], chips: [], hint: false };
 export const FrameDetail = memo(
   function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
     const locale = useLocale();
-    const { style, direction, captions, hideDependencies } = routing;
+    const { style, direction, captions, hideDependencies } = useRoutingOptions(routing);
     const camera = useCameraController();
     const store = useStoreApi<FlowNode, DiagramFlowEdge>();
     const [drawing, setDrawing] = useState(empty);
@@ -39,6 +40,8 @@ export const FrameDetail = memo(
       const root = host.current;
       if (!root || !camera) return;
       let frame = 0;
+      let suspended = false;
+      let disposed = false;
       let fontsReady = false;
       void document.fonts.ready.then(() => {
         fontsReady = true;
@@ -58,7 +61,7 @@ export const FrameDetail = memo(
       };
       const update = () => {
         frame = 0;
-        if (!fontsReady || camera.phase !== "idle" || camera.interacting) return;
+        if (disposed || suspended || !fontsReady || camera.phase !== "idle" || camera.interacting) return;
         const s = store.getState();
         const [tx, ty, zoom] = s.transform;
         const edges = new Map(s.edges.map((e) => [e.id, e]));
@@ -397,7 +400,7 @@ export const FrameDetail = memo(
         }
       };
       const schedule = () => {
-        if (!frame) frame = requestAnimationFrame(update);
+        if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
       };
       const selectionStyle = () => {
         const selected = store.getState().nodes.filter((n) => n.selected && n.type !== "boundary");
@@ -439,21 +442,22 @@ export const FrameDetail = memo(
         }
       };
       window.addEventListener("keydown", key);
-      schedule();
-      return () => {
-        cancelAnimationFrame(frame);
-        unstore();
-        uncam();
-        observer.disconnect();
-        window.removeEventListener("keydown", key);
+      const reset = () => {
+        const routes = selectRoutes(store.getState(), { style, direction, captions, hideDependencies });
+        for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
+          const path = routes.get(el.dataset.id ?? "")?.path;
+          if (path) el.querySelector(".fe-path")?.setAttribute("d", path);
+          el.removeAttribute("data-live-near");
+        }
         for (const el of root.querySelectorAll<HTMLElement>(
-          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped]",
+          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped], [data-detail-dim]",
         )) {
           el.removeAttribute("data-detail-hidden");
           el.removeAttribute("data-detail-text-hidden");
           el.removeAttribute("data-detail-no-arrow");
           el.removeAttribute("data-detail-expanded");
           el.removeAttribute("data-detail-wrapped");
+          el.removeAttribute("data-detail-dim");
         }
         for (const text of root.querySelectorAll<HTMLElement>(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
@@ -467,6 +471,28 @@ export const FrameDetail = memo(
         root.removeAttribute("data-detail-far");
         root.removeAttribute("data-detail-dock");
         root.removeAttribute("data-detail-single-selection");
+      };
+      const unregister = viewport
+        ? registerFrameCapture(viewport, () => {
+            suspended = true;
+            reset();
+            return () => {
+              suspended = false;
+              selectionStyle();
+              schedule();
+            };
+          })
+        : () => {};
+      schedule();
+      return () => {
+        disposed = true;
+        cancelAnimationFrame(frame);
+        unstore();
+        uncam();
+        observer.disconnect();
+        window.removeEventListener("keydown", key);
+        unregister();
+        reset();
       };
     }, [camera, host, store, style, direction, captions, hideDependencies, locale]);
     return (

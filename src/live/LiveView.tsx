@@ -188,7 +188,7 @@ export function LiveView(props: LiveViewProps) {
 
   return (
     <>
-      {enabled && !props.alwaysOn && !props.editor && (
+      {enabled && !props.alwaysOn && (!props.editor || props.presenting) && (
         <button
           className={`lv-toggle${live ? " is-on" : ""}${props.presenting ? " is-presenting" : ""}`}
           onClick={toggle}

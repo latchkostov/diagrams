@@ -966,8 +966,8 @@ describe("interaction controller: readiness and the journal", () => {
     h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "a" } });
     h.frame();
     expect(h.journal.map((e) => `${e.event} ${e.command}${e.result ? ` ${e.result}` : ""}`)).toEqual([
-      "selection.changed:keyboard focus:node:a@frame",
-      "focus.result focus:node:a@frame focused",
+      "selection.changed:keyboard focus:node:a@measured",
+      "focus.result focus:node:a@measured focused",
       "focus.ran keep",
     ]);
   });

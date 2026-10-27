@@ -43,7 +43,7 @@ for (const theme of ["light", "dark"])
         ? { x: 150, y: 110, width: 0, height: 0 }
         : await page.getByTestId("node-payments").boundingBox();
       if (!box) throw new Error("Expected Payments");
-      const png = await page.screenshot();
+      const png = await page.screenshot({ animations: "disabled" });
       return page.evaluate(
         async ({ png, x, y }) => {
           const image = new Image();

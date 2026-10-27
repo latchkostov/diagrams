@@ -387,6 +387,10 @@ performanceTest(
 
 for (const theme of ["light", "dark"]) {
   test(`numbered findings, aggregate counts and tags stay legible (${theme})`, async ({ page }) => {
+    await page.addInitScript(
+      (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
+      theme,
+    );
     await gotoCanvas(page, "retry-storm");
     await waitForChecks(page);
     await expectTheme(page, theme);

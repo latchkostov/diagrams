@@ -74,3 +74,31 @@ it("filters segment handles and the dashed shaping preview from images", async (
     vi.unstubAllGlobals();
   }
 });
+
+it("R-061a263911 suspends detail before measuring and restores it after a failed capture", async () => {
+  const { registerFrameCapture } = await import("../canvas/camera/frameCapture");
+  vi.mocked(whenEdgeGeometryReady).mockReturnValue(undefined);
+  let hidden = true;
+  const viewport = {
+    querySelectorAll: () => {
+      expect(hidden).toBe(false);
+      return [];
+    },
+  };
+  const restore = vi.fn(() => {
+    hidden = true;
+  });
+  const unregister = registerFrameCapture(viewport as unknown as Element, () => {
+    hidden = false;
+    return restore;
+  });
+  vi.stubGlobal("document", { querySelector: () => viewport });
+  try {
+    await expect(renderDiagramImage("svg")).rejects.toThrow("This diagram is empty");
+    expect(restore).toHaveBeenCalledOnce();
+    expect(hidden).toBe(true);
+  } finally {
+    unregister();
+    vi.unstubAllGlobals();
+  }
+});

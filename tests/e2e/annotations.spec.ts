@@ -1,5 +1,5 @@
 import { openDiagramProperties } from "./fixtures";
-import { toggleTheme, expectTheme, openAnnotate } from "./fixtures";
+import { toggleTheme, expectTheme, setTheme, openAnnotate } from "./fixtures";
 import { openLibrary } from "./fixtures";
 import {
   waitForHistoryIdle,
@@ -708,6 +708,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("shape-outline")).toHaveCount(58);
     for (const theme of ["light", "dark"]) {
+      if (theme === "light") await setTheme(page, theme);
       await expectTheme(page, theme);
       await expect
         .poll(async () => {
@@ -824,6 +825,7 @@ test.describe("annotations", () => {
     await waitForLiveSession(page);
     await waitForCameraIdle(page);
     for (const theme of ["light", "dark"]) {
+      if (theme === "light") await setTheme(page, theme);
       await expectTheme(page, theme);
       // Measured once the live view and theme transitions (opacity, colours) have settled.
       const measure = () =>

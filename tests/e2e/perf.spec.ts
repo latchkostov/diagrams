@@ -58,7 +58,7 @@ const RENDER_HOOK = `(() => {
         if ([0, 1, 11, 14, 15].includes(f.tag) && f.actualStartTime >= start && (f.flags & 1)) {
           const k = name(f);
           counts.set(k, (counts.get(k) || 0) + 1);
-          if (k === "FlowEdgeImpl") {
+          if (k === "FlowEdgeImpl" || k === "NodeWrapper") {
             const edge = k + ":" + f.memoizedProps.id;
             counts.set(edge, (counts.get(edge) || 0) + 1);
           }
@@ -373,6 +373,9 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await page.getByTestId("zoom-100").click();
     await waitForCameraIdle(page);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "custom");
+    await waitForStableBox(page.getByTestId("node-gateway"));
+    await waitForStableBox(page.getByTestId("node-orders"));
+    await waitForSelectionSettled(page);
     const { counts: click } = await measure(page, async () => {
       await page.getByTestId("node-gateway").click();
       await page.getByTestId("node-orders").click();

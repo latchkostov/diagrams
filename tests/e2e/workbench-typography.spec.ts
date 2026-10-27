@@ -49,6 +49,10 @@ test("Edit message paths keep full opacity and a two-pixel stroke", async ({ pag
 for (const theme of ["light", "dark"])
   test(`Live badge shapes preserve their meanings (${theme})`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(
+      (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
+      theme,
+    );
     await page.clock.install();
     await gotoLive(page, "./?view=canvas&example=retry-storm&live=1&sim=three-quick-retries&paused=1");
     await expectTheme(page, theme);

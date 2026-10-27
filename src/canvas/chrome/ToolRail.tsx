@@ -1,6 +1,6 @@
 import { useWorkbenchDock } from "../inspector/dockState";
 import { usePhone } from "../../lib/usePhone";
-import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { Icon, type IconName } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
 import type { View } from "../../lib/urlState";
@@ -28,7 +28,29 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
   const fresh = useUnseen(documentId);
   const nav = useRef<HTMLDivElement>(null);
-  const [focused, setFocused] = useState(view === "canvas" ? "rail-select" : "view-canvas");
+  const focused = useRef<HTMLElement | null>(null);
+  const returning = useRef(false);
+  const reconcile = () => {
+    const controls = [...(nav.current?.querySelectorAll<HTMLElement>("button, summary") ?? [])];
+    const enabled = controls.filter((el) => !el.hasAttribute("disabled") && el.getClientRects().length > 0);
+    const previous = focused.current;
+    const stop = enabled.includes(previous!)
+      ? previous
+      : (enabled.find((el) => el.dataset.testid === "rail-select") ?? enabled[0]);
+    for (const el of controls) el.tabIndex = el === stop ? 0 : -1;
+    if (returning.current && host && view === "canvas" && stop?.dataset.testid === "rail-select") {
+      returning.current = false;
+      stop.focus();
+    } else if (
+      stop &&
+      !(returning.current && !host) &&
+      previous &&
+      previous !== stop &&
+      (document.activeElement === previous || (document.activeElement === document.body && !previous.isConnected))
+    )
+      stop.focus();
+  };
+  useLayoutEffect(reconcile);
   const item = (
     id: string,
     label: string,
@@ -47,9 +69,8 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       aria-label={name}
       title={id === "ai-rail-open" ? aiPanelTitle() : name}
       aria-pressed={active}
-      tabIndex={focused === id ? 0 : -1}
+      tabIndex={-1}
       disabled={disabled}
-      onFocus={() => setFocused(id)}
       onClick={run}
       {...(id === "rail-add" ? { draggable: true, onDragStart: () => tools.open("library") } : {})}
     >
@@ -65,6 +86,14 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       aria-label={t("workbench.tools")}
       ref={nav}
       data-testid="tool-rail"
+      onFocus={(e) => {
+        focused.current = e.target as HTMLElement;
+        reconcile();
+      }}
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest<HTMLElement>("[data-testid]")?.dataset.testid === "view-canvas")
+          returning.current = true;
+      }}
       onKeyDown={(e) => {
         const buttons = [
           ...(nav.current?.querySelectorAll<HTMLElement>("button:not(:disabled), summary") ?? []),
@@ -139,13 +168,8 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         !checks.available,
         t("workbench.checksName", { warnings: t("workbench.warnings", { count: warnings }) }),
       )}
-      <details className="rail-overflow" open={phone ? undefined : true}>
-        <summary
-          data-testid="rail-more"
-          aria-label={t("workbench.moreTools")}
-          tabIndex={focused === "rail-more" ? 0 : -1}
-          onFocus={() => setFocused("rail-more")}
-        >
+      <details className="rail-overflow" open={phone ? undefined : true} onToggle={reconcile}>
+        <summary data-testid="rail-more" aria-label={t("workbench.moreTools")} tabIndex={-1}>
           ⋯
         </summary>
         <div className="rail-overflow-items">

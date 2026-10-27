@@ -194,8 +194,6 @@ test.describe("imports: docker-compose", () => {
     await expect(page.getByTestId("import-report-make-private")).toHaveCount(0);
     await expect(page.getByTestId("import-report-done")).toBeFocused();
     await page.getByTestId("import-report-done").click();
-    await openDiagramProperties(page);
-    await expect(page.getByTestId("inspector").getByTestId("private-badge")).toBeVisible();
     await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("Import report");
     await page.getByTestId("command-input").press("Enter");
@@ -207,6 +205,8 @@ test.describe("imports: docker-compose", () => {
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null))
       .toBe("storefront");
+    await openDiagramProperties(page);
+    await expect(page.getByTestId("inspector").getByTestId("private-badge")).toBeVisible();
     expectNoErrors(consoleErrors);
   });
 

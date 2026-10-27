@@ -56,10 +56,13 @@ export async function toggleTheme(page: Page) {
   await page.getByTestId("theme-toggle").click();
   await page.getByTestId(theme === "dark" ? "theme-light" : "theme-dark").click();
 }
-export async function expectTheme(page: Page, theme: string) {
+export async function setTheme(page: Page, theme: string) {
   await openViewMenu(page);
   await page.getByTestId("theme-toggle").click();
   await page.getByTestId(`theme-${theme}`).click();
+}
+export async function expectTheme(page: Page, theme: string) {
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
   await openViewMenu(page);
   await page.getByTestId("theme-toggle").click();
   await expect(page.getByTestId(`theme-${theme}`)).toHaveAttribute("aria-checked", "true");

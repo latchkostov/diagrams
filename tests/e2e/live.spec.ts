@@ -1,6 +1,7 @@
 import {
   toggleTheme,
   expectTheme,
+  setTheme,
   pauseClock,
   openLiveNodeDetails,
   savedDiagram,
@@ -751,6 +752,7 @@ test.describe("live view", () => {
     await expect(alert).toBeVisible();
     await page.getByTestId("live-play").click();
     for (const theme of ["light", "dark"]) {
+      if (theme === "light") await setTheme(page, theme);
       await expectTheme(page, theme);
       const contrasts = await metric.evaluate((el) => {
         const canvas = document.createElement("canvas");

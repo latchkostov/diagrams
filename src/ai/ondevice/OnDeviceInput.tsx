@@ -21,6 +21,7 @@ const STATUS: Record<OnDeviceStatus, () => string> = {
 };
 
 export default function OnDeviceInput({
+  active,
   availability,
   onAvailability,
   documentId,
@@ -30,6 +31,7 @@ export default function OnDeviceInput({
   scope,
   onTurn,
 }: {
+  active: boolean;
   availability: Exclude<ModelAvailability, "unavailable">;
   onAvailability: (a: ModelAvailability) => void;
   documentId: string | undefined;
@@ -74,8 +76,8 @@ export default function OnDeviceInput({
     cancelDictation.current = dictation.cancel;
   });
   useEffect(() => {
-    if (blocked) cancelDictation.current();
-  }, [blocked]);
+    if (!active || blocked) cancelDictation.current();
+  }, [active, blocked]);
 
   // Until a dictation session confirms speech stays on this device, the box says it may not (asking the
   // browser up front, SpeechRecognition.available(), is what the mic does when it starts).

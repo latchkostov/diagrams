@@ -16,8 +16,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | M6  | menu.closed(any other), Live popover|                                 | keep (a pick or a press leaves focus where it put it)  |
  * | M7  | menu.closed(remote): a peer deleted |                                 | the canvas after the commit, if focus was lost (the    |
  * |     | what the menu was for               |                                 | invoker went with the target); extends R1              |
- * | K1  | selection.changed(keyboard)         | to a node                       | focus it next frame (it reveals itself); Tab stop := it|
- * | K2  | selection.changed(keyboard)         | to a connection                 | focus it next frame (it reveals itself)                |
+ * | K1  | selection.changed(keyboard)         | to a node                       | wait until visible (it reveals itself); Tab stop := it|
+ * | K2  | selection.changed(keyboard)         | to a connection                 | wait until visible (it reveals itself)                |
  * | H1  | selection.changed(undo / redo)      | focus was on the canvas         | focus the selection once drawn (else the canvas)       |
  * | H2  | selection.changed(undo / redo)      | focus was elsewhere (toolbar)   | keep; the Tab stop moves to the selection              |
  * | P1  | selection.changed(palette)          | it added the node               | focus the node once drawn                              |
@@ -129,7 +129,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       const { cause, target } = event;
       if (cause === "keyboard" && target)
         return move(
-          { target: { kind: target.kind, id: target.id }, when: "frame", revealed: true },
+          { target: { kind: target.kind, id: target.id }, when: "measured", revealed: true },
           target.kind === "node" ? { roving: target.id } : {},
         );
       if ((cause === "undo" || cause === "redo") && event.selection) {

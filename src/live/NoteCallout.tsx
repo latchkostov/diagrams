@@ -35,6 +35,7 @@ export function NoteCallout({
   const expandRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const restoreNoteFocus = useRef(false);
+  const noteNavigation = useRef<HTMLButtonElement | null>(null);
   const interaction = useInteraction();
   const result = runEndResult(state, ui.controller.currentDiagram);
   const note = result ? { text: result, focus: [], atMs: state.run!.time } : state.run?.note;
@@ -73,6 +74,13 @@ export function NoteCallout({
     restoreNoteFocus.current = false;
     if (target) interaction?.dispatch({ type: "dialog.tab", target });
   }, [open, interaction]);
+
+  useLayoutEffect(() => {
+    const target = noteNavigation.current;
+    noteNavigation.current = null;
+    if (open && target)
+      interaction?.dispatch({ type: "dialog.tab", target: target.disabled ? (closeRef.current ?? target) : target });
+  }, [noteKey, open, interaction]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -217,7 +225,6 @@ export function NoteCallout({
         )}
       <div
         ref={ref}
-        key={`${note.atMs}:${note.text}`}
         className={`lv-note${docked ? " is-docked" : ""}${open ? " is-expanded" : ""} is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
         style={docked ? undefined : style}
         role={open ? "dialog" : "status"}
@@ -296,7 +303,10 @@ export function NoteCallout({
             <button
               data-testid="live-note-earlier"
               disabled={index === 0}
-              onClick={() => ui.controller.seek(notes[index - 1].atMs)}
+              onClick={(e) => {
+                noteNavigation.current = e.currentTarget;
+                ui.controller.seek(notes[index - 1].atMs);
+              }}
             >
               ‹ {t("workbench.earlier")}
             </button>
@@ -304,7 +314,10 @@ export function NoteCallout({
             <button
               data-testid="live-note-later"
               disabled={index === notes.length - 1}
-              onClick={() => ui.controller.seek(notes[index + 1].atMs)}
+              onClick={(e) => {
+                noteNavigation.current = e.currentTarget;
+                ui.controller.seek(notes[index + 1].atMs);
+              }}
             >
               {t("workbench.later")} ›
             </button>

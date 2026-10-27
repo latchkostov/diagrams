@@ -92,13 +92,13 @@ describe("focusPolicy: the rules, row by row", () => {
       "K1 Tab to a node: focus it next frame",
       state(),
       [selected("keyboard", { target: { kind: "node", id: "a" } })],
-      ["focus:node:a@frame"],
+      ["focus:node:a@measured"],
     ],
     [
       "K2 Ctrl+Alt+] to a connection: focus it next frame",
       state(),
       [selected("keyboard", { target: { kind: "edge", id: "e1" } })],
-      ["focus:edge:e1@frame"],
+      ["focus:edge:e1@measured"],
     ],
     [
       "H1 Undo from the canvas: focus what it selected, once drawn",

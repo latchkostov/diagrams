@@ -107,35 +107,35 @@ svg width=2056 height=865 viewBox=0 0 2056 865
             svg width=14 height=14 viewBox=0 0 24 24 width:14px height:14px color:rgb(169, 155, 196) fill:none stroke:rgb(169, 155, 196) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(169, 155, 196)
               path d=M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2 fill:none stroke:rgb(169, 155, 196) stroke-width:2.1px
 == edge-label-api-to-appcfg
-        div #edge-label-api-to-appcfg .fe-label.fe-label-dep.fe-rel-config.has-glyph.is-full.nodrag.nopan width:177px height:22px transform:matrix(1, 0, 0, 1, 881.5, 495) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
+        div #edge-label-api-to-appcfg .fe-label.fe-label-dep.fe-rel-config.has-glyph.is-full.nodrag.nopan width:140.891px height:22px transform:matrix(1, 0, 0, 1, 899.555, 495) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
           span #edge-glyph-api-to-appcfg .fe-glyph-icon width:12px height:12px color:rgb(92, 181, 173) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(92, 181, 173)
             svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(92, 181, 173) fill:none stroke:rgb(92, 181, 173) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(92, 181, 173)
               path d=M10 5H3m9 14H3M14 3v4m2 10v4m5-9h-9m9 7h-5m5-14h-7m-6 5v4m0-2H3 fill:none stroke:rgb(92, 181, 173) stroke-width:2.1px
-          span .fe-label-text width:145px height:16px color:rgb(154, 161, 174) font-size:15.9px font-weight:560 border-top-color:rgb(154, 161, 174) "4 settings · 2 secret"
+          span .fe-label-text width:104px height:16px color:rgb(154, 161, 174) font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 174) "4 settings · 2 secret"
 == edge-label-api-to-mi
-        div #edge-label-api-to-mi .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:88px height:22px transform:matrix(1, 0, 0, 1, 811.25, 455) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
+        div #edge-label-api-to-mi .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:73.0156px height:22px transform:matrix(1, 0, 0, 1, 818.742, 455) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
           span #edge-glyph-api-to-mi .fe-glyph-icon width:12px height:12px color:rgb(154, 161, 238) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 238)
             svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(154, 161, 238) fill:none stroke:rgb(154, 161, 238) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 238)
               path d=M13 19a4 4 0 0 0-8 0m11-9h2m-2 4h2M12 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z fill:none stroke:rgb(154, 161, 238) stroke-width:2.1px
-          span .fe-label-text width:56px height:16px color:rgb(154, 161, 174) font-size:15.9px font-weight:560 border-top-color:rgb(154, 161, 174) "runs as"
+          span .fe-label-text width:40px height:16px color:rgb(154, 161, 174) font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 174) "runs as"
 == edge-label-api-to-sb
         div #edge-label-api-to-sb .fe-label.fe-label-async.is-full.nodrag.nopan width:92.4688px height:22px transform:matrix(1, 0, 0, 1, 1144.27, 388.5) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px "OrderCreated"
 == edge-label-api-to-sql
         div #edge-label-api-to-sql .fe-label.fe-label-sync.is-full.nodrag.nopan width:59.7031px height:22px transform:matrix(1, 0, 0, 1, 1160.65, 261.5) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px "EF Core"
 == edge-label-appcfg-to-kv
-        div #edge-label-appcfg-to-kv .fe-label.fe-label-dep.fe-rel-secret.has-glyph.is-full.nodrag.nopan width:126px height:22px transform:matrix(1, 0, 0, 1, 1121, 585) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
+        div #edge-label-appcfg-to-kv .fe-label.fe-label-dep.fe-rel-secret.has-glyph.is-full.nodrag.nopan width:100.219px height:22px transform:matrix(1, 0, 0, 1, 1133.89, 585) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
           span #edge-glyph-appcfg-to-kv .fe-glyph-icon width:12px height:12px color:rgb(211, 162, 75) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(211, 162, 75)
             svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(211, 162, 75) fill:none stroke:rgb(211, 162, 75) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(211, 162, 75)
               path d=M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16.5 7.5h.01 fill:none stroke:rgb(211, 162, 75) stroke-width:2.1px
-          span .fe-label-text width:94px height:16px color:rgb(154, 161, 174) font-size:15.9px font-weight:560 border-top-color:rgb(154, 161, 174) "2 references"
+          span .fe-label-text width:65px height:16px color:rgb(154, 161, 174) font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 174) "2 references"
 == edge-label-fd-to-api
         div #edge-label-fd-to-api .fe-label.fe-label-sync.is-full.nodrag.nopan width:90.2969px height:22px transform:matrix(1, 0, 0, 1, 708.852, 325) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px "POST /orders"
 == edge-label-mi-to-entra
-        div #edge-label-mi-to-entra .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:154px height:22px transform:matrix(1, 0, 0, 1, 279, 585) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
+        div #edge-label-mi-to-entra .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:121.016px height:22px transform:matrix(1, 0, 0, 1, 295.492, 585) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px
           span #edge-glyph-mi-to-entra .fe-glyph-icon width:12px height:12px color:rgb(154, 161, 238) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 238)
             svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(154, 161, 238) fill:none stroke:rgb(154, 161, 238) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 238)
               path d=M13 19a4 4 0 0 0-8 0m11-9h2m-2 4h2M12 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z fill:none stroke:rgb(154, 161, 238) stroke-width:2.1px
-          span .fe-label-text width:122px height:16px color:rgb(154, 161, 174) font-size:15.9px font-weight:560 border-top-color:rgb(154, 161, 174) "OIDC federation"
+          span .fe-label-text width:87px height:16px color:rgb(154, 161, 174) font-size:11.9px font-weight:560 border-top-color:rgb(154, 161, 174) "OIDC federation"
 == edge-label-sb-to-notify
         div #edge-label-sb-to-notify .fe-label.fe-label-async.is-full.nodrag.nopan width:86.4375px height:22px transform:matrix(1, 0, 0, 1, 1570.78, 445) color:rgb(154, 161, 174) background-color:rgb(24, 32, 48) font-size:11.9px font-weight:560 border-top-color:rgb(38, 43, 53) border-top-width:1px border-radius:8px "Subscription"
 == edge-label-web-to-fd
@@ -166,99 +166,99 @@ svg width=2056 height=865 viewBox=0 0 2056 865
           div #group-aks .grp width:320px height:172px color:rgb(233, 235, 239) background-color:oklab(0.567586 0.0457724 -0.196834 / 0.07) font-size:13.9px font-weight:400 border-top-color:oklab(0.567586 0.0457724 -0.196834 / 0.4) border-top-width:1px border-radius:20px
             svg #group-outline-aks .grp-outline width=100% height=100% width:318px height:170px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
               rect width=100% height=100% fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-            div #group-label-aks .grp-drag.grp-label width:124.094px height:24px left:14px top:12px color:oklab(0.679213 0.0318878 -0.139509) background-color:oklab(0.236517 0.00519511 -0.0329555) display:flex font-size:15.9px font-weight:600 border-top-color:oklab(0.679213 0.0318878 -0.139509) border-radius:7px "AKS cluster"
-              span .grp-swatch width:8px height:8px color:oklab(0.679213 0.0318878 -0.139509) background-color:rgb(108, 92, 231) font-size:15.9px font-weight:600 border-top-color:oklab(0.679213 0.0318878 -0.139509) border-radius:2.5px
+            div #group-label-aks .grp-drag.grp-label width:101.344px height:24px left:14px top:12px color:oklab(0.679213 0.0318878 -0.139509) background-color:oklab(0.236517 0.00519511 -0.0329555) display:flex font-size:11.9px font-weight:600 border-top-color:oklab(0.679213 0.0318878 -0.139509) border-radius:7px "AKS cluster"
+              span .grp-swatch width:8px height:8px color:oklab(0.679213 0.0318878 -0.139509) background-color:rgb(108, 92, 231) font-size:11.9px font-weight:600 border-top-color:oklab(0.679213 0.0318878 -0.139509) border-radius:2.5px
 == group-azure
           div #group-azure .grp width:1600px height:680px color:rgb(233, 235, 239) background-color:oklab(0.609237 -0.0399822 -0.17739 / 0.07) font-size:13.9px font-weight:400 border-top-color:oklab(0.609237 -0.0399822 -0.17739 / 0.4) border-top-width:1px border-radius:20px
             svg #group-outline-azure .grp-outline width=100% height=100% width:1598px height:678px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
               rect width=100% height=100% fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-            div #group-label-azure .grp-drag.grp-label width:126.016px height:24px left:14px top:12px color:oklab(0.708369 -0.0281404 -0.125897) background-color:oklab(0.241515 -0.00509544 -0.0306221) display:flex font-size:15.9px font-weight:600 border-top-color:oklab(0.708369 -0.0281404 -0.125897) border-radius:7px "Azure · prod"
-              span .grp-swatch width:8px height:8px color:oklab(0.708369 -0.0281404 -0.125897) background-color:rgb(47, 128, 237) font-size:15.9px font-weight:600 border-top-color:oklab(0.708369 -0.0281404 -0.125897) border-radius:2.5px
+            div #group-label-azure .grp-drag.grp-label width:103.281px height:24px left:14px top:12px color:oklab(0.708369 -0.0281404 -0.125897) background-color:oklab(0.241515 -0.00509544 -0.0306221) display:flex font-size:11.9px font-weight:600 border-top-color:oklab(0.708369 -0.0281404 -0.125897) border-radius:7px "Azure · prod"
+              span .grp-swatch width:8px height:8px color:oklab(0.708369 -0.0281404 -0.125897) background-color:rgb(47, 128, 237) font-size:11.9px font-weight:600 border-top-color:oklab(0.708369 -0.0281404 -0.125897) border-radius:2.5px
 == node-ai
           div #node-ai .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.886007 0.0103862 -0.0298143) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…c6a5c297 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:135px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:135px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Application Insights"
-                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "traces · logs · metrics"
+              div .nb-text width:126.312px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:126.312px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Application Insights"
+                div #card-second-line .nb-sub width:126.312px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "traces · logs · metrics"
 == node-api
           div #node-api .dn.dn-card width:221px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:221px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.867747 0.00687546 -0.0453632) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:136px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:136px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Orders API"
-                div #card-second-line .nb-sub width:136px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "ASP.NET Core · 3 replicas"
+              div .nb-text width:136px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:136px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Orders API"
+                div #card-second-line .nb-sub width:136px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "ASP.NET Core · 3 replicas"
 == node-appcfg
           div #node-appcfg .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.884688 -0.00974063 -0.0338336) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…08c4dc78 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:135px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:135px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-config"
-                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "App Configuration"
+              div .nb-text width:100px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:100px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-config"
+                div #card-second-line .nb-sub width:100px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "App Configuration"
 == node-entra
           div #node-entra .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.894827 -0.0115959 -0.0308275) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…4b9bbe8d width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:95px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:95px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Entra ID"
-                div #card-second-line .nb-sub width:95px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Token issuer"
+              div .nb-text width:67px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:67px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Entra ID"
+                div #card-second-line .nb-sub width:67px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Token issuer"
 == node-fd
           div #node-fd .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.884688 -0.00974063 -0.0338336) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…fc4cc840 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:84.3594px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:84.3594px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Front Door"
-                div #card-second-line .nb-sub width:84.3594px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "WAF · TLS"
+              div .nb-text width:66.6562px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:66.6562px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Front Door"
+                div #card-second-line .nb-sub width:66.6562px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "WAF · TLS"
 == node-kv
           div #node-kv .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.911242 0.0114815 0.0152595) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…a88eb5b6 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:76.5156px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:76.5156px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-kv"
-                div #card-second-line .nb-sub width:76.5156px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Key Vault"
+              div .nb-text width:61.7969px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:61.7969px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-kv"
+                div #card-second-line .nb-sub width:61.7969px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Key Vault"
 == node-mi
           div #node-mi .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.894827 -0.0115959 -0.0308275) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…e54f3eb4 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:135px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:135px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-api-id"
-                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Workload identity"
+              div .nb-text width:95px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:95px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-api-id"
+                div #card-second-line .nb-sub width:95px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Workload identity"
 == node-notify
           div #node-notify .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.917387 0.00288295 0.0163217) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…e7409108 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:135px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:135px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Order confirmation"
-                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Function · sends email"
+              div .nb-text width:121.578px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:121.578px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Order confirmation"
+                div #card-second-line .nb-sub width:121.578px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Function · sends email"
 == node-sb
           div #node-sb .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.884688 -0.00974063 -0.0338336) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…52d3d802 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:133px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:133px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders.created"
-                div #card-second-line .nb-sub width:133px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Service Bus topic"
+              div .nb-text width:92.125px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:92.125px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders.created"
+                div #card-second-line .nb-sub width:92.125px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Service Bus topic"
 == node-sql
           div #node-sql .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.884688 -0.00974063 -0.0338336) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…1b96af19 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:83px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:83px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-db"
-                div #card-second-line .nb-sub width:83px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Azure SQL"
+              div .nb-text width:61.7969px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:61.7969px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "orders-db"
+                div #card-second-line .nb-sub width:61.7969px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Azure SQL"
 == node-web
           div #node-web .dn.dn-card width:220px height:72px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
             div .nb.nb-card width:220px height:72px color:rgb(233, 235, 239) background-color:rgb(26, 30, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(43, 49, 61) border-top-width:1px border-radius:14px
               div .nb-tile width:44px height:44px color:rgb(233, 235, 239) background-color:oklab(0.887523 0.00284252 -0.0409882) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239) border-radius:11px
                 img .stencil-icon width=26 height=26 src=data:…8e4c7264 width:36px height:26px color:rgb(233, 235, 239) font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-              div .nb-text width:135px height:45.1406px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
-                div #card-title .nb-label width:135px height:20.6562px color:rgb(233, 235, 239) font-size:15.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront"
-                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(154, 161, 174) font-size:15.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Shoppers placing orders"
+              div .nb-text width:131px height:34.8125px color:rgb(233, 235, 239) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(233, 235, 239)
+                div #card-title .nb-label width:131px height:16.875px color:rgb(233, 235, 239) font-size:12.9px font-weight:620 border-top-color:rgb(233, 235, 239) "Storefront"
+                div #card-second-line .nb-sub width:131px height:14.9375px color:rgb(154, 161, 174) font-size:10.9px font-weight:400 border-top-color:rgb(154, 161, 174) "Shoppers placing orders"

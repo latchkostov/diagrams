@@ -1,6 +1,6 @@
 import { openDiagramProperties } from "./fixtures";
 import { openAnnotate } from "./fixtures";
-import { pinLibrary } from "./fixtures";
+import { openLibrary, pinLibrary } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
@@ -53,7 +53,8 @@ const SLUG = "kafka-order-pipeline";
 
 test("a pending catalog locale refresh keeps search and stored node names", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await pinLibrary(page);
+  await expect(page.getByTestId("palette")).toHaveCount(0);
+  await openLibrary(page);
   await page.getByTestId("palette-search").fill("generic.database");
   await pinLibrary(page);
   await page.getByTestId("palette-item-generic.database").click();

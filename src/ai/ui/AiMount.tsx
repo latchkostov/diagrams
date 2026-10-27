@@ -193,7 +193,7 @@ export function AiMount({
             {panelIdentity === null ? (
               <div className="ai-dock-loading" aria-busy="true" data-testid="ai-panel-waiting-canvas" />
             ) : (
-              <AiPanel key={panelIdentity} request={request} />
+              <AiPanel key={panelIdentity} request={request} active={shown} />
             )}
           </div>,
           target,
