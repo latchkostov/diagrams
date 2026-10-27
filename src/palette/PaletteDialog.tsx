@@ -29,6 +29,7 @@ import type { CommandPaletteProps } from "./CommandPalette";
 import { paletteHost } from "./host";
 import { flatten, GROUP_LABEL, PREFIXES, rank, type Command, type CommandGroup } from "./rank";
 import { getRecentCommands, pushRecentCommand, rememberable } from "./recent";
+import { openModalLayer } from "../lib/modalLayers";
 import { isLocalOnly } from "../lib/localOnly";
 import { collectCommands } from "./sources";
 import { LANGUAGE_CHOICE } from "../lib/deployment";
@@ -163,6 +164,7 @@ export function PaletteDialog({
     );
     const wasInert = background.map((c) => c.inert);
     for (const c of background) c.inert = true;
+    const closeLayer = openModalLayer(el, { opener: previousFocus });
     input.current?.focus({ preventScroll: true });
     return () => {
       background.forEach((c, i) => {
@@ -171,6 +173,9 @@ export function PaletteDialog({
       const focus = document.activeElement;
       if (previousFocus?.isConnected && (!focus || focus === document.body || el.contains(focus)))
         previousFocus.focus({ preventScroll: true });
+      else if (!previousFocus?.isConnected && (!focus || focus === document.body || el.contains(focus)))
+        document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
+      closeLayer();
     };
   }, []);
 

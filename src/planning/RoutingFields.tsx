@@ -1037,7 +1037,7 @@ export function RouteTableFields({
           onClick={() => {
             editor.setNodeProps(nodeId, { routeTable: undefined });
             notify(t("routing.tableRemoved"), {
-              action: { label: t("routing.undo"), run: () => editor.undo(), testId: "toast-routes-undo" },
+              action: { label: t("routing.undo"), run: () => editor.undo(), testId: "toast-routes-undo", undoes: true },
             });
           }}
         >
@@ -1371,7 +1371,7 @@ export function TrafficMixFields({
           setDraft(null);
           editor.setNodeProps(nodeId, { trafficMix: undefined });
           notify(t("routing.mixRemoved"), {
-            action: { label: t("routing.undo"), run: () => editor.undo(), testId: "toast-mix-undo" },
+            action: { label: t("routing.undo"), run: () => editor.undo(), testId: "toast-mix-undo", undoes: true },
           });
         }}
       >

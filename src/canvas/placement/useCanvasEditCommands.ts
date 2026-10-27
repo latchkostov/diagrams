@@ -114,7 +114,8 @@ export function usePlacementSettling(editor: EditorApi) {
     (id: string, before: XYBox) => {
       // Once the edit (and any growth it caused) has rendered.
       setTimeout(() => {
-        const hit = editor.keepTextClear(id, before);
+        // The move renders before its notification: the Undo binds to the step that made it (useHistory capture).
+        const hit = flushSync(() => editor.keepTextClear(id, before));
         if (hit)
           notify(hit === "node" ? tr("chrome.movedTheTextOffANode") : tr("chrome.movedTheTextOffAnEdge"), {
             action: {
@@ -135,7 +136,8 @@ export function usePlacementSettling(editor: EditorApi) {
     (groupId: string) =>
       // Once the resize's last size has landed.
       requestAnimationFrame(() => {
-        const { adopted, released } = editor.adoptAfterResize(groupId);
+        // Rendered before its notification, so the Undo binds to this step (as settleText above).
+        const { adopted, released } = flushSync(() => editor.adoptAfterResize(groupId));
         if (!adopted.length && !released.length) return;
         const name = editor.getGroup(groupId)?.label || tr("chrome.theBoundary");
         const text = !released.length

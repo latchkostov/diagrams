@@ -1688,7 +1688,7 @@
 .lv-modal-layer {
   position: fixed;
   inset: 0;
-  z-index: 210;
+  z-index: var(--layer-inject);
 }
 
 .lv-inject {

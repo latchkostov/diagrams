@@ -35,7 +35,7 @@ const storage = new MemoryStorage();
 (globalThis as { localStorage?: unknown }).localStorage = storage;
 let io = await import("./diagramIO");
 let { newDiagramsPrivate } = await import("./privacyPrefs");
-let toast = await import("../interop/ui/toast");
+let toast = await import("../interop/ui/toastRuntime");
 
 const good: DiagramFile = {
   format: "diagrams/v1",
@@ -61,7 +61,7 @@ beforeEach(async () => {
   vi.resetModules();
   io = await import("./diagramIO");
   ({ newDiagramsPrivate } = await import("./privacyPrefs"));
-  toast = await import("../interop/ui/toast");
+  toast = await import("../interop/ui/toastRuntime");
 });
 
 describe("diagramIO storage goes through the shared validator", () => {

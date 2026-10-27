@@ -10,6 +10,7 @@
 // stays.
 
 const en = {
+  "toast.undoUnavailable": "Undo unavailable: the diagram changed.",
   // Short rail copy: two lines at 10.5px minimum. Full names stay in tooltips and accessible labels.
   "rail.select": "Select",
   "rail.add": "Add",

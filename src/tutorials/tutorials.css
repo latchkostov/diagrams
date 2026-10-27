@@ -166,7 +166,7 @@
   inset: 0;
   pointer-events: none;
   /* Above the canvas's menus (200), so a ringed menu item shows through the dim; below dialogs (they hide it). */
-  z-index: 205;
+  z-index: var(--layer-coach);
 }
 
 .tutorial-spot {
@@ -211,7 +211,7 @@
 
 .tutorial-tip {
   position: fixed;
-  z-index: 206;
+  z-index: var(--layer-coach-tip);
   width: max-content;
   padding: 7px 10px;
   border-radius: 8px;

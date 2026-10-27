@@ -47,7 +47,7 @@ it("derives a stable placeholder id without redundant empty sizing metadata", as
 
 it("shares a held request, preserves focus, and reports one failure across multiple consumers", async () => {
   const { defineLazySurface } = await import("./lazySurface");
-  const { toast } = await import("../interop/ui/toast");
+  const { toast } = await import("../interop/ui/toastRuntime");
   const first = deferred<() => React.ReactNode>();
   const load = vi
     .fn()
@@ -96,7 +96,7 @@ it("shares a held request, preserves focus, and reports one failure across multi
 
 it("keeps preload failure silent, retries on demand and does not remount after a late completion", async () => {
   const { defineLazySurface } = await import("./lazySurface");
-  const { toast } = await import("../interop/ui/toast");
+  const { toast } = await import("../interop/ui/toastRuntime");
   const next = deferred<() => React.ReactNode>();
   const load = vi.fn().mockRejectedValueOnce(new Error("offline")).mockReturnValueOnce(next.promise);
   const Surface = defineLazySurface({
@@ -120,7 +120,7 @@ it("keeps preload failure silent, retries on demand and does not remount after a
 
 it("reopening after a dismissed failure toast starts a fresh shared attempt", async () => {
   const { defineLazySurface } = await import("./lazySurface");
-  const { toast } = await import("../interop/ui/toast");
+  const { toast } = await import("../interop/ui/toastRuntime");
   const load = vi
     .fn()
     .mockRejectedValueOnce(new Error("offline"))
@@ -152,7 +152,7 @@ it("reopening after a dismissed failure toast starts a fresh shared attempt", as
 it("the surviving toast retries every active consumer of a shared failed chunk", async () => {
   const { defineLazySurface } = await import("./lazySurface");
   const { loadOnce } = await import("./lazyLoad");
-  const { toast } = await import("../interop/ui/toast");
+  const { toast } = await import("../interop/ui/toastRuntime");
   const shared = loadOnce<() => React.ReactNode>(
     vi
       .fn()
@@ -192,7 +192,7 @@ it("the surviving toast retries every active consumer of a shared failed chunk",
 it("Retry dispatches focus through the declared panel root", async () => {
   const { defineLazySurface } = await import("./lazySurface");
   const { InteractionContext } = await import("../canvas/interaction/useInteraction");
-  const { toast } = await import("../interop/ui/toast");
+  const { toast } = await import("../interop/ui/toastRuntime");
   const dispatch = vi.fn();
   const controller = { dispatch, rendered: vi.fn() } as unknown as InteractionController;
   const Surface = defineLazySurface({

@@ -44,7 +44,7 @@ import { lastCanvas, rememberCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";
 import { useInterop, useInteropCanvasActions } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
-import { Toaster } from "./interop/ui/Toaster";
+import { ToastMount as Toaster } from "./interop/ui/ToastMount";
 import { loadingDialog, preloadDialogs } from "./interop/ui/lazyDialogs";
 import { CommandPalette } from "./palette/CommandPalette";
 import { paletteHost } from "./palette/host";
@@ -584,7 +584,7 @@ function MainApp() {
       )}
       <div className="app-body">
         {!presenting && <ToolRail view={url.view} onView={goTo} />}
-        <div className="app-main">
+        <div className="app-main" data-toast-host>
           <ViewBoundary
             // Remount (and clear the error) when the user navigates elsewhere.
             resetKey={`${url.view}:${url.view === "canvas" ? canvasIdentity : ""}`}

@@ -33,3 +33,14 @@ export const measuredHierarchyFixture: DiagramFile = {
     { id: "zone", kind: "zone", text: "Region", group: "outer", x: 600, y: 80, width: 300, height: 400 },
   ],
 };
+
+/** A mixed selection whose node and child boundary both leave the parent on drop. */
+export const mixedBoundaryDragFixture: DiagramFile = {
+  ...nestedBoundariesFixture,
+  title: "Mixed boundary drop",
+  nodes: [
+    ...nestedBoundariesFixture.nodes,
+    { id: "sibling", stencil: "service.node", label: "Sibling", group: "grp-core", x: 570, y: 300 },
+    { id: "marker", stencil: "service.node", label: "Destination", x: 100, y: 1150 },
+  ],
+};

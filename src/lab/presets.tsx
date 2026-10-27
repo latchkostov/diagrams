@@ -16,12 +16,13 @@ import { ImportRetryLab } from "./ImportRetryLab";
 import { LiveKeyboardLab } from "./LiveKeyboardLab";
 import { CallPillUpdatesLab } from "./CallPillUpdatesLab";
 import { SlowTraceLocaleLab } from "./SlowTraceLocaleLab";
-import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
+import { measuredHierarchyFixture, mixedBoundaryDragFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
 import { routingFixture, routingOverlapFixture, routingSummaryFixture, sheetRoutingFixture } from "./routingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
+import { ToastInteractionLab } from "./ToastInteractionLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
 import { planningP2Fixture } from "./planningP2Fixture";
@@ -395,6 +396,14 @@ const diagramPresets: Preset[] = [
   },
   {
     kind: "diagram",
+    id: "mixed-boundary-drop",
+    title: "Mixed boundary drop",
+    group: "Diagrams",
+    description: "Drag Sibling and Child out of Parent together, then undo their complete drop.",
+    diagram: () => structuredClone(mixedBoundaryDragFixture),
+  },
+  {
+    kind: "diagram",
     id: "caption-contrast",
     title: "Caption contrast",
     group: "Diagrams",
@@ -580,6 +589,13 @@ const playgroundPresets: Preset[] = [
     title: "Colour picker mutations",
     group: "Playground",
     render: () => <ColourPickerLab />,
+  },
+  {
+    kind: "render",
+    id: "toast-interaction",
+    title: "Toast interaction",
+    group: "Playground",
+    render: () => <ToastInteractionLab />,
   },
   {
     kind: "diagram",

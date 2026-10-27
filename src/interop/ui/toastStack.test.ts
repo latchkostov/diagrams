@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TOAST_BOTTOM, toastBottom } from "./toastStack";
+import { feedbackPlacement } from "./toastFeedback";
 
 describe("toastBottom", () => {
   const toast = { left: 400, right: 800 };
@@ -15,5 +16,18 @@ describe("toastBottom", () => {
     const live = { left: 100, right: 1000, top: 820, bottom: 882 };
     expect(toastBottom(toast, [hint], 900)).toBe(900 - 836 + 10);
     expect(toastBottom(toast, [hint, live], 900)).toBe(900 - 820 + 10);
+  });
+});
+
+describe("feedbackPlacement", () => {
+  // 44px of feedback needs 64px of room: 10px either side of it.
+  it("puts a dialog's feedback below its panel when the window has room there", () => {
+    expect(feedbackPlacement({ bottom: 600 }, 44, 900)).toBe("below");
+    expect(feedbackPlacement({ bottom: 836 }, 44, 900)).toBe("below");
+  });
+
+  it("goes inside a panel that leaves less room than that", () => {
+    expect(feedbackPlacement({ bottom: 837 }, 44, 900)).toBe("inside");
+    expect(feedbackPlacement({ bottom: 884 }, 44, 900)).toBe("inside");
   });
 });

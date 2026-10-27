@@ -129,6 +129,22 @@
   --radius-m: 10px;
   --radius-l: 14px;
   --topbar-h: 52px;
+
+  /* The page's layers, lowest first: one order for everything fixed over the app (the toast layering design,
+     docs/design-review/2026-10-25-toast-layering.md). Modals sweep everything else inert; the page's notifications
+     sit under every menu and modal, a dialog's own feedback lives in that dialog, and a task's Cancel is on top. */
+  --layer-shortcuts: 150;
+  --layer-palette: 190;
+  --layer-context-menu: 200;
+  --layer-coach: 205;
+  --layer-coach-tip: 206;
+  --layer-inject: 210;
+  --layer-notification: 215;
+  --layer-menu: 220;
+  --layer-dialog: 250;
+  --layer-drop: 280;
+  --layer-task: 300;
+  --layer-color-picker: 1000;
 }
 
 [data-theme="dark"] {
