@@ -76,3 +76,7 @@ All 95 benchmark gates passed on `93a3271da`; later tutorial changes still requi
 ## Legacy Skip clock follow-up
 
 All 95 benchmark gates also passed on `c8cd6b2b2`. Its loaded repeat completed 605 cases with 603 passed, one failed, zero flaky and one existing skip. Every earlier failure case passed; the remaining failure was the legacy `timeouts-pools` Skip-all path waiting for real-time playback. All generated Skip-all paths now use the same controlled clock as the design studies, retaining every step-transition, completion, error and no-save assertion. All 49 generated cases pass at eight browser workers. This follow-up changes only test flow and this review; the product remains the benchmarked revision.
+
+## Recording setup clock
+
+The first loaded repeat on `1cfd0de89` passed 604 cases with zero failed, zero flaky and one existing skip. The second passed 603 with one bundle-recording timeout, zero flaky and the same skip. Its trace spent substantial test time rendering the two pre-capture 1,500 ms setup intervals and the countdown. Setup now advances the same simulation time in catch-up batches; this recording test also opts into countdown ticks, retaining all three numeric countdown assertions. Other recording callers retain full-frame countdown advancement. Every clock advance during capture, changed decoded-pixel assertion, natural-end assertion and paused-end assertion remains intact. All 26 recording/viewer cases and all thirteen CSP cases pass in the targeted production runs. The load repeat will include recording and CSP neighbours as well.
