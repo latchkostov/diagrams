@@ -42,6 +42,12 @@ failed assertion; Windows completed 13,191 unit tests successfully before heavy 
   no generated artifact; existing translation warnings remain, with zero i18n errors.
 - Full output parity passes: 1,873 Node tests, 110 browser tests; 3,178 goldens, zero changed, added,
   missing or stale.
+- One post-commit Linux full run passed Docker and static checks, but found two config assertions
+  expecting the old dev-target server count (13,213 other unit tests passed). Those assertions now
+  require the exact new port list and production URL mapping; all eight focused follow-up tests pass.
+  Its heavy lane passed 950 tests, and build/size passed before shutdown completed during parity.
+  The obsolete full run was stopped under the targeted-only fix-round rule. It is interrupted,
+  not a passing full gate; PR CI still owns the final full verification.
 
 The final static-check results are recorded in the PR. No timeout, retry, behavior assertion,
 production security policy or simulation source was relaxed or changed.

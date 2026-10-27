@@ -4,12 +4,18 @@ afterEach(() => vi.unstubAllEnvs());
 
 it.each([
   { target: "build", only: "1", projects: ["chromium"], servers: [6360] },
-  { target: "dev", only: "1", projects: ["chromium"], servers: [6360] },
+  { target: "dev", only: "1", projects: ["chromium"], servers: [6360, 6361] },
   {
     target: "build",
     only: "",
     projects: ["chromium", "dev", "subpath", "internal", "locked"],
     servers: [6361, 6360, 6362, 6363, 6364],
+  },
+  {
+    target: "dev",
+    only: "",
+    projects: ["chromium", "dev", "subpath", "internal", "locked"],
+    servers: [6360, 6361, 6362, 6363, 6364],
   },
 ])("serves exactly the requested projects ($target, chromium only: $only)", async (mode) => {
   vi.resetModules();
@@ -34,6 +40,11 @@ it.each([
   expect(config.projects?.map((project) => project.name)).toEqual(mode.projects);
   const servers = Array.isArray(config.webServer) ? config.webServer : [];
   expect(servers.map((server) => Number(new URL(server.url!).port))).toEqual(mode.servers);
+  const productionURL = `http://localhost:${mode.target === "build" ? 6360 : 6361}`;
+  expect(config.metadata?.productionBaseURL).toBe(productionURL);
+  const productionServer = servers.find((server) => server.url === productionURL);
+  expect(productionServer?.command).toContain("vite preview");
+  expect(productionServer?.env?.VITE_E2E).toBe("1");
   for (const server of servers.filter((server) => server.command.startsWith("pnpm dev ")))
     expect(server.env?.VITE_E2E).toBe("1");
   if (mode.target === "build" && mode.only) {
@@ -66,7 +77,7 @@ it.each(["build", "dev"])("gate mode owns every webServer and forbids focused te
     vi.stubEnv(key, value);
   const { default: config } = await import("../../playwright.config");
   const servers = Array.isArray(config.webServer) ? config.webServer : [];
-  expect(servers).toHaveLength(target === "build" ? 5 : 4);
+  expect(servers).toHaveLength(5);
   for (const server of servers) expect(server.reuseExistingServer, server.url).toBe(false);
   expect(config.forbidOnly).toBe(true);
   if (target === "build") {
