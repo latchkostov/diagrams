@@ -15,8 +15,9 @@ import {
   flowState,
   flowPoint,
   STORAGE_KEYS,
+  animationFrames,
 } from "./fixtures";
-import { chunk } from "./chunk";
+import { chunk, holdChunk as holdSearchChunk } from "./chunk";
 import type { Locator, Page } from "@playwright/test";
 import { INSERT_HOVER_MS } from "../../src/canvas/edgeHover";
 
@@ -80,6 +81,7 @@ async function seed(page: Page, diagram = SEED) {
   await expect(page.getByTestId(`node-${readyNode}`)).toBeVisible();
   await waitForStableViewport(page);
   await fitDiagram(page);
+  await waitForCameraIdle(page);
 }
 
 /** The diagram as autosaved (written 300 ms after the last edit). */
@@ -148,6 +150,35 @@ async function select(page: Page, id: string) {
   await expect(page.getByTestId(`grow-chip-${id}`)).toBeVisible();
   await waitForSelectionSettled(page);
 }
+
+async function connectBilling(page: Page) {
+  await select(page, "billing");
+  await page.keyboard.press("Alt+ArrowUp");
+  await expect(page.getByTestId("quick-add-search")).toBeFocused();
+  await page.keyboard.type("redis cache");
+  await expect(page.getByTestId("context-menu-item-quick-add:redis.cache")).toHaveAttribute("data-active", "true");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await savedWhen(page, (s) => s.edges.length === 2);
+}
+
+test("connected-drop preparation waits for a delayed picker before selecting its node", async ({ page }) => {
+  const held = await holdSearchChunk(page, chunk("stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts"));
+  await seed(page);
+  const connecting = connectBilling(page);
+  try {
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("redis cache");
+    await animationFrames(page);
+    await expect(page.getByTestId("quick-add")).toBeVisible();
+    held.release();
+    await connecting;
+  } finally {
+    held.release();
+    await connecting;
+  }
+});
 
 /**
  * Clicks Undo up to `max` times until `gone` holds: a name typed right after an add is its own step. The
@@ -685,12 +716,7 @@ test.describe("edges: reconnect and insert (D8)", () => {
   test("a connected node never splits an edge it's dropped on", async ({ page }) => {
     await page.clock.install();
     // Connect billing first, so it has an edge.
-    await select(page, "billing");
-    await page.keyboard.press("Alt+ArrowUp");
-    await page.keyboard.type("redis");
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Escape");
-    await savedWhen(page, (s) => s.edges.length === 2);
+    await connectBilling(page);
     // The new node was brought into view (a pan): measure after it settles.
     await waitForStableViewport(page);
     const before = await flowPos(page, "node-billing");

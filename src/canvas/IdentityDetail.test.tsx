@@ -6,14 +6,26 @@ import { IdentityDetail } from "./IdentityDetail";
 import { suspendFrameCapture } from "./camera/frameCapture";
 import type { ChipState } from "./lowZoom";
 
-const fixture = vi.hoisted(() => ({
-  state: { nodes: [{ id: "worker", type: "diagram", data: { label: "Worker" } }], transform: [0, 0, 0.24] } as Pick<
-    ChipState,
-    "nodes" | "nodeLookup" | "transform" | "width" | "height" | "connection"
-  >,
-  camera: { phase: "idle", interacting: false, state: { owner: "manual", view: "custom" }, subscribe: () => () => {} },
-  listeners: new Set<(state: { transform: number[] }, previous: { transform: number[] }) => void>(),
-}));
+const fixture = vi.hoisted(() => {
+  const cameraListeners = new Set<() => void>();
+  return {
+    state: { nodes: [{ id: "worker", type: "diagram", data: { label: "Worker" } }], transform: [0, 0, 0.24] } as Pick<
+      ChipState,
+      "nodes" | "nodeLookup" | "transform" | "width" | "height" | "connection"
+    >,
+    cameraListeners,
+    camera: {
+      phase: "idle",
+      interacting: false,
+      state: { owner: "manual", view: "custom" },
+      subscribe: (run: () => void) => {
+        cameraListeners.add(run);
+        return () => cameraListeners.delete(run);
+      },
+    },
+    listeners: new Set<(state: { transform: number[] }, previous: { transform: number[] }) => void>(),
+  };
+});
 vi.mock("@xyflow/react", () => {
   const store = {
     getState: () => fixture.state,
@@ -25,7 +37,11 @@ vi.mock("@xyflow/react", () => {
   return { useStoreApi: () => store };
 });
 
-it.each([false, true])("fits pan entrants before paint without layout in input (pointer held: %s)", async (held) => {
+it.each([
+  { held: false, owned: false },
+  { held: true, owned: false },
+  { held: false, owned: true },
+])("fits pan entrants before paint (pointer held: $held, camera-owned fit: $owned)", async ({ held, owned }) => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   fixture.camera.phase = "idle";
   fixture.listeners.clear();
@@ -94,6 +110,12 @@ it.each([false, true])("fits pan entrants before paint without layout in input (
     const previous = fixture.state;
     fixture.state = { ...previous, transform: [-24000, 0, 0.24] };
     fixture.camera.interacting = held;
+    if (owned)
+      await act(() => {
+        fixture.camera.state.view = "overview";
+        fixture.camera.phase = "animating";
+        for (const run of fixture.cameraListeners) run();
+      });
     // Input does no layout work. The first animation frame fits entrants before they paint.
     computed.mockClear();
     await act(() => {
@@ -101,10 +123,28 @@ it.each([false, true])("fits pan entrants before paint without layout in input (
     });
     expect(computed).not.toHaveBeenCalled();
     expect(target.style.height).toBe("");
+    if (held) {
+      const previous = fixture.state;
+      fixture.state = { ...previous, nodes: [...previous.nodes] };
+      await act(() => {
+        for (const run of fixture.listeners) run(fixture.state, previous);
+      });
+      expect(computed).not.toHaveBeenCalled();
+    }
+    if (owned) {
+      await act(() => {
+        fixture.camera.phase = "idle";
+        for (const run of fixture.cameraListeners) run();
+      });
+      // Fit completion includes identity geometry, before any later animation frame can refine it.
+      expect(Number.parseFloat(target.style.height)).toBeCloseTo(14 / 0.24);
+    }
     await flush();
     expect(Number.parseFloat(target.style.height)).toBeCloseTo(14 / 0.24);
     expect(queries).toHaveBeenCalledTimes(traversals);
     fixture.camera.interacting = false;
+    fixture.camera.phase = "idle";
+    fixture.camera.state.view = "custom";
     const release = suspendFrameCapture(host.firstElementChild!);
     expect([...host.querySelectorAll<HTMLElement>(".stencil-icon")].every((el) => el.style.height === "")).toBe(true);
     expect(
@@ -117,6 +157,8 @@ it.each([false, true])("fits pan entrants before paint without layout in input (
     expect(Number.parseFloat(target.style.height)).toBeCloseTo(14 / 0.24);
   } finally {
     fixture.camera.interacting = false;
+    fixture.camera.phase = "idle";
+    fixture.camera.state.view = "custom";
     await act(() => root.unmount());
     vi.restoreAllMocks();
     vi.unstubAllGlobals();

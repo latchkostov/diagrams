@@ -149,8 +149,11 @@ export const IdentityDetail = memo(function IdentityDetail({
     const unsubscribe = store.subscribe((s, old) => {
       // Fit entrants before this frame paints, after the input handler. Never force layout in a pan handler.
       if (s.transform !== old.transform && s.transform[2] === old.transform[2]) {
-        panQueued = true;
-        schedule();
+        panQueued =
+          !camera || camera.phase === "idle" || (camera.state.owner === "manual" && camera.state.view === "custom");
+        // Camera-owned fits already run outside input and include fitting in their completion boundary.
+        if (panQueued) schedule();
+        else update();
       } else if (
         s.transform !== old.transform ||
         s.nodes !== old.nodes ||
@@ -158,6 +161,7 @@ export const IdentityDetail = memo(function IdentityDetail({
         s.height !== old.height ||
         s.connection !== old.connection
       ) {
+        if (s.transform !== old.transform) panQueued = false;
         fittedTransform = undefined;
         schedule();
       }
