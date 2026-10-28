@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { getNodeVariant } from "./nodes/variantRegistry";
 import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { tRich } from "../i18n/rich";
@@ -38,6 +39,7 @@ export { STENCIL_DND_MIME };
 // Keep a modal's search-field return target mounted until it has handed focus back.
 // eslint-disable-next-line react-refresh/only-export-components -- readiness belongs with the downloaded view
 export async function paletteWhenReady() {
+  await surfaceCatalogs(["stencils"]);
   while (modalLayers.top) {
     await new Promise<void>((resolve) => {
       const check = () => {

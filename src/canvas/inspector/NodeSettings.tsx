@@ -18,8 +18,14 @@ import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 const EMPTY_PROPS: Record<string, unknown> = {};
 const NodeSimulation = defineLazySurface({
   id: "inspector.simulation",
-  load: () => import("./SimulationFields").then((m) => m.NodeSimulation),
-  placeholder: { size: {}, testId: "inspector.simulation-loading" },
+  load: () => import("./SimulationFields").then((m) => m.simulationWhenReady()),
+  placeholder: {
+    render: (_props, status) => (
+      <div role="status" data-testid="inspector.simulation-loading" aria-busy={!status.failed}>
+        {status.failed ? t("fileDialog.loadFailed") : t("common.loading")}
+      </div>
+    ),
+  },
   focus: {},
   export: "skip",
   retryToast: true,

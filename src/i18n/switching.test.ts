@@ -12,7 +12,11 @@ vi.mock("virtual:i18n/catalogs", () => {
     new Promise<{ default: Record<string, string> }>((resolve, reject) =>
       pending.set(code, { resolve: () => resolve({ default: { "New diagram": `[${code}]` } }), reject }),
     );
-  return { catalogs: { de: deferred("de"), ja: deferred("ja"), bg: deferred("bg") }, reviewed: [] };
+  return {
+    coreCatalogs: { de: deferred("de"), ja: deferred("ja"), bg: deferred("bg") },
+    surfaceCatalogs: {},
+    reviewed: [],
+  };
 });
 
 const stored = new Map<string, string>();

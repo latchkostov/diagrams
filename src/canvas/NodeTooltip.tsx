@@ -1,3 +1,5 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
+import { lazyComponent } from "../lib/lazyLoad";
 import { stencilLabel, stencilDescription } from "../i18n/stencils";
 import { t, useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
@@ -16,7 +18,7 @@ export interface NodeTip {
   description?: string;
 }
 
-export function NodeTooltip({ tip }: { tip: NodeTip }) {
+export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: boolean }) {
   useLocale();
   const stencil = getStencil(tip.stencil);
   const hasDoc = Boolean(tip.description?.trim());
@@ -62,7 +64,13 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
         <small>{t("hover.editing")}</small>
       </div>
       {tip.sublabel && <span className="node-tip-sub mono">{tip.sublabel}</span>}
-      {stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>}
+      {loading ? (
+        <span className="node-tip-desc" role="status" data-testid="node-tooltip-loading">
+          {t("common.loading")}
+        </span>
+      ) : (
+        stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>
+      )}
       {hasDoc && (
         <div className="node-tip-doc" data-testid="node-tooltip-doc">
           <MarkdownView text={tip.description!} className="node-tip-md" />
@@ -71,6 +79,15 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
     </div>
   );
 }
+
+const TranslatedNodeTooltip = lazyComponent(
+  async () => {
+    await surfaceCatalogs(["stencils"]);
+    return NodeTooltip;
+  },
+  (props) => <NodeTooltip {...props} loading />,
+  true,
+);
 
 /**
  * Draws the tip in `tips` (useNodeTooltip) while `enabled`, and names it as the node's description. Its own component,
@@ -91,5 +108,5 @@ export function NodeTipLayer({
   const shown = useSyncExternalStore(tips.subscribe, tips.get);
   const tip = enabled ? shown : null;
   useTipDescribes(root, tip?.nodeId);
-  return tip && !covered ? <NodeTooltip tip={tip} /> : null;
+  return tip && !covered ? <TranslatedNodeTooltip tip={tip} /> : null;
 }

@@ -4,3 +4,5 @@ export { AdmissionFields, BulkAdmissionFields } from "./AdmissionFields";
 
 export { AutoscalingFields } from "./AutoscalingFields";
 export { RouteTableFields, TrafficMixFields, EdgeRouteFields, RequestRoutesSection } from "./RoutingFields";
+
+export { planningWhenReady } from "./ready";

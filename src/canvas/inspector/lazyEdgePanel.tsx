@@ -6,7 +6,7 @@ import { PanelUnavailable } from "./PanelUnavailable";
 
 const DeferredEdgePanel = defineLazySurface({
   id: "inspector.edge",
-  load: () => import("./EdgePanel").then((m) => m.EdgePanel),
+  load: () => import("./EdgePanel").then((m) => m.edgeWhenReady()),
   placeholder: {
     size: {},
     testId: "inspector.edge-loading",

@@ -73,7 +73,7 @@ const DiagramPanel = defineLazySurface({
 });
 const MultiPanel = defineLazySurface({
   id: "inspector.multi",
-  load: () => import("./inspector/MultiPanel").then((m) => m.MultiPanel),
+  load: () => import("./inspector/MultiPanel").then((m) => m.multiWhenReady()),
   placeholder: { render: pending() },
   focus: {},
   export: "skip",

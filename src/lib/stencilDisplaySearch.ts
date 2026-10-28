@@ -1,5 +1,5 @@
 import type { Stencil } from "../model/types";
-import { getLocale } from "../i18n/core";
+import { getLocale, state, type Catalog } from "../i18n/core";
 import { categoryLabel, familyLabel } from "../i18n/chrome";
 import { galleryRoleMeta } from "../i18n/galleryRoles";
 import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
@@ -11,12 +11,14 @@ import { rankMatches, scoreToken, scoreTokens, searchWords, tokenize, type Searc
 type Indexed = SearchText;
 let index = new WeakMap<Stencil, Indexed>();
 let indexLocale: string | undefined;
+let indexCatalog: Catalog | undefined;
 
 function indexed(s: Stencil): Indexed {
   const locale = getLocale();
-  if (indexLocale !== locale) {
+  if (indexLocale !== locale || indexCatalog !== state.c) {
     index = new WeakMap();
     indexLocale = locale;
+    indexCatalog = state.c;
   }
   let hit = index.get(s);
   if (hit) return hit;

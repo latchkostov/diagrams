@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { safeStorage } from "../lib/storage";
 import {
   Component,
@@ -563,4 +564,10 @@ class PresetBoundary extends Component<
       </div>
     );
   }
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- Lab readiness includes the catalogs its preview fixtures exercise
+export async function labWhenReady() {
+  await surfaceCatalogs(["tutorials", "stencils", "simulation", "exports", "ai"]);
+  return { default: LabView };
 }

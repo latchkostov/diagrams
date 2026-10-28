@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { t, msg, useLocale } from "../../i18n";
 import { stencilLabel } from "../../i18n/stencils";
 import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
@@ -633,4 +634,10 @@ function TurnItem({
       </div>
     </li>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function aiPanelWhenReady() {
+  await surfaceCatalogs(["ai", "simulation"]);
+  return AiPanel;
 }

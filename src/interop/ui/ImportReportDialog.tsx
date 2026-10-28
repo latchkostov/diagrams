@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { formatImportMessage } from "./importMessages";
 import { formatNumber, formatImportTraffic } from "../../i18n/format";
 import { t as tr, useLocale } from "../../i18n";
@@ -439,4 +440,10 @@ function GuessRow({
       </span>
     </li>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function reportWhenReady() {
+  await surfaceCatalogs(["stencils"]);
+  return ImportReportDialog;
 }

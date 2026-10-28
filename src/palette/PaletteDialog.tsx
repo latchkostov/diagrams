@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import "./routeActions";
 import { tutorialMetadata } from "../tutorials/metadata";
 import { t, useLocale } from "../i18n";
@@ -489,3 +490,9 @@ const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, 
     </div>
   );
 });
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function paletteDialogWhenReady() {
+  await surfaceCatalogs(["tutorials", "stencils"]);
+  return PaletteDialog;
+}

@@ -8,7 +8,7 @@ import { t } from "../i18n";
  */
 export const TutorialSurface = defineLazySurface<{ id: string; onExit(): void }>({
   id: "tutorial.app",
-  load: () => import("./TutorialApp").then((m) => m.TutorialApp),
+  load: () => import("./TutorialApp").then((m) => m.tutorialWhenReady()),
   placeholder: {
     render: ({ onExit }, status) => (
       <div className="app" data-testid="tutorial-app-loading" aria-busy={!status.failed}>
@@ -30,7 +30,7 @@ export const TutorialSurface = defineLazySurface<{ id: string; onExit(): void }>
 /** The Tutorials view (the top bar's Diagram | Stencils | Tutorials): its page loads when it's first opened. */
 export const TutorialsListSurface = defineLazySurface<object>({
   id: "tutorial.list",
-  load: () => import("./TutorialsView").then((m) => m.TutorialsView),
+  load: () => import("./TutorialsView").then((m) => m.tutorialsWhenReady()),
   placeholder: {
     render: (_props, status) => (
       <div className="view-loading" data-testid="tutorials-view-loading" aria-busy={!status.failed} role="status">

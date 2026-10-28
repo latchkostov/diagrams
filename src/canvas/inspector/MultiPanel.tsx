@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import "../../styles/inspector-layout.css";
 import { revisionAtLeast } from "../../model/revisions";
 import { Icon, type IconName } from "../../components/Icon";
@@ -621,4 +622,10 @@ export function BulkSwatches<T extends string>({
       </div>
     </div>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function multiWhenReady() {
+  await surfaceCatalogs(["simulation"]);
+  return MultiPanel;
 }

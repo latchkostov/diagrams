@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { catalogs } from "virtual:i18n/catalogs";
+import { catalogs, coreCatalogs } from "virtual:i18n/catalogs";
+import { loadSurfaceCatalogs } from "./load";
 import { catalog } from "../stencils/catalog";
 import { FALLBACK_STENCIL } from "../stencils/registry";
 import { searchStencils } from "../lib/stencilDisplaySearch";
@@ -420,4 +421,19 @@ describe("stencil display text", () => {
     state.c = undefined;
     expect(searchStencils(catalog, "database")[0]).toBe(database);
   });
+});
+
+it("refreshes a same-language search index when lazy stencil metadata arrives, only once", async () => {
+  state.l = "de";
+  state.c = { ...((await coreCatalogs.de()).default as Catalog) };
+  const database = catalog.find((s) => s.id === "generic.database")!;
+  const translated = JSON.parse(fs.readFileSync(path.join("src/i18n/locales/de.json"), "utf8"))[
+    "stencil.genericDatabaseDescription"
+  ] as string;
+  expect(searchStencils([database], translated)).toEqual([]);
+  await loadSurfaceCatalogs(["stencils"]);
+  expect(searchStencils([database], translated)).toEqual([database]);
+  const loaded = state.c;
+  await loadSurfaceCatalogs(["stencils"]);
+  expect(state.c).toBe(loaded);
 });

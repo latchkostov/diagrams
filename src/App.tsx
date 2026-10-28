@@ -60,11 +60,11 @@ import "./styles/interop.css";
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
 // with the canvas), and the Lab never downloads unless someone opens ?view=lab (dev and e2e builds only: a production
 // build has no Lab, LAB in ./lib/urlState).
-const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
+const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => m.galleryWhenReady()));
 // The condition is spelled out (not LAB) so the bundler folds it here and drops the chunk from production builds.
 const LabView =
   import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
-    ? lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })))
+    ? lazy(() => import("./lab/LabView").then((m) => m.labWhenReady()))
     : () => null;
 /**
  * Rooms (Edit together; src/collab/room): their code, Yjs included, loads only for a page with a room to open or when

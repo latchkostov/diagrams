@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { NodeQueueFields } from "./QueueFields";
 import "../../styles/inspector-layout.css";
 import { resolveProps } from "../../sim/defaults";
@@ -592,4 +593,10 @@ export function AutoscalingWorkload({
   ) : (
     children
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function simulationWhenReady() {
+  await surfaceCatalogs(["simulation"]);
+  return NodeSimulation;
 }

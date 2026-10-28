@@ -1,4 +1,5 @@
-import { catalogs, reviewed } from "virtual:i18n/catalogs";
+import { coreCatalogs as catalogs, surfaceCatalogs, reviewed } from "virtual:i18n/catalogs";
+import { usedCatalogs } from "./surfaces";
 import { safeStorage } from "../lib/storage";
 import { LOCALE_KEY, state, type Catalog } from "./index";
 
@@ -35,6 +36,41 @@ export function relativeAgo(code: string): (at: number, now?: number) => string 
   };
 }
 
+/** Surfaces already used must switch atomically with the shell. Failed requests are retryable. */
+const parts = new Map<string, Promise<Catalog>>();
+let installedFor: Catalog | undefined;
+const installed = new Set<SurfaceCatalog>();
+export type SurfaceCatalog = "tutorials" | "stencils" | "simulation" | "exports" | "ai";
+function catalogPart(code: string, bucket: SurfaceCatalog): Promise<Catalog> {
+  const key = `${code}/${bucket}`;
+  let pending = parts.get(key);
+  if (!pending) {
+    const load = surfaceCatalogs[code]?.[bucket];
+    pending = (load ? load().then((m) => m.default as Catalog) : Promise.resolve({})).catch((error: unknown) => {
+      parts.delete(key);
+      throw error;
+    });
+    parts.set(key, pending);
+  }
+  return pending;
+}
+export async function loadSurfaceCatalogs(buckets: readonly SurfaceCatalog[]): Promise<void> {
+  buckets.forEach((bucket) => usedCatalogs.add(bucket));
+  // A language choice may complete while a surface downloads. Never release it with the old language's strings.
+  let code: string;
+  do {
+    code = state.l;
+    const messages = code === "en" ? [] : await Promise.all(buckets.map((bucket) => catalogPart(code, bucket)));
+    if (state.l === code && state.c) {
+      if (installedFor !== state.c) installed.clear();
+      const additions = messages.filter((_message, i) => !installed.has(buckets[i]));
+      if (additions.length) state.c = Object.assign({}, state.c, ...additions);
+      installedFor = state.c;
+      buckets.forEach((bucket) => installed.add(bucket));
+    }
+  } while (state.l !== code);
+}
+
 let request = 0;
 
 /**
@@ -47,7 +83,15 @@ async function apply(code: string, commit?: () => void): Promise<boolean> {
   const load = catalogs[code];
   let messages: Catalog | undefined;
   try {
-    messages = load ? ((await load()).default as Catalog) : undefined;
+    messages = load ? { ...((await load()).default as Catalog) } : undefined;
+    if (messages) {
+      let count: number;
+      do {
+        count = usedCatalogs.size;
+        const extras = await Promise.all([...usedCatalogs].map((bucket) => catalogPart(code, bucket)));
+        Object.assign(messages, ...extras);
+      } while (count !== usedCatalogs.size);
+    }
   } catch (error) {
     if (mine !== request) return false;
     throw error;

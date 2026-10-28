@@ -1,4 +1,4 @@
-import { catalogs } from "virtual:i18n/catalogs";
+import { coreCatalogs as catalogs } from "virtual:i18n/catalogs";
 import { safeStorage } from "../lib/storage";
 import { LOCALES } from "../lib/deployment";
 import { LOCALE_KEY } from "./core";

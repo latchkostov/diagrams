@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { ModeSwitch, HistoryButtons } from "../components/ModeSwitch";
 import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LazyCanvasView as CanvasView } from "../canvas/loadCanvasView";
@@ -591,4 +592,10 @@ declare global {
       solution(): ResolvedUiStep[];
     };
   }
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function tutorialWhenReady() {
+  await surfaceCatalogs(["tutorials", "stencils"]);
+  return TutorialApp;
 }

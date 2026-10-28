@@ -24,10 +24,12 @@ let loading: Promise<{ default: ComponentType<PaletteDialogProps> }> | null = nu
 
 /** Loads the dialog's code once. */
 function preloadPalette() {
-  loading ??= import("./PaletteDialog").then((m) => {
-    loaded = m.PaletteDialog;
-    return { default: m.PaletteDialog };
-  });
+  loading ??= import("./PaletteDialog")
+    .then((m) => m.paletteDialogWhenReady())
+    .then((component) => {
+      loaded = component;
+      return { default: component };
+    });
   loading.catch(() => {
     loading = null;
   });
