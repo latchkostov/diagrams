@@ -22,7 +22,10 @@ vi.mock("@xyflow/react", () => ({
   useStoreApi: () => api,
 }));
 const api = { getState: () => store, subscribe: () => () => {} };
-vi.mock("../canvas/viewportParts", () => ({ viewportParts: () => () => new Set() }));
+vi.mock("../canvas/viewportParts", async (original) => ({
+  ...(await original<typeof import("../canvas/viewportParts")>()),
+  viewportParts: () => () => new Set(),
+}));
 vi.mock("./lazyWaitingVisuals", async () => ({
   ThreadMeter: (await import("./ThreadMeter")).ThreadMeter,
   CallPills: () => null,

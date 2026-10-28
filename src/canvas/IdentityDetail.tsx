@@ -41,6 +41,7 @@ export const IdentityDetail = memo(function IdentityDetail({
     let fittedFar = false;
     let fittedTransform: number[] | undefined;
     let dirty = true;
+    let panQueued = false;
     const inViewport = viewportParts();
     const fitted = new WeakMap<
       HTMLElement,
@@ -54,9 +55,12 @@ export const IdentityDetail = memo(function IdentityDetail({
         !ready ||
         suspended ||
         disposed ||
-        (camera && (camera.phase !== "idle" || camera.interacting) && !root.hasAttribute("data-viewport-moving"))
+        (camera &&
+          (camera.phase !== "idle" || (camera.interacting && !panQueued)) &&
+          !root.hasAttribute("data-viewport-moving"))
       )
         return;
+      panQueued = false;
       if (root.hasAttribute("data-low-zoom")) return;
       const state = store.getState();
       const { nodes, transform } = state;
@@ -143,9 +147,11 @@ export const IdentityDetail = memo(function IdentityDetail({
       schedule();
     });
     const unsubscribe = store.subscribe((s, old) => {
-      // Pan entrants must have their current icon/name in the pan's frame, even with the page clock held.
-      if (s.transform !== old.transform && s.transform[2] === old.transform[2]) update();
-      else if (
+      // Fit entrants before this frame paints, after the input handler. Never force layout in a pan handler.
+      if (s.transform !== old.transform && s.transform[2] === old.transform[2]) {
+        panQueued = true;
+        schedule();
+      } else if (
         s.transform !== old.transform ||
         s.nodes !== old.nodes ||
         s.width !== old.width ||
@@ -163,7 +169,7 @@ export const IdentityDetail = memo(function IdentityDetail({
     root.addEventListener("focusin", focus);
     const uncam = camera?.subscribe(() => {
       fittedTransform = undefined;
-      if (camera.phase === "idle") update();
+      if (camera.phase === "idle" && !panQueued) update();
       else schedule();
     });
     // FrameDetail may resize cards after our store notification. React may also

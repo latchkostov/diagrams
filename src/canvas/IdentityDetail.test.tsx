@@ -25,7 +25,7 @@ vi.mock("@xyflow/react", () => {
   return { useStoreApi: () => store };
 });
 
-it("defers off-screen identity reads, keeps every accessible card, and fits an entering card before another frame", async () => {
+it.each([false, true])("fits pan entrants before paint without layout in input (pointer held: %s)", async (held) => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   fixture.camera.phase = "idle";
   fixture.listeners.clear();
@@ -93,12 +93,18 @@ it("defers off-screen identity reads, keeps every accessible card, and fits an e
     const traversals = queries.mock.calls.length;
     const previous = fixture.state;
     fixture.state = { ...previous, transform: [-24000, 0, 0.24] };
-    // No clock tick or rAF: the pan's store commit must bring the current identity with it.
+    fixture.camera.interacting = held;
+    // Input does no layout work. The first animation frame fits entrants before they paint.
+    computed.mockClear();
     await act(() => {
       for (const run of fixture.listeners) run(fixture.state, previous);
     });
+    expect(computed).not.toHaveBeenCalled();
+    expect(target.style.height).toBe("");
+    await flush();
     expect(Number.parseFloat(target.style.height)).toBeCloseTo(14 / 0.24);
     expect(queries).toHaveBeenCalledTimes(traversals);
+    fixture.camera.interacting = false;
     const release = suspendFrameCapture(host.firstElementChild!);
     expect([...host.querySelectorAll<HTMLElement>(".stencil-icon")].every((el) => el.style.height === "")).toBe(true);
     expect(
@@ -110,6 +116,7 @@ it("defers off-screen identity reads, keeps every accessible card, and fits an e
     await flush();
     expect(Number.parseFloat(target.style.height)).toBeCloseTo(14 / 0.24);
   } finally {
+    fixture.camera.interacting = false;
     await act(() => root.unmount());
     vi.restoreAllMocks();
     vi.unstubAllGlobals();

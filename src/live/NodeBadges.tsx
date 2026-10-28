@@ -16,7 +16,7 @@ import type { BrokerSpec } from "../model/brokers";
 import { t, useLocale } from "../i18n";
 import { memo, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useNodes, useStore, useStoreApi } from "@xyflow/react";
-import type { viewportParts } from "../canvas/viewportParts";
+import { sameParts, type viewportParts } from "../canvas/viewportParts";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimState } from "../sim/types";
 import type { DiagramFlowNode, FlowNode } from "../canvas/types";
@@ -106,9 +106,7 @@ export function NodeBadges({
   });
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
-  const transform = useStore((s) => s.transform);
-  useStore((s) => s.width);
-  useStore((s) => s.height);
+  const zoom = useStore((s) => s.transform[2]);
   const store = useStoreApi<FlowNode>();
   const [inViewport, setInViewport] = useState<ReturnType<typeof viewportParts> | null>(null);
   useEffect(() => {
@@ -133,8 +131,10 @@ export function NodeBadges({
       dispose?.();
     };
   }, [store, ui.controller]);
-  const visible = inViewport?.(store.getState());
-  const zoom = transform[2];
+  const visible = useStore(
+    (s) => inViewport?.(s as unknown as Parameters<ReturnType<typeof viewportParts>>[0]),
+    sameParts,
+  );
   const boundaryFault = faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   const activeCalls = [];

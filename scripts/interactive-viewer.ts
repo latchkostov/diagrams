@@ -270,7 +270,7 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     name: "editor viewport decoration queries",
     path: "/src/canvas/viewportParts.ts",
     // Exported files keep the complete identity pass, including every off-screen part.
-    stub: () => "export const viewportParts = () => () => null;",
+    stub: () => "export const viewportParts = () => () => null; export const sameParts = () => true;",
   },
   {
     name: "editor Live badge viewport and image-capture policy",
@@ -384,7 +384,7 @@ export function viewerSwaps(root: string): Plugin {
       if (own(id, "/src/live/NodeBadges.tsx")) {
         // Files keep all readouts current, just as the identity pass below keeps all cards.
         // Drop the editor's subscriptions and capture loader, not only the spatial query.
-        const start = code.indexOf("  const transform = useStore((s) => s.transform);");
+        const start = code.indexOf("  const zoom = useStore((s) => s.transform[2]);");
         const end = code.indexOf("  const boundaryFault =", start);
         const visibility = "            visible={!visible || visible.has(n.id)}\n";
         if (start < 0 || end < start || !code.includes(visibility))
