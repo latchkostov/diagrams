@@ -5,22 +5,20 @@ import { useWorkbenchDock } from "../canvas/inspector/dockState";
 import { inHoverBridge } from "./hoverBridge";
 import { useReadoutFocus } from "./useReadoutFocus";
 import { DetailsLoading } from "./DetailsLoading";
-import { revisionAtLeast } from "../model/revisions";
 import { profileOf } from "../stencils/profiles";
 import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
 import { createReadoutLayer } from "../canvas/interaction/readoutLayer";
-import { compileTopology } from "../sim/topology";
 import { brokerAssignments } from "../sim/brokerAssignments";
 import { resolveMultiplier } from "../sim/units";
 import type { BrokerSpec } from "../model/brokers";
 import { t, useLocale } from "../i18n";
 import { memo, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
-import { useNodes, useStore } from "@xyflow/react";
+import { useNodes, useStore, useStoreApi } from "@xyflow/react";
+import type { viewportParts } from "../canvas/viewportParts";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimState } from "../sim/types";
-import { resolveProps } from "../sim/defaults";
 import type { DiagramFlowNode, FlowNode } from "../canvas/types";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
@@ -29,7 +27,6 @@ import { formatCount, formatRate, heatOf, heldWords } from "./format";
 import { LiveIcon } from "./icons";
 import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
-import { HA_LABEL } from "../stencils/netDevices";
 import { latencyLabel, latencySampling } from "./latencyFormat";
 import { readoutDiagram } from "./readoutDiagram";
 import { currentHealth, retryPressure } from "./healthWindow";
@@ -118,7 +115,29 @@ export function NodeBadges({
   });
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
-  const zoom = useStore((s) => s.transform[2]);
+  const transform = useStore((s) => s.transform);
+  useStore((s) => s.width);
+  useStore((s) => s.height);
+  const store = useStoreApi<FlowNode>();
+  const [inViewport, setInViewport] = useState<ReturnType<typeof viewportParts> | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    let dispose: (() => void) | undefined;
+    void import("./badgeViewport")
+      .then(({ watchBadgeViewport }) => {
+        if (mounted)
+          dispose = watchBadgeViewport(store.getState().domNode, (query) => {
+            setInViewport(() => query);
+          });
+      })
+      .catch(Boolean);
+    return () => {
+      mounted = false;
+      dispose?.();
+    };
+  }, [store]);
+  const visible = inViewport?.(store.getState());
+  const zoom = transform[2];
   const boundaryFault = faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   const activeCalls = [];
@@ -165,15 +184,11 @@ export function NodeBadges({
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];
         if (!s || s.role === "none") return null;
-        // Concurrency and units only show in the hover breakdown: resolve them for the hovered node alone.
-        const props =
-          hovered === n.id && (s.role === "processor" || s.role === "gateway")
-            ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id), n.data.stencil, diagram.planning)
-            : undefined;
         return (
           <NodeBadge
             key={n.id}
             node={n}
+            visible={!visible || visible.has(n.id)}
             configuration={state.configuration}
             diagram={diagram}
             s={s}
@@ -186,14 +201,6 @@ export function NodeBadges({
             cap={capacity?.nodes[n.id]}
             assignment={assignments.consumers.get(n.id)?.spec}
             brokerSpec={assignments.brokers.get(n.id)}
-            currentModel={revisionAtLeast(diagram.planning?.revision, "p2")}
-            concurrency={props?.concurrency ?? 0}
-            units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
-            groups={
-              hovered === n.id && (s.role === "topic" || s.role === "stream")
-                ? groupNames(diagram, n.id, topology)
-                : undefined
-            }
           />
         );
       })}
@@ -280,20 +287,8 @@ function useHoveredNode(nodes: FlowNode[], state: LiveState) {
   return pointed;
 }
 
-/** Consumer-group name → who consumes it, for the lag breakdown. */
-function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof compileTopology>): Map<string, string> {
-  const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
-  const out = new Map<string, string>();
-  for (const e of topology.edges) {
-    if (e.from !== nodeId || e.dlq || e.deny) continue;
-    const group = e.groupName;
-    const who = labels.get(e.to) ?? e.to;
-    out.set(group, out.has(group) ? `${out.get(group)}, ${who}` : who);
-  }
-  return out;
-}
-
 export interface BadgeProps {
+  visible?: boolean;
   focusClaim?: () => boolean;
   configuration: LiveState["configuration"];
   diagram: DiagramFile;
@@ -303,14 +298,14 @@ export interface BadgeProps {
   s: NodeSimState;
   hovered: boolean;
   pinned: boolean;
-  concurrency: number;
+  concurrency?: number;
   /** A network device in a pair or cluster: how its units work ("Active-standby pair"). */
   units?: string;
   groups?: Map<string, string>;
   cap?: NodeHeat;
   assignment?: BrokerSpec;
   brokerSpec?: BrokerSpec;
-  currentModel: boolean;
+  currentModel?: boolean;
   showOutageLoss: boolean;
 }
 
