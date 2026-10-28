@@ -1,4 +1,5 @@
 import { refresh } from "./badgeSemantics";
+import { sameParts } from "./badgeMemo";
 import type { LiveController } from "./controller";
 import { flushSync } from "react-dom";
 import { registerFrameCapture } from "../canvas/camera/frameCapture";
@@ -17,18 +18,17 @@ export function watchBadgeViewport(
   const query = viewportParts();
   let mounted = true;
   let activeQuery: typeof query | null = query;
-  const update = () => {
-    if (mounted && controller)
-      refresh(
-        root,
-        controller.getState(),
-        geometry && activeQuery ? activeQuery(geometry.getState()) : null,
-        controller.currentDiagram,
-      );
+  let previous: ReadonlySet<string> | null | undefined;
+  const update = (force = true) => {
+    if (!mounted || !controller) return;
+    const visible = geometry && activeQuery ? activeQuery(geometry.getState()) : null;
+    if (force || !sameParts(previous, visible))
+      refresh(root, controller.getState(), visible, controller.currentDiagram);
+    previous = visible;
   };
-  const unsubscribe = controller?.subscribe(update);
-  const unsubscribeGeometry = geometry?.subscribe(update);
-  const observer = new MutationObserver(update);
+  const unsubscribe = controller?.subscribe(() => update());
+  const unsubscribeGeometry = geometry?.subscribe(() => update(false));
+  const observer = new MutationObserver(() => update());
   if (root)
     observer.observe(root, {
       subtree: true,

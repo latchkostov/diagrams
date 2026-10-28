@@ -7,6 +7,9 @@ import {
   savedDiagram,
   STORAGE_KEYS,
   expectNoErrors,
+  waitForSelectionSettled,
+  waitForCameraIdle,
+  pauseClock,
 } from "./fixtures";
 
 const SLUG = "kafka-order-pipeline";
@@ -18,16 +21,51 @@ const SEED = {
   edges: [],
 };
 
-async function seed(page: Page) {
+async function seed(page: Page, beforeSelect?: () => Promise<void>) {
   await page.addInitScript(
     ([key, diagram]) => localStorage.setItem(key, diagram),
     [STORAGE_KEYS.autosavePrefix + SLUG, JSON.stringify(SEED)],
   );
   await gotoCanvas(page, SLUG);
   await waitForStableViewport(page);
+  await beforeSelect?.();
   await page.getByTestId("node-origin").click();
+  await expect(page.getByTestId("grow-chip-origin")).toBeVisible();
+  await waitForSelectionSettled(page);
+  await waitForCameraIdle(page);
   await page.getByTestId("rf__node-origin").focus();
 }
+
+test("buffered naming preparation settles the selection before measurements can be held", async ({ page }) => {
+  let ready = false;
+  let paused!: () => void;
+  const held = new Promise<void>((resolve) => (paused = resolve));
+  const opening = seed(page, async () => {
+    if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) !== "1") {
+      await page.getByTestId("inspector-toggle").click();
+      await waitForCameraIdle(page);
+      await waitForStableViewport(page);
+    }
+    await page.clock.install();
+    await pauseClock(page);
+    paused();
+  }).then(() => {
+    ready = true;
+  });
+  try {
+    await held;
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+    await waitForStableViewport(page);
+    expect(ready).toBe(false);
+    await page.clock.resume();
+    await opening;
+    expect(ready).toBe(true);
+    await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  } finally {
+    await page.clock.resume();
+    await opening;
+  }
+});
 
 /** Hold only new cards' measurement deliveries; keys, rendering and ordinary handlers still run. */
 async function holdMeasurement(page: Page) {

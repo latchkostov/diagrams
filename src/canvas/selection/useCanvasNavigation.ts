@@ -1,3 +1,4 @@
+import { capturePanPointer } from "./panPointer";
 import {
   useCallback,
   useEffect,
@@ -475,13 +476,18 @@ export function usePanKeys(
   // The middle button pans (everywhere); it never starts the browser's autoscroll.
   useEffect(() => {
     const wrap = wrapper.current;
+    const capture = (event: PointerEvent) =>
+      capturePanPointer(event, editGestures, wrap?.classList.contains("is-space-pan") ?? false);
+    wrap?.addEventListener("pointerdown", capture, true);
     const noAutoscroll = (e: MouseEvent) => {
       if (e.button === 1) e.preventDefault();
     };
     wrap?.addEventListener("mousedown", noAutoscroll);
-    return () => wrap?.removeEventListener("mousedown", noAutoscroll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapper is CanvasView's stable lifetime ref; preserve the original dependencies
-  }, []);
+    return () => {
+      wrap?.removeEventListener("mousedown", noAutoscroll);
+      wrap?.removeEventListener("pointerdown", capture, true);
+    };
+  }, [wrapper, editGestures]);
 
   return spaceHeld;
 }

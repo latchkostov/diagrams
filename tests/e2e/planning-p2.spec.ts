@@ -1,4 +1,4 @@
-import { openInspectorLiveDetails } from "./fixtures";
+import { openInspectorLiveDetails, openDiagramProperties } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import { spawnSync } from "node:child_process";
@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { watchedPage } from "./html-viewer";
 import type { Page } from "@playwright/test";
+import { chunk, holdChunk } from "./chunk";
 import { planningP2Fixture } from "../../src/lab/planningP2Fixture";
 import { upgradePlanning } from "../../src/planning/migration";
 import type { DiagramFile } from "../../src/model/types";
@@ -21,6 +22,7 @@ import {
   waitForStableViewport,
   expectNoErrors,
   STORAGE_KEYS,
+  waitForCameraIdle,
 } from "./fixtures";
 
 const slug = "kafka-order-pipeline";
@@ -36,6 +38,7 @@ async function seed(page: Page, stencil: string, live = false, locale = "en", di
   if (live) await gotoLive(page, `./?view=canvas&example=${slug}&live=1`);
   else await gotoCanvas(page, slug);
   await waitForStableViewport(page);
+  await waitForCameraIdle(page);
 }
 
 function materializedP1() {
@@ -47,12 +50,22 @@ function materializedP1() {
   return d;
 }
 async function modelPreview(page: Page, clock = false) {
-  await page.keyboard.press("ControlOrMeta+k");
-  await page.keyboard.type("diagram properties");
-  await page.keyboard.press("Enter");
+  await openDiagramProperties(page);
   if (clock) await page.clock.runFor(1000);
   await page.getByTestId("planning-preview").click();
 }
+
+test("model preview preparation works while the optional command picker is delayed", async ({ page }) => {
+  const held = await holdChunk(page, chunk("PaletteDialog", "src/palette/PaletteDialog.tsx"));
+  await seed(page, "aws.sns", false, "en", materializedP1());
+  try {
+    await modelPreview(page);
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("planning-upgrade")).toBeVisible();
+  } finally {
+    held.release();
+  }
+});
 
 test("P2: P1 legacy download stays accessible without applying the upgrade", async ({ page, consoleErrors }) => {
   await seed(page, "aws.sns", false, "en", materializedP1());

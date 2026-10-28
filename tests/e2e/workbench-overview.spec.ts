@@ -185,7 +185,7 @@ async function expectNodeIdentity(page: Page, count: number) {
       ),
     )
     .toEqual([]);
-  for (const title of await page.getByTestId("card-title").all()) await expect(title).toBeVisible();
+  await expect(page.getByTestId("card-title").filter({ visible: false })).toHaveCount(0);
   const overlap = await page.getByTestId("card-title").evaluateAll((titles) => {
     const cards = titles.map((title) => {
       const card =

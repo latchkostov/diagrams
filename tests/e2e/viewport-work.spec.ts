@@ -20,7 +20,7 @@ for (const live of [false, true])
     // DOM and the accessible names remain complete, including parts several screens away.
     await expect(page.getByTestId(/^rf__node-/)).toHaveCount(diagram.nodes.length + diagram.groups.length);
     const tree = await root.ariaSnapshot();
-    for (const node of diagram.nodes) expect(tree).toContain(node.label);
+    expect(diagram.nodes.filter((node) => !tree.includes(node.label)).map((node) => node.label)).toEqual([]);
     const timeline = diagram.simulations?.find((s) => s.id === "incident")?.timeline;
     if (!timeline) throw new Error("Missing incident timeline");
     const target = await root.evaluate(

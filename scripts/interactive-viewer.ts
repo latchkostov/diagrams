@@ -384,7 +384,7 @@ export function viewerSwaps(root: string): Plugin {
       if (own(id, "/src/live/NodeBadges.tsx")) {
         // Files keep all readouts current, just as the identity pass below keeps all cards.
         // Drop the editor's subscriptions and capture loader, not only the spatial query.
-        const start = code.indexOf("  const transform = useStore((s) => s.transform);");
+        const start = code.indexOf("  const zoom = useStore((s) => s.transform[2]);");
         const end = code.indexOf("  const boundaryFault =", start);
         const visibility = "            visible={!visible || visible.has(n.id)}\n";
         if (start < 0 || end < start || !code.includes(visibility))
@@ -413,6 +413,14 @@ export function viewerSwaps(root: string): Plugin {
         const end = code.indexOf("      // One query indexes every title:", start);
         if (start < 0 || end < start) this.error("interactive viewer: identity visibility pass changed");
         return `${code.slice(0, start)}      const visible = null;\n${code.slice(end)}`;
+      }
+      if (own(id, "/src/canvas/selection/useCanvasNavigation.ts")) {
+        // CanvasView is always read-only in a file: Space/Alt authoring modifiers never install listeners.
+        // Keep pointer capture and autoscroll prevention, which also serve the read-only pan gesture.
+        const start = code.indexOf("  const [spaceHeld, setSpaceHeld] = useState(false);");
+        const end = code.indexOf("  // The middle button pans", start);
+        if (start < 0 || end < start) this.error("interactive viewer: authoring pan modifiers changed");
+        return `${code.slice(0, start)}${code.slice(end)}`.replace("  return spaceHeld;", "  return false;");
       }
       if (!own(id, "/src/live/liveRenderer.ts")) return null;
       if (!code.includes(WORKER))
