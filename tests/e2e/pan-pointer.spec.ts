@@ -1,6 +1,10 @@
 import { test, expect, gotoCanvas, gotoLive, waitForCameraIdle, viewportTransform } from "./fixtures";
 
-type Probe = { target: Element; id: number; moves: { same: boolean; captured: boolean }[] };
+type Probe = {
+  target: Element;
+  id: number;
+  moves: { same: boolean; captured: boolean; target: string; owner: string }[];
+};
 
 for (const mode of ["middle", "space", "live", "present"])
   test(`a ${mode} pan captures its pointer and releases it on up`, async ({ page }) => {
@@ -13,7 +17,7 @@ for (const mode of ["middle", "space", "live", "present"])
     }
     await waitForCameraIdle(page);
     const node = page.getByTestId("node-payments");
-    const bounds = await node.boundingBox();
+    const bounds = await node.getByTestId("card-title").boundingBox();
     if (!bounds) throw new Error("Missing node");
     await page.getByTestId("canvas-wrap").evaluate((root) => {
       root.addEventListener(
@@ -28,6 +32,14 @@ for (const mode of ["middle", "space", "live", "present"])
         true,
       );
       root.addEventListener(
+        "gotpointercapture",
+        (event) => {
+          const probe = (window as unknown as { __panProbe: Probe }).__panProbe;
+          probe.target = event.target as Element;
+        },
+        true,
+      );
+      root.addEventListener(
         "pointermove",
         (event) => {
           const probe = (window as unknown as { __panProbe?: Probe }).__panProbe;
@@ -35,6 +47,8 @@ for (const mode of ["middle", "space", "live", "present"])
             probe.moves.push({
               same: event.target === probe.target,
               captured: probe.target.hasPointerCapture(probe.id),
+              target: (event.target as Element).outerHTML.slice(0, 180),
+              owner: probe.target.outerHTML.slice(0, 180),
             });
         },
         true,
@@ -46,11 +60,17 @@ for (const mode of ["middle", "space", "live", "present"])
     await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
     await page.mouse.down({ button });
     try {
+      if (mode === "middle")
+        await node.evaluate((body) => {
+          const target = (window as unknown as { __panProbe: Probe }).__panProbe.target;
+          // Model the low-zoom renderer replacing a caption while the pointer is held.
+          if (target !== body && body.contains(target)) target.replaceWith(target.cloneNode(true));
+        });
       for (let step = 1; step <= 4; step++)
         await page.mouse.move(bounds.x + bounds.width / 2 + step * 20, bounds.y + bounds.height / 2 + step * 10);
       const moves = await page.evaluate(() => (window as unknown as { __panProbe: Probe }).__panProbe.moves);
       expect(moves.length).toBeGreaterThanOrEqual(4);
-      expect(moves.every((move) => move.same && move.captured)).toBe(true);
+      expect(moves.filter((move) => !move.same || !move.captured)).toEqual([]);
       expect(await viewportTransform(page)).not.toBe(before);
     } finally {
       await page.mouse.up({ button });

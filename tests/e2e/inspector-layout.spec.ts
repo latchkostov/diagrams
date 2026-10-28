@@ -1,10 +1,20 @@
 import { openAnnotate } from "./fixtures";
+import { waitForBackgroundChecks } from "./checks-readiness";
+import { chunk, holdChunk } from "./chunk";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import type { EdgeSimProps } from "../../src/sim/types";
 import { inspectorLayoutFixture } from "../../src/lab/inspectorLayoutFixture";
-import { test, expect, gotoCanvas, waitForSelectionSettled, savedDiagram, pauseClock } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  waitForSelectionSettled,
+  savedDiagram,
+  pauseClock,
+  animationFrames,
+} from "./fixtures";
 
 async function open(
   page: Page,
@@ -53,6 +63,8 @@ async function open(
     { diagram, theme, locale },
   );
   await gotoCanvas(page, "kafka-order-pipeline");
+  // Findings insert above these controls. Prepare their final geometry before any coordinate click.
+  await waitForBackgroundChecks(page);
   if (target) {
     await page.getByTestId(target.startsWith("group-") ? target.replace("group-", "group-label-") : target).dblclick();
     await expect(page.getByTestId("inspector-field-label")).toBeVisible();
@@ -61,6 +73,26 @@ async function open(
   }
   await waitForSelectionSettled(page);
 }
+
+test("Inspector layout preparation waits for delayed findings before targeting controls", async ({ page }) => {
+  const store = await holdChunk(page, chunk("requestCheckCache", "src/lib/requestCheckCache.ts"));
+  let ready = false;
+  const opening = open(page).then(() => {
+    ready = true;
+  });
+  try {
+    await expect.poll(store.requested).toBe(true);
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await animationFrames(page);
+    expect(ready).toBe(false);
+    store.release();
+    await opening;
+    expect(ready).toBe(true);
+  } finally {
+    store.release();
+    await opening;
+  }
+});
 
 for (const stencil of [
   "generic.service",

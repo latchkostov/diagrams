@@ -9,10 +9,10 @@ it("captures only canvas pans and lets the browser release the pointer on up/can
   pane.append(card);
   const capture = vi.fn();
   card.setPointerCapture = capture;
-  const down = (button: number, edit: boolean, space = false, pointerType = "mouse") => {
+  const down = (button: number, edit: boolean, space = false, pointerType = "mouse", target: Element = card) => {
     const event = new PointerEvent("pointerdown", { button, pointerId: 17, pointerType });
-    card.addEventListener("pointerdown", (e) => capturePanPointer(e, edit, space), { once: true });
-    card.dispatchEvent(event);
+    target.addEventListener("pointerdown", (e) => capturePanPointer(e as PointerEvent, edit, space), { once: true });
+    target.dispatchEvent(event);
   };
   down(0, true);
   down(2, true);
@@ -22,6 +22,18 @@ it("captures only canvas pans and lets the browser release the pointer on up/can
   down(0, true, true);
   down(0, false);
   expect(capture.mock.calls).toEqual([[17], [17], [17]]);
+  pane.className = "react-flow__viewport";
+  const wrapper = document.createElement("div");
+  wrapper.className = "react-flow__node nopan";
+  pane.append(wrapper);
+  wrapper.append(card);
+  card.className = "dn";
+  const caption = document.createElement("span");
+  caption.setPointerCapture = vi.fn();
+  card.append(caption);
+  down(1, true, false, "mouse", caption);
+  expect(caption.setPointerCapture).not.toHaveBeenCalled();
+  expect(capture).toHaveBeenCalledTimes(4);
   capture.mockClear();
   for (const className of ["nopan", ""]) {
     card.className = className;
