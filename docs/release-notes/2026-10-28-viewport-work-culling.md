@@ -8,7 +8,8 @@ cards entering during a pan receive their current identity in that pan's frame.
 Live state writes, Focus/Follow clipping, boundary titles and low-zoom chip fitting retain their
 complete inputs. Capture still resets the entire drawing to its natural geometry. No parity
 golden is changed or re-recorded: full parity compared 3,178 goldens with 0 changed, added,
-missing or stale. The generated skill viewer is refreshed from source.
+missing or stale. The generated skill viewer is refreshed from source. Standalone exported
+viewers retain the complete identity pass and omit the editor's spatial-query machinery.
 
 ## Measurement method
 
@@ -67,5 +68,7 @@ accounted for about 4% / 10%. Browser style/layout and simulation/renderer work 
 Kept DOM and all Live state updates: this preserves the existing accessibility/navigation tree
 and current-state-on-entry behavior without a parallel accessible list or a catch-up protocol.
 Kept complete chip inputs: neighbour budgets and merged paths must remain consistent with the
-existing low-zoom behavior. Focus/Follow keep their full pin and clipping geometry. No Live
-runtime code or bundle reserve was added, and no budget or assertion was relaxed.
+existing low-zoom behavior. Focus/Follow keep their full pin and clipping geometry. The Live
+attribute writer compares the current value before either setting or removing it, preserving
+its writes while funding the generated import-name byte changes. No budget, reserve or
+assertion was relaxed.

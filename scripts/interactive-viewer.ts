@@ -266,6 +266,12 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
         normalizePath(resolve(root, "src/canvas/IdentityDetail.tsx")),
       )};`,
   },
+  {
+    name: "editor viewport decoration queries",
+    path: "/src/canvas/viewportParts.ts",
+    // Exported files keep the complete identity pass, including every off-screen part.
+    stub: () => "export const viewportParts = () => () => null;",
+  },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {
     name: "the first-run hint",
@@ -369,6 +375,13 @@ export function viewerSwaps(root: string): Plugin {
       return panel ? panel.stub(root) : null;
     },
     transform(code, id) {
+      if (own(id, "/src/canvas/IdentityDetail.tsx")) {
+        // A file fits every identity; it needs neither spatial queries nor editing/follow retention inputs.
+        const start = code.indexOf("      const visible =");
+        const end = code.indexOf("      // One query indexes every title:", start);
+        if (start < 0 || end < start) this.error("interactive viewer: identity visibility pass changed");
+        return `${code.slice(0, start)}      const visible = null;\n${code.slice(end)}`;
+      }
       if (!own(id, "/src/live/liveRenderer.ts")) return null;
       if (!code.includes(WORKER))
         this.error("interactive viewer: liveRenderer.ts no longer creates its worker as expected; update WORKER.");

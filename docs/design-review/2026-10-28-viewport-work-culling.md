@@ -13,6 +13,7 @@ part, including off-screen parts, so entering cards do not need a state catch-up
 Focus and Follow retain their complete clipping/pin geometry. Boundary titles, annotations,
 chip fitting and merged chip paths retain their existing behavior. Image capture resets every
 card through the existing frame-capture suspension, including cards whose fitting was deferred.
+Standalone exported viewers keep the complete identity pass and omit editor-only visibility queries.
 No simulation, planning or stencil feature was added, so no new showcase example is needed.
 
 DOM culling was rejected because retaining the existing accessible and keyboard tree is simpler
