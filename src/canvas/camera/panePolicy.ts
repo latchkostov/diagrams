@@ -36,16 +36,18 @@ import type {
  * | H3  | reveal.requested              | owner host (following the host's view)     | owner manual; reveal (Z3)               |
  * | I1  | input                         |                                            | Zoom to selection's priority ends       |
  * | U1  | user.moved, zoom100           |                                            | owner manual (zoom100: zoom100)         |
- * | F1  | fit, mode.changed             | (not slow motion staying live, W3)         | fit; owner fit; pending := none         |
+ * | F1  | fit, mode.changed             | opening, presenting or returning to Edit   | fit; owner fit; pending := none         |
+ * | F5  | mode.changed                  | entering Live, content visible            | keep camera; owner manual              |
+ * | F6  | mode.changed                  | entering Live, content off-screen         | fit once; owner manual                 |
  * | F4  | mode.changed                  | live view ends (presenting or not)         | Live's room, slow motion end; F1        |
  * | F2  | fullscreen.changed            | presenting, owner fit                      | fit                                     |
  * | F3  | overlay.opened                | edit mode, owner fit                       | fit                                     |
  * | L1  | narration(focus)              |                                            | owner narration; pending := narration   |
- * | L2  | narration(no focus)           | a focused note ended                       | owner fit; pending := narration         |
+ * | L2  | narration(no focus)           | a focused note ended                       | keep camera; owner manual              |
  * | L3  | live.panel, live.card         | changed (the card: with no panel open)     | pending := live.panel / live.card       |
  * | L4  | live.added                    |                                            | pending := live.added                   |
  * | L5  | pane.settled                  | Live's work, or live panel work, owner fit | liveFit                                 |
- * | L6  | pane.settled                  | as L5, owner narration                     | noteFit (the note's focus)              |
+ * | L6  | pane.settled                  | as L5, owner narration                     | reveal off-screen subject at same zoom |
  * | L7  | pane.settled                  | live panel work, owner manual              | reveal with edges if covered            |
  * | L8  | pane.settled                  | live.panel, live.card, owner manual        | nothing                                 |
  * | L9  | pane.settled                  | live.added                                 | liveFit clear of the panel, any owner   |
@@ -171,6 +173,18 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
         { type: "fit", reason: event.reason },
       );
     case "mode.changed":
+      if (event.keepCamera !== undefined)
+        return next(
+          {
+            mode: event.mode,
+            owner: "manual",
+            view: "custom",
+            viewChoice: true,
+            pending: null,
+            zoomPriority: false,
+          },
+          ...(event.keepCamera ? [] : [{ type: "fit", reason: "mode" } as const]),
+        );
       // Slow motion between live view and presenting keeps the view and replans its take for the new pane.
       if (state.slowmo && event.live)
         return next({ mode: event.mode, pending: { cause: "slowmo.take" }, zoomPriority: false });
@@ -204,10 +218,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (!state.live.focus.length) return next({ live });
       return next({
         live,
-        view: state.viewChoice ? state.view : "overview",
-        owner: "fit",
+        owner: "manual",
         zoomPriority: false,
-        pending: { cause: "narration" },
+        pending: null,
       });
     }
     case "live.panel":

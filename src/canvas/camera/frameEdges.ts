@@ -8,6 +8,24 @@ import type { RouteInput } from "../geometry/router";
 export type FrameEnd = "in" | "pinned" | "out";
 export type FrameSide = "left" | "right" | "top" | "bottom";
 export type Point = { x: number; y: number };
+/** Reserve a readable title band above a region, clear of cards, routes and earlier titles. */
+export function titleBand(region: Rect, size: { width: number; height: number }, obstacles: readonly Rect[]): Rect {
+  const top = region.y - size.height - 4;
+  const left = region.x + Math.min(10, region.width - size.width - 10);
+  const rows = [top, ...obstacles.map((r) => r.y - size.height - 4).filter((y) => y < top)].sort((a, b) => b - a);
+  for (const y of rows) {
+    const across = obstacles.filter((r) => r.y < y + size.height + 2 && r.y + r.height > y - 2);
+    const xs = [left, ...across.flatMap((r) => [r.x - size.width - 4, r.x + r.width + 4])]
+      .filter((x) => x + size.width >= region.x && x <= region.x + region.width)
+      .sort((a, b) => Math.abs(a - left) - Math.abs(b - left));
+    for (const x of xs) {
+      const box = { x, y, ...size };
+      if (!across.some((r) => intersects(inflateTitle(box), r))) return box;
+    }
+  }
+  return { x: left, y: top, ...size };
+}
+const inflateTitle = (r: Rect): Rect => ({ x: r.x - 2, y: r.y - 2, width: r.width + 4, height: r.height + 4 });
 /** Frame-only lanes use screen pixels, independent of the camera's zoom. */
 export function frameLanes(
   routes: ReadonlyMap<string, Point[]>,

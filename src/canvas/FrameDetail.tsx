@@ -22,6 +22,7 @@ import {
   frameObstacles,
   clipFrameRoute,
   stackPins,
+  titleBand,
   type FrameEnd,
   type FramePin,
 } from "./camera/frameEdges";
@@ -35,7 +36,33 @@ import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
 
-type Chip = { id: string; name: string; x: number; y: number };
+type Chip = { id: string; name: string; x: number; y: number; width: number };
+
+function titleObstacles(s: Parameters<typeof selectRoutes>[0], zoom: number, routing: RouteOptions): Rect[] {
+  const obstacles: Rect[] = [...s.nodeLookup.values()]
+    .filter(
+      (n) =>
+        n.type !== "boundary" && !(n.type === "annotation" && "kind" in n.data && n.data.kind === "zone") && !n.hidden,
+    )
+    .map((n) => ({
+      x: n.internals.positionAbsolute.x * zoom,
+      y: n.internals.positionAbsolute.y * zoom,
+      width: (n.measured?.width ?? n.width ?? 0) * zoom,
+      height: (n.measured?.height ?? n.height ?? 0) * zoom,
+    }));
+  for (const route of selectRoutes(s, routing).values())
+    for (let i = 1; i < route.points.length; i++) {
+      const a = route.points[i - 1],
+        b = route.points[i];
+      obstacles.push({
+        x: Math.min(a.x, b.x) * zoom - 2,
+        y: Math.min(a.y, b.y) * zoom - 2,
+        width: Math.abs(a.x - b.x) * zoom + 4,
+        height: Math.abs(a.y - b.y) * zoom + 4,
+      });
+    }
+  return obstacles;
+}
 type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
 const empty: Drawing = { pins: [], chips: [], hint: false };
 
@@ -267,15 +294,41 @@ const FrameDecoration = memo(
           const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
           const title = el.classList.contains("grp-label");
           const detail =
-            el.classList.contains("lv-alert") && id && lit.has(id)
-              ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-              : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+            title || el.classList.contains("ann-zone-label")
+              ? { show: !title || !far, scale: 1 }
+              : el.classList.contains("lv-alert") && id && lit.has(id)
+                ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
+                : textDetail(fonts.get(el)!, zoom, title || isActive, view);
           const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
           return { el, whole, detail };
         });
         for (const { el, whole, detail } of textChanges) {
           whole.toggleAttribute("data-detail-text-hidden", !detail.show);
           el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
+        }
+        const titleBlockers = textElements.some(
+          (el) => el.classList.contains("grp-label") || el.classList.contains("ann-zone-label"),
+        )
+          ? titleObstacles(s, zoom, { style, direction, captions, hideDependencies })
+          : [];
+        for (const el of textElements) {
+          if (
+            (!el.classList.contains("grp-label") && !el.classList.contains("ann-zone-label")) ||
+            el.hasAttribute("data-detail-text-hidden")
+          )
+            continue;
+          el.style.removeProperty("translate");
+          const n = s.nodeLookup.get(el.closest<HTMLElement>(".react-flow__node")?.dataset.id ?? "");
+          if (!n) continue;
+          const at = n.internals.positionAbsolute;
+          const r = el.getBoundingClientRect();
+          const title = titleBand(
+            { x: at.x * zoom, y: at.y * zoom, width: (n.measured?.width ?? 0) * zoom, height: 0 },
+            { width: r.width, height: r.height },
+            titleBlockers,
+          );
+          titleBlockers.push(title);
+          el.style.translate = `${(title.x - (r.x - origin.x - tx)) / zoom}px ${(title.y - (r.y - origin.y - ty)) / zoom}px`;
         }
         // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
         // Reserve two lines only when the original text needs them at the card's measured width.
@@ -322,7 +375,12 @@ const FrameDecoration = memo(
             if (!hidden) blockers.push(card);
           }
           if (n.type === "boundary" && far)
-            chips.push({ id, name: "label" in n.data ? n.data.label : "", ...n.internals.positionAbsolute });
+            chips.push({
+              id,
+              name: "label" in n.data ? n.data.label : "",
+              ...n.internals.positionAbsolute,
+              width: n.measured?.width ?? 0,
+            });
         }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
@@ -367,21 +425,31 @@ const FrameDecoration = memo(
           width: card.width + 16,
           height: card.height + 48,
         }));
+        const sidePins = stackPins(
+          candidates.filter((p) => p.side !== "bottom" && p.side !== "top"),
+          reserved.routes,
+          pinHeight,
+          pinBlockers,
+        );
+        const missing = (placed: FramePin[]) =>
+          candidates.filter((p) => lit.has(p.id) && !placed.some((pin) => pin.id === p.id));
+        const topPins = stackPins(
+          [
+            ...missing(sidePins).map((p) => ({ ...p, side: "top" as const })),
+            ...candidates.filter((p) => p.side === "top" && !lit.has(p.id)),
+          ],
+          reserved.top,
+          pinHeight,
+          pinBlockers,
+        );
         const pins = [
+          ...sidePins,
+          ...topPins,
           ...stackPins(
-            candidates.filter((p) => p.side !== "bottom" && p.side !== "top"),
-            reserved.routes,
-            pinHeight,
-            pinBlockers,
-          ),
-          ...stackPins(
-            candidates.filter((p) => p.side === "top"),
-            reserved.top,
-            pinHeight,
-            pinBlockers,
-          ),
-          ...stackPins(
-            candidates.filter((p) => p.side === "bottom"),
+            [
+              ...missing([...sidePins, ...topPins]).map((p) => ({ ...p, side: "bottom" as const })),
+              ...candidates.filter((p) => p.side === "bottom" && !lit.has(p.id)),
+            ],
             reserved.row,
             pinHeight,
             pinBlockers,
@@ -797,8 +865,11 @@ const FrameDecoration = memo(
         }
         for (const text of root.querySelectorAll<HTMLElement>(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
-        ))
+        )) {
           text.style.removeProperty("font-size");
+          if (text.classList.contains("grp-label") || text.classList.contains("ann-zone-label"))
+            text.style.removeProperty("translate");
+        }
         for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
@@ -845,7 +916,7 @@ const FrameDecoration = memo(
             {t("camera.dig")}
           </div>
         )}
-        {drawing.chips.length > 0 && <FrameChips chips={drawing.chips} />}
+        {drawing.chips.length > 0 && <FrameChips chips={drawing.chips} routing={routing} />}
         {drawing.pins.map((pin) => (
           <button
             key={pin.id}
@@ -869,21 +940,38 @@ const FrameDecoration = memo(
 );
 
 /** Flow-space anchors pan with the viewport for free; zoom changes only their paint transform. */
-const FrameChips = memo(function FrameChips({ chips }: { chips: Chip[] }) {
+const FrameChips = memo(function FrameChips({ chips, routing }: { chips: Chip[]; routing: RouteOptions }) {
   const host = useRef<HTMLDivElement>(null);
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const camera = useCameraController();
   useLayoutEffect(() => {
     const elements = host.current?.querySelectorAll<HTMLElement>(".detail-group-chip") ?? [];
     const update = () => {
-      const zoom = store.getState().transform[2];
-      for (const el of elements) el.style.transform = `scale(${1 / zoom}) translate(10px, 8px)`;
+      const state = store.getState();
+      const zoom = state.transform[2];
+      const obstacles = titleObstacles(state, zoom, routing);
+      for (const [i, el] of [...elements].entries()) {
+        const chip = chips[i];
+        const box = titleBand(
+          { x: chip.x * zoom, y: chip.y * zoom, width: chip.width * zoom, height: 0 },
+          { width: el.offsetWidth, height: el.offsetHeight },
+          obstacles,
+        );
+        obstacles.push(box);
+        el.style.transform = `scale(${1 / zoom}) translate(${box.x - chip.x * zoom}px, ${box.y - chip.y * zoom}px)`;
+      }
     };
     update();
-    return store.subscribe((s, old) => {
-      if (s.transform[2] !== old.transform[2]) update();
+    const sizes = new ResizeObserver(update);
+    for (const el of elements) sizes.observe(el);
+    const unsubscribe = store.subscribe((s, old) => {
+      if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes || s.edges !== old.edges) update();
     });
-  }, [chips, store]);
+    return () => {
+      sizes.disconnect();
+      unsubscribe();
+    };
+  }, [chips, store, routing]);
   return (
     <ViewportPortal>
       <div ref={host} className="detail-group-chips" data-testid="zone-chip-layer" data-export="skip">

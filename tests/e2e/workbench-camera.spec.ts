@@ -14,6 +14,8 @@ async function finishCameraClock(page: Page, duration: number) {
       { intervals: [0] },
     )
     .toBe("idle");
+  // The camera's landing schedules the decoration and identity commits on the next frames.
+  await page.clock.runFor(32);
 }
 
 for (const theme of ["light", "dark"])
@@ -35,14 +37,20 @@ for (const theme of ["light", "dark"])
       );
       await expectTheme(page, theme);
       await pauseClock(page);
+      if (large) {
+        // Contrast needs readable secondary text. Following now preserves this
+        // explicit close-up rather than choosing a zoom for the test.
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("Shift+Digit0");
+        await finishCameraClock(page, 400);
+      }
       const time = page.getByTestId("live-timeline-input");
       await time.fill(large ? "273" : "159");
       await time.press("ArrowRight");
       await expect(page.getByTestId("live-note-text")).toBeVisible();
       await page.getByTestId("live-view-menu").click();
       await page.getByTestId("view-follow").click();
-      await page.clock.runFor(1400);
-      await waitForCameraIdle(page);
+      await finishCameraClock(page, 1400);
       await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "follow");
       await expect(page.getByTestId("live-view-menu")).toContainText("Following");
       const pinIds = await page

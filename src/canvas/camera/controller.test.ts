@@ -177,6 +177,7 @@ function harness() {
   };
   return {
     camera,
+    port,
     ownership,
     env,
     view,
@@ -206,6 +207,47 @@ function harness() {
 }
 
 describe("camera controller", () => {
+  it("narration uses linear viewport interpolation so a long pan cannot dip below its zoom", async () => {
+    const follow = harness();
+    follow.port.followTarget = () => ({ x: -6000, y: -2000, zoom: 1 });
+    follow.camera.dispatch({ type: "view.requested", view: "follow" });
+    expect(follow.moves.at(-1)).toEqual({ target: { x: -6000, y: -2000, zoom: 1 }, duration: 700, linear: true });
+    const note = harness();
+    note.camera.mode({ live: true, presenting: false });
+    await note.refine();
+    await note.finish();
+    note.view.current = { x: 0, y: 0, zoom: 1 };
+    note.camera.dispatch({ type: "narration", focus: ["a"] });
+    note.tick(2);
+    expect(note.moves.at(-1)?.linear).toBe(true);
+    expect(note.moves.at(-1)?.target.zoom).toBe(1);
+  });
+  it.each([true, false])("entering Live preserves a visible camera, else fits once (visible: %s)", async (visible) => {
+    const h = harness();
+    h.camera.mode({ live: false, presenting: false });
+    await h.refine();
+    await h.finish();
+    h.view.current = { x: -1200, y: -40, zoom: 1 };
+    h.camera.userMoved();
+    h.port.hasVisibleContent = () => visible;
+    const before = { ...h.view.current };
+    h.moves.length = 0;
+    h.journal.length = 0;
+    h.camera.mode({ live: true, presenting: false });
+    await h.refine();
+    await h.finish();
+    h.tick(4);
+    if (visible) {
+      expect(h.view.current).toEqual(before);
+      expect(h.journal.filter((e) => e.moved)).toEqual([]);
+    } else {
+      expect(h.journal.filter((e) => e.command === "fit")).toHaveLength(1);
+      expect(h.view.current).not.toEqual(before);
+    }
+    h.camera.dispatch({ type: "live.panel", open: true });
+    h.tick(4);
+    expect(h.journal.filter((e) => e.command === "liveFit")).toEqual([]);
+  });
   it("holds a panel change as pending data until two frames agree, then refits once", async () => {
     const h = harness();
     h.camera.dispatch({ type: "pane.changed", cause: "panel" });
@@ -651,12 +693,15 @@ type Model = {
   focus: boolean;
   slowmo: boolean;
   choice: boolean;
+  manual: boolean;
 };
 type Real = ReturnType<typeof harness>;
 const deferred = (m: Model) => m.pending && m.menu && m.cause === "canvas";
 /** Whether running the pending work leaves a journal entry: slow motion keeps its camera from Live's refits. */
 const journals = (m: Model, r: Real) =>
-  m.pending && !(m.cause === "live" && m.slowmo) && !(m.cause === "canvas" && m.slowmo && r.env.slowmoHeld);
+  m.pending &&
+  !(m.cause === "live" && (m.slowmo || m.manual)) &&
+  !(m.cause === "canvas" && ((m.slowmo && r.env.slowmoHeld) || (m.manual && !r.env.covered)));
 const work = (m: Model, cause: NonNullable<Model["cause"]>) => {
   m.pending = true;
   m.cause = cause;
@@ -734,6 +779,7 @@ const fit = command("fit", (m, r) => {
   m.cause = null;
   m.last = null;
   m.choice = true;
+  m.manual = false;
 });
 const refine = command("refine", (_m, r) => r.refine());
 const finish = command("finish", (_m, r) => r.finish());
@@ -752,13 +798,23 @@ const livePanel = command("live.panel", (m, r) => {
   if (m.slowmo || (m.pending && m.cause === "canvas")) return;
   work(m, "live");
 });
-/** A note with or without focus: a focus takes the view, and the fit comes back when a focused note ends. */
+/** A focused note may pan; ending it drops pending narration and keeps the camera. */
 const narration = (focus: boolean) =>
   command(`narration(${focus})`, (m, r) => {
     r.camera.dispatch({ type: "narration", focus: focus ? ["a"] : [] });
     const had = m.focus;
     m.focus = focus;
-    if (!m.slowmo && !m.choice && (focus || had)) work(m, "live");
+    if (!m.slowmo && !m.choice) {
+      if (focus) {
+        m.manual = false;
+        work(m, "live");
+      } else if (had) {
+        m.manual = true;
+        m.pending = false;
+        m.cause = null;
+        m.last = null;
+      }
+    }
   });
 const slowmo = (on: boolean) =>
   command(`slowmo(${on})`, (m, r) => {
@@ -839,6 +895,7 @@ describe("camera controller: interleavings", () => {
             focus: false,
             slowmo: false,
             choice: false,
+            manual: false,
           };
           const real = harness();
           let paused = false;

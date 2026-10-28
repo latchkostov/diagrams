@@ -103,8 +103,22 @@ for (const presenting of [false, true]) {
       await expect(page.getByTestId("present-exit")).toBeVisible();
     }
     await waitForCameraIdle(page);
-    // The waiting note's focus has the view (panePolicy L1); presenting fitted the whole diagram after it (F1).
-    expect((await cameraMoves(page)).at(-1)).toBe(presenting ? "fit:mode" : "noteFit:narration");
+    // This note's subject is already visible: narration keeps the opening camera.
+    // Presenting still fits the whole diagram when explicitly requested.
+    expect((await cameraMoves(page)).at(-1)).toBe("fit:mode");
+    expect(
+      await page.getByTestId("node-payments").evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const frame = el.closest('[data-testid="canvas-wrap"]')?.getBoundingClientRect();
+        return (
+          !!frame &&
+          r.left >= Math.max(0, frame.left) &&
+          r.top >= Math.max(0, frame.top) &&
+          r.right <= Math.min(innerWidth, frame.right) &&
+          r.bottom <= Math.min(innerHeight, frame.bottom)
+        );
+      }),
+    ).toBe(true);
     await page.clock.install();
     await pauseClock(page);
     const node = page.getByTestId("node-payments");

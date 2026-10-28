@@ -1,4 +1,10 @@
 /* Presentation detail belongs to the editor frame, never to an exported viewport. */
+[data-detail-view] :is(.grp-label, .ann-zone-label) {
+  top: 0;
+  transform-origin: 0 0;
+  transform: scale(calc(1 / var(--rf-zoom-exact, 1))) translateY(calc(-100% - 4px));
+}
+
 [data-detail-view] [data-detail-hidden],
 [data-detail-view] [data-detail-text-hidden] {
   visibility: hidden !important;
