@@ -3126,6 +3126,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.resumeUnits = 0;
       node.takeovers = [];
       node.staged = 0;
+      node.brokerPending = 0;
       node.pendingUnits = node.stagedUnits = node.queueUnits = 0;
       node.working.length = 0;
       node.workingUnits = 0;
@@ -3487,6 +3488,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           activeReplicas: 1,
           outgoing: [],
           groups: [],
+          brokerPending: 0,
           pending: resolveProps(role, input.label, rawProps, input.stencil, planning).queue
             ? new ShedQueue<Work>()
             : new Deque<Work>(),
