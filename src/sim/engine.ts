@@ -233,7 +233,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const queuedChecks = TEST_ORACLES ? new WeakMap<ShedQueue<Work>, { revision: number; units: number }>() : undefined;
   let breakerDispatches: import("./resilienceInvariants").ResilienceState["breakerDispatches"][number][] = [];
   let budgetDecisions: import("./resilienceInvariants").ResilienceState["budgetDecisions"][number][] = [];
-  const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
+  // Waiting is fixed for a loaded graph. Props edits and checkpoint restores cannot change
+  // its planning revision; load refreshes this before compiling any node/edge.
+  let waitsEnabled = false;
+  const waits = () => waitsEnabled;
   const retries = () => revisionAtLeast(planning?.revision, "p3-w2");
   /** A message's represented size and the dots its counters add (units.ts). */
   const sizeOf = (m?: { represented?: number }) => representedOf(m, scale);
@@ -2822,7 +2825,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // capacity its cohorts released. At scale 1 nothing is ever due (whole weights release at once).
     earlyPoolWakes = new Set();
     releasingEarly = true;
-    for (const node of nodes.values()) ledger.releaseDue(node.id, node.activeMs);
+    if (ledger.state.owners.size) for (const node of nodes.values()) ledger.releaseDue(node.id, node.activeMs);
     releasingEarly = false;
     incomingBeforeReleases = !resourceClock;
     if (!resourceClock) {
@@ -2869,8 +2872,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.status !== "paused" && !held(node)) {
         const f = node.fleet,
           r = node.props.resources;
-        const cpu = prepareCpu(node);
-        const cpuBudgets = cpu[0];
+        // Read current fleet/props, rather than caching mutable resource presence: live edits
+        // and restored nodes take effect immediately. No scratch or tail callbacks when inactive.
+        const cpu = (f && r) || node.cpuTail.size ? prepareCpu(node) : undefined;
+        const cpuBudgets = cpu?.[0];
         let keep = 0;
         advancingWork = node;
         try {
@@ -2935,8 +2940,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           advancingWork = undefined;
         }
 
-        finishCpuTails(node, cpu);
-        integrateAndScale(node, cpu, fleetChanges);
+        if (cpu) {
+          finishCpuTails(node, cpu);
+          integrateAndScale(node, cpu, fleetChanges);
+        }
       }
       if (!node.fleet) {
         admitPending(node);
@@ -2959,7 +2966,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
     for (const node of nodes.values()) {
       if (isBroker(node)) pull(node);
-      ledger.expireCredits(node.id, node.activeMs);
+      if (ledger.state.owners.size) ledger.expireCredits(node.id, node.activeMs);
       finishTickMetrics(node);
     }
     if (TEST_ORACLES && opts.verifyResources) {
@@ -3454,6 +3461,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       faults = new Map();
       faultEdges.clear();
       planning = diagram.planning;
+      waitsEnabled = revisionAtLeast(planning?.revision, "p3-w1");
       classifies = false;
       configuration = undefined;
       topology++;

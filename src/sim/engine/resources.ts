@@ -26,6 +26,9 @@ import type { SampledLedger, Reservation } from "../ledger";
 import { STEP } from "../timing";
 import { resourceWork, type Node, type Work, type Group, type Logical } from "./model";
 
+declare const __TEST_ORACLES__: boolean | undefined;
+const TEST_ORACLES = typeof __TEST_ORACLES__ === "boolean" && __TEST_ORACLES__;
+
 /** Resource bodies run only at their original sites in the facade's ordered tick. */
 export function createResources(
   nodes: Map<string, Node>,
@@ -183,17 +186,18 @@ export function createResources(
       logical!.logicalCpuRemaining = logicalBefore - firstWave;
       logical!.cpuBacklog = Math.max(0, backlogBefore - (spent - firstWave));
     }
-    node.cpuTick?.charges.push({
-      before,
-      after: work.cpuRemaining ?? 0,
-      logicalBefore,
-      logicalAfter: logical?.logicalCpuRemaining,
-      backlogBefore,
-      backlogAfter: logical?.cpuBacklog,
-      eligible,
-      weight: logical?.executionWeight ?? ledger.get(logical?.thread)?.weight,
-      cpuMs: logical?.cpuPerRequest,
-    });
+    if (TEST_ORACLES)
+      node.cpuTick?.charges.push({
+        before,
+        after: work.cpuRemaining ?? 0,
+        logicalBefore,
+        logicalAfter: logical?.logicalCpuRemaining,
+        backlogBefore,
+        backlogAfter: logical?.cpuBacklog,
+        eligible,
+        weight: logical?.executionWeight ?? ledger.get(logical?.thread)?.weight,
+        cpuMs: logical?.cpuPerRequest,
+      });
   }
   function advanceFleets(fleetChanges: Set<string>): void {
     for (const node of nodes.values()) {
@@ -283,7 +287,7 @@ export function createResources(
     // it shares what they leave, owing its fair share of the tick for whatever it did not get.
     const chargeTailCpu = (_work: ResourceWork, spent: number, replica: number | undefined, active: boolean) => {
       chargeCpu(f!, replica, spent, active, time());
-      node.cpuTick?.charges.push({ before: spent, after: 0, backlogBefore: 0, eligible: true });
+      if (TEST_ORACLES) node.cpuTick?.charges.push({ before: spent, after: 0, backlogBefore: 0, eligible: true });
     };
     const yieldsCpu = (tail: ResourceWork) => yieldsToFirstWaves(tail, r?.cpuMsPerMessage ?? 0);
     const tailsBefore = cpuBudgets && node.cpuTail.size ? new Set(node.cpuTail) : undefined;
@@ -308,6 +312,7 @@ export function createResources(
   }
   type CpuScratch = ReturnType<typeof prepareCpu>;
   function finishCpuTails(node: Node, scratch: CpuScratch): void {
+    if (!node.cpuTail.size) return;
     const [cpuBudgets, , tailsBefore, shares, chargeTailCpu, yieldsCpu] = scratch;
     // Yielding tails, including fractional tails that formed in this tick's loop.
     const tailsAfter =
@@ -315,7 +320,7 @@ export function createResources(
         ? [...node.cpuTail].filter((tail) => (tailsBefore?.has(tail) ? !!shares?.has(tail) : yieldsCpu(tail)))
         : [];
     if (tailsAfter.length) {
-      if (node.cpuTick)
+      if (TEST_ORACLES && node.cpuTick)
         node.cpuTick.tails = { budgets: cpuBudgets!, owed: new Map(tailsAfter.map((t) => [t, t.cpuOwed ?? 0])) };
       chargeTails(tailsAfter, cpuBudgets!, chargeTailCpu, shares ?? new Map(), (tail) => {
         node.cpuTail.delete(tail);
