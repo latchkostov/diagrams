@@ -145,10 +145,7 @@ export function lintSurfaceCatalogs(root = ROOT): void {
 ${formatViolations(violations)}`);
 }
 
-const byText = (key: Key, numbered: Set<Key>) =>
-  plain(key) &&
-  !numbered.has(key) &&
-  (!["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) || en[key].length < 64);
+const byText = (key: Key, numbered: Set<Key>) => plain(key) && !numbered.has(key);
 
 /** The languages with a catalog in src/i18n/locales (`de.json`; not the `.meta.json` beside it). */
 export function catalogLocales(dir = LOCALES_DIR): string[] {
@@ -169,13 +166,20 @@ export function readCatalog(code: string, dir = LOCALES_DIR): Partial<Record<Key
 }
 
 /**
- * Plain messages that must be looked up by number: their English is shared with another key, and some language
- * translates the two differently.
+ * Plain messages looked up by number: long optional copy avoids repeating English in each locale chunk;
+ * shared English that a language translates differently keeps a separate lookup for each message.
  */
 export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key> {
   const byEnglish = new Map<string, Key[]>();
   for (const k of keys) if (plain(k)) byEnglish.set(en[k], [...(byEnglish.get(en[k]) ?? []), k]);
   const out = new Set<Key>();
+  for (const key of keys)
+    if (
+      plain(key) &&
+      ["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) &&
+      en[key].length >= 64
+    )
+      out.add(key);
   for (const group of byEnglish.values()) {
     if (group.length < 2) continue;
     // A key a language hasn't translated reads its sibling's translation: better than English.
