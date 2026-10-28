@@ -9,6 +9,7 @@ vi.mock("./lazyWaitingVisuals", () => ({ CallPill: pills, CallPills: pills, Thre
 vi.mock("@xyflow/react", () => ({
   useNodes: () => nodes,
   useStore: (select: (s: object) => unknown) => select({ transform: [0, 0, 1], domNode: null }),
+  useStoreApi: () => ({ getState: () => ({ transform: [0, 0, 1] }) }),
 }));
 vi.mock("./context", () => ({ useLive: () => ({ controller: { currentDiagram: waitingFixture() } }) }));
 vi.mock("../canvas/DiagramContext", () => ({ useDiagram: () => ({ editing: null }) }));

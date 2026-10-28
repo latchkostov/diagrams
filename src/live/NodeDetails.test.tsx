@@ -1,14 +1,27 @@
+// @vitest-environment happy-dom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "./controller";
-import { EdgeDetails } from "./NodeDetails";
+import { EdgeDetails, NodeDetails } from "./NodeDetails";
+import type { BadgeProps } from "./NodeBadges";
 import { compileTopology } from "../sim/topology";
+import * as topology from "../sim/topology";
 import type { HoverCardProps } from "./HoverCard";
 
-vi.mock("./context", () => ({ useLive: () => ({ presenting: false }) }));
+const controller = vi.hoisted(() => ({ getState: vi.fn(), effectiveProps: vi.fn() }));
+vi.mock("./context", () => ({ useLive: () => ({ presenting: false, controller }) }));
+vi.mock("./lazyNodeSections", () => ({
+  NodeSections: ({ concurrency, currentModel, groups }: BadgeProps) => (
+    <>{JSON.stringify({ concurrency, currentModel, groups: groups && [...groups] })}</>
+  ),
+}));
 vi.mock("./HoverCard", () => ({
-  HoverCard: ({ summary }: HoverCardProps) => <>{JSON.stringify(summary.vitals)}</>,
+  HoverCard: ({ summary, children, kind }: HoverCardProps) => (
+    <>{kind === "node" ? children("threads") : JSON.stringify(summary.vitals)}</>
+  ),
 }));
 const diagram: DiagramFile = {
   format: "diagrams/v1",
@@ -31,4 +44,52 @@ it.each([undefined, 0, 40])("distinguishes unavailable request windows from meas
   const vitals = JSON.parse(markup.replaceAll("&quot;", '"')) as { key: string; value: string }[];
   expect(vitals.find((v) => v.key === "requests")?.value).toBe(count === undefined ? "—" : `${count / 10}/s`);
   expect(vitals.find((v) => v.key === "goodput")?.value).toBe(count === undefined ? "—" : `${count / 10}/s`);
+});
+
+it("resolves hover-only processor settings from the current controller in the lazy surface", () => {
+  controller.getState.mockReturnValue({ snapshot: { edges: {} } });
+  controller.effectiveProps.mockReturnValue({ concurrency: 7 });
+  const props = {
+    node: { id: "a", data: { label: "Caller", stencil: "generic.service" } },
+    diagram,
+    s: { id: "a", role: "processor", status: "up", lag: {}, throughput: 0 },
+    pinned: false,
+  } as unknown as BadgeProps;
+  const html = renderToStaticMarkup(<NodeDetails {...props} topology={compileTopology(diagram)} />).replaceAll(
+    "&quot;",
+    '"',
+  );
+  expect(JSON.parse(html)).toEqual({ concurrency: 7, currentModel: true });
+  expect(controller.effectiveProps).toHaveBeenCalledWith("a");
+});
+
+it("compiles broker topology only once across live publications with an unchanged diagram", () => {
+  controller.getState.mockReturnValue({ snapshot: { edges: {} } });
+  const brokerDiagram = { ...diagram, nodes: [{ ...diagram.nodes[0], stencil: "generic.topic" }, diagram.nodes[1]] };
+  const compiled = compileTopology(brokerDiagram);
+  const compile = vi.spyOn(topology, "compileTopology");
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.createElement("div"));
+  try {
+    for (const processed of [1, 2, 3]) {
+      act(() =>
+        root.render(
+          <NodeDetails
+            topology={compiled}
+            {...({
+              node: { id: "a", data: { label: "Topic", stencil: "generic.topic" } },
+              diagram: brokerDiagram,
+              s: { id: "a", role: "topic", status: "up", processed, lag: {}, throughput: 0 },
+              pinned: false,
+            } as unknown as BadgeProps)}
+          />,
+        ),
+      );
+    }
+    expect(compile).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    vi.unstubAllGlobals();
+    compile.mockRestore();
+  }
 });

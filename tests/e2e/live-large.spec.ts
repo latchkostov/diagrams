@@ -5,8 +5,9 @@
 import type { Page } from "@playwright/test";
 import { eventPipeline } from "../../src/bench/workloads/pipeline";
 import { LARGE_LIVE_ELEMENTS } from "../../src/live/decorations";
-import { expect, pageLoadTimeout, test, waitForCameraIdle } from "./fixtures";
+import { expect, pageLoadTimeout, test, waitForCameraIdle, gotoLive, pauseClock } from "./fixtures";
 import { zoomIdentity } from "./node-identity";
+import { waitingFixture } from "../../src/lab/waitingFixture";
 
 /** Opens a generated pipeline of `n` nodes live, as a saved diagram opens. */
 async function openLive(page: Page, n: number) {
@@ -37,6 +38,106 @@ async function fades(page: Page, edgeId: string, nodeId: string) {
 }
 
 test.describe("live view on large diagrams", () => {
+  test("off-screen accessible thread readings update without moving the viewport or focus", async ({ page }) => {
+    const d = waitingFixture();
+    d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
+    d.nodes[1].props = { ...d.nodes[1].props, latencyMs: 1000 };
+    d.nodes[2].props = { ...d.nodes[2].props, api: { latencyMs: 5000 } };
+    d.edges[1].props = { ...d.edges[1].props, caller: { wait: "non-blocking" } };
+    await page.addInitScript((text) => localStorage.setItem("diagrams.imported.v1", text), JSON.stringify(d));
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=imported&live=1&paused=1");
+    await zoomIdentity(page, 1);
+    const node = page.getByTestId("rf__node-caller");
+    const before = await node.boundingBox();
+    const pane = await page.getByTestId("canvas-wrap").boundingBox();
+    if (!before || !pane) throw new Error("Missing node or pane");
+    await page.getByTestId("canvas-pane").dispatchEvent("wheel", {
+      deltaX: before.x - pane.x + before.width + 512,
+      bubbles: true,
+    });
+    await waitForCameraIdle(page);
+    await pauseClock(page);
+    const box = await node.boundingBox();
+    if (!box) throw new Error("Missing off-screen node");
+    expect(box.x + box.width).toBeLessThan(pane.x - 256);
+    const meter = page.getByTestId("thread-readout-caller");
+    await expect(meter).toHaveAttribute("aria-valuenow", "0");
+    const focus = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
+    await page.getByTestId("live-play").evaluate((el: HTMLButtonElement) => el.click());
+    await page.clock.runFor(2500);
+    await expect(meter).toHaveAttribute("aria-valuenow", "4");
+    await expect(meter).toHaveAttribute("aria-label", "4 of 4 threads busy");
+    await expect(meter).toHaveAttribute("aria-valuetext", /calls in flight, no thread held/);
+    // The current readings are exposed to the accessibility tree, with the old visual meter hidden.
+    const accessible = await page.getByTestId("node-badge-caller").ariaSnapshot();
+    expect(accessible).toContain('group "Processed:');
+    expect(accessible).toContain('meter "4 of 4 threads busy"');
+    await expect(page.getByTestId("thread-meter-caller")).toHaveAttribute("aria-valuenow", "0");
+    expect(await node.boundingBox()).toEqual(box);
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-testid"))).toBe(focus);
+  });
+
+  test("an off-screen badge retains its DOM and paints current state in the first entering frame", async ({ page }) => {
+    test.slow();
+    const d = eventPipeline(160);
+    const id = "l13-enrich";
+    d.simulations = [
+      {
+        id: "offscreen",
+        title: "Off-screen fault",
+        seed: 3,
+        traffic: [{ id: "source", node: d.nodes[0].id, shape: { kind: "constant", ratePerSec: 1, durationMs: 10000 } }],
+        timeline: [{ atMs: 1000, action: { do: "status", node: id, status: "down" } }],
+      },
+    ];
+    await page.addInitScript((text) => localStorage.setItem("diagrams.imported.v1", text), JSON.stringify(d));
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=imported&sim=offscreen&paused=1");
+    await zoomIdentity(page, 1);
+    const node = page.getByTestId(`rf__node-${id}`);
+    const badge = page.getByTestId(`node-badge-${id}`);
+    const pane = page.getByTestId("canvas-wrap");
+    const before = await node.boundingBox();
+    const frame = await pane.boundingBox();
+    if (!before || !frame) throw new Error("Missing node or pane");
+    await page.getByTestId("canvas-pane").dispatchEvent("wheel", {
+      deltaX: before.x - frame.x + before.width + 512,
+      bubbles: true,
+    });
+    await waitForCameraIdle(page);
+    await pauseClock(page);
+    const box = await node.boundingBox();
+    if (!box) throw new Error("Missing off-screen node");
+    expect(
+      box.x > frame.x + frame.width + 256 ||
+        box.y > frame.y + frame.height + 256 ||
+        box.x + box.width < frame.x - 256 ||
+        box.y + box.height < frame.y - 256,
+    ).toBe(true);
+    await expect(badge).toHaveAttribute("data-status", "up");
+    await page.getByTestId("live-play").evaluate((el: HTMLButtonElement) => el.click());
+    await page.clock.runFor(1600);
+    await expect(node).toHaveAttribute("data-live-status", "down");
+    // No removal, and no off-screen write. The latest state remains in the parent snapshot.
+    await expect(badge).toHaveCount(1);
+    await expect(badge).toHaveAttribute("data-status", "up");
+    await page.getByTestId("canvas-pane").dispatchEvent("wheel", {
+      deltaX: box.x - frame.x - frame.width / 2,
+      deltaY: box.y - frame.y - frame.height / 2,
+      bubbles: true,
+    });
+    // Hold the next frame: no UI-clock publish or settled-camera wait can repair a stale badge.
+    await page.clock.runFor(16);
+    const entered = await node.boundingBox();
+    if (!entered) throw new Error("Entering node lost its DOM");
+    expect(entered.x).toBeGreaterThanOrEqual(frame.x);
+    expect(entered.x).toBeLessThan(frame.x + frame.width);
+    expect(entered.y).toBeGreaterThanOrEqual(frame.y);
+    expect(entered.y).toBeLessThan(frame.y + frame.height);
+    await expect(badge).toHaveAttribute("data-status", "down");
+  });
+
   test("settled Overview never remeasures cards for changing Live badge numbers", async ({ page }) => {
     test.slow();
     const { d } = await openLive(page, 500);

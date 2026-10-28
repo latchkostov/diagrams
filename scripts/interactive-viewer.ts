@@ -272,6 +272,12 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     // Exported files keep the complete identity pass, including every off-screen part.
     stub: () => "export const viewportParts = () => () => null;",
   },
+  {
+    name: "editor Live badge viewport and image-capture policy",
+    path: "/src/live/badgeViewport.ts",
+    // A file keeps every readout current and has no whole-diagram image capture.
+    stub: () => "export const watchBadgeViewport = () => () => {};",
+  },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {
     name: "the first-run hint",
@@ -375,6 +381,32 @@ export function viewerSwaps(root: string): Plugin {
       return panel ? panel.stub(root) : null;
     },
     transform(code, id) {
+      if (own(id, "/src/live/NodeBadges.tsx")) {
+        // Files keep all readouts current, just as the identity pass below keeps all cards.
+        // Drop the editor's subscriptions and capture loader, not only the spatial query.
+        const start = code.indexOf("  const transform = useStore((s) => s.transform);");
+        const end = code.indexOf("  const boundaryFault =", start);
+        const visibility = "            visible={!visible || visible.has(n.id)}\n";
+        if (start < 0 || end < start || !code.includes(visibility))
+          this.error("interactive viewer: badge visibility pass changed");
+        const trimmed =
+          `${code.slice(0, start)}  const zoom = useStore((s) => s.transform[2]);\n${code.slice(end)}`.replace(
+            visibility,
+            "",
+          );
+        // A read-only file has no Properties dock that can claim a selected node's readout.
+        const dock = trimmed.indexOf("  const dock = useWorkbenchDock();");
+        const focus = trimmed.indexOf("  const focusClaim =", dock);
+        if (dock < 0 || focus < dock) this.error("interactive viewer: badge dock ownership changed");
+        return `${trimmed.slice(0, dock)}  const candidate = useHoveredNode(nodes, state);\n  const pointed = candidate;\n${trimmed.slice(focus)}`;
+      }
+      if (own(id, "/src/live/badgeMemo.ts")) {
+        const visibility = " || a.visible !== b.visible";
+        const defer = "  if (b.visible === false && !BROKERS.has(b.s.role)) return true;\n";
+        if (!code.includes(visibility) || !code.includes(defer))
+          this.error("interactive viewer: badge visibility comparison changed");
+        return code.replace(visibility, "").replace(defer, "");
+      }
       if (own(id, "/src/canvas/IdentityDetail.tsx")) {
         // A file fits every identity; it needs neither spatial queries nor editing/follow retention inputs.
         const start = code.indexOf("      const visible =");

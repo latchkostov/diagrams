@@ -1,3 +1,7 @@
+import { revisionAtLeast } from "../model/revisions";
+import { resolveProps } from "../sim/defaults";
+import { HA_LABEL } from "../stencils/netDevices";
+import { useMemo } from "react";
 import { defineLazySurface } from "../lib/lazySurface";
 import { t, useLocale } from "../i18n";
 import { stencilLabel } from "../i18n/stencils";
@@ -25,14 +29,35 @@ const History = defineLazySurface({
   retryToast: true,
 });
 
-export function NodeDetails(props: BadgeProps) {
+export function NodeDetails(props: BadgeProps & { topology: CompiledTopology }) {
   useLocale();
-  const { node, diagram, s, pinned } = props;
+  const { node, diagram, topology, s, pinned } = props;
   const ui = useLive();
   const snapshot = ui.controller.getState().snapshot;
   const calls = diagram.edges
     .filter((e) => e.from === node.id)
     .flatMap((e) => (snapshot.edges[e.id]?.calls ? [snapshot.edges[e.id].calls!] : []));
+  const resolved =
+    s.role === "processor" || s.role === "gateway"
+      ? resolveProps(
+          s.role,
+          node.data.label,
+          ui.controller.effectiveProps(node.id),
+          node.data.stencil,
+          diagram.planning,
+        )
+      : undefined;
+  const groups = useMemo(
+    () => (s.role === "topic" || s.role === "stream" ? groupNames(diagram, node.id, topology) : undefined),
+    [diagram, node.id, s.role, topology],
+  );
+  const detail = {
+    ...props,
+    currentModel: revisionAtLeast(diagram.planning?.revision, "p2"),
+    concurrency: resolved?.concurrency ?? 0,
+    units: resolved?.device && resolved.device.ha !== "standalone" ? HA_LABEL[resolved.device.ha] : undefined,
+    groups,
+  };
   const summary = nodeSummary(s, calls);
   const waitingEdge = diagram.edges.find((e) => e.id === s.threads?.waitingOn[0]?.[0]);
   if (waitingEdge && s.threads?.waiting)
@@ -74,7 +99,7 @@ export function NodeDetails(props: BadgeProps) {
           </div>
         ) : (
           <>
-            <Sections {...props} section={section} />
+            <Sections {...detail} section={section} />
             {section === "outcomes" && <History id={node.id} />}
           </>
         )
@@ -159,4 +184,17 @@ export function EdgeDetails({
       {(section) => <EdgeDetailSection diagram={diagram} id={id} section={section} />}
     </HoverCard>
   );
+}
+
+/** Consumer-group name → who consumes it, for the lag breakdown. */
+function groupNames(d: DiagramFile, nodeId: string, topology: CompiledTopology): Map<string, string> {
+  const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
+  const out = new Map<string, string>();
+  for (const e of topology.edges) {
+    if (e.from !== nodeId || e.dlq || e.deny) continue;
+    const group = e.groupName;
+    const who = labels.get(e.to) ?? e.to;
+    out.set(group, out.has(group) ? `${out.get(group)}, ${who}` : who);
+  }
+  return out;
 }

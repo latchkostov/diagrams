@@ -6,7 +6,10 @@ export const BROKERS: ReadonlySet<SimRole> = new Set(["queue", "topic", "stream"
 
 /** Details consume the whole snapshot; a closed badge only consumes these displayed values. */
 export function sameBadge(a: BadgeProps, b: BadgeProps): boolean {
-  if (a.hovered || b.hovered) return false;
+  if (a.hovered || b.hovered || a.visible !== b.visible) return false;
+  // Defer only visual ink: badgeSemantics writes current off-pane accessible readouts each publish.
+  // The synchronous viewport subscription refreshes visual ink before an entering card paints.
+  // Brokers still observe each publish so their decaying depth peak is unchanged.
   if (
     a.node !== b.node ||
     a.cap !== b.cap ||
@@ -15,6 +18,7 @@ export function sameBadge(a: BadgeProps, b: BadgeProps): boolean {
     a.showOutageLoss !== b.showOutageLoss
   )
     return false;
+  if (b.visible === false && !BROKERS.has(b.s.role)) return true;
   const x = a.s,
     y = b.s;
   const hx = currentHealth(x),

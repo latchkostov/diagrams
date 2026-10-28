@@ -19,6 +19,17 @@ const sample: NodeSimState = {
 };
 const badge = { s: sample, node: {}, hovered: false, fault: "", showOutageLoss: false } as BadgeProps;
 
+it("defers off-pane counters but refreshes on the first entering viewport update", () => {
+  const hidden = { ...badge, visible: false };
+  const latest = { ...hidden, s: { ...sample, processed: 100, throughput: 20, status: "down" as const } };
+  expect(sameBadge(hidden, latest)).toBe(true);
+  expect(sameBadge(latest, { ...latest, visible: true })).toBe(false);
+  expect(sameBadge(hidden, { ...latest, hovered: true })).toBe(false);
+  expect(sameBadge(hidden, { ...latest, node: { ...latest.node } })).toBe(false);
+  const broker = { ...hidden, s: { ...sample, role: "topic" as const } };
+  expect(sameBadge(broker, { ...broker, s: { ...broker.s, backlog: 100 } })).toBe(false);
+});
+
 it("skips unchanged displayed values even when snapshot-only metrics and processor metrics change", () => {
   expect(
     sameBadge(badge, {
