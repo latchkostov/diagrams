@@ -649,8 +649,8 @@ it("drained checkpoints keep no attempt history", () => {
   const probe = watchCheckpoints();
   engine.checkpoint();
   const graph = probe.sources[0];
-  expect(graph.calls.size).toBe(0);
-  expect(graph.outcomeChecks!.size).toBe(0);
+  expect(graph[11].size).toBe(0);
+  expect(graph[18]!.size).toBe(0);
   probe.stop();
 });
 

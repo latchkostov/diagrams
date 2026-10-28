@@ -181,8 +181,8 @@ it.each([false, true])("checkpoints only live deadlines after traffic drains (fa
   try {
     const checkpoint = e.checkpoint();
     const graph = probe.sources[0];
-    expect(graph.logical.filter((event) => event.timeout)).toHaveLength(0);
-    expect(graph.logicalIndices.size).toBe(graph.logical.length);
+    expect(graph[8].filter((event) => event.timeout)).toHaveLength(0);
+    expect(graph[9].size).toBe(graph[8].length);
     e.restore(checkpoint);
     e.inject("source", 1);
     e.step(1000);

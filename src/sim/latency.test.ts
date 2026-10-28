@@ -89,7 +89,7 @@ describe("bounded async latency", () => {
       let typed = 0;
       for (const graph of probe.copies) {
         let perCheckpoint = 0;
-        for (const node of graph.nodes.values()) {
+        for (const node of graph[0].values()) {
           if (!node.latency) continue;
           buckets.add(node.latency.total.buckets);
           for (const h of node.latency.types.values()) buckets.add(h.buckets);

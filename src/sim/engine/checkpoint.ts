@@ -9,28 +9,30 @@ import { shareLatencyRecorder, type createLatencyBudget } from "../latency";
 import type { EngineCheckpoint, LatencyMetrics, RouteCounts, SimEvent } from "../types";
 import type { Node, Edge, Trip, EchoExpiry, Logical, Call, Message, Injection } from "./model";
 
-/** Exactly the existing capture list: one clone preserves aliases across every slice. */
-export interface CheckpointGraph {
-  nodes: Map<string, Node>;
-  partBudget: ReturnType<typeof createCpuPartBudget>;
-  latencyBudget: ReturnType<typeof createLatencyBudget>;
-  edges: Edge[];
-  trips: Trip[];
-  echoExpiries: EchoExpiry[];
-  echoByTime: Map<number, EchoExpiry>;
-  drawnTrips: Map<number, Trip>;
-  logical: Logical[];
-  logicalIndices: Map<number, number>;
-  ledger: LedgerState;
-  calls: Map<number, Call>;
-  outcomeChecks?: Map<number, Attempt<Message>>;
-  injections: Injection[];
-  events: SimEvent[];
-  admission: Pick<AdmissionState, "buckets" | "inFlight" | "retainedExcess">;
-  lineage: LineageState;
-  routeCounts: Map<string, RouteCounts>;
-  faults: Map<string, Fault>;
-}
+/** Named slots keep internal graph keys out of shipped code. One clone preserves all aliases.
+ * Slots and object fields have identical byte charges; the oracle slot stays absent in production.
+ */
+export type CheckpointGraph = [
+  nodes: Map<string, Node>,
+  partBudget: ReturnType<typeof createCpuPartBudget>,
+  latencyBudget: ReturnType<typeof createLatencyBudget>,
+  edges: Edge[],
+  trips: Trip[],
+  echoExpiries: EchoExpiry[],
+  echoByTime: Map<number, EchoExpiry>,
+  drawnTrips: Map<number, Trip>,
+  logical: Logical[],
+  logicalIndices: Map<number, number>,
+  ledger: LedgerState,
+  calls: Map<number, Call>,
+  injections: Injection[],
+  events: SimEvent[],
+  admission: Pick<AdmissionState, "buckets" | "inFlight" | "retainedExcess">,
+  lineage: LineageState,
+  routeCounts: Map<string, RouteCounts>,
+  faults: Map<string, Fault>,
+  outcomeChecks?: Map<number, Attempt<Message>>,
+];
 
 /** Scalars captured after the graph, including topology's token scope. */
 export type CheckpointClock = readonly [
@@ -124,8 +126,8 @@ export const checkpointBytes = (source: unknown): number => cloneSized(source)[1
 
 function cloneGraph(source: CheckpointGraph): [CheckpointGraph, number] {
   const shared: [object, object][] = [];
-  for (const { trace } of source.lineage.store.values()) if (trace) shared.push([trace, trace]);
-  for (const node of source.nodes.values()) {
+  for (const { trace } of source[15].store.values()) if (trace) shared.push([trace, trace]);
+  for (const node of source[0].values()) {
     // Resolved configuration and its descendants are replaced on edits, never mutated.
     shared.push([node.props, node.props]);
     if (node.latency) shared.push([node.latency, shareLatencyRecorder(node.latency)]);
@@ -146,11 +148,11 @@ export function createCheckpoints(
 ): readonly [() => EngineCheckpoint, (token: EngineCheckpoint) => void] {
   function repair(copy: CheckpointGraph): void {
     nodes.clear();
-    for (const [id, node] of copy.nodes) {
+    for (const [id, node] of copy[0]) {
       nodes.set(id, node);
     }
     reindexGroups();
-    edges.splice(0, edges.length, ...copy.edges);
+    edges.splice(0, edges.length, ...copy[3]);
     faultEdges.clear();
     for (const edge of edges) {
       faultEdges.set(edge.id, edge);

@@ -196,6 +196,15 @@ it("keeps accounting's internal ports out of shipped property names", () => {
     );
 });
 
+it("keeps checkpoint graph slot labels out of shipped property names", () => {
+  const checkpoint = chunks.filter((chunk) =>
+    Object.keys(chunk.modules).some((id) => /[/\\]sim[/\\]engine[/\\]checkpoint\.ts$/.test(id)),
+  );
+  expect(checkpoint.length).toBeGreaterThan(0);
+  for (const chunk of checkpoint)
+    expect(/\b(?:echoExpiries|echoByTime|drawnTrips|logicalIndices):/.test(chunk.code)).toBe(false);
+});
+
 const chunkIn = (b: Build, fileName: string) => {
   const found = b.chunks.find((c) => c.fileName === fileName);
   if (!found) throw new Error(`No chunk ${fileName}`);

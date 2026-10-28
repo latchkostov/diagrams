@@ -188,7 +188,7 @@ describe("P3 managed admission", () => {
     const probe = watchCheckpoints();
     const saved = e.checkpoint();
     const graph = probe.sources[0];
-    expect(Object.keys(graph.admission).sort()).toEqual(["buckets", "inFlight", "retainedExcess"]);
+    expect(Object.keys(graph[14]).sort()).toEqual(["buckets", "inFlight", "retainedExcess"]);
     probe.stop();
     e.setNodeProps("api", { api: { quotas: [q(100)], maxInFlight: 10 } });
     e.restore(saved);

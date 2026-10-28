@@ -163,9 +163,9 @@ it("aggregates invisible echoes and keeps drained checkpoints small", () => {
   const probe = watchCheckpoints();
   const checkpoint = e.checkpoint();
   const graph = probe.sources[0];
-  expect(graph.trips).toHaveLength(0);
-  expect(graph.echoExpiries.length).toBeLessThanOrEqual(4);
-  expect(graph.calls.size).toBe(0);
+  expect(graph[4]).toHaveLength(0);
+  expect(graph[5].length).toBeLessThanOrEqual(4);
+  expect(graph[11].size).toBe(0);
   probe.stop();
   e.step(21_000);
   expect(e.snapshot().edges["call-0"].active).toBe(0);

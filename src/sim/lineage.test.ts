@@ -126,15 +126,14 @@ describe("message lineage: recording", () => {
     const graph = probe.sources[0];
     e.restore(checkpoint);
     const copied = probe.copies[0];
-    const saved = [...copied.lineage.store.values()].map((f) => f.trace);
+    const saved = [...copied[15].store.values()].map((f) => f.trace);
     let clonedSteps = 0;
-    for (const [id, family] of graph.lineage.store)
-      if (family.trace && copied.lineage.store.get(id)?.trace !== family.trace)
-        clonedSteps += family.trace.steps.length;
+    for (const [id, family] of graph[15].store)
+      if (family.trace && copied[15].store.get(id)?.trace !== family.trace) clonedSteps += family.trace.steps.length;
     probe.stop();
     expect(clonedSteps).toBe(0);
     expect(saved.some((t) => t?.steps.length)).toBe(true);
-    expect(saved[0]).toBe(graph.lineage.store.get(saved[0]!.rootId)?.trace);
+    expect(saved[0]).toBe(graph[15].store.get(saved[0]!.rootId)?.trace);
     run(e, 1000);
     const after = e.tracer.current();
     expect(after).not.toEqual(before);
