@@ -328,6 +328,7 @@ export function createBroker(
       return;
     }
     const copies = fanOut(node, message, accepting.length);
+    node.brokerPending += accepting.length;
     accepting.forEach((group, i) => {
       group.pending.push(copies[i]);
       group.pendingUnits += dotsOf(copies[i]);
@@ -357,6 +358,7 @@ export function createBroker(
       } else drop(broker, trip.message, "delivery limit; no DLQ edge");
     } else {
       group.pending.push(trip.message);
+      broker.brokerPending++;
       group.pendingUnits += dotsOf(trip.message);
     }
   }
@@ -447,7 +449,7 @@ export function createBroker(
   }
 
   function pull(node: Node): void {
-    if (node.status !== "up") return;
+    if (node.status !== "up" || !node.brokerPending) return;
     for (const group of node.groups) {
       while (group.pending.length) {
         const message = group.pending.peek()!;
@@ -455,7 +457,10 @@ export function createBroker(
         const parts = planDelivery(node, group, message);
         if (!parts.length) break;
         const total = parts.reduce((sum, p) => sum + p.part, 0);
-        if (total >= size - 1e-9) group.pending.shift();
+        if (total >= size - 1e-9) {
+          group.pending.shift();
+          node.brokerPending--;
+        }
         for (const p of parts) {
           const whole = p.part >= sizeOf(message) - 1e-9;
           const delivered = whole

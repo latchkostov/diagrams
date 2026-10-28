@@ -158,6 +158,8 @@ export interface Node {
   outgoing: Edge[];
   dlq?: Edge;
   groups: Group[];
+  /** Messages waiting across broker groups, including partially delivered remainders. */
+  brokerPending: number;
   pending: Deque<Work> | ShedQueue<Work>;
   resume: Deque<Work>;
   takeovers: Work[];

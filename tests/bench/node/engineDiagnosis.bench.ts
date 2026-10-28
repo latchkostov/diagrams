@@ -17,6 +17,7 @@ import { LiveController } from "../../../src/live/controller";
 import { emptyInputs, freePlayScale } from "../../../src/live/capacityModel";
 import { eventPipeline } from "../../../src/bench/workloads/pipeline";
 import { createSimulationRun } from "../../../src/sim/simulation";
+import { collectEvidence } from "../../../src/checks/evidence";
 import { calibrate } from "../calibration";
 import type { SimulationRunCheckpoint } from "../../../src/sim/types";
 
@@ -185,7 +186,7 @@ it.skipIf(mode !== "profile")(
     try {
       await session.post("Profiler.enable");
       await session.post("Profiler.setSamplingInterval", { interval: 200 });
-      for (const scenario of ["saved", "replay"] as const) {
+      for (const scenario of ["saved", "checks", "replay"] as const) {
         if (process.env.ENGINE_DIAG_SCENARIO && process.env.ENGINE_DIAG_SCENARIO !== scenario) continue;
         // Construction and warm-up outside profiles; replay includes checkpoint capture AND restore.
         const { c, internal } = controller(500, "on");
@@ -224,10 +225,12 @@ it.skipIf(mode !== "profile")(
         };
         gc();
         try {
+          if (scenario === "checks") collectEvidence(d, { now: () => 0 });
           await session.post("Profiler.start");
           const start = performance.now();
           for (let i = 0; i < 12; i++) {
             if (scenario === "saved") play();
+            else if (scenario === "checks") collectEvidence(d, { now: () => 0 });
             else {
               c.seek(15_000);
               c.seek(60_000);

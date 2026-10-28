@@ -2565,6 +2565,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     arrive(node, { message, remaining: latency(node), injected });
   }
   function admitPending(node: Node): void {
+    if (!node.pending.length && !node.resume.length && !node.takeovers.length) return;
     node.admissionDirty = true;
     // A thread-tail release can call back here from finish(). Let the normal
     // post-work admission phase handle it after working has been compacted.
@@ -3125,6 +3126,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.resumeUnits = 0;
       node.takeovers = [];
       node.staged = 0;
+      node.brokerPending = 0;
       node.pendingUnits = node.stagedUnits = node.queueUnits = 0;
       node.working.length = 0;
       node.workingUnits = 0;
@@ -3486,6 +3488,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           activeReplicas: 1,
           outgoing: [],
           groups: [],
+          brokerPending: 0,
           pending: resolveProps(role, input.label, rawProps, input.stencil, planning).queue
             ? new ShedQueue<Work>()
             : new Deque<Work>(),
