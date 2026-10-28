@@ -76,3 +76,12 @@ The full Linux attempt exposed a 338-byte skill ZIP reserve overflow; the viewer
 fixes it. That red run was stopped during its first all-project browser pass to respect the
 verification budget. The failing heavy spec and the task's browser specs are checked in the
 fix round; the full gate is left to PR CI without rerunning the local full suite.
+
+The final skill and reserve heavy specs passed all 204 tests. Export parity after the viewer
+trim passed 50 goldens and 15 browser cases with zero changes. The requested Linux browser
+specs plus camera neighbours ran twice at twelve workers/CPUs: 918 passed, 20 skipped, and two
+failures of the same annotation ellipse-action test. That exact timeout also reproduced on
+clean `origin/master` (105 passed, one failed across two repeats), so it is recorded in
+`docs/backlog/2026-10-28-annotation-ellipse-search-timeout.md` under the pre-existing-failure
+exception. All executed Live, low-zoom, slow-motion, presentation, workbench, inspector,
+performance, accessibility and export cases passed in both branch repeats.
