@@ -2,6 +2,7 @@ import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixtu
 import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import inlineRateLimit from "../examples/inline-rate-limit.json";
+import recommendations from "../examples/recommendations-feature-store.json";
 import { waitingFixture } from "./waitingFixture";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
@@ -1266,6 +1267,14 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "diagram",
+    id: "lowzoom-chips",
+    title: "Low-zoom chips",
+    group: "Playground",
+    description: "Zoom below 60% for chips, below 30% for tighter names. Replay slow-features to see zone trouble.",
+    diagram: () => recommendations as DiagramFile,
+  },
   {
     kind: "diagram",
     id: "frame-dependency",

@@ -1,0 +1,173 @@
+import { flushSync } from "react-dom";
+import type { useStoreApi } from "@xyflow/react";
+import type { DiagramFlowEdge, FlowNode } from "./types";
+import { chipMeasurer, chipTitles, layoutChips } from "./chipLayout";
+import { ChipNode, chipEdge } from "./nodes/ChipNode";
+import { chipEdges } from "./chipEdges";
+import { selectRoutes, type RouteOptions } from "./edges/useEdgeRoute";
+import type { ChipState, LowZoom } from "./lowZoom";
+import { registerFrameCapture } from "./camera/frameCapture";
+import { subscribeGeometry } from "./shapes/geometry";
+
+/** Publication code stays in the lazy surface too. */
+function setLowZoom(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>, value: LowZoom | null) {
+  store.setState({ ldChips: value } as Partial<ChipState>);
+}
+
+/** The lazy identity surface owns fitting; renderers only subscribe to its settled result. */
+export function mountChips(
+  root: HTMLElement,
+  store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
+  camera: { readonly phase: string; readonly interacting: boolean; subscribe(listener: () => void): () => void } | null,
+  options: RouteOptions,
+) {
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) return () => {};
+  const font = getComputedStyle(root).fontFamily;
+  const measure = chipMeasurer((text, size) => {
+    context.font = `560 ${size}px ${font}`;
+    return context.measureText(text.slice(0, 512)).width;
+  });
+  let frame = 0,
+    disposed = false,
+    suspended = false,
+    ready = false,
+    previous = "",
+    fits = 0;
+  const update = () => {
+    frame = 0;
+    if (
+      disposed ||
+      suspended ||
+      !ready ||
+      root.hasAttribute("data-viewport-moving") ||
+      (camera && (camera.phase !== "idle" || camera.interacting))
+    )
+      return;
+    const state = store.getState();
+    const zoom = state.transform[2];
+    if (zoom >= 0.6) {
+      if (previous) {
+        previous = "";
+        root.removeAttribute("data-low-zoom");
+        setLowZoom(store, null);
+      }
+      return;
+    }
+    const nodes = [...state.nodeLookup.values()].flatMap((n) => {
+      if (n.type !== "diagram" || n.hidden || !n.measured?.width || !n.measured.height) return [];
+      return [
+        {
+          id: n.id,
+          label: "label" in n.data ? n.data.label : n.id,
+          ...n.internals.positionAbsolute,
+          width: n.measured.width,
+          height: n.measured.height,
+        },
+      ];
+    });
+    const routes = selectRoutes(state, options);
+    const zones = [...state.nodeLookup.values()].flatMap((n) =>
+      n.type === "boundary"
+        ? [
+            {
+              id: n.id,
+              label: "label" in n.data ? n.data.label : n.id,
+              ...n.internals.positionAbsolute,
+              width: n.measured?.width ?? n.width ?? 0,
+              height: n.measured?.height ?? n.height ?? 0,
+            },
+          ]
+        : [],
+    );
+    const live = !!root.querySelector("[data-live]");
+    const key = JSON.stringify([zoom, nodes, zones, live, [...routes].map(([id, r]) => [id, r.path])]);
+    if (key === previous) return;
+    previous = key;
+    root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
+    if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") root.dataset.chipFits = String(++fits);
+    const chips = layoutChips(nodes, zoom, measure);
+    const { paths, lanes } = chipEdges(routes, zoom);
+    const naturalPaths = new Map([...routes].map(([id, route]) => [id, route.path]));
+    const titles = chipTitles(nodes, chips, zones, zoom, measure, live);
+    const members = new Map<string, string[]>();
+    for (const node of state.nodes) {
+      if (node.type !== "diagram") continue;
+      const seen = new Set<string>();
+      for (
+        let parent = node.data.group;
+        parent && !seen.has(parent);
+        parent = state.nodeLookup.get(`group:${parent}`)?.data.group
+      ) {
+        seen.add(parent);
+        let ids = members.get(node.id);
+        if (!ids) members.set(node.id, (ids = []));
+        ids.push(parent);
+      }
+    }
+    for (const label of root.querySelectorAll<HTMLElement>(".grp-label")) {
+      const id = label.closest<HTMLElement>("[data-caption-root]")?.dataset.captionRoot;
+      const spot = titles.get(`group:${id}`);
+      if (spot) {
+        label.style.setProperty("--chip-title-x", `${spot.x / zoom}px`);
+        label.style.setProperty("--chip-title-y", `${spot.y / zoom}px`);
+      }
+    }
+    setLowZoom(store, {
+      // While a node is held, its router still follows the pointer; fitting waits for release.
+      edge: (id, dependency, selected, naturalPath) =>
+        chipEdge(
+          id,
+          naturalPaths.get(id) === naturalPath ? (paths.get(id) ?? naturalPath) : naturalPath,
+          dependency,
+          selected,
+          [...(lanes.get(id) ?? [id])],
+        ),
+      Node: ChipNode,
+      members,
+      titles,
+      tier: zoom < 0.3 ? "far" : "mid",
+      zoom,
+      nodes: chips,
+      paths,
+    });
+  };
+  const schedule = () => {
+    if (!disposed && !frame) frame = requestAnimationFrame(update);
+  };
+  void document.fonts.ready.then(() => {
+    ready = true;
+    schedule();
+  });
+  const unstore = store.subscribe((s, old) => {
+    if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes || s.edges !== old.edges) schedule();
+  });
+  const uncam = camera?.subscribe(schedule);
+  const ungeometry = subscribeGeometry(schedule);
+  const observer = new MutationObserver(schedule);
+  observer.observe(root, { attributes: true, attributeFilter: ["data-viewport-moving"] });
+  const viewport = root.querySelector(".react-flow__viewport");
+  const uncap = viewport
+    ? registerFrameCapture(viewport, () => {
+        suspended = true;
+        root.removeAttribute("data-low-zoom");
+        flushSync(() => setLowZoom(store, null));
+        return () => {
+          suspended = false;
+          previous = "";
+          schedule();
+        };
+      })
+    : () => {};
+  return () => {
+    disposed = true;
+    cancelAnimationFrame(frame);
+    unstore();
+    uncam?.();
+    ungeometry();
+    observer.disconnect();
+    uncap();
+    root.removeAttribute("data-low-zoom");
+    setLowZoom(store, null);
+  };
+}

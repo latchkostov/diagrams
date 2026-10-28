@@ -1,0 +1,163 @@
+/* Settled screen-only detail. Natural node boxes remain the routing/drag geometry. */
+body:has([data-low-zoom]) .hover-name strong {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+[data-low-zoom] .dn .nb.nb-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: calc(6px / var(--rf-zoom-exact));
+  padding: calc(3px / var(--rf-zoom-exact)) calc(7px / var(--rf-zoom-exact));
+  box-sizing: border-box;
+  border: calc(1px / var(--rf-zoom-exact)) solid var(--node-border);
+  border-radius: calc(6px / var(--rf-zoom-exact));
+  background: var(--node-bg);
+  outline: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+  filter: none !important;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+[data-low-zoom="far"] .dn .nb.nb-chip {
+  gap: calc(4px / var(--rf-zoom-exact));
+  padding-inline: calc(5px / var(--rf-zoom-exact));
+}
+[data-low-zoom] .nb.nb-chip .nb-tile {
+  flex: none;
+  width: calc(var(--chip-icon) + 4px / var(--rf-zoom-exact));
+  height: calc(var(--chip-icon) + 4px / var(--rf-zoom-exact));
+  border: 0;
+  border-radius: calc(4px / var(--rf-zoom-exact));
+  outline: none;
+  background: color-mix(in oklab, var(--accent) 10%, var(--node-bg));
+}
+[data-low-zoom] .nb.nb-chip .stencil-icon {
+  position: static;
+  translate: none;
+  flex: none;
+  width: var(--chip-icon);
+  height: var(--chip-icon);
+  box-sizing: content-box;
+  padding: calc(2px / var(--rf-zoom-exact));
+  border-radius: calc(4px / var(--rf-zoom-exact));
+  background: color-mix(in oklab, var(--accent) 10%, var(--node-bg));
+}
+[data-low-zoom] .nb.nb-chip .nb-label {
+  position: static;
+  width: auto;
+  max-width: none;
+  font-size: var(--chip-font);
+  font-weight: 560;
+  line-height: 1.2;
+  white-space: pre;
+  text-overflow: clip;
+  overflow: visible;
+  transform: none;
+  translate: none;
+  color: var(--text);
+}
+[data-low-zoom] .dn .nb.nb-chip.is-selected {
+  border-color: var(--accent);
+}
+[data-low-zoom] .react-flow__edge .fe-chip .fe-path {
+  stroke: var(--edge);
+  stroke-width: 1px !important;
+  stroke-dasharray: none !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: none !important;
+  animation: none !important;
+  marker-end: none;
+}
+[data-low-zoom] .react-flow__edge .fe-chip.fe-dep .fe-path {
+  opacity: 0.45;
+}
+[data-low-zoom] .react-flow[data-live] .react-flow__edge .fe-chip .fe-path {
+  stroke-width: var(--chip-rate-width, 1px) !important;
+  stroke: var(--text-2);
+}
+[data-low-zoom] .react-flow__edge[data-live-edge="idle"] .fe-chip .fe-path {
+  opacity: 0.45;
+}
+[data-live-rate="1"] {
+  --chip-rate-width: 1.5px;
+}
+[data-live-rate="2"] {
+  --chip-rate-width: 2px;
+}
+[data-live-rate="3"] {
+  --chip-rate-width: 2.5px;
+}
+[data-live-rate="4"] {
+  --chip-rate-width: 3px;
+}
+[data-live-rate="5"] {
+  --chip-rate-width: 3.5px;
+}
+[data-low-zoom] [data-live-trouble="stressed"] .dn .nb.nb-chip {
+  border-color: color-mix(in oklab, var(--status-paused) 75%, var(--text)) !important;
+  border-width: calc(1.5px / var(--rf-zoom-exact));
+  box-shadow: inset calc(3px / var(--rf-zoom-exact)) 0 0 var(--status-paused) !important;
+  background: color-mix(in oklab, var(--status-paused) 9%, var(--node-bg)) !important;
+}
+[data-low-zoom] [data-live-trouble="failing"] .dn .nb.nb-chip {
+  border-color: var(--status-down) !important;
+  border-width: calc(1.5px / var(--rf-zoom-exact));
+  box-shadow: inset calc(3px / var(--rf-zoom-exact)) 0 0 var(--status-down) !important;
+  background: color-mix(in oklab, var(--status-down) 12%, var(--node-bg)) !important;
+}
+[data-low-zoom] .grp {
+  background: color-mix(in oklab, var(--tone) 4%, transparent);
+  border: calc(1px / var(--rf-zoom-exact)) solid color-mix(in oklab, var(--tone) 28%, var(--line-strong));
+  outline: none;
+}
+[data-low-zoom] .grp-label {
+  font-size: calc(11px / var(--rf-zoom-exact));
+  height: calc(18px / var(--rf-zoom-exact));
+  top: var(--chip-title-y);
+  left: var(--chip-title-x);
+  padding: 0 calc(4px / var(--rf-zoom-exact));
+}
+[data-low-zoom] .grp-swatch {
+  display: none;
+}
+[data-low-zoom] .lv-canvas {
+  visibility: hidden !important;
+}
+.chip-trouble {
+  display: none;
+}
+[data-low-zoom] .detail-group-chip {
+  display: flex;
+  align-items: center;
+  height: 18px;
+}
+[data-low-zoom][data-detail-overview] .grp {
+  border-color: var(--dim-stroke) !important;
+  border-width: calc(1.5px / var(--rf-zoom-exact));
+}
+[data-low-zoom][data-detail-overview] .react-flow__node:not([data-live-trouble]) .dn .nb.nb-chip {
+  border-color: var(--dim-stroke) !important;
+  border-width: calc(1.5px / var(--rf-zoom-exact));
+}
+[data-low-zoom] .grp[data-live-status="down"] {
+  border-color: var(--status-down) !important;
+}
+[data-low-zoom] .chip-trouble:not(:empty) {
+  display: inline-block;
+  margin-inline-start: 0.6em;
+  padding: 0.1em 0.6em;
+  border-radius: 1em;
+  background: color-mix(in oklab, var(--status-paused) 30%, var(--board));
+  color: var(--text);
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+[data-low-zoom] .chip-trouble[data-failing] {
+  background: var(--status-down);
+  color: white;
+}

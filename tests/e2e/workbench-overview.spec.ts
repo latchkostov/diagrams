@@ -26,7 +26,7 @@ for (const theme of ["light", "dark"])
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-overview", "");
     await expect(page.getByTestId("overview-dig-hint")).toHaveText("Select a service, or a zone name, to focus");
     await expectNodeIdentity(page, diagram.nodes.length);
-    // Zones keep their plain focus chip at the outline's top-left corner (header bands return in their own PR).
+    // Headers use a clear band or an outside tab; neither may cover a chip.
     for (const group of diagram.groups) {
       const chip = page.getByTestId(`zone-focus-${group.id}`);
       await expect(chip).toBeVisible();
@@ -34,8 +34,16 @@ for (const theme of ["light", "dark"])
       const box = await chip.boundingBox();
       const region = await page.getByTestId(`group-${group.id}`).boundingBox();
       if (!box || !region) throw new Error(`Missing region ${group.id}`);
-      expect(box.x).toBeGreaterThanOrEqual(region.x - 0.5);
-      expect(box.y).toBeGreaterThanOrEqual(region.y - 0.5);
+      const clear = await chip.evaluate((el) => {
+        const a = el.getBoundingClientRect();
+        const root = el.closest('[data-testid="canvas-wrap"]');
+        if (!root) throw new Error("Missing canvas");
+        return [...root.querySelectorAll('[data-testid="card-title"]')].every((title) => {
+          const b = title.parentElement?.getBoundingClientRect();
+          return b && (a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+        });
+      });
+      expect(clear, `${group.id} header clears every chip`).toBe(true);
     }
     const edges = await page.getByTestId(/^connection-stroke-/).evaluateAll((els) =>
       els.map((el) => {
@@ -46,7 +54,9 @@ for (const theme of ["light", "dark"])
           visible: getComputedStyle(el).visibility === "visible",
           main: wrapper.hasAttribute("data-live-main"),
           near: wrapper.hasAttribute("data-live-near"),
-          weight: parseFloat(getComputedStyle(el).strokeWidth) * Math.hypot(matrix.a, matrix.b),
+          weight:
+            parseFloat(getComputedStyle(el).strokeWidth) *
+            (getComputedStyle(el).vectorEffect === "non-scaling-stroke" ? 1 : Math.hypot(matrix.a, matrix.b)),
         };
       }),
     );
@@ -54,17 +64,40 @@ for (const theme of ["light", "dark"])
     expect(edges.some((e) => !e.visible)).toBe(true);
     for (const edge of edges) {
       expect(edge.visible).toBe(edge.main || edge.near);
-      if (edge.visible) expect(edge.weight).toBeGreaterThanOrEqual(1.49);
+      if (edge.visible) {
+        expect(edge.weight).toBeGreaterThanOrEqual(1);
+        expect(edge.weight).toBeLessThanOrEqual(3.5);
+      }
     }
     const regions = [];
     for (const id of ["group-aws", "group-storefront", "node-checkout-api", "node-web"]) {
-      const box = await page.getByTestId(id).boundingBox();
+      const box = await page.getByTestId(id).evaluate((el) => {
+        const title = el.querySelector('[data-testid="card-title"]');
+        const surface = title?.parentElement ?? el;
+        const b = surface.getBoundingClientRect();
+        const root = el.closest('[data-testid="canvas-wrap"]');
+        if (!root) throw new Error("Missing outline canvas");
+        const blockers = [...root.querySelectorAll('[data-testid="card-title"],[data-testid^="zone-focus-"]')]
+          .map((n) => (n.getAttribute("data-testid") === "card-title" ? n.parentElement : n))
+          .filter((n): n is HTMLElement => n instanceof HTMLElement && n !== surface)
+          .map((n) => n.getBoundingClientRect());
+        const ys = [b.y + b.height / 2, ...Array.from({ length: 14 }, (_, i) => b.y + (b.height * (i + 1)) / 16)];
+        const y = ys.find((y) =>
+          blockers.every((r) => b.x + 2 < r.left || b.x - 2 > r.right || y + 4 < r.top || y - 4 > r.bottom),
+        );
+        if (y === undefined) throw new Error("No exposed outline segment");
+        return { x: b.x, y, width: b.width, height: b.height };
+      });
       if (!box) throw new Error(`Missing ${id}`);
-      regions.push({ x: box.x - 2, y: box.y + box.height / 2 - 4, width: 4, height: 8, ground: { x: 1410, y: 120 } });
+      regions.push({ x: box.x - 2, y: box.y - 4, width: 4, height: 8, ground: { x: 1410, y: 120 } });
     }
     const png = await page.screenshot();
     const contrast = await sampledContrast(page, png, regions);
-    for (const ratio of contrast) expect(ratio, "PNG outline against board").toBeGreaterThanOrEqual(3);
+    for (const [i, ratio] of contrast.entries())
+      expect(
+        ratio,
+        `PNG outline against board (${["aws", "storefront", "checkout", "web"][i]})`,
+      ).toBeGreaterThanOrEqual(3);
     await info.attach("overview-outline-contrast", {
       body: JSON.stringify({ theme, contrast }),
       contentType: "application/json",
@@ -89,8 +122,10 @@ async function expectNodeIdentity(page: Page, count: number) {
     .poll(async () =>
       page.getByTestId("card-title").evaluateAll((titles) =>
         titles.flatMap((title) => {
-          const card = title.closest('[data-testid^="rf__node-"]');
-          const icon = card?.querySelector('[data-testid="card-icon"]')?.firstElementChild;
+          const chip = title.parentElement?.getAttribute("aria-label") === title.getAttribute("data-label");
+          const card = chip ? title.parentElement : title.closest('[data-testid^="rf__node-"]');
+          const tile = card?.querySelector('[data-testid="card-icon"]');
+          const icon = chip ? tile : tile?.firstElementChild;
           const wrap = title.closest('[data-testid="canvas-wrap"]');
           if (!card || !icon || !wrap) return ["Missing identity elements"];
           const zoom = Number((wrap as HTMLElement).style.getPropertyValue("--rf-zoom-exact"));
@@ -105,11 +140,12 @@ async function expectNodeIdentity(page: Page, count: number) {
             cs.visibility === "visible" &&
             !!title.textContent?.trim() &&
             parseFloat(cs.fontSize) * zoom >= 9 &&
-            ink.measureText(title.textContent).width * zoom <= box.width + 0.5 &&
+            Math.max(...title.textContent.split("\n").map((line) => ink.measureText(line).width)) * zoom <=
+              box.width + 0.5 &&
             box.left >= bounds.left - 0.5 &&
             box.right <= bounds.right + 0.5 &&
             getComputedStyle(icon).visibility === "visible" &&
-            icon.getBoundingClientRect().height >= Math.min(14, bounds.height - 0.5) - 0.5;
+            icon.getBoundingClientRect().height >= Math.min(chip ? 12 : 14, bounds.height - 0.5) - 0.5;
           return readable
             ? []
             : [
@@ -132,7 +168,10 @@ async function expectNodeIdentity(page: Page, count: number) {
   for (const title of await page.getByTestId("card-title").all()) await expect(title).toBeVisible();
   const overlap = await page.getByTestId("card-title").evaluateAll((titles) => {
     const cards = titles.map((title) => {
-      const card = title.closest('[data-testid^="rf__node-"]');
+      const card =
+        title.parentElement?.getAttribute("aria-label") === title.getAttribute("data-label")
+          ? title.parentElement
+          : title.closest('[data-testid^="rf__node-"]');
       if (!card) throw new Error("Missing title card");
       return card;
     });

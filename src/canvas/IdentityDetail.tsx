@@ -6,11 +6,25 @@ import { registerFrameCapture } from "./camera/frameCapture";
 import { useCameraController } from "./camera/useCameraCore";
 import { FAR_ZOOM } from "./detail";
 import { mountIdentityZoom } from "./identityZoom";
+import { mountChips } from "./mountChips";
+import { useRoutingOptions } from "./edges/useEdgeRoute";
+import "../styles/canvas/chips.css";
 
 /** Identity belongs to every canvas, including presentation, embeds and offline viewers. */
-export const IdentityDetail = memo(function IdentityDetail({ host }: { host: RefObject<HTMLElement | null> }) {
+export const IdentityDetail = memo(function IdentityDetail({
+  host,
+  chips = true,
+}: {
+  host: RefObject<HTMLElement | null>;
+  chips?: boolean;
+}) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const camera = useCameraController();
+  const { style, direction, captions, hideDependencies } = useRoutingOptions();
+  useEffect(() => {
+    const root = host.current;
+    if (root && chips) return mountChips(root, store, camera, { style, direction, captions, hideDependencies });
+  }, [host, chips, store, camera, style, direction, captions, hideDependencies]);
   useEffect(() => {
     const root = host.current;
     if (!root) return;
@@ -34,6 +48,7 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
         (camera && (camera.phase !== "idle" || camera.interacting) && !root.hasAttribute("data-viewport-moving"))
       )
         return;
+      if (root.hasAttribute("data-low-zoom")) return;
       const { nodes, transform } = store.getState();
       // Counter-scaled titles outgrow their natural row: secondary card text keeps the far-zoom
       // floor in every view, including presentation, embeds and the offline viewer.

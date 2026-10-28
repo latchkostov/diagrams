@@ -34,6 +34,7 @@ import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
+import { useLowZoom } from "./lowZoom";
 
 type Chip = { id: string; name: string; x: number; y: number };
 type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
@@ -44,14 +45,16 @@ export const FrameDetail = memo(function FrameDetail({
   host,
   routing,
   decorate,
+  chips = true,
 }: {
   host: RefObject<HTMLElement | null>;
   routing: RouteOptions;
   decorate: boolean;
+  chips?: boolean;
 }) {
   return (
     <>
-      <IdentityDetail host={host} />
+      <IdentityDetail host={host} chips={chips} />
       {decorate && <FrameDecoration host={host} routing={routing} />}
     </>
   );
@@ -220,7 +223,7 @@ const FrameDecoration = memo(
         const frameNodes = nodeElements.flatMap((el) => {
           const id = el.dataset.id!;
           const n = s.nodeLookup.get(id);
-          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb") }];
+          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb:not(.nb-chip)") }];
         });
         const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
         // Reset every changed card before measuring any of them. Alternating a width
@@ -569,7 +572,7 @@ const FrameDecoration = memo(
           el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
           const pin = edgePins.get(edge.id);
           const route = routes.get(edge.id);
-          const stroke = el.querySelector<SVGPathElement>(".fe-path");
+          const stroke = el.querySelector<SVGPathElement>(".fe:not(.fe-chip) .fe-path");
           if (stroke && route) {
             let path = route.path;
             const points = lanes.get(edge.id);
@@ -729,7 +732,7 @@ const FrameDecoration = memo(
             !(
               record.type === "childList" &&
               record.target instanceof Element &&
-              (record.target.matches('[data-testid="card-title"]') ||
+              (record.target.matches('[data-testid="card-title"], .chip-trouble') ||
                 (root.hasAttribute("data-detail-far") && record.target.closest('[data-testid^="node-badge-"]')))
             ),
         );
@@ -873,17 +876,22 @@ const FrameChips = memo(function FrameChips({ chips }: { chips: Chip[] }) {
   const host = useRef<HTMLDivElement>(null);
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const camera = useCameraController();
+  const lowZoom = useLowZoom();
   useLayoutEffect(() => {
     const elements = host.current?.querySelectorAll<HTMLElement>(".detail-group-chip") ?? [];
     const update = () => {
       const zoom = store.getState().transform[2];
-      for (const el of elements) el.style.transform = `scale(${1 / zoom}) translate(10px, 8px)`;
+      for (const el of elements) {
+        const id = `group:${el.dataset.testid?.slice("zone-focus-".length)}`;
+        const p = lowZoom?.titles.get(id) ?? { x: 10, y: 8 };
+        el.style.transform = `scale(${1 / zoom}) translate(${p.x}px, ${p.y}px)`;
+      }
     };
     update();
     return store.subscribe((s, old) => {
       if (s.transform[2] !== old.transform[2]) update();
     });
-  }, [chips, store]);
+  }, [chips, store, lowZoom]);
   return (
     <ViewportPortal>
       <div ref={host} className="detail-group-chips" data-testid="zone-chip-layer" data-export="skip">
@@ -896,6 +904,7 @@ const FrameChips = memo(function FrameChips({ chips }: { chips: Chip[] }) {
             onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
           >
             <FrameTitle id={chip.id} fallback={chip.name} />
+            <span className="chip-trouble" data-testid={`zone-trouble-${chip.id.replace(/^group:/, "")}`} />
           </button>
         ))}
       </div>

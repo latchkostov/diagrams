@@ -424,7 +424,7 @@ test.describe("live view", () => {
           trace: edge.getAttribute("data-live-trace"),
           near: edge.getAttribute("data-live-near"),
           opacity: getComputedStyle(edge).opacity,
-          pathOpacity: getComputedStyle(el.children[1]).opacity,
+          pathOpacity: getComputedStyle(el.querySelector('[data-testid^="connection-stroke-"]') ?? el).opacity,
         };
       });
     await expect(unrelatedNode).toBeVisible();

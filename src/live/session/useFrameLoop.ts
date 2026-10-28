@@ -10,6 +10,7 @@ import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "../layout";
 import { createLiveRenderer, pickRenderer, type LiveRenderer, type RendererKind } from "../liveRenderer";
 import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "../particleRenderer";
 import { type SlowMotionView } from "../slowmo/useSlowMotion";
+import type { ChipState } from "../../canvas/lowZoom";
 
 import type { RefObject } from "react";
 import type { DecorationInput } from "../decorations";
@@ -151,23 +152,25 @@ export function useFrameLoop({
       lastGeneration = gen;
       march = slow ? 0 : still ? march : march + dt;
       const ui = now - lastUi >= UI_MS;
+      const lowZoom = (store.getState() as ChipState).ldChips;
       if (ui) {
         lastUi = now;
         if (controller.isPlaying) controller.publish();
         // Before the frame, so an edge marked active marches in the same frame its SVG stops.
         decorator.apply({
+          zones: lowZoom?.members,
           snapshot: snap,
           health: controller.getState().snapshot,
           spotlight: spotlightRef.current,
           still,
         });
-        renderer.tick();
+        if (!lowZoom) renderer.tick();
       }
-      renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });
+      if (!lowZoom) renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });
       if (ui) {
-        slowRef.current?.ui(canvas, snap, renderer.slowLabels);
+        if (!lowZoom) slowRef.current?.ui(canvas, snap, renderer.slowLabels);
         if (++stats % 2 === 0) {
-          canvas.dataset.particles = String(renderer.drawn);
+          canvas.dataset.particles = String(lowZoom ? 0 : renderer.drawn);
           canvas.dataset.frames = String(renderer.frames);
         }
         // The traced message's labels, for tests (pane CSS px).
@@ -202,7 +205,10 @@ export function useFrameLoop({
     let down: { x: number; y: number } | null = null;
     const hit = (e: MouseEvent) => {
       const target = e.target as Element | null;
-      if (target?.closest(".react-flow__node, .fe-label, [data-editor-overlay], button, input, select"))
+      if (
+        (store.getState() as ChipState).ldChips ||
+        target?.closest(".react-flow__node, .fe-label, [data-editor-overlay], button, input, select")
+      )
         return undefined;
       const r = root.getBoundingClientRect();
       return rendererRef.current?.hitTest(e.clientX - r.left, e.clientY - r.top);

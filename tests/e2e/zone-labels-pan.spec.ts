@@ -1,6 +1,15 @@
 import type { Page } from "@playwright/test";
 import diagram from "../../src/examples/black-friday-commerce.json" with { type: "json" };
-import { test, expect, gotoCanvas, gotoLive, pauseClock, viewportTransform, waitForCameraIdle } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  pauseClock,
+  viewportTransform,
+  waitForCameraIdle,
+  waitForStableViewport,
+} from "./fixtures";
 
 /** Sample every title and boundary together, before the held gesture can settle. */
 async function sample(page: Page) {
@@ -30,11 +39,11 @@ for (const live of [false, true])
     const before = await sample(page);
     expect(before.map((s) => s.id).sort()).toEqual(diagram.groups.map((g) => g.id).sort());
     for (const value of before) expect(value.height, `${value.id} stays on one line`).toBeCloseTo(18, 1);
-    const check = async () => {
+    const check = async (reference = before) => {
       const current = await sample(page);
       expect(current).toHaveLength(before.length);
       for (const value of current) {
-        const initial = before.find((s) => s.id === value.id);
+        const initial = reference.find((s) => s.id === value.id);
         if (!initial) throw new Error(`Missing initial title ${value.id}`);
         // Screen-size ink and padding stay attached to the boundary's top-left,
         // including zoom reversals while the pointer remains down.
@@ -80,7 +89,12 @@ for (const live of [false, true])
     }
     await page.clock.resume();
     await waitForCameraIdle(page);
-    await check();
+    await waitForStableViewport(page);
+    // A settled tier may choose a new clear band/tab. Subsequent panning must keep that anchor too.
+    const settled = await sample(page);
+    await pane.dispatchEvent("wheel", { deltaX: 24, deltaY: 20, bubbles: true });
+    await waitForStableViewport(page);
+    await check(settled);
     // The portal retains the existing focus action after moving.
     await page.keyboard.press("Shift+1");
     await waitForCameraIdle(page);

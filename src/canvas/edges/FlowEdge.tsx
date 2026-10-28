@@ -21,6 +21,7 @@ import { isDependency, relationOf, type DependencyRelation } from "../../model/r
 import { requireEdgeModules } from "./readiness";
 import { routeGeometry } from "../geometry/shapedRuntime";
 import { defineLazySurface } from "../../lib/lazySurface";
+import { useLowZoom } from "../lowZoom";
 const EdgeControls = defineLazySurface({
   id: "edge.shaping",
   load: () => import("./EdgeRouteHandles").then((m) => m.EdgeRouteHandles),
@@ -42,6 +43,7 @@ const EdgeControls = defineLazySurface({
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source, target } = props;
+  const lowZoom = useLowZoom();
   const { rename, openEdgeMenu, reconnect } = useDiagram();
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
   const denied = !relation && isDenyRule(data?.props);
@@ -98,6 +100,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   };
   const glyph = (size: number) =>
     relation && Details ? <Details.RelationGlyph id={id} relation={relation} size={size} /> : null;
+
+  if (lowZoom) return lowZoom.edge(id, !!relation, !!selected, path);
 
   let body: ReactNode = null;
   if (label && label.mode !== "glyph") {

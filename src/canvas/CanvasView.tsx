@@ -1222,6 +1222,7 @@ function CanvasInner({
           host={wrapper}
           routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }}
           decorate={!readOnly && !presenting}
+          chips={!readOnly}
         />
         {!readOnly && <ConnectionRadius />}
         {prefs.grid && <DotGrid />}

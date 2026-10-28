@@ -34,8 +34,11 @@ export async function expectFittedIdentity(page: Page, id: string, name: string)
         const style = getComputedStyle(el);
         const measure = document.createElement("canvas").getContext("2d");
         const wrap = el.closest<HTMLElement>('[data-testid="canvas-wrap"]');
-        const card = el.closest<HTMLElement>('[data-testid^="rf__node-"]');
-        const icon = card?.querySelector('[data-testid="card-icon"]')?.firstElementChild;
+        const wrapper = el.closest<HTMLElement>('[data-testid^="rf__node-"]');
+        const chip = el.parentElement?.getAttribute("aria-label") === el.getAttribute("data-label");
+        const card = chip ? el.parentElement : wrapper;
+        const tile = card?.querySelector('[data-testid="card-icon"]');
+        const icon = chip ? tile : tile?.firstElementChild;
         if (!measure || !wrap || !card || !icon) throw new Error("Missing identity measurement surface");
         measure.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
         measure.letterSpacing = style.letterSpacing === "normal" ? "0px" : style.letterSpacing;
@@ -48,11 +51,14 @@ export async function expectFittedIdentity(page: Page, id: string, name: string)
           second && getComputedStyle(second).visibility === "visible" ? second.getBoundingClientRect() : null;
         const failures = [
           !el.textContent?.trim() || el.textContent === "…" ? "empty" : "",
-          measure.measureText(el.textContent ?? "").width * zoom > box.width + 0.5 ? "overflows its width" : "",
+          Math.max(...(el.textContent ?? "").split("\n").map((line) => measure.measureText(line).width)) * zoom >
+          box.width + 0.5
+            ? "overflows its width"
+            : "",
           parseFloat(style.fontSize) * zoom < 9 - 0.01 ? `font ${parseFloat(style.fontSize) * zoom}px` : "",
           box.left < bounds.left - 0.5 || box.right > bounds.right + 0.5 ? "outside its card" : "",
           getComputedStyle(icon).visibility !== "visible" ? "hidden icon" : "",
-          icon.getBoundingClientRect().height < Math.min(14, bounds.height - 0.5) - 0.5
+          icon.getBoundingClientRect().height < Math.min(chip ? 12 : 14, bounds.height - 0.5) - 0.5
             ? `icon ${icon.getBoundingClientRect().height}px`
             : "",
           line && line.width && line.top < box.bottom && box.top < line.bottom ? "covers its second line" : "",
