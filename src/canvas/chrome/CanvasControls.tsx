@@ -1,4 +1,4 @@
-import { frameView } from "../detail";
+import { frameView } from "../frameView";
 import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { Background, BackgroundVariant, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
 import { useCameraController } from "../camera/useCameraCore";
@@ -14,18 +14,15 @@ import type { AnnotationFlowNode, DiagramFlowNode, FlowNode, GroupFlowNode } fro
 
 /** The minimap draws every node again when one of these changes identity (see SNAP_GRID). */
 const MINIMAP_STYLE = { width: 168, height: 112 };
-const minimapFill = (n: FlowNode) =>
-  n.type === "boundary"
-    ? "transparent"
-    : n.type === "annotation"
-      ? annotationMinimapFill(n as AnnotationFlowNode)
-      : getStencil((n as DiagramFlowNode).data.stencil).accent;
-const minimapStroke = (n: FlowNode) =>
-  n.type === "boundary"
-    ? resolveGroupTone((n as GroupFlowNode).data.tone)
-    : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
-      ? resolveAnnotationColor((n as AnnotationFlowNode).data.color, (n as AnnotationFlowNode).data.kind).hex
-      : "transparent";
+const minimapColor = (n: FlowNode, stroke = false): string => {
+  if (n.type === "boundary") return stroke ? resolveGroupTone((n as GroupFlowNode).data.tone) : "transparent";
+  if (n.type === "annotation") {
+    const { kind, color } = (n as AnnotationFlowNode).data;
+    return (kind === "note") !== stroke ? resolveAnnotationColor(color, kind).hex : "transparent";
+  }
+  return stroke ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent;
+};
+const minimapStroke = (n: FlowNode) => minimapColor(n, true);
 
 /**
  * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
@@ -35,8 +32,10 @@ const minimapStroke = (n: FlowNode) =>
 export function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
   const zoom = useStore((s: ReactFlowState) => Math.max(0.02, s.transform[2]));
   useLayoutEffect(() => {
-    host.current?.style.setProperty("--rf-zoom", String(Math.max(0.02, Math.floor(zoom * 50 + 1e-6) / 50)));
-    host.current?.style.setProperty("--rf-zoom-exact", String(zoom));
+    const root = host.current;
+    if (!root || root.dataset.identityZoom) return;
+    root.style.setProperty("--rf-zoom", String(Math.floor(zoom * 50 + 1e-6) / 50));
+    root.style.setProperty("--rf-zoom-exact", String(zoom));
   }, [host, zoom]);
   return null;
 }
@@ -48,11 +47,6 @@ export function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
 export function DotGrid() {
   const fine = useStore((s: ReactFlowState) => s.transform[2] >= 1);
   return <Background variant={BackgroundVariant.Dots} gap={fine ? 10 : 20} size={1.3} color="var(--dot)" />;
-}
-
-/** Minimap: notes show their tint; zones, text and shapes are outlines. */
-function annotationMinimapFill(n: AnnotationFlowNode): string {
-  return n.data.kind === "note" ? resolveAnnotationColor(n.data.color, n.data.kind).hex : "transparent";
 }
 
 export function CanvasControls({
@@ -112,6 +106,10 @@ export function CanvasControls({
 
   const collapseLabel = collapsed ? tr("chrome.showZoomControls") : tr("chrome.hideZoomControls");
   const viewMenuLabel = tr("view.menu");
+  const zoomStep = (direction: -1 | 1) => () => {
+    zoomedByButton();
+    camera?.dispatch({ type: "zoom.step", direction });
+  };
 
   return (
     <div
@@ -162,15 +160,7 @@ export function CanvasControls({
           >
             {tr("camera.focus")}
           </button>
-          <button
-            type="button"
-            data-testid="zoom-out-button"
-            aria-label={tr("chrome.zoomOut")}
-            onClick={() => {
-              zoomedByButton();
-              camera?.dispatch({ type: "zoom.step", direction: -1 });
-            }}
-          >
+          <button type="button" data-testid="zoom-out-button" aria-label={tr("chrome.zoomOut")} onClick={zoomStep(-1)}>
             −
           </button>
           <button
@@ -181,15 +171,7 @@ export function CanvasControls({
           >
             {Math.round(zoom * 100)}%
           </button>
-          <button
-            type="button"
-            data-testid="zoom-in-button"
-            aria-label={tr("chrome.zoomIn")}
-            onClick={() => {
-              zoomedByButton();
-              camera?.dispatch({ type: "zoom.step", direction: 1 });
-            }}
-          >
+          <button type="button" data-testid="zoom-in-button" aria-label={tr("chrome.zoomIn")} onClick={zoomStep(1)}>
             +
           </button>
           <button
@@ -234,7 +216,7 @@ export function CanvasMinimap() {
       zoomable
       nodeBorderRadius={6}
       nodeStrokeWidth={2}
-      nodeColor={minimapFill}
+      nodeColor={minimapColor}
       nodeStrokeColor={minimapStroke}
     />
   );

@@ -39,9 +39,10 @@ export async function expectFittedIdentity(page: Page, id: string, name: string)
         if (!measure || !wrap || !card || !icon) throw new Error("Missing identity measurement surface");
         measure.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
         measure.letterSpacing = style.letterSpacing === "normal" ? "0px" : style.letterSpacing;
-        const zoom = Number(wrap.style.getPropertyValue("--rf-zoom-exact"));
         const box = el.getBoundingClientRect();
         const bounds = card.getBoundingClientRect();
+        // Identity scaling can be held while the viewport zoom keeps changing.
+        const zoom = bounds.width / (card as HTMLElement).offsetWidth;
         const second = card.querySelector<HTMLElement>('[data-testid="card-second-line"]');
         const line =
           second && getComputedStyle(second).visibility === "visible" ? second.getBoundingClientRect() : null;

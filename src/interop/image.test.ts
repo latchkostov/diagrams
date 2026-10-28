@@ -51,7 +51,7 @@ it("inserts an ordinary export header before yielding", async () => {
   }
 });
 
-it("filters segment handles and the dashed shaping preview from images", async () => {
+it("filters segment handles, the shaping preview and boundary focus controls from images", async () => {
   const { imageNodeFilter } = await import("./image");
   class Element {
     classList: { contains(value: string): boolean };
@@ -65,6 +65,7 @@ it("filters segment handles and the dashed shaping preview from images", async (
   vi.stubGlobal("SVGElement", Svg);
   try {
     expect(imageNodeFilter(new Html("edge-seg") as unknown as Node)).toBe(false);
+    expect(imageNodeFilter(new Html("detail-group-chips") as unknown as Node)).toBe(false);
     const preview = new Svg("edge-route-preview");
     expect(preview).toBeInstanceOf(SVGElement);
     expect(preview).not.toBeInstanceOf(HTMLElement);

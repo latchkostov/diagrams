@@ -219,6 +219,9 @@ function AnnotationNodeImpl({
               id={side}
               type="source"
               position={sidePosition[side]}
+              isConnectable={!!annotationCommands}
+              isConnectableStart={!!annotationCommands}
+              isConnectableEnd={!!annotationCommands}
               className={`dn-handle${connectPort === side ? " is-connect-port" : ""}`}
               data-testid={`handle-${id}-${side}`}
               style={{ left: p.x, top: p.y, right: "auto", bottom: "auto", transform: "translate(-50%, -50%)" }}

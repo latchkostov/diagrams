@@ -1,11 +1,30 @@
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { ReactFlowProvider } from "@xyflow/react";
+import { MiniMap, ReactFlowProvider } from "@xyflow/react";
+import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import type { EditorApi } from "../../editor/types";
 import type { CanvasMenus } from "../menus/useCanvasMenus";
-import { CanvasControls } from "./CanvasControls";
+import { CanvasControls, CanvasMinimap } from "./CanvasControls";
+import type { FlowNode } from "../types";
+
+vi.mock("@xyflow/react", async (load) => ({
+  ...(await load<typeof import("@xyflow/react")>()),
+  MiniMap: vi.fn(() => null),
+}));
+
+it("the minimap retains annotation outlines and note fills", () => {
+  renderToString(<CanvasMinimap />);
+  const { nodeColor, nodeStrokeColor } = vi.mocked(MiniMap).mock.calls.at(-1)![0];
+  if (typeof nodeColor !== "function" || typeof nodeStrokeColor !== "function")
+    throw new Error("Expected minimap color callbacks");
+  for (const kind of ["note", "text", "zone", "shape"] as const) {
+    const node = { type: "annotation", data: { kind, color: "#123456" } } as FlowNode;
+    expect(nodeColor(node)).toBe(kind === "note" ? "#123456" : "transparent");
+    expect(nodeStrokeColor(node)).toBe(kind === "note" ? "transparent" : "#123456");
+  }
+});
 
 it("the zoom chevron and accessible action point toward hiding, then showing the controls", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

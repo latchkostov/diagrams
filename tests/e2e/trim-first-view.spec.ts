@@ -7,6 +7,8 @@ import {
   gotoCanvas,
   gotoLive,
   savedDiagram,
+  currentDiagram,
+  viewportTransform,
   waitForStableViewport,
   openDiagramProperties,
   TEXT_END,
@@ -141,9 +143,10 @@ for (const owner of ["search", "other control"] as const) {
   });
 }
 
-async function cursors(page: Page, pane = "default") {
-  await expect(page.getByTestId("node-shopper")).toHaveCSS("cursor", "move");
-  await expect(page.getByTestId("canvas-pane")).toHaveCSS("cursor", pane);
+async function cursors(page: Page, mode: "edit" | "live" = "edit") {
+  // Live cards select on click and pan on drag; only Edit cards move the diagram's nodes.
+  await expect(page.getByTestId("node-shopper")).toHaveCSS("cursor", mode === "live" ? "pointer" : "move");
+  await expect(page.getByTestId("canvas-pane")).toHaveCSS("cursor", mode === "live" ? "grab" : "default");
 }
 
 async function exports(page: Page) {
@@ -285,13 +288,39 @@ test("phone transport stays reachable during overflow loading and Retry", async 
     const stable = async () => {
       for (let i = 0; i < controls.length; i++) await expectBounds(controls[i], original[i]);
     };
+    const panFromNode = async () => {
+      await waitForStableViewport(page);
+      const before = await currentDiagram(page);
+      const viewport = await viewportTransform(page);
+      const box = await bounds(page.getByTestId("node-order-events"));
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      try {
+        await page.mouse.move(x + 24, y + 24, { steps: 4 });
+        await expect.poll(() => viewportTransform(page)).not.toBe(viewport);
+      } finally {
+        await page.mouse.up();
+      }
+      await waitForStableViewport(page);
+      expect(await currentDiagram(page)).toEqual(before);
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+      for (const id of ["order-events", "payments"]) {
+        await page.getByTestId(`handle-${id}-bottom`).dispatchEvent("click");
+        await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+      }
+      expect(await currentDiagram(page)).toEqual(before);
+    };
     const opener = page.getByTestId("live-more");
     await opener.click();
     await expect.poll(held.requested).toBe(true);
     await expect(opener).toBeFocused();
     await stable();
-    await cursors(page, "grab");
+    await cursors(page, "live");
     await page.keyboard.press("Escape");
+    await panFromNode();
+    await stable();
     await page.getByTestId("live-play").click();
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     await page.getByTestId("live-play").click();
@@ -316,11 +345,12 @@ test("phone transport stays reachable during overflow loading and Retry", async 
     await expect(retry).toBeVisible();
     await stable();
     await expect(opener).toBeFocused();
-    await cursors(page, "grab");
+    await cursors(page, "live");
     held.fail = false;
     await retry.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("live-speed")).toBeVisible();
+    await cursors(page, "live");
     await stable();
     await expect(opener).toBeFocused();
     await page.getByTestId("live-speed").selectOption("2");
