@@ -1,4 +1,5 @@
-import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
+import { stencilLabel, stencilSubtitle, vendorLabel } from "../i18n/stencils";
+import { stencilDescription } from "../i18n/stencilDescriptions";
 import { categoryLabel, familyLabel } from "../i18n/chrome";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, type CSSProperties } from "react";

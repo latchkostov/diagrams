@@ -82,6 +82,16 @@ export function captureTypeAhead(
         event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))
     )
       return;
+    // A pending modal's own buttons (Close, Retry) take Enter and Space; typing anywhere else is still held.
+    if (
+      me.closeModal &&
+      event instanceof KeyboardEvent &&
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest('[aria-modal="true"]') &&
+      event.target.closest('button, a[href], [role="button"]')
+    )
+      return;
     let next: TypeAhead | null;
     if (event.type === "paste") {
       const text = (event as ClipboardEvent).clipboardData?.getData("text/plain");

@@ -1,4 +1,3 @@
-import { surfaceCatalogs } from "../../i18n/surfaces";
 import { EdgePriorityField } from "./PriorityField";
 import { defineLazySurface } from "../../lib/lazySurface";
 import "../../styles/inspector-layout.css";
@@ -33,6 +32,7 @@ import { MessageFields } from "./lazyMessageFields";
 import { callPolicy } from "../../sim/callPolicy";
 import type { EdgeSimProps } from "../../sim/types";
 import { useCallerOverride } from "./useCallerOverride";
+import { loadCallWaitFields } from "./simulationLoaders";
 
 const EdgeAdvanced = defineLazySurface({
   id: "inspector.advanced",
@@ -48,7 +48,7 @@ const EdgeAdvanced = defineLazySurface({
  */
 const CallWaitFields = defineLazySurface({
   id: "inspector.call",
-  load: () => import("./CallWaitFields").then((m) => m.callWhenReady()),
+  load: loadCallWaitFields,
   placeholder: {
     size: {},
     testId: "inspector.call-loading",
@@ -316,10 +316,4 @@ export function RelationHint({ edge, editor }: { edge: DiagramFlowEdge; editor: 
       </button>
     </div>
   );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
-export async function edgeWhenReady() {
-  await surfaceCatalogs(["simulation"]);
-  return EdgePanel;
 }

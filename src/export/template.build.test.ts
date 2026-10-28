@@ -6,6 +6,7 @@ import { buildViewer, buildViewerTemplate, EDITOR_ONLY } from "../../scripts/int
 import { exportHtml, PAYLOAD_BLOCK, templateStencilIcons } from "./inject";
 import { catalog } from "../stencils/catalog";
 import * as translatedStencil from "../i18n/stencils";
+import { stencilDescription as translatedDescription } from "../i18n/stencilDescriptions";
 import * as viewerStencil from "./viewer/stencilText";
 
 // The Interactive HTML template, built for real (scripts/interactive-viewer.ts): one page whose CSP allows
@@ -92,6 +93,7 @@ describe("interactive viewer template", () => {
     expect(real("/src/planning/EdgeLiveDetails.tsx")).toBe(false);
     expect(real("/src/live/DockedLive.tsx")).toBe(false);
     expect(real("/src/i18n/stencils.ts")).toBe(false);
+    expect(real("/src/i18n/stencilDescriptions.ts")).toBe(false);
     // The icon map the viewer swaps in is one module, wherever the build runs (a Windows path once made two).
     expect(modules.filter((id) => id.endsWith("/src/export/viewer/iconUrls.ts"))).toHaveLength(1);
     // A protected file decrypts with the token's crypto, never the link adapter around it.
@@ -167,7 +169,7 @@ describe("interactive viewer template", () => {
   it("reuses the catalog's English stencil text without changing viewer words", () => {
     for (const stencil of catalog) {
       expect(viewerStencil.stencilLabel(stencil)).toBe(translatedStencil.stencilLabel(stencil));
-      expect(viewerStencil.stencilDescription(stencil)).toBe(translatedStencil.stencilDescription(stencil));
+      expect(viewerStencil.stencilDescription(stencil)).toBe(translatedDescription(stencil));
       expect(viewerStencil.stencilSubtitle(stencil)).toBe(translatedStencil.stencilSubtitle(stencil));
       expect(viewerStencil.vendorLabel(stencil.vendor)).toBe(translatedStencil.vendorLabel(stencil.vendor));
     }

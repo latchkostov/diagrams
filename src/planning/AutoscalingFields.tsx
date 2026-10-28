@@ -3,7 +3,7 @@ import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
 import { createResourceValidator } from "../model/resourceValidation";
 import { brokerChoices, loadBalancerChoices } from "../model/kedaBindings";
 import { CloudScalerFields } from "./CloudScalerFields";
-import { PLATFORM } from "./scalingPlanText";
+import { PLATFORM } from "./scalingPlan";
 import { scalingReasonCode } from "../model/scalingReason";
 import { resourceWorkload } from "../model/autoscaling";
 import type { DiagramFile } from "../model/types";

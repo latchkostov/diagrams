@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { NodeTooltip } from "./NodeTooltip";
 import { getStencil } from "../stencils/registry";
-import { stencilDescription } from "../i18n/stencils";
+import { stencilDescription } from "../i18n/stencilDescriptions";
 import { t } from "../i18n";
 
 it("keeps a pending catalog inside the positioned tooltip frame without English metadata", () => {

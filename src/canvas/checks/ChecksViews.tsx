@@ -3,9 +3,11 @@ import { lazyComponent } from "../../lib/lazyLoad";
 import type { RowHost } from "../../checks/ui/FindingRow";
 import { checksPanel } from "./checksPanel";
 import { defineLazySurface } from "../../lib/lazySurface";
+import { loadChecksMarkers, loadChecksUi } from "./checksLoaders";
+import { t } from "../../i18n";
 const ChecksMarkers = defineLazySurface({
   id: "canvas.check-markers",
-  load: () => import("./ChecksMarkers").then((m) => m.ChecksMarkers),
+  load: loadChecksMarkers,
   placeholder: {},
   focus: {},
   export: "skip",
@@ -17,9 +19,20 @@ import { findingOrder, selectedFinding } from "./findingOrder";
 // What shows the checks on the canvas, each subscribed to the canvas's ChecksStore on its own, so a new result or
 // a hovered row re-renders only these, never the canvas. The card and the inspector's row are a lazy chunk.
 
-const loadChecksUi = () => import("../../checks/ui/ChecksCard");
 const ChecksCard = lazyComponent(() => loadChecksUi().then((m) => m.ChecksCard));
-const InspectorFindings = lazyComponent(() => loadChecksUi().then((m) => m.InspectorFindings));
+/** In the inspector: a failed download says so in place, with Retry (another surface may own the page's toast). */
+const InspectorFindings = lazyComponent(
+  () => loadChecksUi().then((m) => m.InspectorFindings),
+  (_props, { failed, retry }) =>
+    failed ? (
+      <p className="insp-note" role="alert" data-testid="inspector-findings-failed">
+        {t("fileDialog.loadFailed")}{" "}
+        <button type="button" className="link-btn" onClick={retry} data-testid="inspector-findings-retry">
+          {t("common.retry")}
+        </button>
+      </p>
+    ) : null,
+);
 
 export type ChecksHost = RowHost & {
   open(): void;

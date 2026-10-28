@@ -7,7 +7,7 @@ import type { DiagramFile } from "../model/types";
 import type { NodeSimProps } from "../sim/types";
 import { t, useLocale } from "../i18n";
 import { NumberField } from "./NumberField";
-import { PLATFORM } from "./scalingPlanText";
+import { PLATFORM } from "./scalingPlan";
 
 /** Official documentation each adapter cites (checked 2026-10-15). */
 const DOCS: Record<CloudController["kind"], string> = {

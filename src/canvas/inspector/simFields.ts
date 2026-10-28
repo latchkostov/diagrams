@@ -137,30 +137,6 @@ export const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
   },
 };
 
-// The message type and emits are edited with the message-type pickers (several nodes: MultiPanel's MESSAGE_FIELDS).
-export const SIM_KEYS = new Set<string>([...Object.keys(SIM_FIELDS), "messageType", "emits"]);
-
-// A setting leaves Custom properties only where a control for it shows: a device's own section, a firewall's rule.
-// Anywhere else (an nginx with a `gbps`, a service's connection with `deny`) it stays there, to see, change or remove.
-export const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messageKB", "ha", "failoverMs"]);
-
-export const ADC_KEYS = new Set<string>([...DEVICE_KEYS, "healthChecks"]);
-
-export const EDGE_KEYS = new Set([
-  "group",
-  "dlq",
-  "travelMs",
-  "filter",
-  "emits",
-  "share",
-  "settings",
-  "caller",
-  "priority",
-  "requestFilter",
-]);
-
-export const RULE_KEYS = new Set([...EDGE_KEYS, "deny"]);
-
 /** Number / text input that keeps a local draft so partially typed numbers ("0.") survive. */
 export function showSim(kind: SimField["kind"], value: unknown): string {
   if (value === undefined || value === null) return "";

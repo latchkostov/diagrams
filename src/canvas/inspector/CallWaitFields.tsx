@@ -1,4 +1,3 @@
-import { surfaceCatalogs } from "../../i18n/surfaces";
 import { RequestGroup } from "./RequestGroup";
 import { revisionAtLeast } from "../../model/revisions";
 import { RetryFields } from "./RetryFields";
@@ -206,10 +205,4 @@ function CallAdvanced({
   ) : (
     <>{children}</>
   );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
-export async function callWhenReady() {
-  await surfaceCatalogs(["simulation"]);
-  return CallWaitFields;
 }

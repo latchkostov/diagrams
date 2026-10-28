@@ -41,6 +41,7 @@ const plain = (key: Key) => (english.get(key) ?? "").startsWith('"');
 /** Prefix ownership is explicit: adding a namespace requires choosing its loading boundary. */
 export { catalogBuckets } from "../src/i18n/bucketManifest";
 import { catalogBuckets, catalogSuffix, surfaceBuckets, type CatalogBucket } from "../src/i18n/bucketManifest";
+import { APP_ENTRIES, formatViolations, readSources, surfaceKeyViolations } from "./i18n-surfaces";
 // Shell copy and stencil names are needed before the optional surfaces arrive.
 const coreMessages = new Set<Key>([
   "htmlExport.simulations",
@@ -77,7 +78,28 @@ const coreMessages = new Set<Key>([
   "planning.loadFailed",
   "planning.retry",
   "htmlExport.interactiveHTML",
+  // Shared by surfaces that wait for different catalogs, or shown from startup modules: the build's surface check
+  // (scripts/i18n-surfaces.ts) lists what a module can render before its catalogs are ready.
+  // Planning, inspector and Live controls all use "Advanced"; only planning waits for the simulation catalog.
+  "ai.advanced",
+  // Opening a file (startup can): its validation errors, and the engine's replica budget.
+  "admission.endpointInvalid",
+  "admission.unknown",
+  "autoscaling.bindingInvalid",
+  "autoscaling.checkInvalid",
+  "autoscaling.budget",
+  "planning.delayInvalid",
+  "planning.formatRequired",
+  "planning.unsupportedPreset",
+  "planning.unsupportedRevision",
+  "threads.modelRequired",
+  // The example browser's tutorial links.
+  "tutorials.examplesLink",
+  "tutorials.openTutorials",
+  "tutorials.exampleChip",
 ]);
+// Tutorial discovery outside the tutorials: command titles and their search words.
+const tutorialTitleMessages = new Set<string>(["tutorials.command", "tutorials.paletteKeywords"]);
 // Simulation-only inspector copy follows the fields; identity and dock chrome remain in core.
 const simulationPrefixes = [
   "inspector.rate",
@@ -105,13 +127,22 @@ export function catalogBucket(key: string): CatalogBucket {
     throw new Error(`Catalog key must belong to exactly one bucket: ${key} (${matches.length})`);
   if (coreMessages.has(key as Key) || (namespace === "stencil" && /(?:Name$|^stencil\.(?:subtitle|vendor))/.test(key)))
     return "core";
-  if (/^tutorials\.[^.]+\.title$/.test(key) || key === "tutorials.command" || key === "tutorials.paletteKeywords")
-    return "tutorialTitles";
+  if (/^tutorials\.[^.]+\.title$/.test(key) || tutorialTitleMessages.has(key)) return "tutorialTitles";
   if (simulationPrefixes.some((prefix) => key.startsWith(prefix))) return "simulation";
   return matches[0][0] as CatalogBucket;
 }
 export function lintCatalogBuckets(messageKeys: string[] = keys): void {
   for (const key of messageKeys) catalogBucket(key);
+}
+
+/** Every key a module can render is in core or a catalog its surface declares (scripts/i18n-surfaces.ts). */
+export function lintSurfaceCatalogs(root = ROOT): void {
+  const violations = surfaceKeyViolations(readSources(root), APP_ENTRIES, (key) =>
+    ids.has(key as Key) ? catalogBucket(key) : undefined,
+  );
+  if (violations.length)
+    throw new Error(`A surface can render keys before their catalog is ready:
+${formatViolations(violations)}`);
 }
 
 const byText = (key: Key, numbered: Set<Key>) =>
@@ -404,6 +435,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
   let limit = "";
   let numbered = new Set<Key>();
   let server: ViteDevServer | undefined;
+  let building = false;
   const offered = () => {
     if (options.catalogs === false) return [];
     const wanted = limit ? limit.split(",") : null;
@@ -422,6 +454,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
     config(config, { command, mode }) {
       // The pseudo-locale is for spotting untranslated and overflowing UI: the dev server, Vitest and the e2e build.
       pseudo = options.pseudo === true || command === "serve" || process.env.VITE_E2E === "1";
+      building = command === "build";
       if (options.catalogs === false) return;
       limit = readDeployment(resolveDeploymentEnv(mode, config.envDir || config.root || process.cwd())).locales;
       const have = new Set(["en", ...catalogLocales()]);
@@ -434,6 +467,8 @@ export function i18n(options: I18nOptions = {}): Plugin {
     },
     buildStart() {
       lintCatalogBuckets();
+      // The app's builds (not the English-only viewer or the standalone pages, which bundle complete catalogs).
+      if (building && options.catalogs !== false && options.prefix === undefined) lintSurfaceCatalogs();
       refresh();
     },
     resolveId(id, importer) {

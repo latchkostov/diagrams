@@ -1,5 +1,6 @@
 import { surfaceCatalogs } from "../i18n/surfaces";
-import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
+import { stencilLabel, stencilSubtitle, vendorLabel } from "../i18n/stencils";
+import { stencilDescription } from "../i18n/stencilDescriptions";
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
 

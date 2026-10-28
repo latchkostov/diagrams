@@ -6,7 +6,7 @@ import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker } from "../context";
 import { bindingValidator } from "../../model/kedaBindings";
 import { scalingFindings } from "../scalingFindings";
-import { PLATFORM } from "../../planning/scalingPlanText";
+import { PLATFORM } from "../../planning/scalingPlan";
 
 import type { Finding, CheckRule } from "../types";
 

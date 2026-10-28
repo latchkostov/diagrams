@@ -1,5 +1,5 @@
 import { coreCatalogs as catalogs, surfaceCatalogs, reviewed } from "virtual:i18n/catalogs";
-import { usedCatalogs } from "./surfaces";
+import { catalogsReady, markInstalled, resetInstalled, usedCatalogs, type SurfaceCatalog } from "./surfaces";
 import { safeStorage } from "../lib/storage";
 import { LOCALE_KEY, state, type Catalog } from "./index";
 
@@ -12,10 +12,14 @@ export { available, browserLocale, chosenLocale, isRtl, resolveLocale } from "./
 /** Whether a person has checked this language's translation (the rest say they're machine-translated). */
 export const isReviewed = (code: string) => code === "en" || reviewed.includes(code);
 
-/** Switches the language: `<html lang dir>`, the catalog, and every component that shows text re-renders. */
-export function setLocale(code: string, messages?: Catalog): void {
+/**
+ * Switches the language: `<html lang dir>`, the catalog (core plus the surface `buckets` merged into it), and every
+ * component that shows text re-renders.
+ */
+export function setLocale(code: string, messages?: Catalog, buckets: Iterable<SurfaceCatalog> = []): void {
   state.l = code;
   state.c = messages;
+  resetInstalled(code, buckets);
   state.a = code === "en" ? undefined : relativeAgo(code);
   const root = document.documentElement;
   root.lang = code;
@@ -38,10 +42,6 @@ export function relativeAgo(code: string): (at: number, now?: number) => string 
 
 /** Surfaces already used must switch atomically with the shell. Failed requests are retryable. */
 const parts = new Map<string, Promise<Catalog>>();
-let installedFor: Catalog | undefined;
-const installed = new Set<SurfaceCatalog>();
-import type { SurfaceCatalog } from "./bucketManifest";
-export type { SurfaceCatalog } from "./bucketManifest";
 function catalogPart(code: string, bucket: SurfaceCatalog): Promise<Catalog> {
   const key = `${code}/${bucket}`;
   let pending = parts.get(key);
@@ -55,43 +55,83 @@ function catalogPart(code: string, bucket: SurfaceCatalog): Promise<Catalog> {
   }
   return pending;
 }
+
+/** Resolves once the language on screen is no longer `code`. */
+function leaving(code: string): { promise: Promise<undefined>; stop: () => void } {
+  let stop = () => {};
+  const promise = new Promise<undefined>((resolve) => {
+    const check = () => {
+      if (state.l !== code) resolve(undefined);
+    };
+    state.f.add(check);
+    stop = () => void state.f.delete(check);
+    check();
+  });
+  return { promise, stop };
+}
+
+/**
+ * ./surfaces.ts's surfaceCatalogs: these buckets, for the language on screen. A language switch while they download
+ * re-targets the wait to the new language (which the switch has downloaded them for already), so an obsolete request
+ * neither holds the surface nor fails it. A failure for the language on screen rejects, unless a switch in progress
+ * then replaces that language.
+ */
 export async function loadSurfaceCatalogs(buckets: readonly SurfaceCatalog[]): Promise<void> {
   buckets.forEach((bucket) => usedCatalogs.add(bucket));
-  // A language choice may complete while a surface downloads. Never release it with the old language's strings.
-  let code: string;
-  do {
-    code = state.l;
-    const messages = code === "en" ? [] : await Promise.all(buckets.map((bucket) => catalogPart(code, bucket)));
-    if (state.l === code && state.c) {
-      if (installedFor !== state.c) installed.clear();
-      const additions = messages.filter((_message, i) => !installed.has(buckets[i]));
-      if (additions.length) state.c = Object.assign({}, state.c, ...additions);
-      installedFor = state.c;
-      buckets.forEach((bucket) => installed.add(bucket));
+  for (;;) {
+    const code = state.l;
+    if (catalogsReady(buckets, code)) return;
+    const left = leaving(code);
+    let messages: Catalog[] | undefined;
+    try {
+      messages = await Promise.race([Promise.all(buckets.map((bucket) => catalogPart(code, bucket))), left.promise]);
+    } catch (error) {
+      if (state.l === code) await switching?.catch(() => {});
+      if (state.l === code && !catalogsReady(buckets, code)) throw error;
+      continue;
+    } finally {
+      left.stop();
     }
-  } while (state.l !== code);
+    if (!messages || state.l !== code) continue;
+    const additions = messages.filter((_messages, i) => !catalogsReady([buckets[i]], code));
+    if (additions.length) state.c = Object.assign({}, state.c, ...additions);
+    markInstalled(code, buckets);
+    return;
+  }
 }
 
 let request = 0;
+/** The language switch in progress, if any. */
+let switching: Promise<boolean> | undefined;
 
 /**
  * Loads a language's catalog, then (only if no later call started meanwhile) runs `commit` and switches to it. True
  * when it switched, false when a later call superseded it. A failed download throws, unless superseded: nothing has
  * changed then, the language and the stored choice are still the previous ones.
  */
-async function apply(code: string, commit?: () => void): Promise<boolean> {
+function apply(code: string, commit?: () => void): Promise<boolean> {
+  const run = applying(code, commit);
+  switching = run;
+  const done = () => {
+    if (switching === run) switching = undefined;
+  };
+  run.then(done, done);
+  return run;
+}
+async function applying(code: string, commit?: () => void): Promise<boolean> {
   const mine = ++request;
   const load = catalogs[code];
   let messages: Catalog | undefined;
+  let buckets: SurfaceCatalog[] = [];
   try {
     messages = load ? { ...((await load()).default as Catalog) } : undefined;
     if (messages) {
-      let count: number;
+      // Surfaces opened while this downloads join it: the language never commits without their strings.
       do {
-        count = usedCatalogs.size;
-        const extras = await Promise.all([...usedCatalogs].map((bucket) => catalogPart(code, bucket)));
+        buckets = [...usedCatalogs];
+        const extras = await Promise.all(buckets.map((bucket) => catalogPart(code, bucket)));
         Object.assign(messages, ...extras);
-      } while (count !== usedCatalogs.size);
+      } while (buckets.length !== usedCatalogs.size);
     }
   } catch (error) {
     if (mine !== request) return false;
@@ -99,7 +139,7 @@ async function apply(code: string, commit?: () => void): Promise<boolean> {
   }
   if (mine !== request) return false;
   commit?.();
-  setLocale(code, messages);
+  setLocale(code, messages, buckets);
   return true;
 }
 

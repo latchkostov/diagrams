@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { notify } from "../interop/ui/toast";
+import { t } from "../i18n/core";
 
 // Code that isn't needed for the first view loads on first use, and earlier on intent: when the menu that
 // leads to it opens, on hover, or once the app is idle. Everything lazy goes through these helpers, so each
@@ -35,7 +36,10 @@ export const LOAD_FAILED = "Part of the app couldn't be downloaded. Check your c
 
 /** Says a download failed, in a toast whose Retry runs `retry`: the way back ships with the app, not what failed. */
 export function loadFailed(retry: () => void) {
-  notify(LOAD_FAILED, { kind: "error", action: { label: "Retry", run: retry, testId: "lazy-load-retry" } });
+  notify(t("ai.loadFailed"), {
+    kind: "error",
+    action: { label: t("common.retry"), run: retry, testId: "lazy-load-retry" },
+  });
 }
 
 /**

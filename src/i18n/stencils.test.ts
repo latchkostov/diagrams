@@ -17,7 +17,8 @@ import { parse, textOf } from "./icu";
 import { pseudoLocalize } from "./pseudo";
 import * as searchCore from "../lib/stencilSearchCore";
 import { categoryLabel } from "./chrome";
-import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "./stencils";
+import { stencilLabel, stencilSubtitle, vendorLabel } from "./stencils";
+import { stencilDescription } from "./stencilDescriptions";
 
 afterEach(() => {
   state.l = "en";

@@ -2,7 +2,7 @@ import type { DiagramOp } from "../ai";
 import type { PlanSuggestion, ScalingPlan } from "../sim/scalingPlanner";
 import type { CheckContext } from "./context";
 import type { Finding } from "./types";
-import { PLATFORM, planDescriptor, round } from "../planning/scalingPlanText";
+import { PLATFORM, planDescriptor, round } from "../planning/scalingPlan";
 
 // Scenario sizing in Checks: the planner's verified suggestions (src/sim/scalingPlanner.ts) as capacity findings, with
 // one undoable fix each. Agents (check_diagram, describe_diagram) and live playback read the same planner result.

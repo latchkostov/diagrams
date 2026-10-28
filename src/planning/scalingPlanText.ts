@@ -1,45 +1,9 @@
 import { t } from "../i18n/core";
 import { formatNumber } from "../i18n/number";
 import type { Finding } from "../checks/types";
-import type { PlanSuggestion, ScalingPlan } from "../sim/scalingPlanner";
 import type { ScalingDecisionReadout } from "../sim/autoscaling";
-
-export const round = (n: number) => (Math.abs(n) >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
-/** Product names stay as they are in every language. */
-export const PLATFORM: Record<PlanSuggestion["adapter"], string> = {
-  hpa: "HPA",
-  keda: "KEDA",
-  ecs: "ECS",
-  aca: "Container Apps",
-  appService: "App Service",
-  cloudRun: "Cloud Run",
-};
-/** The neutral, translatable form of one suggestion: Checks and live playback render the same descriptor. */
-export function planDescriptor(
-  plan: ScalingPlan,
-  s: PlanSuggestion,
-  names: (id: string) => string,
-): NonNullable<Finding["scalingPlan"]> {
-  return {
-    kind: s.kind,
-    name: names(s.node),
-    simulation: plan.title,
-    traffic: plan.traffic,
-    platform: PLATFORM[s.adapter],
-    unit:
-      s.adapter === "ecs" ? "tasks" : s.adapter === "appService" || s.adapter === "cloudRun" ? "instances" : "replicas",
-    from: s.from,
-    to: s.to,
-    wanted: s.wanted,
-    ...(s.metric !== undefined ? { metric: round(s.metric) } : {}),
-    ...(s.target !== undefined ? { target: round(s.target) } : {}),
-    ...(s.metricKind ? { metricKind: s.metricKind } : {}),
-    ...(s.broker ? { broker: names(s.broker) } : {}),
-    startupBacklog: Math.round(s.startupBacklog),
-    rejected: Math.round(s.verified?.rejected ?? 0),
-    verified: !!s.fix,
-  };
-}
+// The plan's data half: Checks rules and live playback build descriptors at startup without this module's text.
+export { PLATFORM, planDescriptor, round } from "./scalingPlan";
 
 type Plan = NonNullable<Finding["scalingPlan"]>;
 const n = (v: number | undefined) => formatNumber(v ?? 0, { maximumFractionDigits: 1 });

@@ -5,7 +5,8 @@ import { Icon } from "../../components/Icon";
 import type { DiagramFile } from "../../model/types";
 import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
-import { publishedTools, TOOL_HELP } from "../webmcp/toolList";
+import { publishedTools } from "../webmcp/toolList";
+import { TOOL_HELP } from "../webmcp/toolHelp";
 import { exampleRequest, exampleToCopy } from "./exampleRequest";
 import { paletteHost } from "../../palette/host";
 

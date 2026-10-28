@@ -21,6 +21,7 @@ import { SheetResizeHandle } from "./SheetResizeHandle";
 import { InteractionContext, useInteractionOrLocal } from "./interaction";
 
 import { PanelUnavailable } from "./inspector/PanelUnavailable";
+import { loadMultiPanel } from "./inspector/simulationLoaders";
 export { PanelUnavailable } from "./inspector/PanelUnavailable";
 
 /**
@@ -73,7 +74,7 @@ const DiagramPanel = defineLazySurface({
 });
 const MultiPanel = defineLazySurface({
   id: "inspector.multi",
-  load: () => import("./inspector/MultiPanel").then((m) => m.multiWhenReady()),
+  load: loadMultiPanel,
   placeholder: { render: pending() },
   focus: {},
   export: "skip",

@@ -186,3 +186,30 @@ it.each(["node", "edge", "boundary"])(
     }
   },
 );
+
+// R-49ad249fb4: a pending palette holds typing, but its loading dialog's Close takes Enter and Space.
+it("a pending modal's own buttons take Enter and Space; typing elsewhere is still held", () => {
+  const close = vi.fn();
+  const dialog = Object.assign(document.createElement("div"), { role: "dialog" });
+  dialog.setAttribute("aria-modal", "true");
+  const button = Object.assign(document.createElement("button"), { textContent: "Close" });
+  const outside = document.createElement("button");
+  dialog.append(button);
+  document.body.append(dialog, outside);
+  const capture = captureModalTypeAhead(close);
+  const press = (target: Element, key: string) => {
+    const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  try {
+    expect(press(button, "Enter")).toBe(false);
+    expect(press(button, " ")).toBe(false);
+    expect(press(button, "k")).toBe(true);
+    expect(press(outside, "Enter")).toBe(true);
+    expect(capture.stop()).toEqual({ text: "k", done: "enter" });
+    expect(close).not.toHaveBeenCalled();
+  } finally {
+    capture.stop();
+  }
+});

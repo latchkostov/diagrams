@@ -1,11 +1,15 @@
 import { surfaceCatalogs } from "../i18n/surfaces";
 import { lazyComponent } from "../lib/lazyLoad";
-import { stencilLabel, stencilDescription } from "../i18n/stencils";
+import { stencilLabel } from "../i18n/stencils";
 import { t, useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
 import { useSyncExternalStore, useRef, useLayoutEffect, type RefObject } from "react";
 import { MarkdownView } from "../components/markdown/lazy";
 import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
+import type { Stencil } from "../model/types";
+
+/** Descriptions are display text in the stencils catalog: their code arrives with it, when a tip first opens. */
+let describe: ((s: Stencil) => string) | undefined;
 
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
 export interface NodeTip {
@@ -69,7 +73,7 @@ export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: 
           {t("common.loading")}
         </span>
       ) : (
-        stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>
+        stencil.description && describe && <span className="node-tip-desc">{describe(stencil)}</span>
       )}
       {hasDoc && (
         <div className="node-tip-doc" data-testid="node-tooltip-doc">
@@ -82,7 +86,8 @@ export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: 
 
 const TranslatedNodeTooltip = lazyComponent(
   async () => {
-    await surfaceCatalogs(["stencils"]);
+    const [descriptions] = await Promise.all([import("../i18n/stencilDescriptions"), surfaceCatalogs(["stencils"])]);
+    describe = descriptions.stencilDescription;
     return NodeTooltip;
   },
   (props) => <NodeTooltip {...props} loading />,

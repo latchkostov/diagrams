@@ -5,7 +5,7 @@ declare module "virtual:i18n/catalogs" {
   export const coreCatalogs: typeof catalogs;
   export const surfaceCatalogs: Record<
     string,
-    Partial<Record<import("./load").SurfaceCatalog, (typeof catalogs)[string]>>
+    Partial<Record<import("./bucketManifest").SurfaceCatalog, (typeof catalogs)[string]>>
   >;
   /** Languages a person has reviewed; the rest are machine-translated. */
   export const reviewed: string[];
