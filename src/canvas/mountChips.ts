@@ -8,6 +8,7 @@ import { selectRoutes, type RouteOptions } from "./edges/useEdgeRoute";
 import type { ChipState, LowZoom } from "./lowZoom";
 import { registerFrameCapture } from "./camera/frameCapture";
 import { subscribeGeometry } from "./shapes/geometry";
+import { mountChipHits } from "./chipHits";
 
 /** Publication code stays in the lazy surface too. */
 function setLowZoom(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>, value: LowZoom | null) {
@@ -23,6 +24,7 @@ export function mountChips(
 ) {
   const context = document.createElement("canvas").getContext("2d");
   if (!context) return () => {};
+  const unhits = mountChipHits(root, context);
   const font = getComputedStyle(root).fontFamily;
   const measure = chipMeasurer((text, size) => {
     context.font = `560 ${size}px ${font}`;
@@ -118,10 +120,10 @@ export function mountChips(
       edge: (id, dependency, selected, naturalPath) =>
         chipEdge(
           id,
-          naturalPaths.get(id) === naturalPath ? (paths.get(id) ?? naturalPath) : naturalPath,
+          !selected && naturalPaths.get(id) === naturalPath ? (paths.get(id) ?? naturalPath) : naturalPath,
           dependency,
           selected,
-          [...(lanes.get(id) ?? [id])],
+          lanes.get(id) ?? id,
         ),
       Node: ChipNode,
       members,
@@ -167,6 +169,7 @@ export function mountChips(
     ungeometry();
     observer.disconnect();
     uncap();
+    unhits();
     root.removeAttribute("data-low-zoom");
     setLowZoom(store, null);
   };

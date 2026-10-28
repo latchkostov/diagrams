@@ -11,17 +11,20 @@ export function clear(el: Element) {
 export function rollup(pills: HTMLElement[], trouble: ReadonlyMap<string, number[]>) {
   for (const pill of pills) {
     const [failing, stressed] = trouble.get(pill.dataset.testid?.slice("zone-trouble-".length) ?? "") ?? [0, 0];
-    const text = failing || stressed ? t("live.zoneTrouble", { failing, stressed }) : "";
+    const text =
+      failing && stressed
+        ? t("live.zoneTrouble", { failing, stressed })
+        : failing
+          ? t("live.zoneFailing", { failing })
+          : stressed
+            ? t("live.zoneStressed", { stressed })
+            : "";
     if (pill.textContent !== text) pill.textContent = text;
     if (pill.hasAttribute("data-failing") !== !!failing) pill.toggleAttribute("data-failing", !!failing);
   }
 }
 
-export function rateLevel(el: HTMLElement, id: string, rates: ReadonlyMap<string, number>) {
-  const shared = el.firstElementChild?.getAttribute("data-chip-lanes");
-  const rate = shared
-    ? (JSON.parse(shared) as string[]).reduce((sum, edge) => sum + (rates.get(edge) ?? 0), 0)
-    : (rates.get(id) ?? 0);
+export function rateLevel(rate: number) {
   return Math.min(5, Math.ceil(Math.log10(1 + rate)));
 }
 
@@ -63,9 +66,15 @@ export function decorate(
       }
   }
   rollup(pills, trouble);
+  const groups = new Map<string, number>();
   const cut = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
+  const groupOf = (el: HTMLElement) => el.firstElementChild?.getAttribute("data-chip-group") ?? el.dataset.id!;
   for (const el of edges) {
-    attr(el, "data-live-rate", String(rateLevel(el, el.dataset.id!, rates)));
+    const group = groupOf(el);
+    groups.set(group, (groups.get(group) ?? 0) + (rates.get(el.dataset.id!) ?? 0) * (snapshot.scale ?? 1));
+  }
+  for (const el of edges) {
+    attr(el, "data-live-rate", String(rateLevel(groups.get(groupOf(el)) ?? 0)));
     attr(el, "data-live-cut", cut.has(el.dataset.id!) ? "1" : null);
   }
 }

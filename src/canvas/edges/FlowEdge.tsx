@@ -101,7 +101,16 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const glyph = (size: number) =>
     relation && Details ? <Details.RelationGlyph id={id} relation={relation} size={size} /> : null;
 
-  if (lowZoom) return lowZoom.edge(id, !!relation, !!selected, path);
+  const controls = selected && reconnect && route.points.length > 1 && (
+    <EdgeControls id={id} source={source} target={target} route={route} />
+  );
+  if (lowZoom)
+    return (
+      <>
+        {lowZoom.edge(id, !!relation, !!selected, path)}
+        {controls}
+      </>
+    );
 
   let body: ReactNode = null;
   if (label && label.mode !== "glyph") {
@@ -191,9 +200,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
       {title(deny ? Details?.denyTip : tip)}
       {deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />}
-      {selected && reconnect && route.points.length > 1 && (
-        <EdgeControls id={id} source={source} target={target} route={route} />
-      )}
+      {controls}
       {body && (
         <EdgeLabelRenderer>
           {body}

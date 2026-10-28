@@ -63,7 +63,6 @@ export interface DecorationStats {
 export class Decorator {
   private delivered = new Map<string, number>();
   private rates = new Map<string, number>();
-  private sampledAt = 0;
   private applied = new Map<Element, string>();
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
   private lastActive = new Map<string, number>();
@@ -92,19 +91,18 @@ export class Decorator {
     stats.applies++;
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
     const continuity = snapshotContinuity.get(snapshot);
-    if (continuity !== this.continuity || snapshot.time < this.lastTime) this.lastActive.clear();
-    if (continuity !== this.continuity || snapshot.time < this.sampledAt) {
+    const reset = continuity !== this.continuity || snapshot.time < this.lastTime;
+    if (reset) {
+      this.lastActive.clear();
       this.delivered.clear();
       this.rates.clear();
-      this.sampledAt = 0;
     }
-    const interval = snapshot.time - this.sampledAt;
+    const interval = snapshot.time - (reset ? 0 : this.lastTime || 0);
     if (interval > 0) {
       for (const edge of Object.values(snapshot.edges)) {
         this.rates.set(edge.id, (Math.max(0, edge.delivered - (this.delivered.get(edge.id) ?? 0)) * 1000) / interval);
         this.delivered.set(edge.id, edge.delivered);
       }
-      this.sampledAt = snapshot.time;
     }
     const mainThreshold = mainRateThreshold([...this.rates.values()]);
     this.continuity = continuity;

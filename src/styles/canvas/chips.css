@@ -158,6 +158,6 @@ body:has([data-low-zoom]) .hover-name strong {
   line-height: 1.4;
 }
 [data-low-zoom] .chip-trouble[data-failing] {
-  background: var(--status-down);
+  background: #a52634;
   color: white;
 }

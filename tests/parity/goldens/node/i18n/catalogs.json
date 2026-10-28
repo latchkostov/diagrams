@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 4077,
-    "fallback": 1080,
+    "messages": 4079,
+    "fallback": 1082,
     "areas": {
       "admission": "121edeb22016",
       "ai": "ff5a7a5d025f",
@@ -41,7 +41,7 @@
       "language": "362b2582a8f0",
       "latency": "230e9c6e35ea",
       "library": "83dbfbe40b57",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "6ec2b560ed3f",
@@ -86,8 +86,8 @@
     }
   },
   "bg": {
-    "messages": 4077,
-    "fallback": 1232,
+    "messages": 4079,
+    "fallback": 1234,
     "areas": {
       "admission": "def06fe38e15",
       "ai": "be21a15fe0c2",
@@ -127,7 +127,7 @@
       "language": "2c2b795a53fa",
       "latency": "230e9c6e35ea",
       "library": "4d192360f90a",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "bd7271a4318e",
@@ -172,8 +172,8 @@
     }
   },
   "cs": {
-    "messages": 4077,
-    "fallback": 1237,
+    "messages": 4079,
+    "fallback": 1239,
     "areas": {
       "admission": "066588ffecd0",
       "ai": "cdac78f5eabc",
@@ -213,7 +213,7 @@
       "language": "5f5e97c9ffee",
       "latency": "230e9c6e35ea",
       "library": "ef52fe194717",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "e30d1483a946",
@@ -258,8 +258,8 @@
     }
   },
   "da": {
-    "messages": 4077,
-    "fallback": 1214,
+    "messages": 4079,
+    "fallback": 1216,
     "areas": {
       "admission": "8d54b2ff603b",
       "ai": "30c366fbcaa3",
@@ -299,7 +299,7 @@
       "language": "fee416cd2a5e",
       "latency": "230e9c6e35ea",
       "library": "bb69950075b4",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "fc8cebf2f505",
@@ -344,8 +344,8 @@
     }
   },
   "de": {
-    "messages": 4077,
-    "fallback": 1219,
+    "messages": 4079,
+    "fallback": 1221,
     "areas": {
       "admission": "168ce3bd30f9",
       "ai": "857638035ad7",
@@ -385,7 +385,7 @@
       "language": "0005fc23b80d",
       "latency": "230e9c6e35ea",
       "library": "4ad44be9833b",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "e6dac51c5002",
@@ -430,8 +430,8 @@
     }
   },
   "el": {
-    "messages": 4077,
-    "fallback": 1229,
+    "messages": 4079,
+    "fallback": 1231,
     "areas": {
       "admission": "a9b1a9673fb3",
       "ai": "c7556c1b9ccf",
@@ -471,7 +471,7 @@
       "language": "fc569ff1b260",
       "latency": "230e9c6e35ea",
       "library": "55e7f0a634c2",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "ed80bf3c789b",
@@ -516,7 +516,7 @@
     }
   },
   "en-XA": {
-    "messages": 4077,
+    "messages": 4079,
     "fallback": 0,
     "areas": {
       "admission": "1da83bed3b5a",
@@ -557,7 +557,7 @@
       "language": "ef372da04b34",
       "latency": "992ab73c7525",
       "library": "c8d2a2410442",
-      "live": "41a0d8cfff0b",
+      "live": "0fb1e7682be2",
       "liveMenu": "0e6bbdb27e67",
       "liveSession": "0d66e16a4f46",
       "menu": "9284313a3107",
@@ -602,8 +602,8 @@
     }
   },
   "es": {
-    "messages": 4077,
-    "fallback": 1242,
+    "messages": 4079,
+    "fallback": 1244,
     "areas": {
       "admission": "dacc268e5f2c",
       "ai": "5f18f254b452",
@@ -643,7 +643,7 @@
       "language": "552f2c696ee3",
       "latency": "230e9c6e35ea",
       "library": "6fda3bb2b403",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "cc9ffdc97230",
@@ -688,8 +688,8 @@
     }
   },
   "et": {
-    "messages": 4077,
-    "fallback": 1236,
+    "messages": 4079,
+    "fallback": 1238,
     "areas": {
       "admission": "0ae56a092762",
       "ai": "d66d3769adc9",
@@ -729,7 +729,7 @@
       "language": "fa29f5cc492e",
       "latency": "230e9c6e35ea",
       "library": "48fb926522eb",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "d63899f10429",
@@ -774,8 +774,8 @@
     }
   },
   "fi": {
-    "messages": 4077,
-    "fallback": 1230,
+    "messages": 4079,
+    "fallback": 1232,
     "areas": {
       "admission": "bf60c3fe037d",
       "ai": "e9b23cd51b4e",
@@ -815,7 +815,7 @@
       "language": "db0d5db48332",
       "latency": "230e9c6e35ea",
       "library": "ca22e516d952",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "4b0e128c354d",
@@ -860,8 +860,8 @@
     }
   },
   "fr": {
-    "messages": 4077,
-    "fallback": 1230,
+    "messages": 4079,
+    "fallback": 1232,
     "areas": {
       "admission": "bb0eadf5ab52",
       "ai": "8372266af473",
@@ -901,7 +901,7 @@
       "language": "106cd400c2b9",
       "latency": "230e9c6e35ea",
       "library": "d678088cfad1",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "9d6809e15ac3",
@@ -946,8 +946,8 @@
     }
   },
   "he": {
-    "messages": 4077,
-    "fallback": 1242,
+    "messages": 4079,
+    "fallback": 1244,
     "areas": {
       "admission": "602fa127a059",
       "ai": "1c4de3ee24a5",
@@ -987,7 +987,7 @@
       "language": "74f4de0fe69a",
       "latency": "230e9c6e35ea",
       "library": "79bc8e2bb936",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "3fdf6e73158b",
@@ -1032,8 +1032,8 @@
     }
   },
   "hi": {
-    "messages": 4077,
-    "fallback": 1238,
+    "messages": 4079,
+    "fallback": 1240,
     "areas": {
       "admission": "4ec4a9cccfbb",
       "ai": "c2134710abdb",
@@ -1073,7 +1073,7 @@
       "language": "b049fecd436d",
       "latency": "230e9c6e35ea",
       "library": "5394d4363f68",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "f69e1d515426",
@@ -1118,8 +1118,8 @@
     }
   },
   "hr": {
-    "messages": 4077,
-    "fallback": 1221,
+    "messages": 4079,
+    "fallback": 1223,
     "areas": {
       "admission": "1b8bc555e482",
       "ai": "41b8c5bd02f8",
@@ -1159,7 +1159,7 @@
       "language": "b24482152b77",
       "latency": "230e9c6e35ea",
       "library": "ffde00a33a6e",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "4951db019c58",
@@ -1204,8 +1204,8 @@
     }
   },
   "hu": {
-    "messages": 4077,
-    "fallback": 1215,
+    "messages": 4079,
+    "fallback": 1217,
     "areas": {
       "admission": "8e346cdb7fce",
       "ai": "999015b453fc",
@@ -1245,7 +1245,7 @@
       "language": "fe3cb3031080",
       "latency": "230e9c6e35ea",
       "library": "2c5fbd3f130c",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "fd95f8104868",
@@ -1290,8 +1290,8 @@
     }
   },
   "id": {
-    "messages": 4077,
-    "fallback": 1236,
+    "messages": 4079,
+    "fallback": 1238,
     "areas": {
       "admission": "8f0966817eba",
       "ai": "7508253d3643",
@@ -1331,7 +1331,7 @@
       "language": "b289e5312980",
       "latency": "230e9c6e35ea",
       "library": "6c0c6f7feb79",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "12f59b5ac3cc",
@@ -1376,8 +1376,8 @@
     }
   },
   "it": {
-    "messages": 4077,
-    "fallback": 1217,
+    "messages": 4079,
+    "fallback": 1219,
     "areas": {
       "admission": "fb4977929365",
       "ai": "b1bdb1b943f2",
@@ -1417,7 +1417,7 @@
       "language": "563ebaf18327",
       "latency": "230e9c6e35ea",
       "library": "a490b500a1f2",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "fac02292e3a5",
@@ -1462,8 +1462,8 @@
     }
   },
   "ja": {
-    "messages": 4077,
-    "fallback": 1214,
+    "messages": 4079,
+    "fallback": 1216,
     "areas": {
       "admission": "70c62834aa0d",
       "ai": "16916e4a6466",
@@ -1503,7 +1503,7 @@
       "language": "3eb9b936faaf",
       "latency": "230e9c6e35ea",
       "library": "36e35fb154e6",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "e896501e01e1",
@@ -1548,8 +1548,8 @@
     }
   },
   "ko": {
-    "messages": 4077,
-    "fallback": 1191,
+    "messages": 4079,
+    "fallback": 1193,
     "areas": {
       "admission": "fb802d28f5cc",
       "ai": "b9713b0ebc36",
@@ -1589,7 +1589,7 @@
       "language": "144763da7443",
       "latency": "230e9c6e35ea",
       "library": "809d2e360085",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "a74769f54744",
@@ -1634,8 +1634,8 @@
     }
   },
   "lt": {
-    "messages": 4077,
-    "fallback": 1251,
+    "messages": 4079,
+    "fallback": 1253,
     "areas": {
       "admission": "b8be855f86e3",
       "ai": "a60d18c72aca",
@@ -1675,7 +1675,7 @@
       "language": "47b5005d8d0d",
       "latency": "230e9c6e35ea",
       "library": "4cb340bcaac5",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "6c12b522bfad",
@@ -1720,8 +1720,8 @@
     }
   },
   "lv": {
-    "messages": 4077,
-    "fallback": 1247,
+    "messages": 4079,
+    "fallback": 1249,
     "areas": {
       "admission": "cc8ad95b3519",
       "ai": "7abcc8e0fca5",
@@ -1761,7 +1761,7 @@
       "language": "afec9e38d8a0",
       "latency": "230e9c6e35ea",
       "library": "3ca2a9dd957a",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "07fe6a607486",
@@ -1806,8 +1806,8 @@
     }
   },
   "nb": {
-    "messages": 4077,
-    "fallback": 1226,
+    "messages": 4079,
+    "fallback": 1228,
     "areas": {
       "admission": "69c76ff37ebc",
       "ai": "1f5a7dd90494",
@@ -1847,7 +1847,7 @@
       "language": "8bc8d54f69d4",
       "latency": "230e9c6e35ea",
       "library": "783894421b6b",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "83d638e163bc",
@@ -1892,8 +1892,8 @@
     }
   },
   "nl": {
-    "messages": 4077,
-    "fallback": 1221,
+    "messages": 4079,
+    "fallback": 1223,
     "areas": {
       "admission": "a0d535143838",
       "ai": "9c887bebfb5c",
@@ -1933,7 +1933,7 @@
       "language": "7302fe174fd7",
       "latency": "230e9c6e35ea",
       "library": "0a73c794507e",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "a85433a25428",
@@ -1978,8 +1978,8 @@
     }
   },
   "pl": {
-    "messages": 4077,
-    "fallback": 1234,
+    "messages": 4079,
+    "fallback": 1236,
     "areas": {
       "admission": "e997456a041d",
       "ai": "0076fec882b3",
@@ -2019,7 +2019,7 @@
       "language": "f552f6c4ceed",
       "latency": "230e9c6e35ea",
       "library": "47aaf115560a",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "9d9206e1d209",
@@ -2064,8 +2064,8 @@
     }
   },
   "pt-BR": {
-    "messages": 4077,
-    "fallback": 1238,
+    "messages": 4079,
+    "fallback": 1240,
     "areas": {
       "admission": "e6ad0a691675",
       "ai": "a599e0c7104c",
@@ -2105,7 +2105,7 @@
       "language": "e45cb13a2553",
       "latency": "230e9c6e35ea",
       "library": "21b1d9baa7d2",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "95ea19c135f4",
@@ -2150,8 +2150,8 @@
     }
   },
   "pt-PT": {
-    "messages": 4077,
-    "fallback": 1238,
+    "messages": 4079,
+    "fallback": 1240,
     "areas": {
       "admission": "81395bb7060b",
       "ai": "da44ea732c3a",
@@ -2191,7 +2191,7 @@
       "language": "d4459dad0bcc",
       "latency": "230e9c6e35ea",
       "library": "86aa5f281697",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "211f3b5a421d",
@@ -2236,8 +2236,8 @@
     }
   },
   "ro": {
-    "messages": 4077,
-    "fallback": 1212,
+    "messages": 4079,
+    "fallback": 1214,
     "areas": {
       "admission": "3fcadcd08687",
       "ai": "690dd0af944f",
@@ -2277,7 +2277,7 @@
       "language": "fa1df566128d",
       "latency": "230e9c6e35ea",
       "library": "9101f5639c67",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "0526c40baf7b",
@@ -2322,8 +2322,8 @@
     }
   },
   "ru": {
-    "messages": 4077,
-    "fallback": 1255,
+    "messages": 4079,
+    "fallback": 1257,
     "areas": {
       "admission": "7813e4e0dc3e",
       "ai": "419829673723",
@@ -2363,7 +2363,7 @@
       "language": "6ef2c227aaa4",
       "latency": "230e9c6e35ea",
       "library": "96ebbaea0251",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "f36ffd0a85b9",
@@ -2408,8 +2408,8 @@
     }
   },
   "sk": {
-    "messages": 4077,
-    "fallback": 1243,
+    "messages": 4079,
+    "fallback": 1245,
     "areas": {
       "admission": "a2f3f4ec56a8",
       "ai": "b584a1750e62",
@@ -2449,7 +2449,7 @@
       "language": "74843c58443c",
       "latency": "230e9c6e35ea",
       "library": "245c2efac154",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "761e31d73ba7",
@@ -2494,8 +2494,8 @@
     }
   },
   "sl": {
-    "messages": 4077,
-    "fallback": 1224,
+    "messages": 4079,
+    "fallback": 1226,
     "areas": {
       "admission": "d812b216e3d3",
       "ai": "844c5fe53eda",
@@ -2535,7 +2535,7 @@
       "language": "3b642ac3fe6e",
       "latency": "230e9c6e35ea",
       "library": "89fe5b8bcbc0",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "8087b86b6d5f",
@@ -2580,8 +2580,8 @@
     }
   },
   "sr-Latn": {
-    "messages": 4077,
-    "fallback": 1236,
+    "messages": 4079,
+    "fallback": 1238,
     "areas": {
       "admission": "5c6599b6aad0",
       "ai": "571bcb1e2693",
@@ -2621,7 +2621,7 @@
       "language": "fb1fe0d64661",
       "latency": "230e9c6e35ea",
       "library": "8905dc2a1fdf",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "d76bdc82f0ba",
@@ -2666,8 +2666,8 @@
     }
   },
   "sv": {
-    "messages": 4077,
-    "fallback": 1222,
+    "messages": 4079,
+    "fallback": 1224,
     "areas": {
       "admission": "b6d059ceea0b",
       "ai": "488379e2ee77",
@@ -2707,7 +2707,7 @@
       "language": "f8738a650ac3",
       "latency": "230e9c6e35ea",
       "library": "50ce4cd0bf19",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "bafce344cb5b",
@@ -2752,8 +2752,8 @@
     }
   },
   "th": {
-    "messages": 4077,
-    "fallback": 1249,
+    "messages": 4079,
+    "fallback": 1251,
     "areas": {
       "admission": "5c9e712f50f6",
       "ai": "25e5a5758e0a",
@@ -2793,7 +2793,7 @@
       "language": "f38c0cf806f9",
       "latency": "230e9c6e35ea",
       "library": "bdb9002f9f39",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "db0c7a629a59",
@@ -2838,8 +2838,8 @@
     }
   },
   "tr": {
-    "messages": 4077,
-    "fallback": 1241,
+    "messages": 4079,
+    "fallback": 1243,
     "areas": {
       "admission": "b1fe3a48378c",
       "ai": "2c45c177a3eb",
@@ -2879,7 +2879,7 @@
       "language": "afe4ccec85ab",
       "latency": "230e9c6e35ea",
       "library": "a9d0f1842afa",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "b48b69c8eb25",
@@ -2924,8 +2924,8 @@
     }
   },
   "uk": {
-    "messages": 4077,
-    "fallback": 1227,
+    "messages": 4079,
+    "fallback": 1229,
     "areas": {
       "admission": "b52b23521706",
       "ai": "00c91ebd48c1",
@@ -2965,7 +2965,7 @@
       "language": "52bdb9be0348",
       "latency": "230e9c6e35ea",
       "library": "ae53ea1abd75",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "3ab49402bee3",
@@ -3010,8 +3010,8 @@
     }
   },
   "vi": {
-    "messages": 4077,
-    "fallback": 1231,
+    "messages": 4079,
+    "fallback": 1233,
     "areas": {
       "admission": "c9572d0ee7aa",
       "ai": "88456409d7c5",
@@ -3051,7 +3051,7 @@
       "language": "68f661659799",
       "latency": "230e9c6e35ea",
       "library": "cab2c5f1f6b0",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "fb12c4da86bd",
@@ -3096,8 +3096,8 @@
     }
   },
   "zh-CN": {
-    "messages": 4077,
-    "fallback": 1231,
+    "messages": 4079,
+    "fallback": 1233,
     "areas": {
       "admission": "73ac7006d6ca",
       "ai": "3ef50488a156",
@@ -3137,7 +3137,7 @@
       "language": "ffd2ad28868c",
       "latency": "230e9c6e35ea",
       "library": "7188ee065959",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "9aa72e4fb1b7",
@@ -3182,8 +3182,8 @@
     }
   },
   "zh-TW": {
-    "messages": 4077,
-    "fallback": 1233,
+    "messages": 4079,
+    "fallback": 1235,
     "areas": {
       "admission": "8cd77def2e44",
       "ai": "aa167b14e4aa",
@@ -3223,7 +3223,7 @@
       "language": "b956cdbfac11",
       "latency": "230e9c6e35ea",
       "library": "139a8f80166e",
-      "live": "c3f4e0df7ff2",
+      "live": "5e9d7abe3fc1",
       "liveMenu": "2d4d0c3d5c3e",
       "liveSession": "9567b4b9606f",
       "menu": "5bbc15cda0c8",

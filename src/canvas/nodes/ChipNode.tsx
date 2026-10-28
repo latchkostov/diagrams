@@ -33,12 +33,12 @@ export function ChipNode({ stencil, label, selected, fit }: NodeBodyProps & { fi
   );
 }
 
-export function chipEdge(id: string, path: string, dependency: boolean, selected: boolean, lanes: string[]) {
+export function chipEdge(id: string, path: string, dependency: boolean, selected: boolean, group: string) {
   return (
     <g
       className={`fe fe-chip${dependency ? " fe-dep" : ""}${selected ? " is-selected" : ""}`}
       data-testid={`edge-${id}`}
-      data-chip-lanes={JSON.stringify(lanes)}
+      data-chip-group={group}
     >
       <path
         data-testid={`connection-stroke-${id}`}

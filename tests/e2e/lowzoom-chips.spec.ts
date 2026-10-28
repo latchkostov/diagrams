@@ -131,6 +131,8 @@ test("a troubled drill accents chips and rolls up zone health without animated c
     .poll(() => page.getByTestId("live-canvas").evaluate((el) => getComputedStyle(el).visibility))
     .toBe("hidden");
   await pauseClock(page);
+  // Flush the UI's batched frame counter (and any already posted worker reply).
+  await page.clock.runFor(1000);
   const frames = await page.getByTestId("live-canvas").getAttribute("data-frames");
   await page.clock.runFor(1000);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-frames", frames ?? "0");
@@ -139,3 +141,34 @@ test("a troubled drill accents chips and rolls up zone health without animated c
   await expect(page.getByTestId("hover-full-name")).toHaveText("Loyalty points");
   await expect(page.getByTestId("hover-full-name")).not.toHaveAttribute("title");
 });
+
+for (const renderer of ["worker", "main"])
+  test(`low zoom stops painting during running playback: ${renderer}`, async ({ page }) => {
+    await page.clock.install();
+    await gotoLive(page, `./?view=canvas&example=kafka-order-pipeline&live=1&sim=black-friday&renderer=${renderer}`);
+    await zoomIdentity(page, 0.8);
+    await pauseClock(page);
+    const canvas = page.getByTestId("live-canvas");
+    const frames = async () => Number(await canvas.getAttribute("data-frames"));
+    const clock = async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
+    const first = await frames();
+    await page.clock.runFor(1000);
+    expect(await frames()).toBeGreaterThan(first);
+    await page.clock.resume();
+    await zoomIdentity(page, 0.4);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+    await pauseClock(page);
+    // Counters publish every other UI tick; measure after that pending publish.
+    await page.clock.runFor(1000);
+    const stopped = await frames();
+    const time = await clock();
+    await page.clock.runFor(1000);
+    expect(await clock()).toBeGreaterThan(time);
+    expect(await frames()).toBe(stopped);
+    await page.clock.resume();
+    await zoomIdentity(page, 0.8);
+    await pauseClock(page);
+    const resumed = await frames();
+    await page.clock.runFor(1000);
+    expect(await frames()).toBeGreaterThan(resumed);
+  });

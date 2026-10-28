@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { chipMeasurer, fitChip, layoutChips } from "./chipLayout";
 import { chipEdges } from "./chipEdges";
+import { opGrowth } from "../test/opCounter";
 
 const measure = (s: string, px: number) => s.length * px * 0.5;
 describe("settled chips", () => {
@@ -57,7 +58,7 @@ describe("settled chips", () => {
     const { paths, lanes } = chipEdges(routes, 0.4);
     expect(paths.get("a")).toBe(paths.get("b"));
     expect(paths.get("a")).toContain(" M");
-    expect([...lanes.get("a")!]).toEqual(["a", "b"]);
+    expect(lanes.get("a")).toBe(lanes.get("b"));
     expect(routes.get("a")!.points[0].y).toBe(0);
   });
   it("merges a whole chain once rather than resnapping the middle lane", () => {
@@ -74,5 +75,75 @@ describe("settled chips", () => {
     );
     const { paths } = chipEdges(routes, 0.4);
     expect(new Set(paths.values()).size).toBe(1);
+  });
+  it("indexes coincident lanes with linear membership storage and subquadratic work", () => {
+    const routes = (n: number) =>
+      new Map(
+        Array.from({ length: n }, (_, i) => [
+          String(i),
+          {
+            points: [
+              { x: 0, y: 0 },
+              { x: 200, y: 0 },
+            ],
+          },
+        ]),
+      );
+    const small = routes(250),
+      large = routes(2000);
+    expect(
+      opGrowth(
+        () => chipEdges(small, 0.4),
+        () => chipEdges(large, 0.4),
+      ),
+    ).toBeLessThanOrEqual(24);
+    const { lanes } = chipEdges(large, 0.4);
+    expect(lanes.size).toBe(large.size);
+    expect([...lanes.values()].every((group) => typeof group === "string")).toBe(true);
+    expect(new Set(lanes.values()).size).toBe(1);
+  });
+  it("keeps disjoint and perpendicular lanes separate, including touching intervals", () => {
+    const { lanes } = chipEdges(
+      new Map([
+        [
+          "a",
+          {
+            points: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+            ],
+          },
+        ],
+        [
+          "b",
+          {
+            points: [
+              { x: 100, y: 0 },
+              { x: 200, y: 0 },
+            ],
+          },
+        ],
+        [
+          "c",
+          {
+            points: [
+              { x: 0, y: 20 },
+              { x: 100, y: 20 },
+            ],
+          },
+        ],
+        [
+          "d",
+          {
+            points: [
+              { x: 50, y: -50 },
+              { x: 50, y: 50 },
+            ],
+          },
+        ],
+      ]),
+      0.4,
+    );
+    expect(new Set(lanes.values()).size).toBe(4);
   });
 });
