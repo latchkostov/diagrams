@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { titleBand } from "./frameEdges";
+import { TitleBands, titleBand } from "./frameEdges";
+import { opGrowth } from "../../test/opCounter";
 import { intersects } from "../geometry/rect";
 
 it("reserves bands outside nested boundaries, clear of cards, edges and other titles", () => {
@@ -18,5 +19,26 @@ it("reserves bands outside nested boundaries, clear of cards, edges and other ti
     expect(title.x).toBeLessThanOrEqual(region.x + region.width);
     expect(obstacles.some((r) => intersects(title, r))).toBe(false);
     obstacles.push(title);
+  }
+});
+
+it("bounds co-located imported zone titles to linear work with a collision-free fallback", () => {
+  const place = (count: number) => {
+    const bands = new TitleBands([{ x: -100, y: -50, width: 600, height: 100 }]);
+    const titles = [];
+    for (let i = 0; i < count; i++)
+      titles.push(bands.place({ x: 0, y: 0, width: 300, height: 200 }, { width: 290, height: 18 }));
+    return titles;
+  };
+  expect(
+    opGrowth(
+      () => place(250),
+      () => place(2000),
+    ),
+  ).toBeLessThanOrEqual(24);
+  const titles = place(2000);
+  for (let i = 0; i < titles.length; i++) {
+    expect(titles[i].y + titles[i].height).toBeLessThanOrEqual(-54);
+    expect(titles.slice(0, i).some((r) => intersects(r, titles[i]))).toBe(false);
   }
 });

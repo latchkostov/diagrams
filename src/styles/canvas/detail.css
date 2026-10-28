@@ -1,5 +1,5 @@
 /* Presentation detail belongs to the editor frame, never to an exported viewport. */
-[data-detail-view] :is(.grp-label, .ann-zone-label) {
+[data-detail-view] :is(.grp-label, .ann-zone:not(.is-editing) .ann-zone-label) {
   top: 0;
   transform-origin: 0 0;
   transform: scale(calc(1 / var(--rf-zoom-exact, 1))) translateY(calc(-100% - 4px));
