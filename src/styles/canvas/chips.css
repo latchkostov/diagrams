@@ -73,10 +73,6 @@ body:has([data-low-zoom]) .hover-name strong {
   animation: none !important;
   marker-end: none;
 }
-/* Hit testing ignores vector-effect, so the width scales with the zoom instead. */
-[data-low-zoom] .fe-chip .react-flow__edge-interaction {
-  stroke-width: calc(22px / var(--rf-zoom-exact));
-}
 [data-low-zoom] .react-flow__edge .fe-chip.fe-dep .fe-path {
   opacity: 0.45;
 }

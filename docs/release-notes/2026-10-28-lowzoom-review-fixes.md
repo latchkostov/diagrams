@@ -1,6 +1,6 @@
 ## Low-zoom editing and Live summaries (#378, review round 1)
 
-Connections remain selectable and reach their context menu within 11 screen pixels at low zoom. Selected connections retain endpoint reconnection and keyboard shaping; their controls follow the displayed natural route.
+Connections remain selectable and reach their context menu through the natural edge's hit stroke at low zoom. Selected connections retain endpoint reconnection and keyboard shaping; their controls follow the displayed natural route.
 
 Merged lanes now use a sweep index and one group reference per connection, replacing quadratic membership copies and pairwise scans. Live sums each group's traffic once per update, in real messages per second, so sampling does not change stroke weight.
 

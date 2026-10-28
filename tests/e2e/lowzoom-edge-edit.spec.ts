@@ -26,18 +26,23 @@ for (const zoom of [0.4, 0.25])
     await zoomIdentity(page, zoom);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", zoom < 0.3 ? "far" : "mid");
     const line = page.getByTestId("connection-stroke-ab");
+    // Beside the 1-pixel hairline, inside the natural edge's 22-unit hit stroke (11 units each side), which the
+    // chip keeps at every zoom: a hairline is exactly as clickable as the card-view edge was, and no more.
     const offsetPoint = () =>
-      line.evaluate((el: SVGPathElement) => {
-        const point = el.getPointAtLength(el.getTotalLength() / 2);
-        const matrix = el.getScreenCTM();
-        if (!matrix) throw new Error("Missing connection transform");
-        const p = new DOMPoint(point.x, point.y).matrixTransform(matrix);
-        return { x: p.x, y: p.y + 4 };
-      });
+      line.evaluate(
+        (el: SVGPathElement, beside) => {
+          const point = el.getPointAtLength(el.getTotalLength() / 2);
+          const matrix = el.getScreenCTM();
+          if (!matrix) throw new Error("Missing connection transform");
+          const p = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+          return { x: p.x, y: p.y + beside };
+        },
+        11 * zoom - 1,
+      );
     const offset = await offsetPoint();
     const mark = await cameraJournalMark(page);
-    // The hairline's 22-pixel hit stroke is React Flow's own: the click selects and focuses the connection
-    // natively, and (as for any selection below 50% in Edit) the camera opens the focus view on it.
+    // The hit stroke is React Flow's own: the click selects and focuses the connection natively, and (as for
+    // any selection below 50% in Edit) the camera opens the focus view on it.
     await page.mouse.click(offset.x, offset.y);
     await expect(page.getByTestId("reconnect-ab-source")).toBeVisible();
     await waitForCameraIdle(page);

@@ -123,7 +123,7 @@ it("draws a hairline with React Flow's own hit stroke and the deny marker inside
       );
       expect(markup).toContain('data-deny="true"');
       expect(markup).toMatch(/<g id="deny"><\/g><\/g>/);
-      // chips.css widens it to 22 screen pixels at any zoom (lowzoom-edge-edit.spec.ts clicks beside the line).
+      // The natural edge's own width, so a hairline takes no more of the canvas than its card-view edge did.
       expect(markup).toContain('class="react-flow__edge-interaction" fill="none" stroke-opacity="0" stroke-width="22"');
       expect(
         renderToStaticMarkup(createElement("svg", null, Edge("ab", "M0,0 L320,0", false, false, "ab", null))),

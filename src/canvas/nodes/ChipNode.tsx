@@ -56,7 +56,7 @@ export function chipEdge(
         className="fe-path react-flow__edge-path"
         vectorEffect="non-scaling-stroke"
       />
-      {/* The hairline is only ink: React Flow's own hit target stays 22 screen pixels wide (chips.css). */}
+      {/* The hairline is only ink: the hit stroke is the natural edge's, 22 units wide at every zoom. */}
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
       {deny}
     </g>
