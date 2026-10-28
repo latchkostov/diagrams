@@ -196,6 +196,15 @@ it("keeps accounting's internal ports out of shipped property names", () => {
     );
 });
 
+it("keeps checkpoint graph slot labels out of shipped property names", () => {
+  const checkpoint = chunks.filter((chunk) =>
+    Object.keys(chunk.modules).some((id) => /[/\\]sim[/\\]engine[/\\]checkpoint\.ts$/.test(id)),
+  );
+  expect(checkpoint.length).toBeGreaterThan(0);
+  for (const chunk of checkpoint)
+    expect(/\b(?:echoExpiries|echoByTime|drawnTrips|logicalIndices):/.test(chunk.code)).toBe(false);
+});
+
 const chunkIn = (b: Build, fileName: string) => {
   const found = b.chunks.find((c) => c.fileName === fileName);
   if (!found) throw new Error(`No chunk ${fileName}`);
@@ -253,6 +262,16 @@ describe("production bundle split", () => {
     const live = b.chunks.find((c) => c.name === "LiveSession");
     expect(live).toBeDefined();
     const extra = [...closure([live!], b)].filter((c) => !canvas.has(c));
+    expect(
+      [...canvas].some((c) =>
+        Object.keys(c.modules).some((id) => /[/\\]src[/\\]live[/\\]checkpointRing\.ts$/.test(id)),
+      ),
+    ).toBe(false);
+    expect(
+      [...canvas].some((c) =>
+        Object.keys(c.modules).some((id) => /[/\\]src[/\\]sim[/\\]engine[/\\]checkpoint\.ts$/.test(id)),
+      ),
+    ).toBe(false);
     const gzip = (set: Iterable<Rollup.OutputChunk>) =>
       [...set].reduce((bytes, c) => bytes + gzipSync(c.code, { level: 9 }).length, 0);
     const code = b.chunks.map((c) => c.code).join("\n");

@@ -453,6 +453,8 @@ export interface MessageTracer {
 /** Opaque, in-memory checkpoint. Only the engine that captured it can restore it. */
 export interface EngineCheckpoint {
   readonly time: number;
+  /** Estimated retained bytes, including shared data charged in full. */
+  readonly bytes: number;
 }
 
 export interface SimEngine {
@@ -585,6 +587,7 @@ export interface SimulationRunState {
 /** Opaque full-run checkpoint, owned by one runner and invalidated by restart. */
 export interface SimulationRunCheckpoint {
   readonly time: number;
+  readonly bytes: number;
 }
 
 export interface SimulationRun {

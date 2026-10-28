@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { watchCheckpoints } from "../test/checkpointProbe";
+import { describe, expect, it } from "vitest";
 import type { DiagramFile, SimRole } from "../model/types";
 import { createEngine } from "./engine";
 import {
@@ -10,7 +11,6 @@ import {
   LATENCY_BUCKETS,
   LATENCY_TYPES,
   LATENCY_TYPE_HISTOGRAMS,
-  type LatencyRecorder,
 } from "./latency";
 import { latencyBudgetFixture } from "../lab/latencyBudgetFixture";
 import { validateDiagram } from "../interop/native";
@@ -77,20 +77,19 @@ describe("bounded async latency", () => {
     run.step(1000);
     // Observe the actual checkpoint graphs after their latency recorders have been attached.
     // Count distinct allocated bucket arrays, not heap estimates or checkpoint timing.
-    const clone = vi.spyOn(globalThis, "structuredClone");
+    const probe = watchCheckpoints(24);
     const checkpoints = [];
     try {
       for (let i = 0; i < 24; i++) {
         checkpoints.push(run.checkpoint());
         run.step(5000);
       }
+      for (const checkpoint of checkpoints) run.restore(checkpoint);
       const buckets = new Set<number[]>();
       let typed = 0;
-      for (const result of clone.mock.results) {
-        const graph = result.value as { nodes?: Map<string, { latency?: LatencyRecorder }> };
-        if (!graph.nodes) continue;
+      for (const graph of probe.copies) {
         let perCheckpoint = 0;
-        for (const node of graph.nodes.values()) {
+        for (const node of graph[0].values()) {
           if (!node.latency) continue;
           buckets.add(node.latency.total.buckets);
           for (const h of node.latency.types.values()) buckets.add(h.buckets);
@@ -107,7 +106,7 @@ describe("bounded async latency", () => {
       });
       expect(checkpoints).toHaveLength(24);
     } finally {
-      clone.mockRestore();
+      probe.stop();
     }
     const totals = Object.values(run.engine.frame().nodes).flatMap((n) => (n.latency ? [n.latency] : []));
     expect(totals).toHaveLength(200);

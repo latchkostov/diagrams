@@ -236,7 +236,7 @@ export default defineConfig({
             // These small, shared Live helpers otherwise pay separate import/export and gzip overheads.
             {
               name: "live-helpers",
-              test: /[/\\]src[/\\](?:live[/\\](?:format|healthWindow|storm|readoutDiagram|diagramReader)|sim[/\\](?:capacityInputs|replayControls|deadLetter)|trace[/\\](?:format|path))\.ts$/,
+              test: /[/\\]src[/\\](?:live[/\\](?:format|healthWindow|storm|readoutDiagram|diagramReader|checkpointRing)|sim[/\\](?:capacityInputs|replayControls|deadLetter|deque|shedQueue)|trace[/\\](?:format|path))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // Keep the diagram-free identity table independent: the shell can initialize its example list

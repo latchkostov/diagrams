@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { watchCheckpoints } from "../test/checkpointProbe";
+import { describe, expect, it } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { createEngine } from "./engine";
 import { MAX_STEPS } from "./lineage";
@@ -113,30 +114,26 @@ describe("message lineage: recording", () => {
     expect(e.tracer.followed()).toBe(99);
   });
 
-  it("checkpoints share trace steps instead of passing them through structuredClone", () => {
+  it("checkpoints share trace steps instead of copying them", () => {
     const e = engine(fanout, { traceHistory: 160 });
     e.tracer.request({ next: "message" });
     e.inject("src", 5);
     run(e, 100);
     const before = e.tracer.current();
-    const originalClone = globalThis.structuredClone;
-    let clonedSteps = 0;
-    const clone = vi
-      .spyOn(globalThis, "structuredClone")
-      .mockImplementation(<T>(value: T, options?: StructuredSerializeOptions): T => {
-        const payload = value as { lineage?: { store: Map<number, { trace?: MessageTrace }> } };
-        for (const family of payload.lineage?.store.values() ?? []) clonedSteps += family.trace?.steps.length ?? 0;
-        return originalClone(value, options);
-      });
+    const probe = watchCheckpoints();
     const checkpoint = e.checkpoint();
     // The graph preserves family identity, and its records share immutable steps with the engine.
-    const graph = clone.mock.calls[0][0] as { lineage: { store: Map<number, { trace?: MessageTrace }> } };
-    const copied = clone.mock.results[0].value as typeof graph;
-    const saved = [...copied.lineage.store.values()].map((f) => f.trace);
-    clone.mockRestore();
+    const graph = probe.sources[0];
+    e.restore(checkpoint);
+    const copied = probe.copies[0];
+    const saved = [...copied[15].store.values()].map((f) => f.trace);
+    let clonedSteps = 0;
+    for (const [id, family] of graph[15].store)
+      if (family.trace && copied[15].store.get(id)?.trace !== family.trace) clonedSteps += family.trace.steps.length;
+    probe.stop();
     expect(clonedSteps).toBe(0);
     expect(saved.some((t) => t?.steps.length)).toBe(true);
-    expect(saved[0]).toBe(graph.lineage.store.get(saved[0]!.rootId)?.trace);
+    expect(saved[0]).toBe(graph[15].store.get(saved[0]!.rootId)?.trace);
     run(e, 1000);
     const after = e.tracer.current();
     expect(after).not.toEqual(before);

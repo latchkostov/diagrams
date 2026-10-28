@@ -1,5 +1,5 @@
 // Opt-in diagnosis, never a timing gate. See docs/backlog/2026-10-27-engine-perf-bisect.md.
-// ENGINE_DIAG=work|profile|memory ENGINE_DIAG_RING=on|off|free ENGINE_DIAG_OUT=<directory>
+// ENGINE_DIAG=work|profile|memory|seek ENGINE_DIAG_RING=on|off|free ENGINE_DIAG_OUT=<directory>
 // fnm exec --using 24 -- node node_modules/vitest/vitest.mjs run --config tests/bench/vitest.config.ts
 //   tests/bench/node/engineDiagnosis.bench.ts
 import { it } from "vitest";
@@ -228,3 +228,51 @@ it.skipIf(mode !== "memory")(
   },
   900_000,
 );
+
+it.skipIf(mode !== "seek")("engine diagnosis five-minute checkpoint seek distribution @500", () => {
+  const { c, internal } = controller(500, "on");
+  try {
+    for (let second = 0; second < 300; second++) frames(c, second);
+    gc();
+    const heapUsed = process.memoryUsage().heapUsed;
+    const checkpoints = internal.checkpoints;
+    const retainedTimes = checkpoints.map(({ cp }) => cp.time);
+    const atEnd = createHash("sha256").update(JSON.stringify(c.snapshot())).digest("hex");
+    const reset = c.lookAhead();
+    reset.restore();
+    const seeks = [];
+    let seed = 20261027;
+    for (let i = 0; i < 24; i++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      const target = Math.floor((seed / 2 ** 32) * 300) * 1000;
+      // Reuse the five-minute ring for every sample, independent of the preceding seek's truncation.
+      reset.restore();
+      internal.checkpoints = [...checkpoints];
+      const replayMs = c.seekCost(target);
+      const start = performance.now();
+      c.seek(target);
+      const elapsedMs = performance.now() - start;
+      seeks.push({
+        target,
+        replayMs,
+        elapsedMs,
+        sha256: createHash("sha256").update(JSON.stringify(c.snapshot())).digest("hex"),
+      });
+    }
+    const sorted = seeks.map((s) => s.elapsedMs).sort((a, b) => a - b);
+    save("seek.json", {
+      revision: revision(),
+      node: process.version,
+      heapUsed,
+      retainedTimes,
+      atEnd,
+      p50: sorted[11],
+      p90: sorted[21],
+      p95: sorted[22],
+      max: sorted[23],
+      seeks,
+    });
+  } finally {
+    c.dispose();
+  }
+});
