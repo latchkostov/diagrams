@@ -5,6 +5,7 @@ import { assertGoldens } from "../lib/golden";
 
 export const test = base.extend<{
   goldens: undefined;
+  naturalDrawing: undefined;
   cpuThrottle: ReadonlyMap<Page, number>;
   cpuThrottleRate: number;
 }>({
@@ -30,6 +31,16 @@ export const test = base.extend<{
       } finally {
         context.newPage = newPage;
       }
+    },
+    { auto: true },
+  ],
+  // The browser tier pins the natural drawing (measured cards, routed edges, placed labels) at every
+  // fitted zoom. Below 60% the editor shows settled screen-only chips instead; they never reach an export,
+  // a layout or a measured size, and tests/e2e/lowzoom-*.spec.ts cover them (docs/PARITY.md, Browser tier).
+  naturalDrawing: [
+    async ({ context }, use) => {
+      await context.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
+      await use(undefined);
     },
     { auto: true },
   ],

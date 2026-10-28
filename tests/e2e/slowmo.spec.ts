@@ -12,6 +12,7 @@ import {
   interactionJournalMark,
   liveKeyLevels,
 } from "./fixtures";
+import { expectLiveParticles } from "./node-identity";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
@@ -49,7 +50,7 @@ async function openCanvasSubmenu(page: Page, parent: string, child: string) {
 async function watchFromStorefront(page: Page, query = "") {
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1${query}`);
   // Let traffic build up so there's a busy background to freeze.
-  await expect.poll(async () => Number(await data(page, "particles")), { timeout: 10_000 }).toBeGreaterThan(40);
+  await expectLiveParticles(page, 40);
   await openNodeMenu(page, "shopper", "sim.slowmo-from");
   await expect(canvas(page)).toHaveAttribute("data-slowmo-machine", "playing");
   await expect(play(page)).toHaveAttribute("data-state", "slowmo");

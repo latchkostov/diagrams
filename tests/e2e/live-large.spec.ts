@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import { eventPipeline } from "../../src/bench/workloads/pipeline";
 import { LARGE_LIVE_ELEMENTS } from "../../src/live/decorations";
 import { expect, pageLoadTimeout, test, waitForCameraIdle } from "./fixtures";
+import { zoomIdentity } from "./node-identity";
 
 /** Opens a generated pipeline of `n` nodes live, as a saved diagram opens. */
 async function openLive(page: Page, n: number) {
@@ -120,6 +121,7 @@ test.describe("live view on large diagrams", () => {
 
   test("a small diagram keeps its fades", async ({ page, consoleErrors }) => {
     const { d, elements } = await openLive(page, 100);
+    await zoomIdentity(page, 0.8);
     expect(elements).toBeLessThan(LARGE_LIVE_ELEMENTS);
     await expect(page.getByTestId("rf__wrapper")).not.toHaveAttribute("data-live-large", /.*/);
     expect(await fades(page, d.edges[0].id, d.nodes[0].id)).toEqual({

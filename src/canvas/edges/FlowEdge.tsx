@@ -21,6 +21,7 @@ import { isDependency, relationOf, type DependencyRelation } from "../../model/r
 import { requireEdgeModules } from "./readiness";
 import { routeGeometry } from "../geometry/shapedRuntime";
 import { defineLazySurface } from "../../lib/lazySurface";
+import { useChip } from "../lowZoom";
 const EdgeControls = defineLazySurface({
   id: "edge.shaping",
   load: () => import("./EdgeRouteHandles").then((m) => m.EdgeRouteHandles),
@@ -42,6 +43,7 @@ const EdgeControls = defineLazySurface({
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source, target } = props;
+  const chip = useChip("edges", id);
   const { rename, openEdgeMenu, reconnect } = useDiagram();
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
   const denied = !relation && isDenyRule(data?.props);
@@ -98,6 +100,42 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   };
   const glyph = (size: number) =>
     relation && Details ? <Details.RelationGlyph id={id} relation={relation} size={size} /> : null;
+
+  const controls = selected && reconnect && route.points.length > 1 && (
+    <EdgeControls id={id} source={source} target={target} route={route} />
+  );
+  const denyMarker = deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />;
+  const settingsCard = (card || (chip && selected)) && settings.length > 0 && Details && (
+    <Details.SettingsCard
+      pointer={tooltip.pointer}
+      id={id}
+      relation={relation!}
+      settings={settings}
+      note={Details.referenceNote(relation!, sourceStencil)}
+      x={mid.x}
+      y={mid.y - (label?.height ?? 0) / 2}
+    />
+  );
+  if (chip) {
+    // While its route follows a held node (or it is being shaped), the edge draws its live natural path.
+    const { value } = chip;
+    const shown = !selected && value.natural === path ? value.path : path;
+    return (
+      <>
+        {chip.chips.Edge(
+          id,
+          shown,
+          relation,
+          !!selected,
+          value.lane,
+          denyMarker,
+          shown === value.path ? value.shared : undefined,
+        )}
+        {controls}
+        {settingsCard && <EdgeLabelRenderer>{settingsCard}</EdgeLabelRenderer>}
+      </>
+    );
+  }
 
   let body: ReactNode = null;
   if (label && label.mode !== "glyph") {
@@ -186,24 +224,12 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       />
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
       {title(deny ? Details?.denyTip : tip)}
-      {deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />}
-      {selected && reconnect && route.points.length > 1 && (
-        <EdgeControls id={id} source={source} target={target} route={route} />
-      )}
+      {denyMarker}
+      {controls}
       {body && (
         <EdgeLabelRenderer>
           {body}
-          {card && settings.length > 0 && label && Details && (
-            <Details.SettingsCard
-              pointer={tooltip.pointer}
-              id={id}
-              relation={relation!}
-              settings={settings}
-              note={Details.referenceNote(relation!, sourceStencil)}
-              x={mid.x}
-              y={mid.y - label.height / 2}
-            />
-          )}
+          {settingsCard}
         </EdgeLabelRenderer>
       )}
     </g>

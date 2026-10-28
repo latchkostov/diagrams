@@ -8,8 +8,15 @@ import type { SimSnapshot } from "../sim/types";
 import { currentHealth } from "./healthWindow";
 import { heatOf } from "./format";
 import { snapshotContinuity } from "./snapshotContinuity";
+import { loadOnce } from "../lib/lazyLoad";
+
+/** Faults and the calm view's ink, downloaded with the first decoration (a failed download retries on the next). */
+let chipInk: typeof import("./chipInk") | undefined;
+export const loadChipInk = loadOnce(async () => (chipInk = await import("./chipInk")));
+const DECORATED = ".react-flow__node-diagram[data-id], .grp[data-caption-root], .react-flow__edge[data-id]";
 
 export interface DecorationInput {
+  zones?: ReadonlyMap<string, readonly string[]>;
   snapshot: SimSnapshot;
   /** Controller-observed real-unit readings, including the history restored by a seek. */
   health: Pick<SimSnapshot, "nodes">;
@@ -53,7 +60,6 @@ export interface DecorationStats {
 export class Decorator {
   private delivered = new Map<string, number>();
   private rates = new Map<string, number>();
-  private sampledAt = 0;
   private applied = new Map<Element, string>();
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
   private lastActive = new Map<string, number>();
@@ -63,16 +69,16 @@ export class Decorator {
 
   constructor(private root: HTMLElement) {}
 
-  apply({ snapshot, health, spotlight, still }: DecorationInput): void {
+  apply(input: DecorationInput): void {
+    const { snapshot, health, spotlight, still } = input;
     const root = this.root;
+    if (!chipInk) loadChipInk().catch(Boolean);
     // One membership read before any decoration writes; never three whole-canvas selector walks.
     const nodes: HTMLElement[] = [],
       boundaries: HTMLElement[] = [],
       edges: HTMLElement[] = [];
-    for (const el of root.querySelectorAll<HTMLElement>(
-      ".react-flow__node-diagram[data-id], .grp[data-caption-root], .react-flow__edge[data-id]",
-    )) {
-      if (el.hasAttribute("data-caption-root")) boundaries.push(el);
+    for (const el of root.querySelectorAll<HTMLElement>(DECORATED)) {
+      if (el.dataset.captionRoot) boundaries.push(el);
       else if (el.classList.contains("react-flow__node-diagram")) nodes.push(el);
       else edges.push(el);
     }
@@ -80,19 +86,18 @@ export class Decorator {
     stats.applies++;
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
     const continuity = snapshotContinuity.get(snapshot);
-    if (continuity !== this.continuity || snapshot.time < this.lastTime) this.lastActive.clear();
-    if (continuity !== this.continuity || snapshot.time < this.sampledAt) {
+    const reset = continuity !== this.continuity || snapshot.time < this.lastTime;
+    if (reset) {
+      this.lastActive.clear();
       this.delivered.clear();
       this.rates.clear();
-      this.sampledAt = 0;
     }
-    const interval = snapshot.time - this.sampledAt;
+    const interval = snapshot.time - (reset ? 0 : this.lastTime || 0);
     if (interval > 0) {
       for (const edge of Object.values(snapshot.edges)) {
         this.rates.set(edge.id, (Math.max(0, edge.delivered - (this.delivered.get(edge.id) ?? 0)) * 1000) / interval);
         this.delivered.set(edge.id, edge.delivered);
       }
-      this.sampledAt = snapshot.time;
     }
     const mainThreshold = mainRateThreshold([...this.rates.values()]);
     this.continuity = continuity;
@@ -126,15 +131,10 @@ export class Decorator {
       setAttr(el, "data-live-dim", dim ? "1" : null);
     }
 
-    const downBoundaries = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "boundary" ? [f.boundary] : [])));
-    const cutLinks = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
-    for (const el of boundaries) {
-      const down = downBoundaries.has(el.dataset.captionRoot!);
-      setAttr(el, "data-live-status", down ? "down" : null);
-    }
+    chipInk?.decorate(nodes, root, edges, boundaries, input, this.rates);
 
     for (const el of edges) {
-      const id = el.getAttribute("data-id")!;
+      const id = el.dataset.id!;
       const e = snapshot.edges[id];
       elements++;
       if (e && e.active > 0) this.lastActive.set(id, publish);
@@ -143,16 +143,14 @@ export class Decorator {
       if (since !== undefined && !active) this.lastActive.delete(id);
       const dim = spotlight ? !spotlight.edges.has(id) : false;
       const lit = spotlight?.kind === "trace" && spotlight.edges.has(id);
-      const cut = cutLinks.has(id);
       const main = (this.rates.get(id) ?? 0) >= mainThreshold;
-      const key = `${active}|${dim}|${lit}|${cut}|${main}`;
+      const key = `${active}|${dim}|${lit}|${main}`;
       seen.add(el);
       if (this.applied.get(el) === key) continue;
       this.applied.set(el, key);
       const state = active ? "active" : "idle";
       const was = el.getAttribute("data-live-edge");
       if (was !== null && was !== state) stats.edgeFlips++;
-      setAttr(el, "data-live-cut", cut ? "1" : null);
       setAttr(el, "data-live-edge", state);
       setAttr(el, "data-live-main", main ? "1" : null);
       setAttr(el, "data-live-dim", dim ? "1" : null);
@@ -171,11 +169,8 @@ export class Decorator {
   clear(): void {
     const root = this.root;
     for (const a of ["data-live", "data-live-spotlight", "data-live-still", "data-live-large"]) root.removeAttribute(a);
-    for (const el of root.querySelectorAll(
-      "[data-live-main],[data-live-cut],[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
-    )) {
+    for (const el of root.querySelectorAll(DECORATED)) {
       for (const a of [
-        "data-live-cut",
         "data-live-status",
         "data-live-main",
         "data-live-edge",
@@ -186,6 +181,7 @@ export class Decorator {
       ])
         el.removeAttribute(a);
     }
+    chipInk?.clear(root);
     this.applied.clear();
     this.lastActive.clear();
     this.lastTime = NaN;

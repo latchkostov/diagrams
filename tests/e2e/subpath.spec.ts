@@ -1,4 +1,5 @@
 import { test, expect, publicExamples, expectNoErrors } from "./fixtures";
+import { zoomIdentity } from "./node-identity";
 
 /**
  * Runs against the production build served by `vite preview --base /tools/diagrams/` (project
@@ -123,6 +124,8 @@ test.describe("production build under a sub-path", () => {
     await expect(page.getByTestId("live-controls")).toBeVisible();
     const canvas = page.getByTestId("live-canvas");
     await expect(canvas).toHaveAttribute("data-renderer", "worker");
+    // Below 60% the calm chip view stops painting on purpose (lowzoom-chips.spec.ts): watch the worker at 80%.
+    await zoomIdentity(page, 0.8);
     await expect
       .poll(async () => Number(await canvas.getAttribute("data-particles")), { timeout: 10_000 })
       .toBeGreaterThan(10);

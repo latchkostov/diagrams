@@ -21,6 +21,8 @@ vi.mock("@xyflow/react", () => {
   return { useStoreApi: () => store };
 });
 vi.mock("./camera/useCameraCore", () => ({ useCameraController: () => fixture.camera }));
+vi.mock("./edges/useEdgeRoute", () => ({ useRoutingOptions: () => ({ style: "smoothstep", direction: "LR" }) }));
+vi.mock("./mountChips", () => ({ mountChips: () => () => {} }));
 
 it("refits cached identity after capture even when the complete name already fits", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

@@ -36,6 +36,7 @@ import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
+import type { ChipState } from "./lowZoom";
 
 type Chip = { id: string; name: string; x: number; y: number; width: number };
 
@@ -51,6 +52,17 @@ function titleObstacles(s: Parameters<typeof selectRoutes>[0], zoom: number, rou
       width: (n.measured?.width ?? n.width ?? 0) * zoom,
       height: (n.measured?.height ?? n.height ?? 0) * zoom,
     }));
+  // Below 60% a chip can reach past its card into free space: titles keep clear of what is drawn.
+  for (const [id, chip] of (s as ChipState).ldChips?.nodes ?? []) {
+    const at = s.nodeLookup.get(id)?.internals.positionAbsolute;
+    if (at)
+      obstacles.push({
+        x: (at.x + chip.x) * zoom,
+        y: (at.y + chip.y) * zoom,
+        width: chip.width * zoom,
+        height: chip.height * zoom,
+      });
+  }
   for (const route of selectRoutes(s, routing).values())
     for (let i = 1; i < route.points.length; i++) {
       const a = route.points[i - 1],
@@ -111,14 +123,16 @@ export const FrameDetail = memo(function FrameDetail({
   host,
   routing,
   decorate,
+  chips = true,
 }: {
   host: RefObject<HTMLElement | null>;
   routing: RouteOptions;
   decorate: boolean;
+  chips?: boolean;
 }) {
   return (
     <>
-      <IdentityDetail host={host} />
+      <IdentityDetail host={host} chips={chips} />
       {decorate && <FrameDecoration host={host} routing={routing} />}
     </>
   );
@@ -290,7 +304,7 @@ const FrameDecoration = memo(
         const frameNodes = nodeElements.flatMap((el) => {
           const id = el.dataset.id!;
           const n = s.nodeLookup.get(id);
-          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb") }];
+          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb:not(.nb-chip)") }];
         });
         const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
         // Reset every changed card before measuring any of them. Alternating a width
@@ -665,7 +679,7 @@ const FrameDecoration = memo(
           el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
           const pin = edgePins.get(edge.id);
           const route = routes.get(edge.id);
-          const stroke = el.querySelector<SVGPathElement>(".fe-path");
+          const stroke = el.querySelector<SVGPathElement>(".fe:not(.fe-chip) .fe-path");
           if (stroke && route) {
             let path = route.path;
             const points = lanes.get(edge.id);
@@ -825,7 +839,7 @@ const FrameDecoration = memo(
             !(
               record.type === "childList" &&
               record.target instanceof Element &&
-              (record.target.matches('[data-testid="card-title"]') ||
+              (record.target.matches('[data-testid="card-title"], .chip-trouble') ||
                 (root.hasAttribute("data-detail-far") && record.target.closest('[data-testid^="node-badge-"]')))
             ),
         );
@@ -877,7 +891,7 @@ const FrameDecoration = memo(
         const routes = selectRoutes(store.getState(), { style, direction, captions, hideDependencies });
         for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
           const path = routes.get(el.dataset.id ?? "")?.path;
-          if (path) el.querySelector(".fe-path")?.setAttribute("d", path);
+          if (path) el.querySelector(".fe:not(.fe-chip) .fe-path")?.setAttribute("d", path);
           el.removeAttribute("data-live-near");
           el.removeAttribute("data-detail-selected-edge");
         }
@@ -898,7 +912,7 @@ const FrameDecoration = memo(
           if (text.classList.contains("grp-label") || text.classList.contains("ann-zone-label"))
             text.style.removeProperty("translate");
         }
-        for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
+        for (const body of root.querySelectorAll<HTMLElement>(".nb:not(.nb-chip)")) body.style.removeProperty("width");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
@@ -992,7 +1006,15 @@ const FrameChips = memo(function FrameChips({
     const sizes = new ResizeObserver(update);
     for (const el of elements) sizes.observe(el);
     const unsubscribe = store.subscribe((s, old) => {
-      if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes || s.edges !== old.edges) update();
+      if (
+        s.transform[2] !== old.transform[2] ||
+        s.nodes !== old.nodes ||
+        s.edges !== old.edges ||
+        // Newly settled chips change what titles keep clear of. Chips cleared by an image capture must not
+        // place titles again mid-capture: the export keeps the natural ones (leaving 60% changes the zoom).
+        ((s as ChipState).ldChips !== (old as ChipState).ldChips && (s as ChipState).ldChips)
+      )
+        update();
     });
     return () => {
       sizes.disconnect();
@@ -1012,6 +1034,7 @@ const FrameChips = memo(function FrameChips({
             onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
           >
             <FrameTitle id={chip.id} fallback={chip.name} />
+            <span className="chip-trouble" data-testid={`zone-trouble-${chip.id.replace(/^group:/, "")}`} />
           </button>
         ))}
       </div>

@@ -10,6 +10,7 @@ import {
   waitForStableViewport,
 } from "./fixtures";
 import type { Page } from "@playwright/test";
+import { zoomIdentity } from "./node-identity";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
 // the Live dot's breath in a worker, on OffscreenCanvas (src/live/liveRenderer.ts); where that isn't
@@ -174,6 +175,8 @@ for (const renderer of ["worker", "main"] as const) {
         })
         .toBeGreaterThan(0);
       // Pause the replay so the caption holds still, then find it on the overlay.
+      // The replay camera may fit below 60%, where chips intentionally stop painting.
+      await zoomIdentity(page, 0.8);
       await page.getByTestId("live-play").click();
       await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
       await expect

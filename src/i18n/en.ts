@@ -4634,5 +4634,8 @@ const en = {
   "workbench.sheetHalf": "Half height",
   "workbench.sheetFull": "Full height",
   "workbench.speed": "Speed",
+  "live.zoneTrouble": "{failing, number} failing · {stressed, number} stressed",
+  "live.zoneFailing": "{failing, plural, one {# failing} other {# failing}}",
+  "live.zoneStressed": "{stressed, plural, one {# stressed} other {# stressed}}",
 } as const;
 export default en;

@@ -21,6 +21,18 @@ function themeTokens(block: string) {
 const light = css.split('[data-theme="dark"]')[0];
 const themes = [themeTokens(light), themeTokens(light + css.split('[data-theme="dark"]')[1])];
 
+it("keeps populated low-zoom failure pills at AA in both themes", () => {
+  const style = readFileSync("src/styles/canvas/chips.css", "utf8");
+  const block = /\.chip-trouble\[data-failing\] \{([^}]+)\}/.exec(style)![1];
+  for (const tokens of themes) {
+    const resolve = (value: string) =>
+      value.replace(/var\(--([\w-]+)\)/g, (_, name: string) => tokens[name]).replace("white", "#ffffff");
+    const ink = luminance(resolve(/\n\s*color: ([^;]+)/.exec(block)![1]));
+    const fill = luminance(resolve(/\n\s*background: ([^;]+)/.exec(block)![1]));
+    expect((Math.max(ink, fill) + 0.05) / (Math.min(ink, fill) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 it("keeps Workbench frame labels at AA in both themes", () => {
   for (const tokens of themes)
     for (const [ink, surface] of [

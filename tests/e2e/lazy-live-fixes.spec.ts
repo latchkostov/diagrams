@@ -10,6 +10,7 @@ import {
   expectNoErrors,
   openShareChooser,
 } from "./fixtures";
+import { expectLiveParticles } from "./node-identity";
 
 // Live code that downloads on first use (PR #225's bundle trim): the thread-fix application ships in the trouble
 // callout's chunk, and slow motion's script loads when slow motion first starts. Each chunk is held (and failed)
@@ -258,11 +259,7 @@ test("a failed trouble callout keeps a persistent Retry through toast expiry and
 /** Kafka in free play, traffic flowing. */
 async function openKafka(page: Page) {
   await gotoLive(page, KAFKA);
-  await expect
-    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")), {
-      timeout: 10_000,
-    })
-    .toBeGreaterThan(40);
+  await expectLiveParticles(page, 40);
 }
 
 /** Slow motion from a node (the Storefront by default), chosen from its menu. */

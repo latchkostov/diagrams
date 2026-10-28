@@ -227,7 +227,7 @@ export function HoverCard({
             {kind === "edge" ? "↔" : "▤"}
           </span>
           <span className="hover-name">
-            <strong title={name}>
+            <strong data-testid="hover-full-name">
               <bdi>{name}</bdi>
             </strong>
             <small>{type}</small>
