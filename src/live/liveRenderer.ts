@@ -74,7 +74,7 @@ export interface LiveRenderer {
   frame(input: FrameInput): void;
   /** The message under a pane point (CSS px), from the last drawn frame. */
   hitTest(x: number, y: number, radius?: number): number | undefined;
-  /** The UI clock, right after the decorator ran: re-read the marching edges, node boxes and paths. */
+  /** The UI clock, right after the decorator ran: flush pending scene invalidations. */
   tick(): void;
   /** Particles in the last drawn frame. */
   readonly drawn: number;
@@ -326,8 +326,7 @@ class MainThreadRenderer implements LiveRenderer {
     }
   }
   tick(): void {
-    this.scene.refresh(true);
-    this.scene.readMarch();
+    this.scene.refresh();
     keepLast(this.marchCanvas, this.setup.root);
   }
   hitTest(x: number, y: number, radius?: number): number | undefined {
@@ -466,188 +465,189 @@ let epochs = 0;
 
 class WorkerRenderer implements LiveRenderer {
   readonly kind = "worker";
-  private scene: LiveScene;
+  #scene: LiveScene;
   /** Null when the worker couldn't start (the fallback is on its way). */
-  private host: WorkerHost | null = null;
-  private placement: CanvasPlacement;
-  private packer = new SnapshotPacker();
-  private epoch = ++epochs;
-  private synced = false;
-  private inFlight = false;
-  private started = false;
-  private startTimer?: ReturnType<typeof setTimeout>;
-  private disposed = false;
-  private failed = false;
+  #host: WorkerHost | null = null;
+  #placement: CanvasPlacement;
+  #packer = new SnapshotPacker();
+  #epoch = ++epochs;
+  #synced = false;
+  #inFlight = false;
+  #started = false;
+  #startTimer?: ReturnType<typeof setTimeout>;
+  #disposed = false;
+  #failed = false;
   // What was last posted (only changes are sent).
-  private options: RenderOptions;
-  private optionsDirty = true;
-  private resetPending = false;
-  private sentSnap: RenderSnapshot | null = null;
-  private sentLabels: readonly Rect[] | null = null;
-  private sentObstacles: Obstacles | null = null;
-  private sentSlow: SlowOverlay | undefined;
-  private sentSlowRevision = -1;
-  private sentViewKey = "";
-  private sentFocus: number | undefined;
-  private sentSpeed = NaN;
-  private sentMarchPhase = NaN;
-  private glowKey = "|";
-  private glowPending: { color: string; dpr: number } | null = null;
-  private workerAnimating = false;
-  private geometryRevision = 0;
-  private sentGeometryRevision = -1;
+  #options: RenderOptions;
+  #optionsDirty = true;
+  #resetPending = false;
+  #sentSnap: RenderSnapshot | null = null;
+  #sentLabels: readonly Rect[] | null = null;
+  #sentObstacles: Obstacles | null = null;
+  #sentSlow: SlowOverlay | undefined;
+  #sentSlowRevision = -1;
+  #sentViewKey = "";
+  #sentFocus: number | undefined;
+  #sentSpeed = NaN;
+  #sentMarchPhase = NaN;
+  #glowKey = "|";
+  #glowPending: { color: string; dpr: number } | null = null;
+  #workerAnimating = false;
+  #geometryRevision = 0;
+  #sentGeometryRevision = -1;
   // What the worker reported.
-  private hits: Float64Array = new Float64Array();
+  #hits: Float64Array = new Float64Array();
   drawn = 0;
   frames = 0;
-  private drawnLabels: readonly PlacedLabel[] = [];
-  private drawnSlowLabels: readonly PaintedLabel[] = [];
+  #drawnLabels: readonly PlacedLabel[] = [];
+  #drawnSlowLabels: readonly PaintedLabel[] = [];
   get labels(): readonly PlacedLabel[] {
-    return this.setup.overlay.hidden ? [] : this.drawnLabels;
+    return this.setup.overlay.hidden ? [] : this.#drawnLabels;
   }
   get slowLabels(): readonly PaintedLabel[] {
-    return this.setup.overlay.hidden ? [] : this.drawnSlowLabels;
+    return this.setup.overlay.hidden ? [] : this.#drawnSlowLabels;
   }
-  private probes = new Map<number, (data: Uint8ClampedArray) => void>();
-  private probeId = 0;
+  #probes = new Map<number, (data: Uint8ClampedArray) => void>();
+  #probeId = 0;
 
   constructor(private setup: RendererSetup) {
-    this.scene = new LiveScene(setup.root, setup.store, () => {
-      this.geometryRevision++;
+    this.#scene = new LiveScene(setup.root, setup.store, () => {
+      this.#geometryRevision++;
       setup.overlay.hidden = true;
       delete setup.canvas.dataset.traceLabels;
     });
-    this.options = setup.options;
+    this.#options = setup.options;
     try {
-      this.host = acquireHost(setup.canvas, setup.overlay, setup.root);
-      this.host.listener = (m) => this.onMessage(m);
-      this.host.fail = (reason) => this.fail(reason);
+      this.#host = acquireHost(setup.canvas, setup.overlay, setup.root);
+      this.#host.listener = (m) => this.#onMessage(m);
+      this.#host.fail = (reason) => this.#fail(reason);
     } catch (err) {
       // It never started: this browser can't run it, so later sessions skip it too. The handover
       // waits a microtask, so the caller's effect finishes setting up (and can dispose this) first.
       markWorkerUnsupported();
       const reason = `the particle worker couldn't start (${err instanceof Error ? err.message : String(err)})`;
-      queueMicrotask(() => this.fail(reason));
+      queueMicrotask(() => this.#fail(reason));
     }
-    this.placement = new CanvasPlacement([setup.canvas, setup.overlay, this.host?.march ?? null]);
+    this.#placement = new CanvasPlacement([setup.canvas, setup.overlay, this.#host?.march ?? null]);
   }
 
-  private fail(reason: string): void {
-    if (this.failed || this.disposed) return;
-    this.failed = true;
-    clearTimeout(this.startTimer);
+  #fail(reason: string): void {
+    if (this.#failed || this.#disposed) return;
+    this.#failed = true;
+    clearTimeout(this.#startTimer);
     this.setup.root.removeAttribute(MARCH_ATTR);
     this.setup.root.removeAttribute(GLOW_ATTR);
     this.setup.onFail?.(reason);
   }
 
-  private onMessage(m: FromWorker): void {
+  #onMessage(m: FromWorker): void {
     if (m.type === "error") {
-      this.fail(m.message);
+      this.#fail(m.message);
       return;
     }
     if (m.type === "probe") {
-      this.probes.get(m.id)?.(m.data);
-      this.probes.delete(m.id);
+      this.#probes.get(m.id)?.(m.data);
+      this.#probes.delete(m.id);
       return;
     }
-    if (m.type === "ack" && m.buf) this.packer.recycle(m.buf);
-    if (m.epoch !== this.epoch) return;
+    if (m.type === "ack" && m.buf) this.#packer.recycle(m.buf);
+    if (m.epoch !== this.#epoch) return;
     // A repaint the worker did on its own (fonts loaded) brings fresh stats, but it isn't the answer
     // to the frame in flight: only an ack releases the next frame.
     if (m.type === "ack") {
-      if (!this.started) {
-        this.started = true;
-        clearTimeout(this.startTimer);
+      if (!this.#started) {
+        this.#started = true;
+        clearTimeout(this.#startTimer);
         // The worker draws: the SVG's own march and the dot's CSS breath step aside for its canvases.
-        if (this.host?.march) this.setup.root.setAttribute(MARCH_ATTR, "canvas");
-        if (this.host?.glow) this.setup.root.setAttribute(GLOW_ATTR, "canvas");
+        if (this.#host?.march) this.setup.root.setAttribute(MARCH_ATTR, "canvas");
+        if (this.#host?.glow) this.setup.root.setAttribute(GLOW_ATTR, "canvas");
       }
-      this.inFlight = false;
-      this.workerAnimating = m.animating;
-      if (this.sentGeometryRevision === this.geometryRevision) {
+      this.#inFlight = false;
+      this.#workerAnimating = m.animating;
+      if (this.#sentGeometryRevision === this.#geometryRevision) {
         this.setup.overlay.hidden = false;
       }
     }
     this.drawn = m.drawn;
     this.frames = m.frames;
-    if (m.hits) this.hits = m.hits;
-    if (m.labels) this.drawnLabels = m.labels;
-    if (m.slowLabels) this.drawnSlowLabels = m.slowLabels;
+    if (m.hits) this.#hits = m.hits;
+    if (m.labels) this.#drawnLabels = m.labels;
+    if (m.slowLabels) this.#drawnSlowLabels = m.slowLabels;
   }
 
   setOptions(opts: RenderOptions): void {
-    this.options = opts;
-    this.optionsDirty = true;
+    this.#options = opts;
+    this.#optionsDirty = true;
   }
 
   reset(): void {
-    this.resetPending = true;
+    this.#resetPending = true;
   }
 
   tick(): void {
-    this.scene.refresh(true);
-    this.scene.readMarch();
-    keepLast(this.host?.march ?? null, this.setup.root);
-    this.readGlow();
+    this.#scene.refresh();
+    keepLast(this.#host?.march ?? null, this.setup.root);
+    this.#readGlow();
   }
 
   /** The dot's colour (its computed background follows the theme) and the pixel ratio, for the glow. */
-  private readGlow(): void {
-    const dot = this.host?.glow?.parentElement;
+  #readGlow(): void {
+    const dot = this.#host?.glow?.parentElement;
     if (!dot) return;
     const color = dot.closest(".lv-toggle.is-on") ? getComputedStyle(dot).backgroundColor : "";
-    const dpr = this.scene.dpr();
+    const dpr = this.#scene.dpr();
     const key = `${color}|${dpr}`;
-    if (key === this.glowKey) return;
-    this.glowKey = key;
-    this.glowPending = { color, dpr };
+    if (key === this.#glowKey) return;
+    this.#glowKey = key;
+    this.#glowPending = { color, dpr };
   }
 
   frame(f: FrameInput): void {
-    const host = this.host;
-    if (this.disposed || this.failed || !host) return;
-    this.scene.refresh();
+    const host = this.#host;
+    if (this.#disposed || this.#failed || !host) return;
+    this.#scene.refresh();
     // One frame in flight at most: a busy worker draws the latest state, never a backlog.
-    if (this.inFlight) return;
-    const view = viewOf(this.scene);
+    if (this.#inFlight) return;
+    const view = viewOf(this.#scene);
     const viewKey = `${view.x}|${view.y}|${view.zoom}|${view.width}|${view.height}|${view.dpr}`;
     const needsObstacles = f.focus !== undefined || !!f.slow;
-    const obstacles = needsObstacles ? this.scene.obstacles() : null;
+    const obstacles = needsObstacles ? this.#scene.obstacles() : null;
     const labels = this.setup.labelRects();
     const slowRevision = f.slow?.revision ?? -1;
-    const slowChanged = f.slow !== this.sentSlow || slowRevision !== this.sentSlowRevision;
-    const sync = !this.synced;
-    if (sync) this.packer.clear();
+    const slowChanged = f.slow !== this.#sentSlow || slowRevision !== this.#sentSlowRevision;
+    const sync = !this.#synced;
+    if (sync) this.#packer.clear();
     // Pack first: the edges particles ride for the first time are the paths the worker needs.
-    const snapChanged = f.snap !== this.sentSnap || sync;
-    const packed = snapChanged ? this.packer.pack(f.snap) : undefined;
-    const dict = this.packer.takeDict();
-    for (const id of dict?.edges ?? []) this.scene.want(id);
-    if (f.slow && slowChanged) for (const id of slowEdges(f.slow.frame)) this.scene.want(id);
-    const changes = sync ? this.scene.everything() : this.scene.takeChanges();
+    const snapChanged = f.snap !== this.#sentSnap || sync;
+    const packed = snapChanged ? this.#packer.pack(f.snap) : undefined;
+    const dict = this.#packer.takeDict();
+    for (const id of dict?.edges ?? []) this.#scene.want(id);
+    if (f.slow && slowChanged) for (const id of slowEdges(f.slow.frame)) this.#scene.want(id);
+    const changes = sync ? this.#scene.everything() : this.#scene.takeChanges();
+    // Detail geometry needs its own ack even when a paused snapshot has no other changes.
     if (
       !sync &&
+      this.#sentGeometryRevision === this.#geometryRevision &&
       !changes &&
       !snapChanged &&
-      !this.scene.backlog &&
-      !this.optionsDirty &&
-      !this.resetPending &&
-      !this.workerAnimating &&
-      !this.glowPending &&
-      viewKey === this.sentViewKey &&
-      f.focus === this.sentFocus &&
-      f.speed === this.sentSpeed &&
-      f.march === this.sentMarchPhase &&
+      !this.#scene.backlog &&
+      !this.#optionsDirty &&
+      !this.#resetPending &&
+      !this.#workerAnimating &&
+      !this.#glowPending &&
+      viewKey === this.#sentViewKey &&
+      f.focus === this.#sentFocus &&
+      f.speed === this.#sentSpeed &&
+      f.march === this.#sentMarchPhase &&
       !slowChanged &&
-      labels === this.sentLabels &&
-      obstacles === this.sentObstacles
+      labels === this.#sentLabels &&
+      obstacles === this.#sentObstacles
     )
       return;
 
     const msg: FrameMessage = {
       type: "frame",
-      epoch: this.epoch,
+      epoch: this.#epoch,
       view,
       now: f.now,
       speed: f.speed,
@@ -664,10 +664,10 @@ class WorkerRenderer implements LiveRenderer {
     const transfer: Transferable[] = [];
     if (sync) {
       msg.sync = true;
-      this.synced = true;
+      this.#synced = true;
     }
-    if (this.optionsDirty || sync) msg.options = this.options;
-    if (this.resetPending) msg.reset = true;
+    if (this.#optionsDirty || sync) msg.options = this.#options;
+    if (this.#resetPending) msg.reset = true;
     if (packed) {
       msg.snap = packed;
       transfer.push(packed.buf);
@@ -680,64 +680,64 @@ class WorkerRenderer implements LiveRenderer {
     if (changes?.nodes) msg.nodes = changes.nodes;
     if (changes?.ink) msg.ink = changes.ink;
     if (changes?.march) msg.march = changes.march;
-    if (this.glowPending) msg.glow = this.glowPending;
-    if (labels !== this.sentLabels || msg.sync) msg.labels = [...labels];
-    if (obstacles !== this.sentObstacles || msg.sync)
+    if (this.#glowPending) msg.glow = this.#glowPending;
+    if (labels !== this.#sentLabels || msg.sync) msg.labels = [...labels];
+    if (obstacles !== this.#sentObstacles || msg.sync)
       msg.obstacles = obstacles ? { hard: obstacles.hard, soft: obstacles.soft } : null;
 
     try {
       host.worker.postMessage(msg, transfer);
     } catch (err) {
-      this.fail(`a frame couldn't be posted to the particle worker (${err instanceof Error ? err.message : err})`);
+      this.#fail(`a frame couldn't be posted to the particle worker (${err instanceof Error ? err.message : err})`);
       return;
     }
-    this.inFlight = true;
-    this.sentGeometryRevision = this.geometryRevision;
-    if (!this.started && this.startTimer === undefined)
-      this.startTimer = setTimeout(() => this.fail("the particle worker didn't answer"), START_TIMEOUT_MS);
+    this.#inFlight = true;
+    this.#sentGeometryRevision = this.#geometryRevision;
+    if (!this.#started && this.#startTimer === undefined)
+      this.#startTimer = setTimeout(() => this.#fail("the particle worker didn't answer"), START_TIMEOUT_MS);
     // Place the canvases with the transform this frame is drawn with.
-    this.placement.place(view);
-    this.optionsDirty = false;
-    this.resetPending = false;
-    this.sentSnap = f.snap;
-    this.sentLabels = labels;
-    this.sentObstacles = obstacles;
-    this.sentSlow = f.slow;
-    this.sentSlowRevision = slowRevision;
-    this.sentViewKey = viewKey;
-    this.sentFocus = f.focus;
-    this.sentSpeed = f.speed;
-    this.sentMarchPhase = f.march;
-    this.glowPending = null;
-    this.workerAnimating = false;
+    this.#placement.place(view);
+    this.#optionsDirty = false;
+    this.#resetPending = false;
+    this.#sentSnap = f.snap;
+    this.#sentLabels = labels;
+    this.#sentObstacles = obstacles;
+    this.#sentSlow = f.slow;
+    this.#sentSlowRevision = slowRevision;
+    this.#sentViewKey = viewKey;
+    this.#sentFocus = f.focus;
+    this.#sentSpeed = f.speed;
+    this.#sentMarchPhase = f.march;
+    this.#glowPending = null;
+    this.#workerAnimating = false;
   }
 
   hitTest(x: number, y: number, radius?: number): number | undefined {
-    return hitTestPoints(this.hits, x, y, radius);
+    return hitTestPoints(this.#hits, x, y, radius);
   }
 
   probe(layer: Layer, rect: { x: number; y: number; width: number; height: number }): Promise<ProbeResult> {
-    const host = this.host;
+    const host = this.#host;
     const el = layer === "over" ? this.setup.overlay : layer === "march" ? (host?.march ?? null) : this.setup.canvas;
     if (!el || !host) return Promise.resolve(NO_PIXELS);
-    const r = deviceRect(el, this.scene.dpr(), rect);
-    const id = ++this.probeId;
+    const r = deviceRect(el, this.#scene.dpr(), rect);
+    const id = ++this.#probeId;
     return new Promise((resolve) => {
-      this.probes.set(id, (data) => resolve(probeResult(data, r)));
+      this.#probes.set(id, (data) => resolve(probeResult(data, r)));
       const msg: ToWorker = { type: "probe", id, layer, ...r };
       host.worker.postMessage(msg);
     });
   }
 
   dispose(): void {
-    this.disposed = true;
-    clearTimeout(this.startTimer);
-    this.scene.dispose();
+    this.#disposed = true;
+    clearTimeout(this.#startTimer);
+    this.#scene.dispose();
     this.setup.overlay.hidden = false;
-    for (const resolve of this.probes.values()) resolve(new Uint8ClampedArray());
-    this.probes.clear();
+    for (const resolve of this.#probes.values()) resolve(new Uint8ClampedArray());
+    this.#probes.clear();
     this.setup.root.removeAttribute(MARCH_ATTR);
     this.setup.root.removeAttribute(GLOW_ATTR);
-    if (this.host) releaseHost(this.setup.canvas, this.host);
+    if (this.#host) releaseHost(this.setup.canvas, this.#host);
   }
 }

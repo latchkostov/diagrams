@@ -537,7 +537,7 @@
 
 /* Idle edges recede while live; edges carrying messages brighten and march. */
 .react-flow[data-live] .react-flow__edge[data-live-edge="idle"] .fe-path.react-flow__edge-path {
-  opacity: 0.4;
+  --live-march-opacity: 0.4;
 }
 
 .react-flow[data-live] .react-flow__edge[data-live-edge="active"] .fe {
@@ -598,7 +598,7 @@
 }
 
 .react-flow[data-live] .react-flow__edge .fe-dep .fe-path.react-flow__edge-path {
-  opacity: 1;
+  --live-march-opacity: 1;
   stroke-width: 1.25;
   animation: none;
 }
@@ -637,7 +637,7 @@
   --fe-stroke: var(--dim-stroke);
 }
 .react-flow[data-live-spotlight] .react-flow__edge[data-live-dim] .fe-path.react-flow__edge-path {
-  opacity: 0.6;
+  --live-march-opacity: 0.6;
   stroke-width: 1px;
 }
 .react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe {
@@ -647,13 +647,13 @@
 .react-flow[data-live-spotlight]
   .react-flow__edge[data-live-near]:not([data-detail-selected-edge])
   .fe-path.react-flow__edge-path {
-  opacity: 1;
+  --live-march-opacity: 1;
   stroke-width: 2px;
 }
 /* A neighbouring route remains navigable, but a path trace still dims every
    route outside that path, including one sharing a highlighted endpoint. */
 .react-flow[data-live][data-live-spotlight="trace"] .react-flow__edge[data-live-dim] .fe-path.react-flow__edge-path {
-  opacity: 0.6;
+  --live-march-opacity: 0.6;
 }
 [data-detail-dim] .lv-metric.is-rate {
   color: var(--text-2);
@@ -674,7 +674,7 @@
 }
 
 .react-flow[data-live-spotlight="trace"] .react-flow__edge[data-live-trace] .fe-path.react-flow__edge-path {
-  opacity: 1;
+  --live-march-opacity: 1;
   stroke-width: 2.6;
 }
 
@@ -2661,7 +2661,7 @@ details[open] > summary .lv-disclosure-chevron {
 .react-flow[data-live] .react-flow__edge[data-live-cut="1"] .fe-path.react-flow__edge-path {
   stroke: var(--status-down);
   stroke-dasharray: 4 8;
-  opacity: 0.55;
+  --live-march-opacity: 0.55;
 }
 
 .lv-marker.is-fault {
@@ -4126,7 +4126,7 @@ details[open] > summary .lv-disclosure-chevron {
   --fe-stroke: var(--dim-stroke);
 }
 .canvas-view:not(.is-live) .react-flow__edge .fe:not(.fe-sync):not(.fe-dep) .fe-path {
-  opacity: 1;
+  --live-march-opacity: 1;
   stroke-width: 2;
 }
 
@@ -4211,10 +4211,10 @@ details[open] > summary .lv-disclosure-chevron {
   visibility: hidden !important;
 }
 [data-detail-far] .react-flow__edge .fe-path {
-  opacity: 0.7;
+  --live-march-opacity: 0.7;
 }
 [data-detail-far] .react-flow__edge[data-live-main] .fe-path {
-  opacity: 1;
+  --live-march-opacity: 1;
   stroke: var(--text-2);
 }
 @media (max-width: 639px) {

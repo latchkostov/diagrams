@@ -17,6 +17,8 @@
 .react-flow__edge .fe-path.react-flow__edge-path,
 .fe-path {
   fill: none;
+  /* The canvas reads the unanimated target from the same cascade as the SVG's fade. */
+  opacity: var(--live-march-opacity, 1);
   stroke: var(--fe-stroke);
   stroke-width: 1.6;
   stroke-linecap: round;

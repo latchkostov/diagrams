@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Particle } from "../sim/types";
 import { DEFAULT_TOKENS } from "./particleRenderer";
@@ -47,15 +48,6 @@ function canvas(transfer: "ok" | "throw" = "ok") {
   } as unknown as HTMLCanvasElement;
 }
 
-const root = {
-  closest: () => null,
-  hasAttribute: () => false,
-  querySelector: () => null,
-  querySelectorAll: () => [],
-  setAttribute: () => {},
-  removeAttribute: () => {},
-} as unknown as HTMLElement;
-
 const store = {
   getState: () => ({
     transform: [0, 0, 1] as [number, number, number],
@@ -89,16 +81,18 @@ function startWith(
   const onFail = vi.fn();
   const base = canvas(transfer);
   const overlay = canvas();
+  const root = document.createElement("div");
+  const labelRects: readonly [] = [];
   const renderer = createLiveRenderer("worker", {
     canvas: base,
     overlay,
     root,
     store,
-    labelRects: () => [],
+    labelRects: () => labelRects,
     options: { theme: "light", reducedMotion: false, scale: 1, tokens: DEFAULT_TOKENS },
     onFail,
   });
-  return { renderer, onFail, base, overlay };
+  return { renderer, onFail, base, overlay, root };
 }
 
 const frame = (time: number) => ({
@@ -114,7 +108,6 @@ beforeEach(() => {
   mode = "ok";
   workers = [];
   vi.stubGlobal("Worker", FakeWorker);
-  vi.stubGlobal("window", { devicePixelRatio: 1 });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -192,56 +185,80 @@ describe("worker startup failures hand over to the main thread", () => {
 });
 
 describe("frame flow control", () => {
-  it("keeps stale labels hidden until a frame acknowledges the current card geometry", async () => {
-    let resize = () => {};
-    vi.stubGlobal(
-      "MutationObserver",
-      class {
-        constructor(callback: (records: { attributeName: string }[]) => void) {
-          resize = () => callback([{ attributeName: "data-detail-wrapped" }]);
-        }
-        observe() {}
-        disconnect() {}
-      },
-    );
-    const { renderer, base, overlay } = await start();
+  it.each(["data-detail-wrapped", "data-detail-expanded"])(
+    "keeps stale labels hidden until a frame acknowledges the current card geometry (%s)",
+    async (attribute) => {
+      const { renderer, base, overlay, root } = await start();
+      let revision = 0;
+      const resize = () => {
+        root.setAttribute(attribute, String(++revision));
+        renderer.tick();
+      };
+      const w = workers[0];
+      const label = {
+        id: 1,
+        text: "Request",
+        count: 1,
+        x: 10,
+        y: 10,
+        w: 60,
+        h: 20,
+        ax: 0,
+        ay: 0,
+        leader: false,
+        spot: 0,
+      };
+      renderer.frame(frame(0.1));
+      const epoch = frames(w)[0].epoch!;
+      w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false, labels: [label] });
+      expect(renderer.labels).toEqual([label]);
+      expect(overlay.hidden).toBe(false);
+      base.dataset.traceLabels = "previous geometry";
+      renderer.frame(frame(0.2));
+      resize();
+      expect(overlay.hidden).toBe(true);
+      expect(renderer.labels).toEqual([]);
+      expect(base.dataset.traceLabels).toBeUndefined();
+      w.send({ type: "repaint", epoch, drawn: 1, frames: 3, labels: [label] });
+      expect(overlay.hidden).toBe(true);
+      w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false, labels: [label] });
+      expect(overlay.hidden).toBe(true);
+      expect(renderer.labels).toEqual([]);
+      renderer.frame(frame(0.3));
+      w.send({ type: "ack", epoch, drawn: 1, frames: 4, animating: false, labels: [label] });
+      expect(overlay.hidden).toBe(false);
+      expect(renderer.labels).toEqual([label]);
+      resize();
+      renderer.dispose();
+      expect(overlay.hidden).toBe(false);
+    },
+  );
+
+  it("posts an unchanged paused frame to acknowledge detail geometry before revealing labels", async () => {
+    const { renderer, overlay, root } = await start();
     const w = workers[0];
-    const label = {
-      id: 1,
-      text: "Request",
-      count: 1,
-      x: 10,
-      y: 10,
-      w: 60,
-      h: 20,
-      ax: 0,
-      ay: 0,
-      leader: false,
-      spot: 0,
-    };
-    renderer.frame(frame(0.1));
+    const paused = frame(0.1);
+    renderer.frame(paused);
     const epoch = frames(w)[0].epoch!;
-    w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false, labels: [label] });
-    expect(renderer.labels).toEqual([label]);
+    w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false });
     expect(overlay.hidden).toBe(false);
-    base.dataset.traceLabels = "previous geometry";
-    renderer.frame(frame(0.2));
-    resize();
+    root.setAttribute("data-detail-wrapped", "");
+    renderer.tick();
     expect(overlay.hidden).toBe(true);
-    expect(renderer.labels).toEqual([]);
-    expect(base.dataset.traceLabels).toBeUndefined();
-    w.send({ type: "repaint", epoch, drawn: 1, frames: 3, labels: [label] });
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(2);
+    // A newer geometry revision supersedes the one in flight.
+    root.setAttribute("data-detail-expanded", "");
+    renderer.tick();
+    w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false });
     expect(overlay.hidden).toBe(true);
-    w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false, labels: [label] });
-    expect(overlay.hidden).toBe(true);
-    expect(renderer.labels).toEqual([]);
-    renderer.frame(frame(0.3));
-    w.send({ type: "ack", epoch, drawn: 1, frames: 4, animating: false, labels: [label] });
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(3);
+    w.send({ type: "ack", epoch, drawn: 1, frames: 3, animating: false });
     expect(overlay.hidden).toBe(false);
-    expect(renderer.labels).toEqual([label]);
-    resize();
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(3);
     renderer.dispose();
-    expect(overlay.hidden).toBe(false);
   });
 
   it("keeps one frame in flight: a repaint doesn't release it, its ack does", async () => {

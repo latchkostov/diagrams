@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { NodeSimState, SimSnapshot } from "../sim/types";
 import { Decorator, EDGE_HOLD, LARGE_LIVE_ELEMENTS } from "./decorations";
 import { LiveController } from "./controller";
@@ -11,6 +11,9 @@ class FakeElement {
   attrs = new Map<string, string>();
   writes = 0;
   dataset: Record<string, string> = {};
+  classList = {
+    contains: (name: string) => name === "react-flow__node-diagram" && !!this.attrs.get("data-id")?.startsWith("n"),
+  };
   constructor(id?: string) {
     if (id) {
       this.attrs.set("data-id", id);
@@ -36,13 +39,15 @@ function scene(nodeCount: number, edgeCount: number) {
   const all = [...nodes, ...edges];
   Object.assign(root, {
     querySelectorAll: (sel: string) =>
-      sel.startsWith(".grp")
-        ? []
-        : sel.startsWith(".react-flow__node")
-          ? nodes
-          : sel.startsWith(".react-flow__edge")
-            ? edges
-            : all.filter((el) => [...el.attrs.keys()].some((k) => k.startsWith("data-live"))),
+      sel.includes(", .grp")
+        ? all
+        : sel.startsWith(".grp")
+          ? []
+          : sel.startsWith(".react-flow__node")
+            ? nodes
+            : sel.startsWith(".react-flow__edge")
+              ? edges
+              : all.filter((el) => [...el.attrs.keys()].some((k) => k.startsWith("data-live"))),
   });
   const decorator = new Decorator(root as unknown as HTMLElement);
   let time = 0;
@@ -71,6 +76,14 @@ function scene(nodeCount: number, edgeCount: number) {
 }
 
 describe("live decorations", () => {
+  it("collects nodes, boundaries and edges with one selector walk per publish", () => {
+    const s = scene(64, 512);
+    const reads = vi.spyOn(s.root as unknown as HTMLElement, "querySelectorAll");
+    s.publish(["e0"]);
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(s.state(0)).toBe("active");
+    expect(s.nodes[0].getAttribute("data-live-status")).toBe("up");
+  });
   it.each(["three-quick-retries", "retry-budget"])(
     "preserves continuous queue attention on paused seeks and checkpoint restores: %s",
     (simulation) => {

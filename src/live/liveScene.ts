@@ -31,6 +31,8 @@ export interface FlowStoreLike {
 
 interface PathEntry {
   el: PathLike;
+  group: Element;
+  march?: MarchEdge;
   d: string;
   /** Sampled from `sampledD` (null: never sampled); stale while it differs from `d`. */
   samples: PathSamples | null;
@@ -38,6 +40,16 @@ interface PathEntry {
 }
 
 const EMPTY: PathSamples = { length: 0, points: new Float32Array(4) };
+const STYLE_ATTRIBUTES = ["class", "style"];
+const INK_ATTRIBUTES = [
+  "data-live-dim",
+  "data-live-trace",
+  "data-live-cut",
+  "data-live-main",
+  "data-live-near",
+  "data-detail-selected-edge",
+];
+const EDGE_SELECTOR = ".react-flow__edge";
 
 /** At most this many segments per path: longer paths are sampled more coarsely than SAMPLE_SPACING. */
 export const MAX_SEGMENTS = 2048;
@@ -54,36 +66,34 @@ export interface SceneChanges {
   march?: MarchEdge[];
 }
 
-/** Edges that march while live (live.css, `lv-march`): async edges carrying messages. */
-const MARCHING = '.react-flow__edge[data-live-edge="active"] .fe-async path.fe-path';
-
 export class LiveScene {
   /** Bumps whenever a sampled edge's path changes (the renderer redraws, and re-samples it). */
   pathsVersion = 0;
   readonly ink = new Map<string, EdgeInk>();
-  private inkKey = "";
-  private inkChanged = false;
-  private paths = new Map<string, PathEntry>();
-  private dirty = true;
-  private observer: MutationObserver | null = null;
+  #inkChanged = false;
+  #paths = new Map<string, PathEntry>();
+  #dirty = true;
+  #observer: MutationObserver | null = null;
   /** Point queries left this frame. */
-  private budget = SAMPLE_BUDGET;
+  #budget = SAMPLE_BUDGET;
   /** A sample was put off for the budget: redraw next frame, when there's budget again. */
-  private deferred = false;
+  #deferred = false;
   /** Edges the worker needs (they carry or carried particles, or a replay rides them). */
-  private wanted = new Set<string>();
+  #wanted = new Set<string>();
   /** Wanted edges whose current samples the worker hasn't got; and sent ones that went away. */
-  private pending = new Set<string>();
-  private sent = new Set<string>();
-  private removedPaths = new Set<string>();
-  private nodes = new Map<string, Rect>();
-  private nodesRef: unknown = undefined;
-  private nodesChanged = false;
-  private obstacleCache: (Obstacles & { at: number; view: string }) | null = null;
-  private marchEdges: MarchEdge[] = [];
-  private marchIds = new Set<string>();
-  private marchKey = "";
-  private marchChanged = false;
+  #pending = new Set<string>();
+  #sent = new Set<string>();
+  #removedPaths = new Set<string>();
+  #nodes = new Map<string, Rect>();
+  #nodesRef: unknown = undefined;
+  #nodesChanged = false;
+  #obstacleCache: (Obstacles & { at: number; view: string }) | null = null;
+  #marchEdges: MarchEdge[] = [];
+  #marchChanged = false;
+  /** Null invalidates every style; otherwise only these groups need a refresh. */
+  #styled: Set<Element> | null = null;
+  #styleCache = new Map<string, Omit<MarchEdge, "id" | "d">>();
+  #zoom = NaN;
 
   constructor(
     private root: HTMLElement,
@@ -91,29 +101,66 @@ export class LiveScene {
     private onGeometryChange?: () => void,
   ) {
     if (typeof MutationObserver === "function") {
-      this.observer = new MutationObserver((records) => {
-        this.dirty = true;
-        this.obstacleCache = null;
+      this.#observer = new MutationObserver((records) => this.#invalidate(records));
+      // Detail and presentation attributes live above React Flow; theme changes live on <html>.
+      for (let el: HTMLElement | null = root; el; el = el.parentElement)
+        this.#observer.observe(el, {
+          subtree: el === root,
+          childList: el === root,
+          attributes: true,
+          attributeOldValue: true,
+          attributeFilter: [
+            "d",
+            "data-id",
+            ...STYLE_ATTRIBUTES,
+            ...INK_ATTRIBUTES,
+            "data-detail-expanded",
+            "data-detail-wrapped",
+            "data-live-edge",
+            "data-detail-hidden",
+            "data-live-spotlight",
+            "data-theme",
+            "data-detail-far",
+            "data-detail-view",
+            "data-detail-overview",
+          ],
+        });
+    }
+  }
+
+  #invalidate(records: MutationRecord[]): void {
+    for (const record of records) {
+      this.#obstacleCache = null;
+      // Only attributes and child lists are observed, so every target is an element.
+      const el = record.target as Element;
+      const name = record.attributeName;
+      if (record.type === "attributes" && record.oldValue !== null && el.getAttribute(name!) === record.oldValue)
+        continue;
+      const edge = el.closest(EDGE_SELECTOR);
+      if (record.type === "childList") {
+        // Badge numbers and panel teardown do not change edge geometry or styles.
+        if (edge) this.#styled?.add(edge);
         if (
-          records.some(
-            (record) =>
-              record.attributeName === "data-detail-expanded" || record.attributeName === "data-detail-wrapped",
+          edge ||
+          [...record.addedNodes, ...record.removedNodes].some(
+            (n) => n instanceof Element && (n.matches(EDGE_SELECTOR) || n.querySelector(EDGE_SELECTOR)),
           )
         )
-          this.onGeometryChange?.();
-      });
-      this.observer.observe(root, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ["d", "data-id", "data-detail-expanded", "data-detail-wrapped"],
-      });
+          this.#dirty = true;
+      } else if (name === "data-detail-expanded" || name === "data-detail-wrapped") {
+        this.onGeometryChange?.();
+      } else {
+        if (edge) {
+          if (name === "d" || name === "data-id") this.#dirty = true;
+          else this.#styled?.add(edge);
+        } else if (el.contains(this.root)) this.#styled = null;
+      }
     }
   }
 
   dispose(): void {
-    this.observer?.disconnect();
-    this.observer = null;
+    this.#observer?.disconnect();
+    this.#observer = null;
   }
 
   transform(): readonly [number, number, number] {
@@ -134,128 +181,144 @@ export class LiveScene {
    * stale ones, or null, until a later frame). Called per particle: a hit is one Map lookup.
    */
   samples(edgeId: string): PathSamples | null {
-    const entry = this.paths.get(edgeId);
+    const entry = this.#paths.get(edgeId);
     if (!entry) return null;
     if (entry.samples && entry.sampledD === entry.d) return entry.samples;
-    return this.sample(entry);
+    return this.#sample(entry);
   }
 
-  private sample(entry: PathEntry): PathSamples | null {
+  #sample(entry: PathEntry): PathSamples | null {
     if (!entry.d) {
       entry.samples = EMPTY;
       entry.sampledD = entry.d;
       return EMPTY;
     }
-    if (this.budget <= 0) {
-      this.deferred = true;
+    if (this.#budget <= 0) {
+      this.#deferred = true;
       return entry.samples;
     }
     const length = entry.el.getTotalLength();
     const spacing = Math.max(SAMPLE_SPACING, (Number.isFinite(length) ? length : 0) / MAX_SEGMENTS);
     entry.samples = samplePath(length, (l) => entry.el.getPointAtLength(l), spacing);
     entry.sampledD = entry.d;
-    this.budget -= entry.samples.points.length / 2;
+    this.#budget -= entry.samples.points.length / 2;
     return entry.samples;
   }
 
   /** The worker needs this edge's samples (and their updates from now on). */
   want(edgeId: string): void {
-    if (this.wanted.has(edgeId)) return;
-    this.wanted.add(edgeId);
-    this.pending.add(edgeId);
+    if (this.#wanted.has(edgeId)) return;
+    this.#wanted.add(edgeId);
+    this.#pending.add(edgeId);
   }
 
   /** Sampling still waits on the budget: post again next frame. */
   get backlog(): boolean {
-    return this.pending.size > 0 || this.deferred;
+    return this.#pending.size > 0 || this.#deferred;
   }
 
   nodeRect(nodeId: string): Rect | null {
-    return this.nodes.get(nodeId) ?? null;
+    return this.#nodes.get(nodeId) ?? null;
   }
 
   /**
    * Once per frame: re-sample edges whose path changed (only after a DOM change) and re-read node
-   * boxes when React Flow's nodes changed. `force` re-reads both (the UI clock does, as a backstop).
+   * boxes when React Flow's nodes changed. Timers never invalidate geometry.
    */
-  refresh(force = false): void {
-    this.budget = SAMPLE_BUDGET;
-    if (this.deferred) {
+  refresh(): void {
+    if (this.#observer) this.#invalidate(this.#observer.takeRecords?.() ?? []);
+    this.#budget = SAMPLE_BUDGET;
+    if (this.#deferred) {
       // Last frame ran out of budget: draw again, which samples what's left.
-      this.deferred = false;
+      this.#deferred = false;
       this.pathsVersion++;
     }
-    if (this.dirty || force || !this.observer) this.scanPaths();
-    this.refreshNodes(force);
-    if (this.dirty || force || !this.observer) this.readInk();
+    if (this.#dirty || !this.#observer) this.#scanPaths();
+    this.#refreshNodes();
+    const zoom = this.transform()[2];
+    if (zoom !== this.#zoom) {
+      this.#zoom = zoom;
+      this.#styled = null;
+    }
+    this.readMarch();
   }
 
   /** The marching edges as last read (see readMarch). */
   get march(): readonly MarchEdge[] {
-    return this.marchEdges;
+    return this.#marchEdges;
   }
 
   /**
-   * Re-reads which edges march and how they look: path data, computed stroke colour, width, dash and
-   * the opacity of the path and its groups (up to the edge layer, which the march canvas shares). The
-   * UI clock calls it right after the decorator marks active edges; a path that moves in between
-   * (a node dragged) is picked up by the path scan.
+   * Membership follows the decorator's data; styles are read only after an edge-style, theme or
+   * zoom change. Geometry-only changes reuse cached styles. Dirty groups replace whole-scene JSON
+   * comparisons, and unchanged ticks preserve the march array's identity.
    */
-  private readInk(): void {
-    const next: [string, EdgeInk][] = [];
-    const spotlight = this.root.hasAttribute("data-live-spotlight");
-    for (const el of this.root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
-      const near = !spotlight || el.hasAttribute("data-live-near") || !el.hasAttribute("data-live-dim");
-      next.push([
-        el.dataset.id!,
-        { alpha: el.hasAttribute("data-detail-hidden") ? 0 : spotlight && !near ? 0.28 : 1, near },
-      ]);
-    }
-    const key = JSON.stringify(next);
-    if (key === this.inkKey) return;
-    this.inkKey = key;
-    this.ink.clear();
-    for (const [id, ink] of next) this.ink.set(id, ink);
-    this.inkChanged = true;
-    this.pathsVersion++;
-  }
   readMarch(): void {
-    this.readInk();
-    const layer = this.root.querySelector(".react-flow__edges");
+    if (this.#styled?.size === 0) return;
+    if (!this.#styled) this.#styleCache.clear();
+    const spotlight = this.root.hasAttribute("data-live-spotlight");
     const out: MarchEdge[] = [];
-    for (const path of this.root.querySelectorAll<SVGPathElement>(MARCHING)) {
-      const id = path.closest(".react-flow__edge")?.getAttribute("data-id");
-      if (!id) continue;
-      const cs = getComputedStyle(path);
-      if (cs.display === "none" || cs.visibility === "hidden") continue;
-      let opacity = parseFloat(cs.opacity);
-      for (let n = path.parentElement; n && n !== layer && n !== this.root; n = n.parentElement)
-        opacity *= parseFloat(getComputedStyle(n).opacity);
-      out.push({
-        id,
-        d: path.getAttribute("d") ?? "",
-        color: cs.stroke,
-        width: parseFloat(cs.strokeWidth) || 0,
-        dash: parseDash(cs.strokeDasharray),
-        opacity: Number.isFinite(opacity) ? Math.round(opacity * 1000) / 1000 : 1,
-      });
+    for (const [id, entry] of this.#paths) {
+      const el = entry.group;
+      const near = !spotlight || el.hasAttribute("data-live-near") || !el.hasAttribute("data-live-dim");
+      const alpha = el.hasAttribute("data-detail-hidden") ? 0 : spotlight && !near ? 0.28 : 1;
+      const ink = this.ink.get(id);
+      if (!ink || ink.alpha !== alpha || ink.near !== near) {
+        this.ink.set(id, { alpha, near });
+        this.#inkChanged = true;
+        this.pathsVersion++;
+      }
+      let edge = entry.march;
+      if (!this.#styled || this.#styled.has(el)) {
+        // Membership and ancestor visibility come from presentation data. Flow groups have unit
+        // opacity; only the path fades. Never walk ancestors asking for their computed styles.
+        const path = entry.el as SVGPathElement;
+        if (alpha === 0 || el.getAttribute("data-live-edge") !== "active" || !path.matches(".fe-async .fe-path")) {
+          edge = undefined;
+        } else {
+          edge = { id, d: entry.d, ...this.#readStyle(path, el) };
+        }
+      }
+      entry.march = edge;
+      if (edge) out.push(edge);
     }
+    this.#styled = new Set();
     this.setMarch(out);
   }
 
-  private setMarch(edges: MarchEdge[], key = JSON.stringify(edges)): void {
-    if (key === this.marchKey) return;
-    this.marchKey = key;
-    this.marchEdges = edges;
-    this.marchIds = new Set(edges.map((e) => e.id));
-    this.marchChanged = true;
+  /** Flow paths with the same presentation data share a style; the path's geometry is independent. */
+  #readStyle(path: SVGPathElement, group: Element): Omit<MarchEdge, "id" | "d"> {
+    const key = [
+      ...[group, path.parentElement, path].flatMap((el) => STYLE_ATTRIBUTES.map((name) => el?.getAttribute(name))),
+      ...INK_ATTRIBUTES.map((name) => group.hasAttribute(name)),
+    ].join("\0");
+    let style = this.#styleCache.get(key);
+    if (!style) {
+      const cs = getComputedStyle(path);
+      style = {
+        color: cs.stroke,
+        width: parseFloat(cs.strokeWidth) || 0,
+        dash: parseDash(cs.strokeDasharray),
+        // The CSS target is unanimated. Never enumerate the document's animation set per edge.
+        opacity:
+          cs.display === "none" || cs.visibility === "hidden"
+            ? 0
+            : parseFloat(cs.getPropertyValue("--live-march-opacity") || "1"),
+      };
+      this.#styleCache.set(key, style);
+    }
+    return style;
+  }
+
+  private setMarch(edges: MarchEdge[]): void {
+    this.#marchEdges = edges;
+    this.#marchChanged = true;
   }
 
   /** Reads every edge's `d` (no sampling: that waits until an edge is needed). */
-  private scanPaths(): void {
-    this.dirty = false;
+  #scanPaths(): void {
+    this.#dirty = false;
     const seen = new Set<string>();
-    const moved = new Set<string>();
     let version = false;
     for (const g of this.root.querySelectorAll(".react-flow__edge[data-id]")) {
       const id = g.getAttribute("data-id");
@@ -264,41 +327,41 @@ export class LiveScene {
       if (!el) continue;
       seen.add(id);
       const d = el.getAttribute("d") ?? "";
-      const prev = this.paths.get(id);
-      if (prev) prev.el = el;
+      const prev = this.#paths.get(id);
+      if (prev) {
+        if (prev.group !== g) this.#styled?.add(g);
+        prev.el = el;
+        prev.group = g;
+      }
       if (prev && prev.d === d) continue;
       if (prev) prev.d = d;
-      else this.paths.set(id, { el, d, samples: null, sampledD: null });
-      moved.add(id);
+      else {
+        this.#paths.set(id, { el, group: g, d, samples: null, sampledD: null });
+      }
+      this.#styled?.add(g);
       if (prev?.samples) version = true;
-      if (this.wanted.has(id)) this.pending.add(id);
-      this.removedPaths.delete(id);
+      if (this.#wanted.has(id)) this.#pending.add(id);
+      this.#removedPaths.delete(id);
     }
-    for (const id of [...this.paths.keys()]) {
+    for (const [id, entry] of this.#paths) {
       if (seen.has(id)) continue;
-      if (this.paths.get(id)?.samples) version = true;
-      this.paths.delete(id);
-      this.pending.delete(id);
-      if (this.sent.delete(id)) this.removedPaths.add(id);
+      if (entry.samples) version = true;
+      this.#styled?.add(entry.group);
+      this.#paths.delete(id);
+      this.ink.delete(id);
+      this.#inkChanged = true;
+      this.#pending.delete(id);
+      if (this.#sent.delete(id)) this.#removedPaths.add(id);
     }
     if (version) this.pathsVersion++;
-    // Marching edges that moved (a node dragged) follow now, not at the next UI tick: one rebuild
-    // for all of them.
-    let marchMoved = false;
-    for (const id of moved) if (this.marchIds.has(id)) marchMoved = true;
-    if (marchMoved)
-      this.setMarch(
-        this.marchEdges.map((e) => (moved.has(e.id) ? { ...e, d: this.paths.get(e.id)?.d ?? e.d } : e)),
-        "",
-      );
   }
 
-  private refreshNodes(force: boolean): void {
+  #refreshNodes(): void {
     const s = this.store.getState();
-    if (!force && s.nodes === this.nodesRef) return;
-    this.nodesRef = s.nodes;
+    if (s.nodes === this.#nodesRef) return;
+    this.#nodesRef = s.nodes;
     const next = new Map<string, Rect>();
-    let changed = s.nodeLookup.size !== this.nodes.size;
+    let changed = s.nodeLookup.size !== this.#nodes.size;
     for (const [id, n] of s.nodeLookup) {
       const r = {
         x: n.internals.positionAbsolute.x,
@@ -307,58 +370,58 @@ export class LiveScene {
         height: n.measured.height ?? 0,
       };
       next.set(id, r);
-      const was = this.nodes.get(id);
+      const was = this.#nodes.get(id);
       if (!was || was.x !== r.x || was.y !== r.y || was.width !== r.width || was.height !== r.height) changed = true;
     }
     if (!changed) return;
-    this.nodes = next;
-    this.nodesChanged = true;
-    this.obstacleCache = null;
+    this.#nodes = next;
+    this.#nodesChanged = true;
+    this.#obstacleCache = null;
     this.onGeometryChange?.();
   }
 
   /** Every wanted path, node box and the march, as if all were new (a worker that just attached). */
   everything(): SceneChanges {
-    this.pending = new Set(this.wanted);
-    this.sent.clear();
-    this.removedPaths.clear();
-    this.nodesChanged = true;
-    this.marchChanged = true;
-    this.inkChanged = true;
+    this.#pending = new Set(this.#wanted);
+    this.#sent.clear();
+    this.#removedPaths.clear();
+    this.#nodesChanged = true;
+    this.#marchChanged = true;
+    this.#inkChanged = true;
     return this.takeChanges() ?? {};
   }
 
   /** What changed since the last call (wanted paths sampled within the budget), or undefined. */
   takeChanges(): SceneChanges | undefined {
     const out: SceneChanges = {};
-    if (this.inkChanged) {
+    if (this.#inkChanged) {
       out.ink = [...this.ink];
-      this.inkChanged = false;
+      this.#inkChanged = false;
     }
     const set: [string, PathSamples][] = [];
-    for (const id of this.pending) {
-      const entry = this.paths.get(id);
+    for (const id of this.#pending) {
+      const entry = this.#paths.get(id);
       if (!entry) {
-        this.pending.delete(id);
+        this.#pending.delete(id);
         continue;
       }
       const s = this.samples(id);
       if (!s || entry.sampledD !== entry.d) break; // out of budget: the rest next frame
       set.push([id, s]);
-      this.sent.add(id);
-      this.pending.delete(id);
+      this.#sent.add(id);
+      this.#pending.delete(id);
     }
-    if (set.length || this.removedPaths.size) {
-      out.paths = { set, remove: [...this.removedPaths] };
-      this.removedPaths.clear();
+    if (set.length || this.#removedPaths.size) {
+      out.paths = { set, remove: [...this.#removedPaths] };
+      this.#removedPaths.clear();
     }
-    if (this.nodesChanged) {
-      out.nodes = [...this.nodes];
-      this.nodesChanged = false;
+    if (this.#nodesChanged) {
+      out.nodes = [...this.#nodes];
+      this.#nodesChanged = false;
     }
-    if (this.marchChanged) {
-      out.march = this.marchEdges;
-      this.marchChanged = false;
+    if (this.#marchChanged) {
+      out.march = this.#marchEdges;
+      this.#marchChanged = false;
     }
     return out.paths || out.nodes || out.march || out.ink ? out : undefined;
   }
@@ -372,25 +435,29 @@ export class LiveScene {
     const now = performance.now();
     const [vx, vy, vz] = this.store.getState().transform;
     const view = `${vx}|${vy}|${vz}`;
-    const cached = this.obstacleCache;
+    const cached = this.#obstacleCache;
     if (cached && cached.view === view && now - cached.at < 200) return cached;
     const root = this.root;
     const base = root.getBoundingClientRect();
-    const rects = (selector: string) => {
-      const out: Rect[] = [];
-      for (const el of root.querySelectorAll<HTMLElement>(selector)) {
-        const r = el.getBoundingClientRect();
-        if (r.width && r.height)
-          out.push({ x: r.left - base.left, y: r.top - base.top, width: r.width, height: r.height });
-      }
-      return out;
-    };
-    this.obstacleCache = {
+    const hard: Rect[] = [],
+      soft: Rect[] = [];
+    const solid = `.react-flow__node-diagram, .lv-strip, .lv-hud > *, .lv-panel, ${OVERLAY_SELECTOR}`;
+    for (const el of root.querySelectorAll<HTMLElement>(`${solid}, .fe-label, .react-flow__node-annotation`)) {
+      const r = el.getBoundingClientRect();
+      if (r.width && r.height)
+        (el.matches(solid) ? hard : soft).push({
+          x: r.left - base.left,
+          y: r.top - base.top,
+          width: r.width,
+          height: r.height,
+        });
+    }
+    this.#obstacleCache = {
       at: now,
       view,
-      hard: rects(`.react-flow__node-diagram, .lv-strip, .lv-hud > *, .lv-panel, ${OVERLAY_SELECTOR}`),
-      soft: rects(".fe-label, .react-flow__node-annotation"),
+      hard,
+      soft,
     };
-    return this.obstacleCache;
+    return this.#obstacleCache;
   }
 }
