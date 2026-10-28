@@ -67,6 +67,9 @@ export const fanout: Tutorial = {
       ],
       demo: [{ kind: "prop", edge: ["router", "smsQueue"], props: { filter: [messageType] } }],
       solution: [
+        // Live preserves the camera: explicitly focus the router before editing its connection.
+        { click: "node-{router}" },
+        { press: "Shift+Digit2" },
         { dblclick: "edge-label-{router->smsQueue}" },
         { click: "inspector-section-edge-messages" },
         { click: "inspector-filter-option-0" },

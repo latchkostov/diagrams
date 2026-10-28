@@ -1,7 +1,16 @@
 import { frameRoutingFixture, frameDependencyFixture } from "../../src/lab/frameRoutingFixture";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { test, expect, gotoCanvas, gotoLive, expectTheme, pauseClock, waitForCameraIdle } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  expectTheme,
+  pauseClock,
+  waitForCameraIdle,
+  viewportTransform,
+} from "./fixtures";
 
 test("unselected dependency labels retain counter-scaling in Custom view", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -134,6 +143,10 @@ for (const theme of ["light", "dark"]) {
       await page.clock.install();
       await gotoLive(page, "./?view=canvas&example=black-friday-commerce&live=1&sim=doors-open&paused=1");
       await pauseClock(page);
+      // Owner decision: Follow keeps the chosen zoom. Request this close-up explicitly.
+      await page.getByTestId("canvas-wrap").press("Shift+Digit0");
+      await page.clock.runFor(1400);
+      await waitForCameraIdle(page);
       await page.getByTestId("live-timeline-input").fill("205");
       await page.getByTestId("live-timeline-input").press("ArrowRight");
       if ((await page.getByTestId("live-play").getAttribute("data-state")) === "playing")
@@ -142,14 +155,18 @@ for (const theme of ["light", "dark"]) {
       await page.getByTestId("view-follow").click();
       await page.clock.runFor(1400);
       await waitForCameraIdle(page);
+      expect(Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1])).toBe(1);
       const frame = await page.getByTestId("canvas-wrap").boundingBox();
       const legend = await page.getByTestId("live-route-legend").boundingBox();
       if (!frame || !legend) throw new Error("Expected live frame and legend");
       for (const id of ["checkout-api", "payments", "orders-db"]) {
         const card = page.getByTestId(`rf__node-${id}`);
-        await expect(card).not.toHaveAttribute("data-detail-hidden", "");
-        await expect(page.getByTestId(`focus-offscreen-${id}`)).toHaveCount(0);
-        const box = await card.boundingBox();
+        const pin = page.getByTestId(`focus-offscreen-${id}`);
+        // Follow keeps the selected zoom: a narrated neighbour that cannot fit must pin, never crop.
+        const pinned = (await card.getAttribute("data-detail-hidden")) !== null;
+        if (pinned) await expect(pin).toBeVisible();
+        else await expect(pin).toHaveCount(0);
+        const box = await (pinned ? pin : card).boundingBox();
         if (!box) throw new Error(`Expected narrated card ${id}`);
         expect(box.x).toBeGreaterThanOrEqual(frame.x + 28);
         expect(box.y).toBeGreaterThanOrEqual(frame.y + 28);

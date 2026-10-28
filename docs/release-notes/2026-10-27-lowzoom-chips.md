@@ -2,7 +2,7 @@
 
 Below 60%, the editor and Live canvas use icon-and-name chips; below 30%, they tighten their spacing and type. Names wrap on whole words, then use familiar abbreviations or leading words, with the complete accessible name and app hover readout retained. At 60% and above, normal cards remain unchanged. Presentation, embeds and the read-only exported viewer keep their existing renderer, and slow motion replays over the natural drawing at any zoom.
 
-Zoom fitting runs after settle, with cached glyph widths and neighbour-bounded chip sizes. Below 60%, connections use one solid path with merged nearby lanes and subtle direction marks. Live stops particle and march painting, shows traffic through line weight, marks recent failures red and sustained queue pressure or pauses amber, and rolls trouble into each containing boundary header. Clear header bands or outside tabs keep titles off chips. No controls or diagram-format fields were added.
+Zoom fitting runs after settle, with cached glyph widths and neighbour-bounded chip sizes. Below 60%, connections use one solid path with merged nearby lanes and subtle direction marks. Live stops particle and march painting, shows traffic through line weight, marks recent failures red and sustained queue pressure or pauses amber, and rolls trouble into each containing boundary header. Zone titles keep the reserved title band above each zone (#377), which also stays clear of every chip. No controls or diagram-format fields were added.
 
 ## Output parity
 

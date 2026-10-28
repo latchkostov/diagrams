@@ -19,7 +19,6 @@ export interface EdgeChip {
 export interface LowZoom {
   Edge(id: string, path: string, dependency: boolean, selected: boolean, lane: string, deny: ReactNode): ReactNode;
   Node: ComponentType<NodeBodyProps & { fit: ChipLayout }>;
-  titles: Map<string, { x: number; y: number }>;
   members: Map<string, string[]>;
   tier: "mid" | "far";
   zoom: number;

@@ -23,6 +23,7 @@ import {
   nodeBoxes,
   focusSelectionViewport,
   followViewport,
+  hasVisibleContent,
   zoneViewport,
   overlayFitViewport,
   revealPan,
@@ -130,6 +131,7 @@ function createCanvasCamera(
   let ownPending = false;
   const port: CameraPort = {
     viewport: transform,
+    hasVisibleContent: () => !!root && hasVisibleContent(root, store.getState(), routing ?? undefined),
     move: (target, o) => canvasMove(store, setViewport, target, o),
     fitTarget: (request) =>
       !root || !routing

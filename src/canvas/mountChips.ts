@@ -1,7 +1,7 @@
 import { flushSync } from "react-dom";
 import type { useStoreApi } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "./types";
-import { chipMeasurer, chipTitles, layoutChips } from "./chipLayout";
+import { chipMeasurer, layoutChips } from "./chipLayout";
 import { ChipNode, chipEdge } from "./nodes/ChipNode";
 import { chipEdges } from "./chipEdges";
 import { selectRoutes, type RouteOptions } from "./edges/useEdgeRoute";
@@ -45,13 +45,8 @@ export function mountChips(
     ready = false,
     previous = "",
     fits = 0;
-  const TITLE = ["--chip-title-x", "--chip-title-y"];
-  /** Back to natural cards: nothing of the chips may stay on the page, where an export would copy it. */
-  const natural = () => {
-    root.removeAttribute("data-low-zoom");
-    for (const label of root.querySelectorAll<HTMLElement>(".grp-label"))
-      for (const name of TITLE) label.style.removeProperty(name);
-  };
+  /** Back to natural cards (zone titles keep their own bands: FrameDetail's placeRegionTitles). */
+  const natural = () => root.removeAttribute("data-low-zoom");
   const clear = () => {
     if (previous) {
       previous = "";
@@ -87,32 +82,6 @@ export function mountChips(
       ];
     });
     const routes = selectRoutes(state, options);
-    const zones = [...state.nodeLookup.values()].flatMap((n) =>
-      n.type === "boundary"
-        ? [
-            {
-              id: n.id,
-              label: "label" in n.data ? n.data.label : n.id,
-              ...n.internals.positionAbsolute,
-              width: n.measured?.width ?? n.width ?? 0,
-              height: n.measured?.height ?? n.height ?? 0,
-            },
-          ]
-        : [],
-    );
-    const live = !!root.querySelector("[data-live]");
-    const key = JSON.stringify([zoom, nodes, zones, live, [...routes].map(([id, r]) => [id, r.path])]);
-    if (key === previous) return;
-    previous = key;
-    root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
-    if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") root.dataset.chipFits = String(++fits);
-    const shown = (state as ChipState).ldChips;
-    const chips: Map<string, ChipLayout> = share(layoutChips(nodes, zoom, measure), shown?.nodes);
-    const { paths, lanes } = chipEdges(routes, zoom);
-    const edges = new Map<string, EdgeChip>();
-    for (const [id, route] of routes)
-      edges.set(id, { path: paths.get(id) ?? route.path, natural: route.path, lane: lanes.get(id) ?? id });
-    const titles = chipTitles(nodes, chips, zones, zoom, measure, live);
     const members = new Map<string, string[]>();
     for (const node of state.nodes) {
       if (node.type !== "diagram") continue;
@@ -128,19 +97,21 @@ export function mountChips(
         ids.push(parent);
       }
     }
-    for (const label of root.querySelectorAll<HTMLElement>(".grp-label")) {
-      const id = label.closest<HTMLElement>("[data-caption-root]")?.dataset.captionRoot;
-      const spot = titles.get(`group:${id}`);
-      if (spot) {
-        label.style.setProperty(TITLE[0], `${spot.x / zoom}px`);
-        label.style.setProperty(TITLE[1], `${spot.y / zoom}px`);
-      }
-    }
+    const key = JSON.stringify([zoom, nodes, [...members], [...routes].map(([id, r]) => [id, r.path])]);
+    if (key === previous) return;
+    previous = key;
+    root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
+    if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") root.dataset.chipFits = String(++fits);
+    const shown = (state as ChipState).ldChips;
+    const chips: Map<string, ChipLayout> = share(layoutChips(nodes, zoom, measure), shown?.nodes);
+    const { paths, lanes } = chipEdges(routes, zoom);
+    const edges = new Map<string, EdgeChip>();
+    for (const [id, route] of routes)
+      edges.set(id, { path: paths.get(id) ?? route.path, natural: route.path, lane: lanes.get(id) ?? id });
     setLowZoom(store, {
       Edge: chipEdge,
       Node: ChipNode,
       members,
-      titles,
       tier: zoom < 0.3 ? "far" : "mid",
       zoom,
       nodes: chips,

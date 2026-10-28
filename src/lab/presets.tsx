@@ -9,6 +9,7 @@ import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
 import { MessageReadersLab } from "./MessageReadersLab";
 import { resilienceFixture, breakerFixture, sheddingFixture, healthFixture } from "./resilienceFixture";
+import { cameraRegionsFixture } from "./cameraRegionsFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
 import { faultDrillFixture } from "./faultDrillFixture";
@@ -1046,6 +1047,7 @@ const auditSources: Record<string, { label: string; diagram: () => DiagramFile }
   "imported-terraform": { label: "Imported: Terraform (AWS plan)", diagram: importedTerraform },
   "imported-terraform-azure": { label: "Imported: Terraform (Azure state)", diagram: importedTerraformAzure },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
+  "camera-regions": { label: "Region title reservations", diagram: cameraRegionsFixture },
   "annotation-shapes": { label: "Annotation shapes and label contrast", diagram: annotationShapesFixture },
   "stress-150": {
     label: "Stress: 150 nodes",

@@ -11,6 +11,7 @@ import {
   frameCardBounds,
   edgeInFrame,
   frameCrossing,
+  pinAnchor,
   innerFrame,
   visibleCanvas,
   oneHop,
@@ -22,11 +23,12 @@ import {
   frameObstacles,
   clipFrameRoute,
   stackPins,
+  TitleBands,
   type FrameEnd,
   type FramePin,
 } from "./camera/frameEdges";
 import type { Rect } from "./geometry/rect";
-import { inflate, union } from "./geometry/rect";
+import { inflate, intersects, union } from "./geometry/rect";
 import { SpatialGrid } from "./geometry/spatial";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
@@ -34,9 +36,85 @@ import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
-import { useLowZoom } from "./lowZoom";
+import { useLowZoom, type ChipState } from "./lowZoom";
 
-type Chip = { id: string; name: string; x: number; y: number };
+type Chip = { id: string; name: string; x: number; y: number; width: number };
+
+function titleObstacles(s: Parameters<typeof selectRoutes>[0], zoom: number, routing: RouteOptions): Rect[] {
+  const obstacles: Rect[] = [...s.nodeLookup.values()]
+    .filter(
+      (n) =>
+        n.type !== "boundary" && !(n.type === "annotation" && "kind" in n.data && n.data.kind === "zone") && !n.hidden,
+    )
+    .map((n) => ({
+      x: n.internals.positionAbsolute.x * zoom,
+      y: n.internals.positionAbsolute.y * zoom,
+      width: (n.measured?.width ?? n.width ?? 0) * zoom,
+      height: (n.measured?.height ?? n.height ?? 0) * zoom,
+    }));
+  // Below 60% a chip can reach past its card into free space: titles keep clear of what is drawn.
+  for (const [id, chip] of (s as ChipState).ldChips?.nodes ?? []) {
+    const at = s.nodeLookup.get(id)?.internals.positionAbsolute;
+    if (at)
+      obstacles.push({
+        x: (at.x + chip.x) * zoom,
+        y: (at.y + chip.y) * zoom,
+        width: chip.width * zoom,
+        height: chip.height * zoom,
+      });
+  }
+  for (const route of selectRoutes(s, routing).values())
+    for (let i = 1; i < route.points.length; i++) {
+      const a = route.points[i - 1],
+        b = route.points[i];
+      obstacles.push({
+        x: Math.min(a.x, b.x) * zoom - 2,
+        y: Math.min(a.y, b.y) * zoom - 2,
+        width: Math.abs(a.x - b.x) * zoom + 4,
+        height: Math.abs(a.y - b.y) * zoom + 4,
+      });
+    }
+  return obstacles;
+}
+/** Both title renderers reserve in the same order, including during a held wheel zoom. */
+function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>[0], routing: RouteOptions) {
+  if (
+    !s.nodes.some(
+      (n) => n.type === "boundary" || (n.type === "annotation" && "kind" in n.data && n.data.kind === "zone"),
+    )
+  )
+    return;
+  const [tx, ty, zoom] = s.transform;
+  const origin = root.getBoundingClientRect();
+  const bands = new TitleBands(titleObstacles(s, zoom, routing));
+  const labels = [...root.querySelectorAll<HTMLElement>(".grp-label, .ann-zone-label:not(.is-empty)")].filter(
+    (el) => !el.hasAttribute("data-detail-text-hidden") && !el.closest(".is-editing"),
+  );
+  for (const el of labels) el.style.removeProperty("translate");
+  const reads = labels.map((el) => ({ el, rect: el.getBoundingClientRect() }));
+  for (const { el, rect } of reads) {
+    const n = s.nodeLookup.get(el.closest<HTMLElement>(".react-flow__node")?.dataset.id ?? "");
+    if (!n) continue;
+    const at = n.internals.positionAbsolute;
+    const title = bands.place(
+      { x: at.x * zoom, y: at.y * zoom, width: (n.measured?.width ?? 0) * zoom, height: 0 },
+      { width: rect.width, height: rect.height },
+    );
+    el.style.translate = `${(title.x - (rect.x - origin.x - tx)) / zoom}px ${(title.y - (rect.y - origin.y - ty)) / zoom}px`;
+  }
+  for (const el of root.querySelectorAll<HTMLElement>(".detail-group-chip")) {
+    const n = s.nodeLookup.get(el.dataset.regionId ?? "");
+    if (!n) continue;
+    const at = n.internals.positionAbsolute;
+    const title = bands.place(
+      { x: at.x * zoom, y: at.y * zoom, width: (n.measured?.width ?? 0) * zoom, height: 0 },
+      { width: el.offsetWidth, height: el.offsetHeight },
+    );
+    el.style.setProperty("--region-zoom", String(zoom));
+    el.style.transform = `scale(calc(1 / var(--region-zoom, 1))) translate(${title.x - at.x * zoom}px, ${title.y - at.y * zoom}px)`;
+  }
+}
+
 type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
 const empty: Drawing = { pins: [], chips: [], hint: false };
 
@@ -193,6 +271,9 @@ const FrameDecoration = memo(
             : selected.size
               ? selected
               : new Set(fallback ? [fallback] : []);
+        // Follow keeps its primary card painted while it intersects the frame: the
+        // narrated subject, else the selection, hover or fallback card.
+        const primary = subject ? new Set([subject]) : subjects;
         const pinnedSet = oneHop(s.edges, subjects);
         if (view === "follow") for (const id of lit) pinnedSet.add(id);
         const active = oneHop(s.edges, new Set([...selected, ...lit]));
@@ -270,9 +351,11 @@ const FrameDecoration = memo(
           const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
           const title = el.classList.contains("grp-label");
           const detail =
-            el.classList.contains("lv-alert") && id && lit.has(id)
-              ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-              : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+            title || el.classList.contains("ann-zone-label")
+              ? { show: !title || !far, scale: 1 }
+              : el.classList.contains("lv-alert") && id && lit.has(id)
+                ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
+                : textDetail(fonts.get(el)!, zoom, title || isActive, view);
           const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
           return { el, whole, detail };
         });
@@ -280,6 +363,7 @@ const FrameDecoration = memo(
           whole.toggleAttribute("data-detail-text-hidden", !detail.show);
           el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
         }
+        placeRegionTitles(root, s, { style, direction, captions, hideDependencies });
         // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
         // Reserve two lines only when the original text needs them at the card's measured width.
         const wraps = frameNodes.map(({ id, el, body }) => {
@@ -309,7 +393,10 @@ const FrameDecoration = memo(
         const cardBoxes = new Map(frameNodes.map(({ id, el }) => [id, box(el, origin)]));
         for (const { id, el, n } of frameNodes) {
           const card = cardBoxes.get(id)!;
-          const painted = !cropped || contains(inner, frameCardBounds(card));
+          const painted =
+            !cropped ||
+            contains(inner, frameCardBounds(card)) ||
+            (view === "follow" && primary.has(id) && intersects(frameBox, card));
           const hidden =
             (n.type === "diagram" && !painted && cropped) ||
             (n.type === "annotation" &&
@@ -325,7 +412,12 @@ const FrameDecoration = memo(
             if (!hidden) blockers.push(card);
           }
           if (n.type === "boundary" && far)
-            chips.push({ id, name: "label" in n.data ? n.data.label : "", ...n.internals.positionAbsolute });
+            chips.push({
+              id,
+              name: "label" in n.data ? n.data.label : "",
+              ...n.internals.positionAbsolute,
+              width: n.measured?.width ?? 0,
+            });
         }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
@@ -353,15 +445,20 @@ const FrameDecoration = memo(
                 inner,
               );
             }
-            if (crossing)
+            if (crossing) {
+              const anchor =
+                view === "follow"
+                  ? pinAnchor(crossing.point, crossing.side, screen(node.internals.positionAbsolute), inner)
+                  : crossing;
               candidates.push({
                 id,
                 name: "label" in node.data ? node.data.label : "",
-                crossing: crossing.point,
-                side: crossing.side,
+                crossing: anchor.point,
+                side: anchor.side,
                 width: Math.min(200, Math.max(80, ("label" in node.data ? node.data.label : "").length * 7 + 28)),
                 spotlit: lit.has(id),
               });
+            }
           }
         // Keep inline-end pins above the credit; stack from their own route crossing toward the centre.
         const pinBlockers = blockers.map((card) => ({
@@ -370,21 +467,31 @@ const FrameDecoration = memo(
           width: card.width + 16,
           height: card.height + 48,
         }));
+        const sidePins = stackPins(
+          candidates.filter((p) => p.side !== "bottom" && p.side !== "top"),
+          reserved.routes,
+          pinHeight,
+          pinBlockers,
+        );
+        const missing = (placed: FramePin[]) =>
+          candidates.filter((p) => lit.has(p.id) && !placed.some((pin) => pin.id === p.id));
+        const topPins = stackPins(
+          [
+            ...missing(sidePins).map((p) => ({ ...p, side: "top" as const })),
+            ...candidates.filter((p) => p.side === "top" && !lit.has(p.id)),
+          ],
+          reserved.top,
+          pinHeight,
+          pinBlockers,
+        );
         const pins = [
+          ...sidePins,
+          ...topPins,
           ...stackPins(
-            candidates.filter((p) => p.side !== "bottom" && p.side !== "top"),
-            reserved.routes,
-            pinHeight,
-            pinBlockers,
-          ),
-          ...stackPins(
-            candidates.filter((p) => p.side === "top"),
-            reserved.top,
-            pinHeight,
-            pinBlockers,
-          ),
-          ...stackPins(
-            candidates.filter((p) => p.side === "bottom"),
+            [
+              ...missing([...sidePins, ...topPins]).map((p) => ({ ...p, side: "bottom" as const })),
+              ...candidates.filter((p) => p.side === "bottom" && !lit.has(p.id)),
+            ],
             reserved.row,
             pinHeight,
             pinBlockers,
@@ -800,8 +907,11 @@ const FrameDecoration = memo(
         }
         for (const text of root.querySelectorAll<HTMLElement>(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
-        ))
+        )) {
           text.style.removeProperty("font-size");
+          if (text.classList.contains("grp-label") || text.classList.contains("ann-zone-label"))
+            text.style.removeProperty("translate");
+        }
         for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
@@ -848,7 +958,7 @@ const FrameDecoration = memo(
             {t("camera.dig")}
           </div>
         )}
-        {drawing.chips.length > 0 && <FrameChips chips={drawing.chips} />}
+        {drawing.chips.length > 0 && <FrameChips chips={drawing.chips} routing={routing} root={host} />}
         {drawing.pins.map((pin) => (
           <button
             key={pin.id}
@@ -872,26 +982,39 @@ const FrameDecoration = memo(
 );
 
 /** Flow-space anchors pan with the viewport for free; zoom changes only their paint transform. */
-const FrameChips = memo(function FrameChips({ chips }: { chips: Chip[] }) {
+const FrameChips = memo(function FrameChips({
+  chips,
+  routing,
+  root,
+}: {
+  chips: Chip[];
+  routing: RouteOptions;
+  root: RefObject<HTMLElement | null>;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const camera = useCameraController();
+  // Settled chips change what the titles must keep clear of.
   const lowZoom = useLowZoom();
   useLayoutEffect(() => {
     const elements = host.current?.querySelectorAll<HTMLElement>(".detail-group-chip") ?? [];
     const update = () => {
-      const zoom = store.getState().transform[2];
-      for (const el of elements) {
-        const id = `group:${el.dataset.testid?.slice("zone-focus-".length)}`;
-        const p = lowZoom?.titles.get(id) ?? { x: 10, y: 8 };
-        el.style.transform = `scale(${1 / zoom}) translate(${p.x}px, ${p.y}px)`;
-      }
+      for (const el of elements) el.style.setProperty("--region-zoom", String(store.getState().transform[2]));
+      // CSS keeps titles readable and attached during a camera animation. Search
+      // for collision-free bands once it settles; held manual zoom still updates each frame.
+      if (root.current && !camera?.moving) placeRegionTitles(root.current, store.getState(), routing);
     };
     update();
-    return store.subscribe((s, old) => {
-      if (s.transform[2] !== old.transform[2]) update();
+    const sizes = new ResizeObserver(update);
+    for (const el of elements) sizes.observe(el);
+    const unsubscribe = store.subscribe((s, old) => {
+      if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes || s.edges !== old.edges) update();
     });
-  }, [chips, store, lowZoom]);
+    return () => {
+      sizes.disconnect();
+      unsubscribe();
+    };
+  }, [chips, store, routing, root, camera, lowZoom]);
   return (
     <ViewportPortal>
       <div ref={host} className="detail-group-chips" data-testid="zone-chip-layer" data-export="skip">
@@ -900,6 +1023,7 @@ const FrameChips = memo(function FrameChips({ chips }: { chips: Chip[] }) {
             key={chip.id}
             className="detail-group-chip nopan nodrag"
             data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
+            data-region-id={chip.id}
             style={{ left: chip.x, top: chip.y }}
             onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
           >

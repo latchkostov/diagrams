@@ -59,6 +59,7 @@ export interface MoveHandle {
 /** React Flow and the DOM, as the controller sees them. Only the port touches the viewport. */
 export interface CameraPort {
   viewport(): Viewport;
+  hasVisibleContent?(): boolean;
   /** Moves the view; `done` resolves when the transition ends (another move may stop it, leaving it unresolved). */
   move(target: Viewport, o: { duration: number; linear: boolean }): MoveHandle;
   /** The overlay-aware fit's viewport, or null while the pane has no size. */
@@ -282,7 +283,7 @@ export function createCameraController(
     reason: FitReason | "zoomToSelection" | "focusSelection",
   ) {
     const gen = ++generation;
-    const claim = ownership.claim(whole ? "fit" : "manual");
+    const claim = ownership.claim(whole ? (reason === "mode" ? policy.owner : "fit") : "manual");
     const valid = () => gen === generation && ownership.isCurrent(claim);
     const issue = (duration: number) => {
       let target = port.fitTarget(request);
@@ -426,7 +427,7 @@ export function createCameraController(
       case "noteFit": {
         const duration = command.reason === "narration" ? MOVES.note : MOVES.liveFit;
         const target = port.noteFitTarget(command.focus, command);
-        return pan(target, duration, false, { command: "noteFit", cause: command.reason });
+        return pan(target, duration, true, { command: "noteFit", cause: command.reason });
       }
       case "slowmoPlan":
         return pan(slowmo?.plan() ?? null, MOVES.slowmoPlan, false, { command: "slowmoPlan" });
@@ -443,7 +444,7 @@ export function createCameraController(
           : pan(
               command.view ?? port.followTarget?.(command.focus ?? policy.live.focus, command.subject, command) ?? null,
               MOVES.follow,
-              false,
+              !command.view,
               { command: "follow" },
             );
       case "restore":
@@ -615,10 +616,17 @@ export function createCameraController(
       dispatch({ type: "user.moved" });
     },
     mode(next: { live: boolean; presenting: boolean }) {
+      const entering = !live && next.live && !next.presenting && (firstFit || interrupts > 0);
+      if (entering) interrupt();
       live = next.live;
       presenting = next.presenting;
       const mode: CameraMode = presenting ? "present" : live ? "live" : "edit";
-      dispatch({ type: "mode.changed", mode, live: next.live });
+      dispatch({
+        type: "mode.changed",
+        mode,
+        live: next.live,
+        keepCamera: entering ? (port.hasVisibleContent?.() ?? true) : undefined,
+      });
     },
     /** Holds the camera's readiness for work about to arrive (a pointer-up's Inspector change); returns its release. */
     hold() {

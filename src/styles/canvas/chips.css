@@ -118,8 +118,6 @@ body:has([data-low-zoom]) .hover-name strong {
 [data-low-zoom] .grp-label {
   font-size: calc(11px / var(--rf-zoom-exact));
   height: calc(18px / var(--rf-zoom-exact));
-  top: var(--chip-title-y);
-  left: var(--chip-title-x);
   padding: 0 calc(4px / var(--rf-zoom-exact));
 }
 [data-low-zoom] .grp-swatch {

@@ -123,6 +123,13 @@ test("card width measurement avoids repeated layout invalidations within one fra
   });
   await page.goto("./?view=canvas&example=kafka-order-pipeline");
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "overview");
+  // canvas-wrap renders its view before deferred decoration runs. Wait for the first frame that
+  // resets several card widths: the measurement under test, not the attribute.
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { frameWidthWork: { frames: number } }).frameWidthWork.frames),
+    )
+    .toBeGreaterThan(0);
   const stats = await page.evaluate(
     () =>
       (

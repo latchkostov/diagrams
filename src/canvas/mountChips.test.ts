@@ -227,7 +227,7 @@ it("never publishes chips when the natural drawing is pinned (the parity tier's 
   }
 });
 
-it("leaves no zone-title offsets behind for a capture or above 60%", async () => {
+it("leaves zone titles to their reserved bands and writes nothing an export could copy", async () => {
   const { root, store, flush, dispose, state } = harness();
   try {
     root.querySelector(".react-flow__viewport")!.innerHTML =
@@ -242,17 +242,13 @@ it("leaves no zone-title offsets behind for a capture or above 60%", async () =>
     } as never);
     store.setState({ nodeLookup: lookup, transform: [0, 0, 0.4] });
     await flush();
-    const label = root.querySelector<HTMLElement>(".grp-label")!;
-    const offsets = () => ["--chip-title-x", "--chip-title-y"].map((name) => label.style.getPropertyValue(name));
-    expect(offsets().every(Boolean)).toBe(true);
+    expect(root.dataset.lowZoom).toBe("mid");
+    expect(root.querySelector(".grp-label")!.hasAttribute("style")).toBe(false);
     const resume = suspendFrameCapture(root.querySelector(".react-flow__viewport")!);
-    expect(offsets()).toEqual(["", ""]);
+    expect(root.hasAttribute("data-low-zoom")).toBe(false);
     resume();
     await flush();
-    expect(offsets().every(Boolean)).toBe(true);
-    store.setState({ transform: [0, 0, 1] });
-    await flush();
-    expect(offsets()).toEqual(["", ""]);
+    expect(root.querySelector(".grp-label")!.hasAttribute("style")).toBe(false);
   } finally {
     dispose();
   }

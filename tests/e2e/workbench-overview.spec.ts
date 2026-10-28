@@ -26,7 +26,7 @@ for (const theme of ["light", "dark"])
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-overview", "");
     await expect(page.getByTestId("overview-dig-hint")).toHaveText("Select a service, or a zone name, to focus");
     await expectNodeIdentity(page, diagram.nodes.length);
-    // Headers use a clear band or an outside tab; neither may cover a chip.
+    // Owner decision: titles occupy a reserved band above the outline, clear of all parts (and of every chip).
     for (const group of diagram.groups) {
       const chip = page.getByTestId(`zone-focus-${group.id}`);
       await expect(chip).toBeVisible();
@@ -44,7 +44,27 @@ for (const theme of ["light", "dark"])
         });
       });
       expect(clear, `${group.id} header clears every chip`).toBe(true);
+      expect(box.x + box.width).toBeGreaterThanOrEqual(region.x);
+      expect(box.x).toBeLessThanOrEqual(region.x + region.width);
+      expect(box.y + box.height).toBeLessThanOrEqual(region.y);
     }
+    const titleCollisions = await page.getByTestId("canvas-wrap").evaluate((root) => {
+      const titles = [...root.querySelectorAll('[data-testid^="zone-focus-"]')];
+      const cards = [...root.querySelectorAll('[data-testid^="node-"]')].filter((el) =>
+        el.querySelector('[data-testid="card-title"]'),
+      );
+      const overlap = (a: Element, b: Element) => {
+        const x = a.getBoundingClientRect(),
+          y = b.getBoundingClientRect();
+        return x.left < y.right && x.right > y.left && x.top < y.bottom && x.bottom > y.top;
+      };
+      return titles.flatMap((title, i) =>
+        [...cards, ...titles.slice(i + 1)]
+          .filter((part) => overlap(title, part))
+          .map((part) => [title.getAttribute("data-testid"), part.getAttribute("data-testid")]),
+      );
+    });
+    expect(titleCollisions).toEqual([]);
     const edges = await page.getByTestId(/^connection-stroke-/).evaluateAll((els) =>
       els.map((el) => {
         const wrapper = el.closest("[data-id]");

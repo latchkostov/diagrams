@@ -2,7 +2,6 @@ import { expect, it, vi } from "vitest";
 import type { ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
-import { contains, frameCardBounds, innerFrame, visibleCanvas } from "./frameEdges";
 import { TRACE_CARD_TOP, TRACE_CARD_FOOTPRINT } from "../../live/traceCardLayout";
 import { selectRoutes } from "../edges/useEdgeRoute";
 import {
@@ -12,6 +11,7 @@ import {
   followViewport,
   overlayFitViewport,
   goToViewport,
+  hasVisibleContent,
 } from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
 
@@ -231,28 +231,53 @@ it("Focus includes neighbours' labels, or centres the selection at its floor", (
   expect(spread.zoom).toBe(0.9);
   expect(spread.x + 90 * spread.zoom).toBe(588);
 });
-it("Follow centres its subject when the path fits, recentres on readable narration, else pins at .9", () => {
-  const s = workbenchState();
-  const view = followViewport(workbenchRoot, s, ["a", "b"], "a")!;
-  expect(view.zoom).toBe(1);
-  expect(view.x + 90 * view.zoom).toBe(600);
-  expect(view.y + 40 * view.zoom).toBe(400);
-  expect(view.x).toBeGreaterThanOrEqual(52);
-  expect(view.x + 480 * view.zoom).toBeLessThanOrEqual(1148);
-  // Subject-centred, b would leave the canvas; the whole narration still fits above the floor.
-  const recentred = followViewport(workbenchRoot, workbenchState(800), ["a", "b"], "a")!;
-  expect(recentred.zoom).toBeGreaterThanOrEqual(0.9);
-  expect(recentred.x).toBeGreaterThanOrEqual(52);
-  expect(recentred.x + 980 * recentred.zoom).toBeLessThanOrEqual(1148);
-  expect(recentred.y).toBeGreaterThanOrEqual(52);
-  expect(recentred.y + 80 * recentred.zoom).toBeLessThanOrEqual(704);
-  // Only a zoom below the readable floor would hold b: the subject keeps .9 and b pins.
-  const wide = followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")!;
-  expect(wide.zoom).toBe(0.9);
-  expect(wide.x + 90 * wide.zoom).toBe(600);
-  expect(wide.y + 40 * wide.zoom).toBe(400);
+it.each([0.35, 1, 1.5])("Follow pans to an off-screen subject without changing zoom %s", (zoom) => {
+  const state = workbenchState(6000);
+  state.transform = [40, 60, zoom];
+  const view = followViewport(workbenchRoot, state, ["a", "b"], "b")!;
+  expect(view.zoom).toBe(zoom);
+  expect(view.x + 6090 * zoom).toBe(600);
+  expect(view.y + 40 * zoom).toBe(400);
+  state.transform = [view.x, view.y, view.zoom];
+  expect(followViewport(workbenchRoot, state, ["a", "b"], "b")).toBeNull();
 });
-it("Follow keeps every narrated card clear of an overlapping left dock and top bezel", () => {
+it("Follow leaves an on-screen subject and a missing narration alone", () => {
+  const state = workbenchState();
+  state.transform = [100, 100, 1];
+  expect(followViewport(workbenchRoot, state, ["a"], "a")).toBeNull();
+  expect(followViewport(workbenchRoot, state, [], "b")).toBeNull();
+  expect(followViewport(workbenchRoot, state, [], undefined)).toBeNull();
+});
+it("Follow leaves a fully visible subject at the pane edge in place", () => {
+  const state = workbenchState();
+  state.transform = [2, 2, 1];
+  expect(followViewport(workbenchRoot, state, ["a"], "a")).toBeNull();
+});
+it("a visible edge or label keeps the camera even with both endpoints off-screen", () => {
+  const state = workbenchState();
+  for (const node of state.nodeLookup.values()) node.internals.positionAbsolute.y = 3000;
+  const crossing = {
+    points: [
+      { x: -100, y: 400 },
+      { x: 1300, y: 400 },
+    ],
+  };
+  vi.mocked(selectRoutes).mockReturnValue(new Map([["ab", crossing]]) as never);
+  expect(hasVisibleContent(workbenchRoot, state)).toBe(true);
+  const outside = {
+    points: [
+      { x: -100, y: 4000 },
+      { x: 1300, y: 4000 },
+    ],
+  };
+  vi.mocked(selectRoutes).mockReturnValue(new Map([["ab", outside]]) as never);
+  expect(hasVisibleContent(workbenchRoot, state)).toBe(false);
+  vi.mocked(selectRoutes).mockReturnValue(
+    new Map([["ab", { ...outside, label: { x: 600, y: 400, width: 100, height: 20 } }]]) as never,
+  );
+  expect(hasVisibleContent(workbenchRoot, state)).toBe(true);
+});
+it("Follow reveals its subject clear of an overlapping left dock and top bezel", () => {
   const root = {
     ...workbenchRoot,
     ownerDocument: {
@@ -266,75 +291,53 @@ it("Follow keeps every narrated card clear of an overlapping left dock and top b
       },
     },
   } as unknown as HTMLElement;
-  const view = followViewport(root, workbenchState(500), ["a", "b"], "b")!;
-  expect(view.x).toBeGreaterThanOrEqual(452);
-  expect(view.x + 680 * view.zoom).toBeLessThanOrEqual(1148);
-  expect(view.y).toBeGreaterThanOrEqual(112);
-  expect(view.y + 80 * view.zoom).toBeLessThanOrEqual(704);
+  const view = followViewport(root, workbenchState(6000), ["a", "b"], "b")!;
+  expect(view.zoom).toBe(1);
+  expect(view.x + 6000).toBeGreaterThanOrEqual(428);
+  expect(view.x + 6180).toBeLessThanOrEqual(1172);
+  expect(view.y).toBeGreaterThanOrEqual(100);
+  expect(view.y + 80).toBeLessThanOrEqual(728);
 });
-it.each([false, true])(
-  "Follow fits vertically spread narration inside actual visibility margins (chrome: %s)",
-  (chrome) => {
-    const root = {
-      ...workbenchRoot,
-      ownerDocument: {
-        querySelector: (selector: string) => {
-          if (!chrome) return null;
-          const rect = selector.includes("inspector")
-            ? { left: 0, right: 240, top: 0, bottom: 800, width: 240, height: 800 }
-            : selector.includes("canvas-bezel")
-              ? { top: 0, bottom: 60 }
-              : selector.includes("live-route-legend")
-                ? { top: 720 }
-                : null;
-          return rect ? { getBoundingClientRect: () => rect } : null;
-        },
-      },
-    } as unknown as HTMLElement;
-    const state = workbenchState();
-    for (const [i, node] of [...state.nodeLookup.values()].entries()) {
-      node.measured = { width: 220, height: 72 };
-      node.internals.positionAbsolute = { x: 0, y: i * 320 };
-    }
-    const visible = visibleCanvas(root);
-    const padding = innerFrame(visible.width, visible.height, "follow", chrome);
-    const inner = { ...padding, x: padding.x + visible.x, y: padding.y + visible.y };
-    for (const subject of ["a", "b"]) {
-      const view = followViewport(root, state, ["a", "b"], subject)!;
-      expect(view).not.toBeNull();
-      for (const node of state.nodeLookup.values()) {
-        const position = node.internals.positionAbsolute;
-        const card = frameCardBounds({
-          x: view.x + position.x * view.zoom,
-          y: view.y + position.y * view.zoom,
-          width: 220 * view.zoom,
-          height: 72 * view.zoom,
-        });
-        expect(contains(inner, card), JSON.stringify({ subject, inner, card, view })).toBe(true);
-      }
+it.each([0.35, 0.92, 1, 1.5])("phone Follow preserves zoom %s above its readable floor", (current) => {
+  const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
+  const state = workbenchState(6000);
+  state.transform = [0, 0, current];
+  const view = followViewport(root, state, ["a", "b"], "b")!;
+  expect(view.zoom).toBe(Math.max(0.92, current));
+  expect(view.x + 6090 * view.zoom).toBe(current === 1.5 ? 247 : 257);
+  expect(view.x + 6180 * view.zoom).toBeLessThanOrEqual(382);
+  expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
+});
+it.each([
+  { room: { panel: true }, peer: "right", width: 180, left: 8 },
+  { room: { panel: true }, peer: "left", width: 180, left: 32 },
+  { room: { card: true }, peer: "right", width: 180, left: 8 },
+  { room: { card: true }, peer: "left", width: 180, left: 32 },
+  { room: { panel: true }, peer: "right", width: 220, left: 0 },
+  { room: { card: true }, peer: "left", width: 220, left: 0 },
+  { room: { panel: true }, peer: "right", width: 300, left: -40 },
+  { room: { card: true }, peer: "left", width: 300, left: -40 },
+])(
+  "R-05d3d31dd8 phone Follow keeps a $width px subject in the width beside a $room reservation (peer $peer)",
+  ({ room, peer, width, left }) => {
+    const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
+    const state = workbenchState(6000);
+    state.transform = [-9000, 0, 1];
+    // With the subject on the left, its narrated peer sits to its right, and vice versa.
+    const id = peer === "right" ? "a" : "b";
+    const node = state.nodeLookup.get(id)!;
+    node.measured = { width, height: 80 };
+    const x = node.internals.positionAbsolute.x;
+    const view = followViewport(root, state, ["a", "b"], id, room)!;
+    // 390 px frame minus the 170 px reservation leaves [0, 220].
+    expect(view.zoom).toBe(1);
+    expect(view.x + x).toBe(left);
+    if (width <= 220) {
+      expect(view.x + x).toBeGreaterThanOrEqual(0);
+      expect(view.x + x + width).toBeLessThanOrEqual(220);
     }
   },
 );
-it("phone Follow keeps a single subject at forty percent and pins narrated peers beyond the .92 floor", () => {
-  const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
-  const view = followViewport(root, workbenchState(6000), ["a"], "a")!;
-  expect(view.zoom).toBe(1.1);
-  expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
-  expect(view.x + 90 * view.zoom).toBe(195);
-  const pair = followViewport(root, workbenchState(6000), ["a", "b"], "a")!;
-  expect(pair.zoom).toBe(0.92);
-  expect(pair.y + 40 * pair.zoom).toBeCloseTo(548 * 0.4);
-  expect(pair.x + 90 * pair.zoom).toBe(177);
-  const incoming = followViewport(root, workbenchState(6000), ["a", "b"], "b")!;
-  expect(incoming.zoom).toBe(0.92);
-  expect(incoming.x + 6090 * incoming.zoom).toBe(257);
-  // A narration that fits at .92 once recentred is framed whole.
-  const near = followViewport(root, workbenchState(140), ["a", "b"], "b")!;
-  expect(near.zoom).toBeGreaterThanOrEqual(0.92);
-  expect(near.x).toBeGreaterThanOrEqual(28);
-  expect(near.x + 320 * near.zoom).toBeLessThanOrEqual(338);
-});
-
 it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
   const root = {
     ...workbenchRoot,
@@ -363,9 +366,10 @@ it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exp
     expect(focus.x + 90 * focus.zoom).toBe(183);
     expect(focus.y + 40 * focus.zoom).toBe((800 - height + 32 - 72) / 2);
   }
+  state.transform = [-7000, -7000, 1];
   const follow = followViewport(root, state, ["a", "b"], "a")!;
-  expect(follow.zoom).toBe(0.92);
-  expect(follow.x + 90 * follow.zoom).toBe(177);
+  expect(follow.zoom).toBe(1);
+  expect(follow.x + 90 * follow.zoom).toBe(133);
   expect(follow.y + 40 * follow.zoom).toBe((800 - height) * 0.4);
 });
 
