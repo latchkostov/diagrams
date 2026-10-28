@@ -1,8 +1,9 @@
 import { refresh } from "./badgeSemantics";
+import { sameParts } from "./badgeMemo";
 import type { LiveController } from "./controller";
 import { flushSync } from "react-dom";
 import { registerFrameCapture } from "../canvas/camera/frameCapture";
-import { sameParts, viewportParts } from "../canvas/viewportParts";
+import { viewportParts } from "../canvas/viewportParts";
 
 /** Screen-only work may wait off-pane; an image capture needs every current readout synchronously. */
 export function watchBadgeViewport(

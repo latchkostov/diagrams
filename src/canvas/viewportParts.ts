@@ -11,14 +11,6 @@ type Geometry = {
   height: number;
 };
 
-/** Translation alone does not invalidate decorations while the visible membership stays the same. */
-export function sameParts(a: ReadonlySet<string> | null | undefined, b: ReadonlySet<string> | null | undefined) {
-  if (a === b) return true;
-  if (!a || !b || a.size !== b.size) return false;
-  for (const id of a) if (!b.has(id)) return false;
-  return true;
-}
-
 /** Canvas-local index for expensive screen decoration only. Never removes or hides a DOM node. */
 export function viewportParts() {
   let previous: Geometry["nodes"] | undefined;

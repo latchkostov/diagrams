@@ -1,4 +1,4 @@
-import { BROKERS, sameBadge } from "./badgeMemo";
+import { BROKERS, sameBadge, sameParts } from "./badgeMemo";
 import { badgeAttributes } from "./badgeAttributes";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useWorkbenchDock } from "../canvas/inspector/dockState";
@@ -16,7 +16,7 @@ import type { BrokerSpec } from "../model/brokers";
 import { t, useLocale } from "../i18n";
 import { memo, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useNodes, useStore, useStoreApi } from "@xyflow/react";
-import { sameParts, type viewportParts } from "../canvas/viewportParts";
+import type { viewportParts } from "../canvas/viewportParts";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimState } from "../sim/types";
 import type { DiagramFlowNode, FlowNode } from "../canvas/types";
