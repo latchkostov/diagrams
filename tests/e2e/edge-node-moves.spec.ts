@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
 import {
   test,
   expect,
@@ -261,4 +262,26 @@ test("Alt-drag carries only the copied line and Undo removes the whole copy", as
   await page.getByTestId("canvas-wrap").press("ControlOrMeta+z");
   await expect(page.getByTestId("node-api-1")).toHaveCount(0);
   await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(2);
+});
+
+test("a boundary drag handle starts in its band before frame decoration downloads", async ({ page }) => {
+  const detail = chunk("FrameDetail", "src/canvas/FrameDetail.tsx");
+  const download = await holdChunk(page, detail);
+  try {
+    await open(page, true);
+    await expect.poll(download.requested).toBe(true);
+    const label = await box(page, "group-label-cloud");
+    const boundary = await box(page, "group-cloud");
+    expect(label.y + label.height).toBeLessThanOrEqual(boundary.y);
+    await page.mouse.move(label.x + label.width / 2, label.y + label.height / 2);
+    await page.mouse.down();
+    // Loading decoration during a held press must not move the handle out from under it.
+    await releaseAndEvaluate(page, detail, download.release);
+    await page.mouse.move(label.x + label.width / 2 + 60, label.y + label.height / 2 + 40, { steps: 6 });
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+    await page.mouse.up();
+    expect(must((await saved(page)).groups)[0].x).not.toBe(-40);
+  } finally {
+    download.release();
+  }
 });

@@ -1537,6 +1537,7 @@ function CanvasInner({
               <div
                 className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
                 data-testid="canvas-wrap"
+                data-detail-view={!readOnly && !presenting ? controller.state.view : undefined}
                 data-toast-area
                 tabIndex={-1}
                 ref={wrapper}

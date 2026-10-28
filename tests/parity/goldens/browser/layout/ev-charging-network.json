@@ -2,7 +2,7 @@
   "autoLayout": {
     "viewport": "translate(54.5941px, 252.285px) scale(0.322772)",
     "nodes": {
-      "zone-ot": { "kind": "annotation", "box": "translate(-70px, 86px) 1620×576", "text": "" },
+      "zone-ot": { "kind": "annotation", "box": "translate(-70px, 86px) 1620×576", "text": "OT sites · outbound-only" },
       "group:depot": { "kind": "group", "box": "translate(0px, 156px) 1388×296", "text": "" },
       "group:depot2": { "kind": "group", "box": "translate(0px, 276px) 1388×356", "text": "" },
       "group:azure": { "kind": "group", "box": "translate(-40px, 32px) 3690×1000", "text": "" },

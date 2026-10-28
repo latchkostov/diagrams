@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFullscreen } from "../../lib/fullscreen";
 import type { CameraController } from "./controller";
 
-/** Opening, presenting, live view and full screen fit the diagram (clear of the live bar in live view). */
+/** Opening/presenting fit; entering Live preserves the camera unless the diagram is off-screen. */
 export function useModeFit(controller: CameraController, presenting: boolean, live: boolean, readOnly = false) {
   // Opening/mode changes fit before paint, then refine when measurements settle.
   useLayoutEffect(() => {

@@ -3,10 +3,10 @@ import { LIVE_BAR_SPACE } from "../../live/layout";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../../live/traceCardLayout";
 import { selectRoutes, type RouteOptions } from "../edges/useEdgeRoute";
 import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } from "../geometry/fit";
-import { intersects, union, type Rect } from "../geometry/rect";
+import { intersects, segmentHitsRect, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { visibleCanvas, oneHop, innerFrame, FRAME_CARD_SPACE } from "./frameBounds";
+import { visibleCanvas, oneHop } from "./frameBounds";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
@@ -140,10 +140,33 @@ export function focusSelectionViewport(
   };
 }
 
-/**
- * Keep the subject centred when every narrated card fits; else frame the whole narration, but never below the
- * readable floor (.9, .92 on a phone). Narration too spread for the floor keeps its subject; the rest pin.
- */
+/** Any authored content in the exposed pane: entering Live only fits an empty view. */
+export function hasVisibleContent(
+  root: HTMLElement,
+  s: State,
+  routing: RouteOptions = { style: "smoothstep", direction: "LR" },
+): boolean {
+  const frame = visibleCanvas(root);
+  const [x, y, zoom] = s.transform;
+  const visible = (r: Rect) =>
+    intersects(frame, {
+      x: x + r.x * zoom,
+      y: y + r.y * zoom,
+      width: r.width * zoom,
+      height: r.height * zoom,
+    });
+  if (nodeRects(s).some(visible)) return true;
+  const screen = (p: { x: number; y: number }) => ({ x: x + p.x * zoom, y: y + p.y * zoom });
+  for (const route of selectRoutes(s, routing).values()) {
+    if (route.points.some((p, i) => i > 0 && segmentHitsRect(screen(route.points[i - 1]), screen(p), frame)))
+      return true;
+    const r = route.label;
+    if (r && visible({ x: r.x - r.width / 2, y: r.y - r.height / 2, width: r.width, height: r.height })) return true;
+  }
+  return false;
+}
+
+/** Reveal a narrated subject only when off-screen, keeping the user's zoom (and the phone's readable floor). */
 export function followViewport(
   root: HTMLElement,
   s: State,
@@ -151,63 +174,42 @@ export function followViewport(
   subject?: string,
   room: { panel?: boolean; card?: boolean } = {},
 ): Viewport | null {
-  if (!root.clientWidth || !root.clientHeight) return null;
-  const ids = new Set(focus);
-  const selected = [...s.nodeLookup.values()].find((n) => n.selected && n.type === "diagram")?.id;
-  const first = [...s.nodeLookup.values()].find((n) => n.type === "diagram" && !n.hidden)?.id;
-  const id =
-    subject && s.nodeLookup.has(subject) ? subject : (focus.find((key) => s.nodeLookup.has(key)) ?? selected ?? first);
+  if (!root.clientWidth || !root.clientHeight || !focus.length) return null;
+  const id = subject && s.nodeLookup.has(subject) ? subject : focus.find((key) => s.nodeLookup.has(key));
   if (!id) return null;
-  ids.add(id);
-  const subjectBox = nodeRects(s, new Set([id]))[0];
-  const bounds = union(nodeRects(s, ids));
-  if (!subjectBox || !bounds) return null;
+  const card = nodeRects(s, new Set([id]))[0];
+  if (!card) return null;
   const phone = (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640;
-  const pairFits =
-    phone && bounds.width * 0.92 <= root.clientWidth - 104 && bounds.height * 0.92 <= root.clientHeight - 104;
-  const centre = pairFits ? bounds : subjectBox;
-  const cx = centre.x + centre.width / 2,
-    cy = centre.y + centre.height / 2;
+  const [tx, ty, current] = s.transform;
+  const zoom = phone ? Math.max(0.92, current) : current;
   const frame = visibleCanvas(root);
-  const inner = innerFrame(frame.width, frame.height, "follow", false, false, phone);
-  const top = Math.max(52, inner.y + FRAME_CARD_SPACE.top);
-  const bottom = Math.max(52, frame.height - inner.y - inner.height + FRAME_CARD_SPACE.bottom);
-  const right =
-    root.clientWidth -
-    frame.x -
-    frame.width +
-    52 +
-    (room.panel || room.card ? Math.min(440, Math.max(0, root.clientWidth - 220)) : 0);
-  const nudge = phone && !pairFits ? (cx - bounds.x > bounds.x + bounds.width - cx ? 62 : -18) : 0;
-  const x = (frame.x + 52 + root.clientWidth - right) / 2 + nudge,
-    y = frame.y + frame.height * (phone ? 0.4 : 0.5);
-  const maximum = Math.min(
-    (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
-    (x - frame.x - 52) / Math.max(1, cx - bounds.x),
-    (root.clientWidth - right - x) / Math.max(1, bounds.x + bounds.width - cx),
-    (y - frame.y - top) / Math.max(1, cy - bounds.y),
-    (frame.y + frame.height - bottom - y) / Math.max(1, bounds.y + bounds.height - cy),
-  );
-  const floor = phone ? 0.92 : 0.9;
-  if (maximum >= floor) return { x: x - cx * maximum, y: y - cy * maximum, zoom: maximum };
-  // A subject-centred close-up would cut off another narrated card: recentre on
-  // the complete narration, inside the same margins, while it stays readable.
-  // Only its non-narrated neighbours pin then.
-  const whole = fitAvoiding(nodeRects(s, ids), { width: root.clientWidth, height: root.clientHeight }, [], {
-    margin: 0,
-    minZoom: s.minZoom,
-    maxZoom: phone ? 1.1 : 1,
-    insets: {
-      left: frame.x + (phone ? 28 : 52),
-      right,
-      top: frame.y + top,
-      bottom: root.clientHeight - frame.y - frame.height + Math.max(96, bottom),
-    },
-  });
-  if (whole && whole.zoom >= floor) return whole;
-  // Too spread to read at the floor: the subject keeps the floor and the
-  // narrated cards out of reach pin, like any other retained neighbour.
-  return { x: x - cx * floor, y: y - cy * floor, zoom: floor };
+  const right = room.panel || room.card ? Math.min(440, Math.max(0, frame.width - 220)) : 0;
+  if (
+    zoom === current &&
+    card.x * zoom + tx >= frame.x &&
+    card.y * zoom + ty >= frame.y &&
+    (card.x + card.width) * zoom + tx <= frame.x + frame.width - right &&
+    (card.y + card.height) * zoom + ty <= frame.y + frame.height
+  )
+    return null;
+  const peers = phone ? union(nodeRects(s, new Set(focus.filter((key) => key !== id)))) : null;
+  // A phone cannot hold the narrated pair at its readable floor. Leave the
+  // caller's pin a lane beside the subject, without changing the chosen zoom.
+  // The lane comes out of the width left beside an open panel or trace card.
+  const usable = frame.width - right;
+  const width = card.width * zoom;
+  const offset = peers
+    ? Math.sign(card.x + card.width / 2 - peers.x - peers.width / 2) *
+      Math.min(62, Math.max(0, (usable - width) / 2 - 8))
+    : 0;
+  let x = frame.x + usable / 2 + offset - (card.x + card.width / 2) * zoom;
+  // A subject that fits stays wholly inside the usable width; an oversized one stays centred there.
+  if (width <= usable) x = Math.min(Math.max(x, frame.x - card.x * zoom), frame.x + usable - width - card.x * zoom);
+  return {
+    x,
+    y: frame.y + frame.height * (phone ? 0.4 : 0.5) - (card.y + card.height / 2) * zoom,
+    zoom,
+  };
 }
 
 export function zoneViewport(root: HTMLElement, s: State, id: string): Viewport | null {

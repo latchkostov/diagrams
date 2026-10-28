@@ -1,4 +1,4 @@
-import { waitForStableViewport } from "./fixtures";
+import { goToNode, waitForStableViewport } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas } from "./fixtures";
 import { SLUG, callTool, installFakeModelContext, must, openAdvanced, settle, toolNames } from "./ai-helpers";
@@ -33,8 +33,8 @@ const hintFits = (page: Page) =>
 
 /** A toast from Copy for AI on a node (a right-click, so not while the first-run hint should stay). */
 async function showToast(page: Page) {
-  // Entering live view fits the diagram with an animation: a right-click during it can miss the moving
-  // node, or the fit can close the menu before the item is chosen. Wait for the fit before opening the menu.
+  // Owner decision: Live preserves the camera. Explicitly reveal this toast's invoker.
+  await goToNode(page, "payments");
   await waitForStableViewport(page);
   await page.getByTestId("node-payments").click({ button: "right" });
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();

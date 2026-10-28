@@ -1,5 +1,12 @@
 /* ---------- groups ---------- */
 
+/* The drag handle starts in its title band, before deferred frame decoration arrives. */
+[data-detail-view] :is(.grp-label, .ann-zone:not(.is-editing) .ann-zone-label:not(.is-empty)) {
+  top: 0;
+  transform-origin: 0 0;
+  transform: scale(calc(1 / var(--rf-zoom-exact, 1))) translateY(calc(-100% - 4px));
+}
+
 .react-flow__node-boundary {
   pointer-events: none !important;
 }

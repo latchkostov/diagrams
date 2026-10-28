@@ -111,14 +111,14 @@ for (const viewport of [
       test(`${n.slug}: “${n.text}” brings its cards into view`, async ({ page }) => {
         test.slow();
         await page.clock.install();
-        // The overview first: free play fits the whole diagram, so its cards' width is the zoom to beat.
-        await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1`);
-        await waitForStableViewport(page);
-        const overview = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
         await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1&sim=${n.sim}`);
         await pauseClock(page);
         await page.clock.runFor(1000);
         await waitForStableViewport(page);
+        const openingZoom = (await flowState(page)).zoom;
+        const openingWidths = Object.fromEntries(
+          await Promise.all(n.focus.map(async (id) => [id, (await boxOf(page, `rf__node-${id}`)).width] as const)),
+        );
         await page.getByTestId("live-restart").click();
         await page.clock.runFor(n.at);
         await expect(page.getByTestId("live-note")).toContainText(n.text);
@@ -127,7 +127,10 @@ for (const viewport of [
         await waitForStableViewport(page);
         await settleNarrationCamera(page);
         await expect(page.getByTestId("live-view-menu")).toContainText("Following");
-        expect((await flowState(page)).zoom).toBeGreaterThanOrEqual(viewport.width < 640 ? 0.92 : 0.9);
+        expect((await flowState(page)).zoom).toBeCloseTo(
+          viewport.width < 640 ? Math.max(0.92, openingZoom) : openingZoom,
+          4,
+        );
         const canvas = await boxOf(page, "canvas-wrap");
         const note = await boxOf(page, "live-note");
         const bar = await boxOf(page, "live-controls");
@@ -148,14 +151,13 @@ for (const viewport of [
           expect(card.y + card.height, id).toBeLessThanOrEqual(canvas.y + canvas.height + 0.5);
           expect(clear(card, note), `${id} clear of the note`).toBe(true);
           expect(clear(card, bar), `${id} clear of the playback bar`).toBe(true);
-          // The camera fitted the note's focus: on a desktop, cards render at 60% or more (220 px cards).
-          if (viewport.width >= 1280) expect(card.width, id).toBeGreaterThanOrEqual(132);
+          // Desktop narration preserves the current card size; a manual pin visit may zoom in.
+          if (viewport.width >= 1280) expect(card.width, id).toBeGreaterThanOrEqual(openingWidths[id] - 0.5);
         }
-        // Never further out than the overview. (On a phone both sit at the canvas's 15% minimum zoom: the note pans
-        // to its cards; see docs/backlog/2026-10-18-phone-narration-zoom.md.)
+        // A manual pin visit may zoom in; narration never makes the opening card smaller.
         await visitNarrationPin(page, n.focus[0]);
         const close = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
-        expect(close).toBeGreaterThanOrEqual(overview - 0.5);
+        expect(close).toBeGreaterThanOrEqual(openingWidths[n.focus[0]] - 0.5);
       });
   });
 

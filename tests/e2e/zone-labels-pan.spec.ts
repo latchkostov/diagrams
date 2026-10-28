@@ -11,7 +11,7 @@ async function sample(page: Page) {
       if (!boundary) return [];
       const a = chip.getBoundingClientRect();
       const b = boundary.getBoundingClientRect();
-      return [{ id, x: b.x, y: b.y, dx: a.x - b.x, dy: a.y - b.y, width: a.width, height: a.height }];
+      return [{ id, x: b.x, y: b.y, dx: a.x - b.x, dy: a.y - b.y, width: a.width, height: a.height, band: b.width }];
     });
   });
 }
@@ -30,16 +30,21 @@ for (const live of [false, true])
     const before = await sample(page);
     expect(before.map((s) => s.id).sort()).toEqual(diagram.groups.map((g) => g.id).sort());
     for (const value of before) expect(value.height, `${value.id} stays on one line`).toBeCloseTo(18, 1);
-    const check = async () => {
+    const check = async (zooming = false) => {
       const current = await sample(page);
       expect(current).toHaveLength(before.length);
       for (const value of current) {
         const initial = before.find((s) => s.id === value.id);
         if (!initial) throw new Error(`Missing initial title ${value.id}`);
-        // Screen-size ink and padding stay attached to the boundary's top-left,
-        // including zoom reversals while the pointer remains down.
-        expect(Math.abs(value.dx - initial.dx), `${value.id} horizontal anchor`).toBeLessThanOrEqual(2);
-        expect(Math.abs(value.dy - initial.dy), `${value.id} vertical anchor`).toBeLessThanOrEqual(2);
+        // A pan keeps the exact band anchor. Zoom may choose another free place
+        // above the boundary as screen-sized ink meets different cards/routes.
+        if (!zooming) {
+          expect(Math.abs(value.dx - initial.dx), `${value.id} horizontal anchor`).toBeLessThanOrEqual(2);
+          expect(Math.abs(value.dy - initial.dy), `${value.id} vertical anchor`).toBeLessThanOrEqual(2);
+        }
+        expect(value.dy + value.height, `${value.id} above the content`).toBeLessThanOrEqual(-2);
+        expect(value.dx + value.width, `${value.id} attached to the top edge`).toBeGreaterThanOrEqual(0);
+        expect(value.dx, `${value.id} attached to the top edge`).toBeLessThanOrEqual(value.band);
         expect(Math.abs(value.width - initial.width), `${value.id} readable width`).toBeLessThanOrEqual(1);
         expect(Math.abs(value.height - initial.height), `${value.id} readable height`).toBeLessThanOrEqual(1);
       }
@@ -73,14 +78,14 @@ for (const live of [false, true])
         await page.clock.runFor(16);
         await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-viewport-moving", "");
         expect(Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1])).toBeCloseTo(target, 3);
-        await check();
+        await check(true);
       }
     } finally {
       await page.mouse.up({ button: live ? "left" : "middle" });
     }
     await page.clock.resume();
     await waitForCameraIdle(page);
-    await check();
+    await check(true);
     // The portal retains the existing focus action after moving.
     await page.keyboard.press("Shift+1");
     await waitForCameraIdle(page);

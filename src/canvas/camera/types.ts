@@ -107,11 +107,11 @@ export type CameraEvent =
   /** Shift+2: the selection (or the hovered node) and its connections. */
   | { type: "zoomToSelection"; nodes?: ReadonlySet<string>; edges?: ReadonlySet<string> }
   /** Editing, live view or presenting; `live`: live view is on (presenting runs with or without it). */
-  | { type: "mode.changed"; mode: CameraMode; live: boolean }
+  | { type: "mode.changed"; mode: CameraMode; live: boolean; keepCamera?: boolean }
   | { type: "fullscreen.changed" }
   /** The Checks card opened over the diagram (floating chrome). */
   | { type: "overlay.opened" }
-  /** Live's note changed: its focus takes the view (narration), or, when a focused note ends, the fit is back. */
+  /** Live's note changed: Following may reveal its off-screen subject; ending a note keeps the camera. */
   | { type: "narration"; focus: readonly string[] }
   /** Live's simulation or capacity panel opened or closed (it covers the right of the pane). */
   | { type: "live.panel"; open: boolean }

@@ -51,6 +51,24 @@ const NOTE = (reason: string, focus: string[], room: Partial<typeof ROOM> = {}) 
   card: false,
   ...room,
 });
+
+it.each(["overview", "focus", "custom", "follow"] as const)(
+  "entering Live keeps a visible %s camera through pane changes",
+  (view) => {
+    const result = run(state({ view, owner: "fit", pending: { cause: "selection" } }), [
+      { type: "mode.changed", mode: "live", live: true, keepCamera: true },
+      { type: "live.panel", open: false },
+      { type: "pane.changed", cause: "panel" },
+      settled(),
+      { type: "narration", focus: ["a"] },
+      settled(),
+    ]);
+    expect(result.commands).toEqual([]);
+    expect(result.state.view).toBe("custom");
+    expect(result.state.owner).toBe("manual");
+    expect(result.state.live.focus).toEqual(["a"]);
+  },
+);
 const V = { x: 1, y: 2, zoom: 0.8 };
 const REVEAL = (cause: string, withEdges = false) => ({ type: "reveal", cause, withEdges });
 
@@ -318,10 +336,10 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [NOTE("narration", ["a"])],
     ],
     [
-      "L2 a focused note ending gives the fit back",
+      "L2 a focused note ending keeps the camera",
       state({ mode: "live" }),
       [{ type: "narration", focus: ["a"] }, settled(), { type: "narration", focus: [] }, settled()],
-      [NOTE("narration", ["a"]), LIVE("narration")],
+      [NOTE("narration", ["a"])],
     ],
     [
       "L2 a note without focus after none: nothing",

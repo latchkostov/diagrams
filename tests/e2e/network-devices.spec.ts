@@ -136,6 +136,10 @@ test.describe("network devices", () => {
 
   test("a failing-over pair says so legibly, and its hover breakdown names its units", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=firewall-failover`);
+    // Owner decision: Following preserves zoom; request readable device details explicitly.
+    await goToNode(page, "firewall");
+    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await waitForCameraIdle(page);
     const chip = page.getByTestId("node-failover-firewall");
     await expect(chip).toBeVisible();
     const contrast = await chip.evaluate((el) => {
@@ -207,6 +211,10 @@ test.describe("network devices", () => {
 
   test("the event log's blocked label fits its column", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=payments-denied`);
+    // Owner decision: Live and Follow keep the camera, including a distant Overview zoom.
+    await goToNode(page, "firewall");
+    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await waitForCameraIdle(page);
     await expect(page.getByTestId("node-blocked-firewall")).toBeVisible();
     await page.getByTestId("node-firewall").click({ button: "right" });
     await page.getByTestId("context-menu-item-sim.behaviour").click();

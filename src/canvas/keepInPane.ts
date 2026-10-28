@@ -24,17 +24,38 @@ export function clampShift(lo: number, hi: number, min: number, max: number): nu
  * after editing (a zone's name chip).
  */
 export function keepInPane(el: HTMLElement | null): () => void {
-  const pane = el?.closest(".react-flow")?.getBoundingClientRect();
+  const pane = el?.closest(".react-flow");
   if (!el || !pane) return () => {};
   const before = el.style.translate;
-  const r = el.getBoundingClientRect();
-  const dx = clampShift(r.left, r.right, pane.left + MARGIN, pane.right - MARGIN);
-  const dy = clampShift(r.top, r.bottom, pane.top + MARGIN, pane.bottom - MARGIN);
-  if (dx || dy) {
-    const k = viewportZoom(el);
-    el.style.translate = `${dx / k}px ${dy / k}px`;
-  }
+  // Frame title placement owns an existing translation in flow pixels. Add the
+  // containment correction to that anchor rather than replacing it.
+  const [x = 0, y = 0] = before ? before.split(/\s+/).map((value) => parseFloat(value) || 0) : [];
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    el.style.translate = before;
+    const bounds = pane.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const dx = clampShift(r.left, r.right, bounds.left + MARGIN, bounds.right - MARGIN);
+    const dy = clampShift(r.top, r.bottom, bounds.top + MARGIN, bounds.bottom - MARGIN);
+    if (dx || dy) {
+      const k = viewportZoom(el);
+      el.style.translate = `${x + dx / k}px ${y + dy / k}px`;
+    }
+  };
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(update);
+  };
+  const viewport = el.closest(".react-flow__viewport");
+  const moves = new MutationObserver(schedule);
+  if (viewport) moves.observe(viewport, { attributes: true, attributeFilter: ["style"] });
+  const sizes = new ResizeObserver(schedule);
+  sizes.observe(pane);
+  update();
   return () => {
+    cancelAnimationFrame(frame);
+    moves.disconnect();
+    sizes.disconnect();
     el.style.translate = before;
   };
 }

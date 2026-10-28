@@ -1,3 +1,4 @@
+import { SpatialGrid } from "../geometry/spatial";
 import { FRAME_CARD_SPACE } from "./frameBounds";
 import { intersects, segmentHitsRect, type Rect } from "../geometry/rect";
 import { pointAlong } from "../geometry/path";
@@ -8,6 +9,75 @@ import type { RouteInput } from "../geometry/router";
 export type FrameEnd = "in" | "pinned" | "out";
 export type FrameSide = "left" | "right" | "top" | "bottom";
 export type Point = { x: number; y: number };
+/** A remote node above or below the pane owns that pin row, even when its route detours sideways. */
+export function pinAnchor(crossing: Point, side: FrameSide, target: Point, frame: Rect) {
+  if (target.y < frame.y) side = "top";
+  else if (target.y > frame.y + frame.height) side = "bottom";
+  const axis = side === "left" || side === "right" ? "y" : "x";
+  const length = axis === "y" ? frame.height : frame.width;
+  const point = { ...crossing, [axis]: Math.max(frame[axis], Math.min(target[axis], frame[axis] + length)) };
+  if (side === "top") point.y = frame.y;
+  if (side === "bottom") point.y = frame.y + frame.height;
+  return { point, side };
+}
+/** One decoration pass shares a finite collision budget and an index of occupied bands.
+ * Exhaustion stacks titles above every obstacle, so imports remain linear plus capped search work.
+ */
+export class TitleBands {
+  private obstacles: Rect[] = [];
+  private index = new SpatialGrid<Rect>();
+  private budget = { remaining: 32_768 };
+  private ceiling = Infinity;
+
+  constructor(obstacles: readonly Rect[]) {
+    for (const rect of obstacles) this.reserve(rect);
+  }
+
+  private reserve(rect: Rect) {
+    this.obstacles.push(rect);
+    this.index.insert(rect, rect);
+    this.ceiling = Math.min(this.ceiling, rect.y);
+    return rect;
+  }
+
+  place(region: Rect, size: { width: number; height: number }): Rect {
+    const top = region.y - size.height - 4;
+    const left = region.x + Math.min(10, region.width - size.width - 10);
+    const fallback = () => this.reserve({ x: left, y: Math.min(top, this.ceiling - size.height - 4), ...size });
+    // Charge row collection/sorting before allocating; never scan an imported prefix after exhaustion.
+    this.budget.remaining -= this.obstacles.length * (1 + Math.ceil(Math.log2(this.obstacles.length + 1)));
+    if (this.budget.remaining < 0) return fallback();
+    const rows = [top, ...this.obstacles.map((r) => r.y - size.height - 4).filter((y) => y < top)].sort(
+      (a, b) => b - a,
+    );
+    for (const y of rows) {
+      const hits = this.index.query(
+        { x: region.x - size.width - 4, y: y - 2, width: region.width + size.width * 2 + 8, height: size.height + 4 },
+        this.budget,
+      );
+      if (!hits) return fallback();
+      const across = hits.map(({ item }) => item).filter((r) => r.y < y + size.height + 2 && r.y + r.height > y - 2);
+      this.budget.remaining -= across.length * (1 + Math.ceil(Math.log2(across.length + 1)));
+      if (this.budget.remaining < 0) return fallback();
+      const xs = [left, ...across.flatMap((r) => [r.x - size.width - 4, r.x + r.width + 4])]
+        .filter((x) => x + size.width >= region.x && x <= region.x + region.width)
+        .sort((a, b) => Math.abs(a - left) - Math.abs(b - left));
+      for (const x of xs) {
+        this.budget.remaining -= across.length + 1;
+        if (this.budget.remaining < 0) return fallback();
+        const box = { x, y, ...size };
+        if (!across.some((r) => intersects(inflateTitle(box), r))) return this.reserve(box);
+      }
+    }
+    return fallback();
+  }
+}
+
+/** Reserve a readable title band above a region, clear of cards, routes and earlier titles. */
+export function titleBand(region: Rect, size: { width: number; height: number }, obstacles: readonly Rect[]): Rect {
+  return new TitleBands(obstacles).place(region, size);
+}
+const inflateTitle = (r: Rect): Rect => ({ x: r.x - 2, y: r.y - 2, width: r.width + 4, height: r.height + 4 });
 /** Frame-only lanes use screen pixels, independent of the camera's zoom. */
 export function frameLanes(
   routes: ReadonlyMap<string, Point[]>,
