@@ -62,10 +62,10 @@ export function mountChips(
   const update = () => {
     frame = 0;
     const state = store.getState();
+    if (disposed || suspended || !ready) return;
+    // Slow motion replays over the natural drawing, at any zoom, from its first frame (its camera may be moving).
+    if (root.querySelector("[data-live-slowmo]")) return clear();
     if (
-      disposed ||
-      suspended ||
-      !ready ||
       root.hasAttribute("data-viewport-moving") ||
       (camera && (camera.phase !== "idle" || camera.interacting)) ||
       // While a node is held, its routes follow the pointer; fitting waits for the release.
@@ -73,8 +73,7 @@ export function mountChips(
     )
       return;
     const zoom = state.transform[2];
-    // Slow motion replays over the natural drawing, at any zoom.
-    if (zoom >= 0.6 || root.querySelector("[data-live-slowmo]")) return clear();
+    if (zoom >= 0.6) return clear();
     const nodes = [...state.nodeLookup.values()].flatMap((n) => {
       if (n.type !== "diagram" || n.hidden || !n.measured?.width || !n.measured.height) return [];
       return [

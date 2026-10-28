@@ -152,8 +152,8 @@ export function useFrameLoop({
       lastGeneration = gen;
       march = slow ? 0 : still ? march : march + dt;
       const ui = now - lastUi >= UI_MS;
-      // Slow motion replays over the natural drawing (the chips step aside for it).
-      const lowZoom = slow ? null : (store.getState() as ChipState).ldChips;
+      // Below 60% the calm chip view paints nothing here (it steps aside for slow motion).
+      const lowZoom = (store.getState() as ChipState).ldChips;
       if (ui) {
         lastUi = now;
         if (controller.isPlaying) controller.publish();
@@ -206,9 +206,9 @@ export function useFrameLoop({
     let down: { x: number; y: number } | null = null;
     const hit = (e: MouseEvent) => {
       const target = e.target as Element | null;
+      // Below 60% (data-low-zoom) the particle layer is hidden and holds no current dots.
       if (
-        (store.getState() as ChipState).ldChips ||
-        target?.closest(".react-flow__node, .fe-label, [data-editor-overlay], button, input, select")
+        target?.closest("[data-low-zoom], .react-flow__node, .fe-label, [data-editor-overlay], button, input, select")
       )
         return undefined;
       const r = root.getBoundingClientRect();

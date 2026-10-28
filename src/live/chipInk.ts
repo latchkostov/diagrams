@@ -2,9 +2,15 @@ import { t } from "../i18n";
 import type { SimSnapshot } from "../sim/types";
 import { currentHealth } from "./healthWindow";
 
-export function clear(el: Element) {
-  for (const attr of ["data-live-trouble", "data-live-rate", "data-failing"]) el.removeAttribute(attr);
-  if (el.classList.contains("chip-trouble")) el.textContent = "";
+const PILLS = ".chip-trouble";
+
+/** Everything the chip view wrote under the Live root (it lives in this lazy chunk, not the Live session). */
+export function clear(root: ParentNode) {
+  for (const el of root.querySelectorAll(`[data-live-trouble], [data-live-rate], [data-live-cut], ${PILLS}`)) {
+    for (const attr of ["data-live-trouble", "data-live-rate", "data-live-cut", "data-failing"])
+      el.removeAttribute(attr);
+    if (el.matches(PILLS)) el.textContent = "";
+  }
 }
 
 /** Screen-only summaries load on Live intent, independently of the simulation runtime. */
@@ -30,7 +36,7 @@ export function rateLevel(rate: number) {
 
 export function decorate(
   nodes: HTMLElement[],
-  pills: HTMLElement[],
+  root: ParentNode,
   edges: HTMLElement[],
   boundaries: HTMLElement[],
   snapshot: SimSnapshot,
@@ -65,7 +71,7 @@ export function decorate(
         trouble.set(zone, counts);
       }
   }
-  rollup(pills, trouble);
+  rollup([...root.querySelectorAll<HTMLElement>(PILLS)], trouble);
   const groups = new Map<string, number>();
   const cut = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
   const groupOf = (el: HTMLElement) => el.firstElementChild?.getAttribute("data-chip-group") ?? el.dataset.id!;
