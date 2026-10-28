@@ -159,7 +159,7 @@ export function useFrameLoop({
         if (controller.isPlaying) controller.publish();
         // Before the frame, so an edge marked active marches in the same frame its SVG stops.
         decorator.apply({
-          zones: lowZoom?.members,
+          zones: lowZoom?.zones,
           snapshot: snap,
           health: controller.getState().snapshot,
           spotlight: spotlightRef.current,

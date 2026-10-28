@@ -19,7 +19,8 @@ export interface EdgeChip {
 export interface LowZoom {
   Edge(id: string, path: string, dependency: boolean, selected: boolean, lane: string, deny: ReactNode): ReactNode;
   Node: ComponentType<NodeBodyProps & { fit: ChipLayout }>;
-  members: Map<string, string[]>;
+  /** Each card's containing zones, innermost first (Live rolls trouble up into them). */
+  zones: Map<string, string[]>;
   tier: "mid" | "far";
   zoom: number;
   nodes: Map<string, ChipLayout>;

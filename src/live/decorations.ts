@@ -69,9 +69,10 @@ export class Decorator {
 
   constructor(private root: HTMLElement) {}
 
-  apply({ snapshot, health, spotlight, still, zones }: DecorationInput): void {
+  apply(input: DecorationInput): void {
+    const { snapshot, health, spotlight, still } = input;
     const root = this.root;
-    if (!chipInk) loadChipInk().catch(() => undefined);
+    if (!chipInk) loadChipInk().catch(Boolean);
     // One membership read before any decoration writes; never three whole-canvas selector walks.
     const nodes: HTMLElement[] = [],
       boundaries: HTMLElement[] = [],
@@ -130,7 +131,7 @@ export class Decorator {
       setAttr(el, "data-live-dim", dim ? "1" : null);
     }
 
-    chipInk?.decorate(nodes, root, edges, boundaries, snapshot, health, this.rates, zones);
+    chipInk?.decorate(nodes, root, edges, boundaries, input, this.rates);
 
     for (const el of edges) {
       const id = el.dataset.id!;

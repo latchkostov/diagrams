@@ -1,6 +1,6 @@
 import { t } from "../i18n";
-import type { SimSnapshot } from "../sim/types";
 import { currentHealth } from "./healthWindow";
+import type { DecorationInput } from "./decorations";
 
 const PILLS = ".chip-trouble";
 
@@ -39,10 +39,8 @@ export function decorate(
   root: ParentNode,
   edges: HTMLElement[],
   boundaries: HTMLElement[],
-  snapshot: SimSnapshot,
-  health: Pick<SimSnapshot, "nodes">,
+  { snapshot, health, zones }: DecorationInput,
   rates: ReadonlyMap<string, number>,
-  zones?: ReadonlyMap<string, readonly string[]>,
 ) {
   const trouble = new Map<string, number[]>();
   const attr = (el: Element, key: string, value: string | null) => {

@@ -36,7 +36,7 @@ import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
-import { useLowZoom, type ChipState } from "./lowZoom";
+import type { ChipState } from "./lowZoom";
 
 type Chip = { id: string; name: string; x: number; y: number; width: number };
 
@@ -994,8 +994,6 @@ const FrameChips = memo(function FrameChips({
   const host = useRef<HTMLDivElement>(null);
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const camera = useCameraController();
-  // Settled chips change what the titles must keep clear of.
-  const lowZoom = useLowZoom();
   useLayoutEffect(() => {
     const elements = host.current?.querySelectorAll<HTMLElement>(".detail-group-chip") ?? [];
     const update = () => {
@@ -1008,13 +1006,21 @@ const FrameChips = memo(function FrameChips({
     const sizes = new ResizeObserver(update);
     for (const el of elements) sizes.observe(el);
     const unsubscribe = store.subscribe((s, old) => {
-      if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes || s.edges !== old.edges) update();
+      if (
+        s.transform[2] !== old.transform[2] ||
+        s.nodes !== old.nodes ||
+        s.edges !== old.edges ||
+        // Newly settled chips change what titles keep clear of. Chips cleared by an image capture must not
+        // place titles again mid-capture: the export keeps the natural ones (leaving 60% changes the zoom).
+        ((s as ChipState).ldChips !== (old as ChipState).ldChips && (s as ChipState).ldChips)
+      )
+        update();
     });
     return () => {
       sizes.disconnect();
       unsubscribe();
     };
-  }, [chips, store, routing, root, camera, lowZoom]);
+  }, [chips, store, routing, root, camera]);
   return (
     <ViewportPortal>
       <div ref={host} className="detail-group-chips" data-testid="zone-chip-layer" data-export="skip">

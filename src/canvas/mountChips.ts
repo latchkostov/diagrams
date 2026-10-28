@@ -111,7 +111,7 @@ export function mountChips(
     setLowZoom(store, {
       Edge: chipEdge,
       Node: ChipNode,
-      members,
+      zones: members,
       tier: zoom < 0.3 ? "far" : "mid",
       zoom,
       nodes: chips,
