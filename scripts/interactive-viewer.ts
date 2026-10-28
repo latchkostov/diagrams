@@ -371,7 +371,15 @@ export function viewerSwaps(root: string): Plugin {
       if (!own(id, "/src/live/liveRenderer.ts")) return null;
       if (!code.includes(WORKER))
         this.error("interactive viewer: liveRenderer.ts no longer creates its worker as expected; update WORKER.");
-      return code.replace(WORKER, '(() => { throw new Error("The exported file draws on the main thread."); })()');
+      // Exported viewers always draw on the main thread. Specialize the factory as well as the
+      // capability check, so the worker host/protocol and its scene bookkeeping can tree-shake.
+      const factory = 'return kind === "worker" ? new WorkerRenderer(setup) : new MainThreadRenderer(setup);';
+      const pick = 'return canRenderInWorker() ? "worker" : "main";';
+      if (!code.includes(factory) || !code.includes(pick)) this.error("interactive viewer: renderer factory changed");
+      return code
+        .replace(factory, "return new MainThreadRenderer(setup);")
+        .replace(pick, 'return "main";')
+        .replace(WORKER, '(() => { throw new Error("The exported file draws on the main thread."); })()');
     },
     generateBundle(_options, bundle) {
       for (const out of Object.values(bundle)) {

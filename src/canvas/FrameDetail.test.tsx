@@ -53,7 +53,7 @@ afterEach(() => {
   fixture.listeners.clear();
 });
 
-it("bounds FrameDetail reads, writes and layout barriers per update independently of graph size", async () => {
+it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mutations (far: %s)", async (far) => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   let computedRead = () => {};
   vi.stubGlobal("getComputedStyle", () => {
@@ -69,6 +69,19 @@ it("bounds FrameDetail reads, writes and layout barriers per update independentl
   });
   Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  let mutate = (_records: MutationRecord[]) => {};
+  const NativeMutationObserver = MutationObserver;
+  vi.stubGlobal(
+    "MutationObserver",
+    class extends NativeMutationObserver {
+      constructor(run: MutationCallback) {
+        super(run);
+        mutate = (records) => run(records, this);
+      }
+    },
+  );
+  const notify = (...records: Pick<MutationRecord, "type" | "target" | "attributeName">[]) =>
+    mutate(records as MutationRecord[]);
   const frames = new Map<number, FrameRequestCallback>();
   let operations = 0;
   const work: number[] = [];
@@ -93,6 +106,8 @@ it("bounds FrameDetail reads, writes and layout barriers per update independentl
     });
   };
   for (const n of [16, 128]) {
+    fixture.camera.state.view = far ? "overview" : "custom";
+    fixture.camera.state.mode = far ? "live" : "edit";
     fixture.state = {
       nodes: Array.from({ length: n }, (_, i) => ({
         id: String(i),
@@ -107,16 +122,23 @@ it("bounds FrameDetail reads, writes and layout barriers per update independentl
         target: String(i + 1),
       })) as DiagramFlowEdge[],
       nodeLookup: new Map(),
-      transform: [0, 0, 0.75],
+      transform: [0, 0, far ? 0.2 : 0.75],
     };
     for (const node of fixture.state.nodes) fixture.state.nodeLookup.set(node.id, node);
     const host = document.createElement("div");
     document.body.append(host);
-    host.innerHTML = `<div class="react-flow__viewport">${fixture.state.nodes.map((node) => `<div class="react-flow__node react-flow__node-diagram" data-id="${node.id}"><div class="nb"><span class="nb-sub">Subtitle</span></div></div>`).join("")}${fixture.state.edges.map((edge) => `<svg class="react-flow__edge" data-id="${edge.id}"><path class="fe-path"/></svg><div class="fe-label" data-testid="edge-label-${edge.id}">Message</div>`).join("")}</div>`;
+    host.innerHTML = `<div class="react-flow__viewport" data-testid="frame-test-viewport">${fixture.state.nodes.map((node) => `<div class="react-flow__node react-flow__node-diagram" data-id="${node.id}"><div class="nb"><span class="nb-sub">Subtitle</span></div></div>`).join("")}${fixture.state.edges.map((edge) => `<svg class="react-flow__edge" data-id="${edge.id}" data-testid="edge-${edge.id}"><path class="fe-path"/></svg><div class="fe-label" data-testid="edge-label-${edge.id}">Message</div>`).join("")}</div>`;
+    const title = document.createElement("span");
+    title.dataset.testid = "card-title";
+    const badge = document.createElement("div");
+    badge.dataset.testid = "node-badge-0";
+    badge.innerHTML = '<span class="lv-metric">1</span>';
+    host.querySelector('[data-testid="frame-test-viewport"]')!.append(title, badge);
     let reads = 0,
       writes = 0,
       barriers = 0,
-      written = false;
+      written = false,
+      labelReads = 0;
     const read = () => {
       reads++;
       if (written) barriers++;
@@ -130,6 +152,7 @@ it("bounds FrameDetail reads, writes and layout barriers per update independentl
     operations = 0;
     const rectSpy = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
       read();
+      if ((this as HTMLElement).dataset.testid?.startsWith("edge-label-")) labelReads++;
       const id = (this as HTMLElement).dataset.id;
       return new DOMRect(id ? Number(id) * 300 : 0, 0, this === host ? 1200 : 220, this === host ? 800 : 72);
     });
@@ -175,6 +198,7 @@ it("bounds FrameDetail reads, writes and layout barriers per update independentl
       expect(reads / n).toBeLessThanOrEqual(6);
       expect(writes / n).toBeLessThanOrEqual(12);
       expect(barriers).toBeLessThanOrEqual(12);
+      expect(labelReads === 0).toBe(far);
       work.push(operations);
       // A camera notification with identical inputs must do no DOM work.
       reads = writes = 0;
@@ -182,6 +206,38 @@ it("bounds FrameDetail reads, writes and layout barriers per update independentl
       await flush();
       expect(reads).toBe(0);
       expect(writes).toBe(0);
+      notify({ type: "childList", target: title, attributeName: null });
+      await flush();
+      expect(reads).toBe(0);
+      expect(writes).toBe(0);
+      const edge = host.querySelector<SVGElement>('[data-testid="edge-1"]')!;
+      edge.setAttribute("data-live-main", "");
+      notify(
+        { type: "childList", target: title, attributeName: null },
+        { type: "childList", target: badge.firstElementChild!, attributeName: null },
+        { type: "attributes", target: edge, attributeName: "data-live-main" },
+      );
+      await flush();
+      if (far) {
+        expect(reads).toBe(0);
+        expect(writes).toBe(0);
+        expect(edge.hasAttribute("data-detail-hidden")).toBe(false);
+        edge.removeAttribute("data-live-main");
+        notify({ type: "attributes", target: edge, attributeName: "data-live-main" });
+        await flush();
+        expect(edge.hasAttribute("data-detail-hidden")).toBe(true);
+        expect(reads).toBe(0);
+      } else {
+        // Visible readouts still invalidate geometry.
+        expect(reads).toBeGreaterThan(0);
+      }
+      const traversals = query.mock.calls.length;
+      notify(
+        { type: "childList", target: title, attributeName: null },
+        { type: "attributes", target: host, attributeName: "data-detail-measure" },
+      );
+      await flush();
+      expect(query).toHaveBeenCalledTimes(traversals + 1);
     } finally {
       await act(() => root.unmount());
       rectSpy.mockRestore();

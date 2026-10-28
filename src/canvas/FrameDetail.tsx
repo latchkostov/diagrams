@@ -476,15 +476,18 @@ const FrameDecoration = memo(
           label.style.removeProperty("height");
           label.style.removeProperty("line-height");
           // Keep the dependency text's counter-scaled font from textDetail above.
+          if (far) setHidden(label, true);
         }
-        for (const [id, label] of edgeLabels) originalLabels.set(id, box(label, origin));
+        // Far labels are hidden entirely; retain the batched reads only for visible detail.
+        if (!far) for (const [id, label] of edgeLabels) originalLabels.set(id, box(label, origin));
         const labelIndex = new SpatialGrid<string>();
         for (const [id, rect] of originalLabels) labelIndex.insert(rect, id);
         const pathIndex = new SpatialGrid<string>();
-        for (const [id, points] of lanes) {
-          const bounds = union(points.map((p) => ({ ...p, width: 0, height: 0 })));
-          if (bounds) pathIndex.insert(bounds, id);
-        }
+        if (!far)
+          for (const [id, points] of lanes) {
+            const bounds = union(points.map((p) => ({ ...p, width: 0, height: 0 })));
+            if (bounds) pathIndex.insert(bounds, id);
+          }
         const nearby = (id: string, b: Rect) => {
           const area = inflate(
             union([b, ...(lanes.get(id) ?? []).map((p) => ({ ...p, width: 0, height: 0 }))])!,
@@ -501,7 +504,7 @@ const FrameDecoration = memo(
               .map((e) => lanes.get(e.item)!),
           };
         };
-        const labelReads = [...edgeLabels].map(([id, label]) => {
+        const labelReads = [...(far ? [] : edgeLabels)].map(([id, label]) => {
           const edge = edges.get(id);
           const text =
             label.querySelector<HTMLElement>(".fe-label-text") ??
@@ -581,7 +584,7 @@ const FrameDecoration = memo(
           }
 
           const label = edgeLabels.get(edge.id);
-          if (!label) continue;
+          if (!label || far) continue;
           const reading = labelsById.get(edge.id)!;
           const enlarged = enlargedBoxes.get(edge.id);
           let floorPlacement: Rect | null = null;
@@ -719,20 +722,23 @@ const FrameDecoration = memo(
         if (dirty && !frame) frame = requestAnimationFrame(update);
       });
       const observer = new MutationObserver((records) => {
-        if (
-          records.every(
-            (record) =>
+        // Our own title commits and hidden Overview readouts do not change geometry.
+        // Filter individually so a mixed batch still handles traffic ink without a layout pass.
+        const relevant = records.filter(
+          (record) =>
+            !(
               record.type === "childList" &&
               record.target instanceof Element &&
-              record.target.matches('[data-testid="card-title"]'),
-          )
-        )
-          return;
+              (record.target.matches('[data-testid="card-title"]') ||
+                (root.hasAttribute("data-detail-far") && record.target.closest('[data-testid^="node-badge-"]')))
+            ),
+        );
+        if (!relevant.length) return;
         // Rate ranking changes at the UI clock. Only flip edge ink here: traffic
         // must never remeasure a settled frame or rebuild its labels and routes.
-        if (records.every((record) => record.attributeName === "data-live-main")) {
+        if (relevant.every((record) => record.attributeName === "data-live-main")) {
           if (root.hasAttribute("data-detail-overview"))
-            for (const record of records)
+            for (const record of relevant)
               if (record.target instanceof SVGElement)
                 setHidden(
                   record.target,

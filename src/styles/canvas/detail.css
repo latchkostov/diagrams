@@ -101,16 +101,16 @@
 [data-detail-far] .react-flow__edge .fe-path {
   stroke: var(--dim-stroke);
   stroke-width: calc(1px / var(--rf-zoom));
-  opacity: 0.7;
+  --live-march-opacity: 0.7;
 }
 [data-detail-far] .react-flow__edge[data-live-near] .fe-path {
   stroke-width: calc(1.5px / var(--rf-zoom));
-  opacity: 1;
+  --live-march-opacity: 1;
 }
 
 [data-detail-far] .react-flow__edge[data-live-main] .fe-path {
   stroke-width: calc(1.5px / var(--rf-zoom));
-  opacity: 1;
+  --live-march-opacity: 1;
 }
 
 [data-detail-far] .react-flow__node-diagram[data-live-dim] .nb {
@@ -120,7 +120,7 @@
 [data-detail-far] .react-flow__edge[data-live-near] .fe-path,
 [data-detail-far] .react-flow__edge[data-live-main] .fe-path {
   stroke: var(--text-2);
-  opacity: 1;
+  --live-march-opacity: 1;
 }
 
 [data-detail-far] .react-flow[data-live-spotlight] .react-flow__node-diagram[data-live-dim] .nb {
@@ -131,7 +131,7 @@
 [data-detail-far] .react-flow[data-live] .react-flow__edge[data-live-near] .fe-path {
   stroke: var(--text-2);
   stroke-width: calc(1.5px / var(--rf-zoom));
-  opacity: 1;
+  --live-march-opacity: 1;
 }
 
 [data-detail-view] .react-flow__edge[data-detail-selected-edge] .fe-path.react-flow__edge-path {
@@ -155,5 +155,5 @@
   .fe-path.react-flow__edge-path {
   stroke: var(--text-2);
   stroke-width: calc(1.5px / var(--rf-zoom));
-  opacity: 1;
+  --live-march-opacity: 1;
 }
