@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { capacityView } from "../capacityView";
 import { ViewportPortal, useStore } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
@@ -67,4 +68,10 @@ export function EditCapacity({
       </div>
     </>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function editCapacityWhenReady() {
+  await surfaceCatalogs(["simulation"]);
+  return EditCapacity;
 }

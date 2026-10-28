@@ -1,6 +1,6 @@
 import type { InteractionPort, InteractionScheduler, Resolution } from "./controller";
 import type { ElementHandle, FocusTarget, InteractionPhase } from "./types";
-import { captureTypeAhead, dismissPendingTypeAheadModal } from "../typeAhead";
+import { captureTypeAhead, dismissPendingTypeAheadModal, pendingTypeAheadModal } from "../typeAhead";
 
 /** Marks the Live bar's control that opens its side panels, so a panel's Esc has somewhere to give focus back. */
 export const PANEL_OPENER_ATTR = "data-live-panel-opener";
@@ -165,6 +165,8 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
     dismissPendingModal: dismissPendingTypeAheadModal,
     elsewhere(handle) {
       const el = handle as Element;
+      // A pending modal's loading frame sits over a pending rename: closing it returns there, so it isn't elsewhere.
+      if (pendingTypeAheadModal() && el.closest?.('[aria-modal="true"]')) return false;
       return !canvas.root()?.contains(el) || el.matches(EDITABLE);
     },
     field(handle) {

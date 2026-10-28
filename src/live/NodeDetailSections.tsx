@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { CallsReadout } from "./CallsReadout";
 import type { CSSProperties } from "react";
 import { waitingDetails } from "./waitingDetails";
@@ -261,4 +262,10 @@ function Row({ label, value, bad, testId }: { label: string; value: string; bad?
       </b>
     </div>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function nodeSectionsWhenReady() {
+  await surfaceCatalogs(["simulation"]);
+  return NodeDetailSections;
 }

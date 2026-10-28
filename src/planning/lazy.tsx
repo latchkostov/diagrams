@@ -1,7 +1,12 @@
 import { lazyComponent, loadOnce } from "../lib/lazyLoad";
 import { t } from "../i18n";
 
-const loadPlanning = loadOnce(() => import("./ui"));
+const loadPlanning = loadOnce(() =>
+  import("./ui").then(async (m) => {
+    await m.planningWhenReady();
+    return m;
+  }),
+);
 export const NodePlanning = lazyComponent(
   () => loadPlanning().then((m) => m.NodePlanning),
   (_props, status) => (

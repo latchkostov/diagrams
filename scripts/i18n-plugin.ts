@@ -18,7 +18,7 @@ import { readDeployment, resolveDeploymentEnv } from "./deployment-env";
 //    the module's syntax tree, after TypeScript and JSX are compiled away, by the bindings imported from src/i18n.
 // 2. Catalogs. `virtual:i18n/catalogs` maps each language this build offers to a lazy import of
 //    `virtual:i18n/catalog/<code>`: src/i18n/locales/<code>.json compiled the same way, keyed by English text or by
-//    number. One chunk per language, loaded only by the people who use it. The pseudo-locale (en-XA) is made from
+//    number. A core chunk per language and optional surface chunks, loaded only when needed. The pseudo-locale (en-XA) is made from
 //    English here, in the dev server, Vitest and the e2e build only.
 //
 // Numbers are positions in the sorted English keys, so they only hold within one build: catalogs and call sites are
@@ -37,6 +37,115 @@ const ids = new Map(keys.map((k, i) => [k, i]));
 /** Each message's English, compiled: a JSON string literal when it's plain text, else a function's source. */
 const english = new Map(keys.map((k) => [k, compile(en[k], true)]));
 const plain = (key: Key) => (english.get(key) ?? "").startsWith('"');
+
+/** Prefix ownership is explicit: adding a namespace requires choosing its loading boundary. */
+export { catalogBuckets } from "../src/i18n/bucketManifest";
+import { catalogBuckets, catalogSuffix, surfaceBuckets, type CatalogBucket } from "../src/i18n/bucketManifest";
+import { APP_ENTRIES, formatViolations, readSources, surfaceKeyViolations } from "./i18n-surfaces";
+// Shell copy and stencil names are needed before the optional surfaces arrive.
+const coreMessages = new Set<Key>([
+  "htmlExport.simulations",
+  "htmlExport.theme",
+  "htmlExport.light",
+  "htmlExport.dark",
+  "ai.aI",
+  "ai.undo",
+  "ai.panelKeys",
+  "ai.unseen",
+  "share.title",
+  "tutorials.learnRetries",
+  "tutorials.learnWaiting",
+  "tutorials.section",
+  "tutorials.loading",
+  "tutorials.exit",
+  "tutorials.startCard",
+  "tutorials.shortcuts",
+  "ai.selected",
+  "storageDialog.title",
+  "ai.aIPanel",
+  "ai.copyForAI",
+  "ai.private",
+  "ai.buildWithAI",
+  "ai.loadFailed",
+  "ai.close",
+  "ai.retry",
+  "threads.simulation",
+  "threads.freeAction",
+  "threads.holdAction",
+  "autoscaling.modelRequired",
+  "autoscaling.upgrade",
+  "planning.loading",
+  "planning.loadFailed",
+  "planning.retry",
+  "htmlExport.interactiveHTML",
+  // Shared by surfaces that wait for different catalogs, or shown from startup modules: the build's surface check
+  // (scripts/i18n-surfaces.ts) lists what a module can render before its catalogs are ready.
+  // Planning, inspector and Live controls all use "Advanced"; only planning waits for the simulation catalog.
+  "ai.advanced",
+  // Opening a file (startup can): its validation errors, and the engine's replica budget.
+  "admission.endpointInvalid",
+  "admission.unknown",
+  "autoscaling.bindingInvalid",
+  "autoscaling.checkInvalid",
+  "autoscaling.budget",
+  "planning.delayInvalid",
+  "planning.formatRequired",
+  "planning.unsupportedPreset",
+  "planning.unsupportedRevision",
+  "threads.modelRequired",
+  // The example browser's tutorial links.
+  "tutorials.examplesLink",
+  "tutorials.openTutorials",
+  "tutorials.exampleChip",
+]);
+// Tutorial discovery outside the tutorials: command titles and their search words.
+const tutorialTitleMessages = new Set<string>(["tutorials.command", "tutorials.paletteKeywords"]);
+// Simulation-only inspector copy follows the fields; identity and dock chrome remain in core.
+const simulationPrefixes = [
+  "inspector.rate",
+  "inspector.latency",
+  "inspector.processingTime",
+  "inspector.concurrency",
+  "inspector.messagesProcessed",
+  "inspector.messagesPerSecond",
+  "inspector.replicas",
+  "inspector.randomSpread",
+  "inspector.failureRate",
+  "inspector.probabilityAMessage",
+  "inspector.maxDeliveries",
+  "inspector.attemptsBefore",
+  "inspector.partitions",
+  "inspector.maxInFlight",
+  "inspector.howManyConsumers",
+];
+export function catalogBucket(key: string): CatalogBucket {
+  const namespace = key.split(".")[0];
+  const matches = Object.entries(catalogBuckets).filter(([, prefixes]) =>
+    (prefixes as readonly string[]).includes(namespace),
+  );
+  if (matches.length !== 1)
+    throw new Error(`Catalog key must belong to exactly one bucket: ${key} (${matches.length})`);
+  if (coreMessages.has(key as Key) || (namespace === "stencil" && /(?:Name$|^stencil\.(?:subtitle|vendor))/.test(key)))
+    return "core";
+  if (/^tutorials\.[^.]+\.title$/.test(key) || tutorialTitleMessages.has(key)) return "tutorialTitles";
+  if (simulationPrefixes.some((prefix) => key.startsWith(prefix))) return "simulation";
+  return matches[0][0] as CatalogBucket;
+}
+export function lintCatalogBuckets(messageKeys: string[] = keys): void {
+  for (const key of messageKeys) catalogBucket(key);
+}
+
+/** Every key a module can render is in core or a catalog its surface declares (scripts/i18n-surfaces.ts). */
+export function lintSurfaceCatalogs(root = ROOT): void {
+  const violations = surfaceKeyViolations(readSources(root), APP_ENTRIES, (key) =>
+    ids.has(key as Key) ? catalogBucket(key) : undefined,
+  );
+  if (violations.length)
+    throw new Error(`A surface can render keys before their catalog is ready:
+${formatViolations(violations)}`);
+}
+
+const byText = (key: Key, numbered: Set<Key>) => plain(key) && !numbered.has(key);
 
 /** The languages with a catalog in src/i18n/locales (`de.json`; not the `.meta.json` beside it). */
 export function catalogLocales(dir = LOCALES_DIR): string[] {
@@ -57,13 +166,20 @@ export function readCatalog(code: string, dir = LOCALES_DIR): Partial<Record<Key
 }
 
 /**
- * Plain messages that must be looked up by number: their English is shared with another key, and some language
- * translates the two differently.
+ * Plain messages looked up by number: long optional copy avoids repeating English in each locale chunk;
+ * shared English that a language translates differently keeps a separate lookup for each message.
  */
 export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key> {
   const byEnglish = new Map<string, Key[]>();
   for (const k of keys) if (plain(k)) byEnglish.set(en[k], [...(byEnglish.get(en[k]) ?? []), k]);
   const out = new Set<Key>();
+  for (const key of keys)
+    if (
+      plain(key) &&
+      ["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) &&
+      en[key].length >= 64
+    )
+      out.add(key);
   for (const group of byEnglish.values()) {
     if (group.length < 2) continue;
     // A key a language hasn't translated reads its sibling's translation: better than English.
@@ -83,11 +199,13 @@ export function compileCatalog(
   dir = LOCALES_DIR,
   prefix = "",
   excludeStandalone = false,
+  bucket?: CatalogBucket,
 ): string {
   const messages: Partial<Record<Key, string>> = code === PSEUDO_LOCALE ? {} : readCatalog(code, dir);
   const entries: string[] = [];
   for (const key of keys) {
     if (!key.startsWith(prefix) || (excludeStandalone && /^(?:staticAuth|staticSkill)\./.test(key))) continue;
+    if (bucket && catalogBucket(key) !== bucket) continue;
     let compiled: string;
     try {
       if (code === PSEUDO_LOCALE) compiled = compile(pseudoLocalize(parse(en[key])));
@@ -96,9 +214,9 @@ export function compileCatalog(
     } catch (error) {
       throw new Error(`${code}.json, "${key}": ${(error as Error).message}`, { cause: error });
     }
-    const byText = plain(key) && !numbered.has(key);
+    const textKey = byText(key, numbered);
     // A plain English message stays plain in every language (the validator checks); if not, number it.
-    entries.push(`${byText && compiled.startsWith('"') ? JSON.stringify(en[key]) : ids.get(key)}:${compiled}`);
+    entries.push(`${textKey && compiled.startsWith('"') ? JSON.stringify(en[key]) : ids.get(key)}:${compiled}`);
   }
   return [
     `import { helpersFor } from ${JSON.stringify(HELPERS)};`,
@@ -283,7 +401,7 @@ export function rewriteCalls(
         onError(`"${k}" has tags: render it with tRich, not ${fn} (${id})`);
         return;
       }
-      if (args.length === 1 && fn !== "tRich" && plain(k) && !numbered.has(k))
+      if (args.length === 1 && fn !== "tRich" && byText(k, numbered))
         edits.push({ start: node.start, end: node.end, text: `${name}${template(en[k])}` });
       else if (args.length === 1)
         edits.push({ start: node.start, end: node.end, text: `${name}(${n},${english.get(k)})` });
@@ -321,6 +439,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
   let limit = "";
   let numbered = new Set<Key>();
   let server: ViteDevServer | undefined;
+  let building = false;
   const offered = () => {
     if (options.catalogs === false) return [];
     const wanted = limit ? limit.split(",") : null;
@@ -339,6 +458,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
     config(config, { command, mode }) {
       // The pseudo-locale is for spotting untranslated and overflowing UI: the dev server, Vitest and the e2e build.
       pseudo = options.pseudo === true || command === "serve" || process.env.VITE_E2E === "1";
+      building = command === "build";
       if (options.catalogs === false) return;
       limit = readDeployment(resolveDeploymentEnv(mode, config.envDir || config.root || process.cwd())).locales;
       const have = new Set(["en", ...catalogLocales()]);
@@ -350,6 +470,9 @@ export function i18n(options: I18nOptions = {}): Plugin {
       server = s;
     },
     buildStart() {
+      lintCatalogBuckets();
+      // The app's builds (not the English-only viewer or the standalone pages, which bundle complete catalogs).
+      if (building && options.catalogs !== false && options.prefix === undefined) lintSurfaceCatalogs();
       refresh();
     },
     resolveId(id, importer) {
@@ -371,13 +494,33 @@ export function i18n(options: I18nOptions = {}): Plugin {
         const loaders = codes.map((c) => `${JSON.stringify(c)}:()=>import(${JSON.stringify(CATALOG + c)})`);
         return [
           `export const catalogs = {${loaders.join(",")}};`,
+          options.prefix !== undefined
+            ? "export const coreCatalogs = catalogs; export const surfaceCatalogs = {};"
+            : `export const coreCatalogs = {${codes.map((c) => `${JSON.stringify(c)}:()=>import(${JSON.stringify(CATALOG + c + "-core")})`).join(",")}};\nexport const surfaceCatalogs = {${codes
+                .map(
+                  (c) =>
+                    `${JSON.stringify(c)}:{${surfaceBuckets
+                      .map((b) => `${b}:()=>import(${JSON.stringify(CATALOG + c + "-" + b)})`)
+                      .join(",")}}`,
+                )
+                .join(",")}};`,
           `export const reviewed = ${JSON.stringify(reviewed(LOCALES_DIR, codes))};`,
         ].join("\n");
       }
       if (id.startsWith(`\0${CATALOG}`)) {
-        const code = id.slice(`\0${CATALOG}`.length);
+        const suffix = id.slice(`\0${CATALOG}`.length);
+        const split = catalogSuffix.exec(suffix);
+        const code = split?.[1] ?? suffix;
+        const bucket = split?.[2];
         if (code !== PSEUDO_LOCALE) this.addWatchFile(path.join(LOCALES_DIR, `${code}.json`));
-        return compileCatalog(code, numbered, LOCALES_DIR, options.prefix, options.prefix === undefined);
+        return compileCatalog(
+          code,
+          numbered,
+          LOCALES_DIR,
+          options.prefix,
+          options.prefix === undefined,
+          bucket as CatalogBucket | undefined,
+        );
       }
     },
     transform(code, id) {

@@ -1,4 +1,5 @@
 import { t } from "../../i18n";
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
 import { isLocalOnly, privacyOf } from "../../lib/localOnly";
@@ -12,6 +13,9 @@ import { referenceText, resolveScope } from "./context";
 export async function copyForAi(ids: string[]): Promise<void> {
   const canvas = paletteHost.get().canvas;
   if (!canvas) return;
+  // What it says comes with the AI catalog, before the panel ever opened (a failed download still says it, in English).
+  const words = surfaceCatalogs(["ai"]);
+  if (words) await words.catch(() => {});
   if (isLocalOnly(canvas))
     return void notify(privacyOf(canvas) === "private" ? t("ai.privateOffPeriod") : t("ai.aIIsOffForThisLocalOnly2"), {
       kind: "error",

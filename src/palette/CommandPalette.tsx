@@ -1,7 +1,6 @@
 import {
   Component,
-  lazy,
-  Suspense,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -9,6 +8,9 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
+import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
+import { loadingDialog } from "../interop/ui/lazyDialogs";
+import { t } from "../i18n";
 import { matches, shortcutKeys } from "../editor/shortcuts";
 import { captureModalTypeAhead, type TypeAhead } from "../canvas/typeAhead";
 import type { PaletteDialogProps } from "./PaletteDialog";
@@ -19,22 +21,19 @@ import type { DiagramOption } from "./sources";
 // preloads as soon as the pointer moves (or Ctrl/Cmd goes down), so Ctrl+K opens at once; keys typed
 // before its search can take them are held and handed over ("Ctrl+K kafka" searches "kafka").
 
-let loaded: ComponentType<PaletteDialogProps> | null = null;
-let loading: Promise<{ default: ComponentType<PaletteDialogProps> }> | null = null;
-
-/** Loads the dialog's code once. */
-function preloadPalette() {
-  loading ??= import("./PaletteDialog").then((m) => {
-    loaded = m.PaletteDialog;
-    return { default: m.PaletteDialog };
-  });
-  loading.catch(() => {
-    loading = null;
-  });
-  return loading;
+type LoadingProps = PaletteDialogProps & { releaseTyping(): void };
+const paletteLoading = loadingDialog<LoadingProps>(() => t("command.searchCommands"));
+function PaletteLoading({ status, ...props }: LoadingProps & { status: LoadStatus }) {
+  const { releaseTyping } = props;
+  useEffect(() => {
+    if (status.failed) releaseTyping();
+  }, [status.failed, releaseTyping]);
+  return paletteLoading(props, status);
 }
-
-const PaletteDialogLazy = lazy(preloadPalette);
+const PaletteDialogLazy = lazyComponent<LoadingProps>(
+  () => import("./PaletteDialog").then((m) => m.paletteDialogWhenReady()),
+  (props, status) => <PaletteLoading {...props} status={status} />,
+);
 
 /** Ctrl/Cmd+K, from the shortcut table (so the cheat sheet lists it). */
 const PALETTE_COMBO = shortcutKeys("command-palette");
@@ -55,10 +54,13 @@ export interface CommandPaletteProps {
 
 export function CommandPalette(props: CommandPaletteProps) {
   // The dialog to show (null: closed): the loaded one when its code is in, so it renders in the same
-  // frame as the key press; else the lazy one, which suspends until it arrives.
-  const [open, setOpen] = useState<{ Dialog: ComponentType<PaletteDialogProps> } | null>(null);
+  // frame as the key press; otherwise its modal frame offers loading and recovery.
+  const [open, setOpen] = useState<{ Dialog: ComponentType<LoadingProps> } | null>(null);
   const typing = useRef<{ stop: () => TypeAhead } | null>(null);
   const isOpen = open !== null;
+  const releaseTyping = useCallback(() => {
+    typing.current?.stop();
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,7 +73,7 @@ export function CommandPalette(props: CommandPaletteProps) {
       if (isOpen) return setOpen(null);
       typing.current?.stop();
       typing.current = captureModalTypeAhead(() => setOpen(null));
-      setOpen({ Dialog: loaded ?? PaletteDialogLazy });
+      setOpen({ Dialog: PaletteDialogLazy });
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -89,7 +91,7 @@ export function CommandPalette(props: CommandPaletteProps) {
   // Warm the chunk on the first pointer move or Ctrl/Cmd press, else once the app is idle.
   useEffect(() => {
     const warm = () => {
-      void preloadPalette().catch(() => {});
+      PaletteDialogLazy.preload();
       stop();
     };
     const onKey = (e: KeyboardEvent) => {
@@ -110,17 +112,16 @@ export function CommandPalette(props: CommandPaletteProps) {
   const { Dialog } = open;
   return (
     <PaletteBoundary onError={() => setOpen(null)}>
-      <Suspense fallback={null}>
-        <Dialog
-          {...props}
-          onClose={() => setOpen(null)}
-          typeAhead={() => {
-            const t = typing.current?.stop() ?? { text: null };
-            typing.current = null;
-            return t;
-          }}
-        />
-      </Suspense>
+      <Dialog
+        {...props}
+        releaseTyping={releaseTyping}
+        onClose={() => setOpen(null)}
+        typeAhead={() => {
+          const t = typing.current?.stop() ?? { text: null };
+          typing.current = null;
+          return t;
+        }}
+      />
     </PaletteBoundary>
   );
 }

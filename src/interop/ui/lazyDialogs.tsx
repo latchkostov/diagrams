@@ -55,20 +55,20 @@ const LINKS = __DEPLOYMENT_SHARE_LINKS__;
 const linksOff = () => Promise.reject(new Error(LINKS_OFF_MESSAGE));
 
 export const ShareDialog = lazyComponent(
-  LINKS ? () => import("./dialogs").then((m) => m.ShareDialog) : linksOff,
+  LINKS ? () => import("./dialogs").then((m) => m.shareWhenReady()) : linksOff,
   loadingDialog(() => t("fileDialog.shareLink")),
 );
 export const EmbedDialog = lazyComponent(
-  () => import("./dialogs").then((m) => m.EmbedDialog),
+  () => import("./dialogs").then((m) => m.embedWhenReady()),
   loadingDialog(() => t("fileDialog.embedCode")),
 );
 /** File ▸ Share…: every way out, safest first; each of its rows opens one of the dialogs here, or saves the file. */
 export const ShareChooserDialog = lazyComponent(
-  () => import("./ShareChooser").then((m) => m.ShareChooser),
+  () => import("./ShareChooser").then((m) => m.shareChooserWhenReady()),
   loadingDialog(() => t("share.title")),
 );
 export const ImageDialog = lazyComponent(
-  () => import("./dialogs").then((m) => m.ImageDialog),
+  () => import("./dialogs").then((m) => m.imageWhenReady()),
   loadingDialog(() => t("fileDialog.exportImage")),
 );
 export const PasteDialog = lazyComponent(
@@ -93,26 +93,26 @@ export const ClearDeviceDialog = lazyComponent(
 );
 /** File ▸ Export as ▸ Interactive HTML… (src/export): the template itself downloads only when it opens. */
 export const HtmlExportDialog = lazyComponent(
-  () => import("../../export/HtmlExportDialog").then((m) => m.HtmlExportDialog),
+  () => import("../../export/HtmlExportDialog").then((m) => m.htmlWhenReady()),
   loadingDialog(() => t("htmlExport.interactiveHTML")),
 );
 /** Password links: the dialogs and the strength hint. */
 export const PasswordLinkDialog = lazyComponent(
-  LINKS ? () => import("./passwordDialogs").then((m) => m.PasswordLinkDialog) : linksOff,
+  LINKS ? () => import("./passwordDialogs").then((m) => m.passwordLinkWhenReady()) : linksOff,
   loadingDialog(() => t("passwordLink.linkWithPassword")),
 );
 export const UnlockDialog = lazyComponent(
-  () => import("./passwordDialogs").then((m) => m.UnlockDialog),
+  () => import("./passwordDialogs").then((m) => m.unlockWhenReady()),
   loadingDialog(() => t("passwordLink.thisDiagramIsPasswordprotected")),
 );
 /** The Import report: with the first infrastructure import (it brings the stencil search and the AI swap). */
 export const ImportReportDialog = lazyComponent(
-  () => import("./ImportReportDialog").then((m) => m.ImportReportDialog),
+  () => import("./ImportReportDialog").then((m) => m.reportWhenReady()),
   loadingDialog(() => t("importReport.importReport")),
 );
 /** Only cloud providers use the in-app file list, so it loads with the first one opened. */
 export const StorageFilesDialog = lazyComponent(
-  () => import("./StorageDialog").then((m) => m.StorageFilesDialog),
+  () => import("./StorageDialog").then((m) => m.storageWhenReady()),
   (props, status) => loadingDialog<typeof props>(props.label)(props, status),
 );
 

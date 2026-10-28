@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { tracks, tutorials } from "./catalog";
@@ -85,4 +86,10 @@ function Card({ tutorial }: { tutorial: Tutorial }) {
       </div>
     </article>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function tutorialsWhenReady() {
+  await surfaceCatalogs(["tutorialTitles", "tutorials"]);
+  return TutorialsView;
 }

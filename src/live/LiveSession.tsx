@@ -556,3 +556,9 @@ export function LiveSession({
   );
   return local ? <InteractionContext.Provider value={interaction}>{view}</InteractionContext.Provider> : view;
 }
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function liveWhenReady() {
+  await import("../i18n/surfaces").then((m) => m.surfaceCatalogs(["simulation"]));
+  return LiveSession;
+}

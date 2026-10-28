@@ -1,4 +1,5 @@
 import { t } from "../../i18n";
+import { surfaceCatalogs } from "../../i18n/surfaces";
 // What every AI change shows once applied: a toast with Undo and a brief highlight of what changed.
 // Shared by the AI panel and the WebMCP tools.
 
@@ -115,14 +116,21 @@ export function showApplied(
   { turnUndo, reveal }: AppliedFeedback,
 ): void {
   if (typeof document === "undefined") return;
-  if (turnUndo && panelShown()) announce(t("ai.appliedSummary", { summary }));
-  else {
-    const id = notify(t("ai.appliedSummary", { summary }), {
-      kind: "success",
-      action: { label: t("ai.undo"), run: () => editor.undo(), testId: "ai-toast-undo", undoes: true },
-    });
-    appliedToast = turnUndo ? id : undefined;
-  }
+  const tell = () => {
+    if (turnUndo && panelShown()) announce(t("ai.appliedSummary", { summary }));
+    else {
+      const id = notify(t("ai.appliedSummary", { summary }), {
+        kind: "success",
+        action: { label: t("ai.undo"), run: () => editor.undo(), testId: "ai-toast-undo", undoes: true },
+      });
+      appliedToast = turnUndo ? id : undefined;
+    }
+  };
+  // An agent's change can arrive before the AI panel ever opened: its words come with the AI catalog (a failed
+  // download still tells, in English).
+  const words = surfaceCatalogs(["ai"]);
+  if (words) void words.catch(() => {}).then(tell);
+  else tell();
   flashChanged(changed);
   if (reveal) revealChanged(changed, editor);
 }

@@ -8,7 +8,7 @@ import {
 } from "react";
 import { createMachine, defineMachine } from "./machine";
 import { lazySurfaces, registerLazySurface, retryLazySurfaces, type LazySurfaceId } from "./lazySurfaces";
-import { LOAD_FAILED, type LazyComponent, type Placeholder } from "./lazyLoad";
+import { type LazyComponent, type Placeholder } from "./lazyLoad";
 import { notify, toast } from "../interop/ui/toast";
 import { t } from "../i18n";
 import { useInteraction } from "../canvas/interaction/context";
@@ -63,7 +63,7 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
   };
   const report = () => {
     if (clients.size && toastId === undefined)
-      toastId = notify(LOAD_FAILED, {
+      toastId = notify(t("ai.loadFailed"), {
         kind: "error",
         action: { label: t("common.retry"), run: retry, testId: "lazy-load-retry" },
       });

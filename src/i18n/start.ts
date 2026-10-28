@@ -9,7 +9,7 @@ import { LOCALE_KEY } from "./index";
 
 /**
  * Starts in the person's language, before the first render. English (the source): nothing to load. Otherwise the
- * loader and the catalog download first, so the app never shows English and then switches.
+ * loader and the core catalog download first, so the app never shows English and then switches.
  */
 export function startI18n(): Promise<void> | undefined {
   const want = safeStorage.getItem(LOCALE_KEY) ?? navigator.language;

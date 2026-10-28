@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import "./routeActions";
 import { tutorialMetadata } from "../tutorials/metadata";
 import { t, useLocale } from "../i18n";
@@ -153,8 +154,9 @@ export function PaletteDialog({
     if (activeItem) itemRefs.current.get(activeItem.id)?.scrollIntoView({ block: "nearest" });
   }, [activeItem]);
 
-  // Modal: the rest of the page is inert while open; focus goes back where it was on close.
-  useLayoutEffect(() => {
+  // Match the pending Dialog lifecycle: its passive cleanup must restore inertness/focus
+  // before this setup captures the opener and focuses the search.
+  useEffect(() => {
     const el = panel.current;
     if (!el) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -489,3 +491,9 @@ const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, 
     </div>
   );
 });
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function paletteDialogWhenReady() {
+  await surfaceCatalogs(["tutorialTitles", "stencils"]);
+  return PaletteDialog;
+}

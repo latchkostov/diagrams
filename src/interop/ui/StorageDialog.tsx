@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { t, useLocale } from "../../i18n";
 import { useCallback, useEffect, useState } from "react";
 import { formatAgo } from "../../i18n/format";
@@ -110,4 +111,10 @@ export function StorageFilesDialog({
       )}
     </Dialog>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function storageWhenReady() {
+  await surfaceCatalogs(["exports"]);
+  return StorageFilesDialog;
 }

@@ -9,7 +9,7 @@ import { Disclosure } from "./Disclosure";
 import { SimInput } from "./SimulationFields";
 import type { InspectorProps } from "./types";
 import { PropsEditor } from "./lazyPropsEditor";
-import { EDGE_KEYS, RULE_KEYS } from "./simFields";
+import { EDGE_KEYS, RULE_KEYS } from "./simKeys";
 
 type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
   edge: DiagramFlowEdge;

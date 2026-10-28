@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { COLLAB_MODE, SHARE_LINKS } from "../../lib/deployment";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
@@ -246,4 +247,10 @@ export function ShareChooser({
       </div>
     </Dialog>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function shareChooserWhenReady() {
+  await surfaceCatalogs(["exports"]);
+  return ShareChooser;
 }

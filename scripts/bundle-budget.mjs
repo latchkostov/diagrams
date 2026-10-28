@@ -6,7 +6,13 @@ import path from "node:path";
 import process from "node:process";
 import console from "node:console";
 import zlib from "node:zlib";
-import { checkLocaleSizes, localeSizes, LOCALE_BUDGET } from "./locale-budget.mjs";
+import {
+  checkLocaleSizes,
+  checkCoreLocaleSizes,
+  CORE_LOCALE_BUDGET,
+  localeSizes,
+  LOCALE_BUDGET,
+} from "./locale-budget.mjs";
 
 /** Entry chunk gzip budget in bytes: 107,278 B measured on 2026-10-12, plus about 15%. */
 const BUDGET = 123_500;
@@ -33,7 +39,13 @@ if (gz > BUDGET) {
   process.exit(1);
 }
 console.log(`bundle-budget: ok. ${line}`);
-const locale = checkLocaleSizes(localeSizes(outDir));
+const sizes = localeSizes(outDir);
+const core = checkCoreLocaleSizes(sizes);
+if (core)
+  console.log(
+    `bundle-budget: core locales ok. Largest ${core.file}: ${core.gzip} B gzip; budget ${CORE_LOCALE_BUDGET} B.`,
+  );
+const locale = checkLocaleSizes(sizes);
 console.log(
   locale
     ? `bundle-budget: locales ok. Largest ${locale.file}: ${locale.gzip} B gzip; budget ${LOCALE_BUDGET} B.`

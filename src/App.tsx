@@ -1,6 +1,5 @@
 import {
   Component,
-  lazy,
   Suspense,
   useCallback,
   useEffect,
@@ -48,7 +47,7 @@ import { ToastMount as Toaster } from "./interop/ui/ToastMount";
 import { loadingDialog, preloadDialogs } from "./interop/ui/lazyDialogs";
 import { CommandPalette } from "./palette/CommandPalette";
 import { paletteHost } from "./palette/host";
-import { lazyComponent, LOAD_FAILED, loadOnce, whenIdle } from "./lib/lazyLoad";
+import { lazyComponent, LOAD_FAILED, loadOnce, whenIdle, type LoadStatus } from "./lib/lazyLoad";
 import { EDIT_TOGETHER, roomEntryPending, roomInAddress, roomTabPending } from "./lib/roomEntry";
 import { AiMount } from "./ai/ui/AiMount";
 import { unseen } from "./ai/ui/unseen";
@@ -60,11 +59,17 @@ import "./styles/interop.css";
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
 // with the canvas), and the Lab never downloads unless someone opens ?view=lab (dev and e2e builds only: a production
 // build has no Lab, LAB in ./lib/urlState).
-const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
+const GalleryView = lazyComponent(
+  () => import("./gallery/GalleryView").then((m) => m.galleryWhenReady()).then((m) => m.default),
+  (_props, status) => <ViewLoading status={status} />,
+);
 // The condition is spelled out (not LAB) so the bundler folds it here and drops the chunk from production builds.
 const LabView =
   import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
-    ? lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })))
+    ? lazyComponent(
+        () => import("./lab/LabView").then((m) => m.labWhenReady()).then((m) => m.default),
+        (_props, status) => <ViewLoading status={status} />,
+      )
     : () => null;
 /**
  * Rooms (Edit together; src/collab/room): their code, Yjs included, loads only for a page with a room to open or when
@@ -707,10 +712,21 @@ function MainApp() {
   );
 }
 
-function ViewLoading() {
+function ViewLoading({ status }: { status?: LoadStatus } = {}) {
   return (
     <div className="view-loading" data-testid="view-loading" role="status" style={centered}>
-      <span style={{ color: "var(--text-3)", fontSize: 13 }}>Loading…</span>
+      <span style={{ color: "var(--text-3)", fontSize: 13 }}>
+        {status?.failed ? (
+          <>
+            {t("fileDialog.loadFailed")}{" "}
+            <button className="btn" data-testid="view-load-retry" onClick={status.retry}>
+              {t("common.retry")}
+            </button>
+          </>
+        ) : (
+          t("common.loading")
+        )}
+      </span>
     </div>
   );
 }

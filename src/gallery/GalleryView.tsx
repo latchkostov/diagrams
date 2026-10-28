@@ -1,4 +1,6 @@
-import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
+import { surfaceCatalogs } from "../i18n/surfaces";
+import { stencilLabel, stencilSubtitle, vendorLabel } from "../i18n/stencils";
+import { stencilDescription } from "../i18n/stencilDescriptions";
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
 
@@ -799,3 +801,9 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
     </div>
   );
 });
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function galleryWhenReady() {
+  await surfaceCatalogs(["stencils"]);
+  return { default: GalleryView };
+}

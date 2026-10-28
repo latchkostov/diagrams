@@ -20,7 +20,7 @@ import { lazyComponent, whenIdle } from "../../lib/lazyLoad";
 
 // Pure: a copy deployed without an AI panel (src/lib/deployment.ts) drops it, and so its chunk.
 const AiPanel = /* @__PURE__ */ lazyComponent(
-  () => import("./AiPanel").then((m) => m.default),
+  () => import("./AiPanel").then((m) => m.aiPanelWhenReady()),
   (_, { failed, retry }) =>
     failed ? (
       <div className="ai-dock-loading ai-dock-failed" role="alert" data-testid="ai-panel-load-error">

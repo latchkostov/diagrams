@@ -3,10 +3,11 @@ import { type LoadStatus } from "../../lib/lazyLoad";
 import { t } from "../../i18n";
 import { type ComponentProps } from "react";
 import { PanelUnavailable } from "./PanelUnavailable";
+import { loadEdgePanel } from "./simulationLoaders";
 
 const DeferredEdgePanel = defineLazySurface({
   id: "inspector.edge",
-  load: () => import("./EdgePanel").then((m) => m.EdgePanel),
+  load: loadEdgePanel,
   placeholder: {
     size: {},
     testId: "inspector.edge-loading",

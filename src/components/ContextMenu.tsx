@@ -16,7 +16,8 @@ import { createPortal } from "react-dom";
 import type { MenuItem, MenuNode } from "../editor/actions";
 import { formatCombo } from "../editor/shortcuts";
 import { getStencil } from "../stencils/registry";
-import { scoreStencil } from "../lib/stencilDisplaySearch";
+import type * as StencilSearch from "../lib/stencilDisplaySearch";
+import { useSurfaceCatalogs, type CatalogStatus } from "../i18n/useSurfaceCatalogs";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
 import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
@@ -200,7 +201,7 @@ function search(items: MenuNode[], q: string): MenuNode[] {
   leaves(items).forEach(({ item, trail }, i) => {
     const hay = `${item.label} ${item.hint ?? ""} ${item.keywords ?? ""} ${trail.join(" ")}`.toLowerCase();
     // Stencils rank as the rail's search ranks them, aliases included ("pg" → PostgreSQL, "go" → Go Service).
-    const score = item.stencil ? scoreStencil(getStencil(item.stencil), q) : 0;
+    const score = item.stencil && stencilSearch ? stencilSearch.scoreStencil(getStencil(item.stencil), q) : 0;
     if (score <= 0 && !tokens.every((t) => hay.includes(t))) return;
     if (item.stencil) {
       if (seen.has(item.stencil)) return;
@@ -214,6 +215,49 @@ function search(items: MenuNode[], q: string): MenuNode[] {
     .map(({ item }) => item);
 }
 
+/** Whether a menu's search ranks stencils, which reads their translated descriptions (the stencils catalog). */
+const searchesStencils = (items: MenuNode[]) => leaves(items).some(({ item }) => item.stencil);
+
+/** The translated stencil search: its code (and descriptions) arrive with the stencils catalog, when a menu opens. */
+let stencilSearch: typeof StencilSearch | undefined;
+let stencilSearchLoad: Promise<unknown> | undefined;
+const loadStencilSearch = () =>
+  (stencilSearchLoad ??= import("../lib/stencilDisplaySearch").then(
+    (m) => (stencilSearch = m),
+    (error: unknown) => {
+      stencilSearchLoad = undefined;
+      throw error;
+    },
+  ));
+
+/** Quick-add and Change stencil search only once the metadata catalog and the search code are both in. */
+function useStencilSearch(enabled: boolean): CatalogStatus {
+  const metadata = useSurfaceCatalogs(["stencils"], enabled);
+  const [, loaded] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(-1);
+  useEffect(() => {
+    if (!enabled || stencilSearch) return;
+    let live = true;
+    loadStencilSearch().then(
+      () => live && loaded((n) => n + 1),
+      () => live && setFailed(attempt),
+    );
+    return () => {
+      live = false;
+    };
+  }, [enabled, attempt]);
+  const code = !enabled || !!stencilSearch;
+  return {
+    ready: metadata.ready && code,
+    failed: (!metadata.ready && metadata.failed) || (!code && failed === attempt),
+    retry: () => {
+      metadata.retry();
+      setAttempt((n) => n + 1);
+    },
+  };
+}
+
 function MenuList(p: ListProps) {
   const locale = useLocale();
   const rtl = document.documentElement.dir === "rtl";
@@ -222,8 +266,17 @@ function MenuList(p: ListProps) {
   const input = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const [q, setQ] = useState(() => (p.searchable && p.query) || "");
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- stencil scoring reads the locale-dependent shared search index
-  const shown = useMemo(() => (q.trim() ? search(p.items, q) : p.items), [p.items, q, locale]);
+  // Quick-add and Change stencil search translated stencil metadata: the search waits for it, never ranks without it.
+  const rankStencils = useMemo(() => !!p.searchable && searchesStencils(p.items), [p.searchable, p.items]);
+  const metadata = useStencilSearch(rankStencils);
+  const waiting = !!q.trim() && !metadata.ready;
+  const shown = useMemo(
+    () => (!q.trim() ? p.items : metadata.ready ? search(p.items, q) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stencil scoring reads the locale-dependent shared search index
+    [p.items, q, locale, metadata.ready],
+  );
+  // Enter typed before the menu could search: picks the best match once the metadata is in.
+  const pickWhenReady = useRef(false);
   const [active, setActive] = useState(() => (p.activateFirst || q ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
@@ -283,6 +336,14 @@ function MenuList(p: ListProps) {
     const t = take();
     if (!t) return;
     if (t.done === "escape") return p.onCloseAll("escape");
+    if (t.done === "enter" && t.text && rankStencils && !metadata.ready) {
+      const text = t.text;
+      queueMicrotask(() => {
+        pickWhenReady.current = true;
+        setQ(text);
+      });
+      return;
+    }
     if (t.done === "enter") {
       const best = (t.text ? search(p.items, t.text) : p.items).find(selectable);
       if (best && !best.children) {
@@ -296,6 +357,17 @@ function MenuList(p: ListProps) {
     if (text) queueMicrotask(() => setQ(text));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the menu is placed
   }, [placed, take]);
+
+  useEffect(() => {
+    if (!pickWhenReady.current || waiting) return;
+    pickWhenReady.current = false;
+    const best = shown.find(selectable);
+    if (best && !best.children) {
+      p.onCloseAll("pick");
+      best.run?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the held Enter's results arrive
+  }, [waiting]);
 
   // Search changes derive a fresh highlight before the next paint.
   const [previousShown, setPreviousShown] = useState(shown);
@@ -401,7 +473,10 @@ function MenuList(p: ListProps) {
         break;
       case "Enter":
         e.preventDefault();
-        if (active >= 0) activate(active, true);
+        // Before the search can rank: Enter retries a failed download, or picks the best match once it's in.
+        if (waiting && metadata.failed) metadata.retry();
+        else if (waiting) pickWhenReady.current = true;
+        else if (active >= 0) activate(active, true);
         break;
       case " ":
         if (inInput) return;
@@ -526,7 +601,10 @@ function MenuList(p: ListProps) {
               aria-controls={p.menuId ?? `${id}-items`}
               aria-activedescendant={activeId}
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value);
+                pickWhenReady.current = false;
+              }}
               placeholder={p.searchable}
               aria-label={p.searchable}
               name="menu-search"
@@ -536,6 +614,28 @@ function MenuList(p: ListProps) {
             />
           </div>
         )}
+        {waiting &&
+          (metadata.failed ? (
+            <div className="cm-empty" role="alert" data-testid={`${p.testId}-search-failed`}>
+              {t("fileDialog.loadFailed")}{" "}
+              <button
+                type="button"
+                className="link-btn"
+                tabIndex={-1}
+                onClick={() => {
+                  metadata.retry();
+                  input.current?.focus({ preventScroll: true });
+                }}
+                data-testid={`${p.testId}-search-retry`}
+              >
+                {t("common.retry")}
+              </button>
+            </div>
+          ) : (
+            <div className="cm-empty" role="status" aria-busy="true" data-testid={`${p.testId}-search-loading`}>
+              {t("common.loading")}
+            </div>
+          ))}
         <div
           id={p.searchable ? (p.menuId ?? `${id}-items`) : `${id}-items`}
           className="cm-items"
@@ -565,7 +665,7 @@ function MenuList(p: ListProps) {
               />
             );
           })}
-          {shown.length === 0 && <div className="cm-empty">{t("menu.noMatches")}</div>}
+          {shown.length === 0 && !waiting && <div className="cm-empty">{t("menu.noMatches")}</div>}
         </div>
       </div>
       {open && selectable(sub) && sub.children && (

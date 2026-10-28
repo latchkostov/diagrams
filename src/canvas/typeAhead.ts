@@ -43,6 +43,9 @@ export function captureModalTypeAhead(close: () => void): { stop: () => TypeAhea
   return captureTypeAhead(undefined, undefined, false, "capture", close);
 }
 
+/** A modal still downloading owns the keyboard (the palette's loading frame): focus inside it isn't leaving. */
+export const pendingTypeAheadModal = () => captures.some((c) => c.closeModal);
+
 /** True while keys are being held for a field that isn't focused yet (the canvas shortcuts stand aside). */
 export const typeAheadActive = () => captures.length > 0;
 
@@ -80,6 +83,16 @@ export function captureTypeAhead(
       (respectEditable &&
         event.target instanceof Element &&
         event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))
+    )
+      return;
+    // A pending modal's own buttons (Close, Retry) take Enter and Space; typing anywhere else is still held.
+    if (
+      me.closeModal &&
+      event instanceof KeyboardEvent &&
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest('[aria-modal="true"]') &&
+      event.target.closest('button, a[href], [role="button"]')
     )
       return;
     let next: TypeAhead | null;

@@ -4,7 +4,7 @@ import { planScaling } from "../sim/scalingPlanner";
 import { estimateTotalMs } from "../sim/simulation";
 import { realSnapshot } from "../sim/units";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
-import { planDescriptor } from "../planning/scalingPlanText";
+import { planDescriptor } from "../planning/scalingPlan";
 import type { DiagramFile } from "../model/types";
 import { STEP } from "../sim/timing";
 import { emptyInputs, freePlayProps, freePlayScale } from "./playbackInputs";

@@ -358,7 +358,7 @@ export function useInterop({
       const check = () => {
         if (canvasRef.current?.getDocumentVersion() !== version)
           // Reuse the localized export failure + retry messages; no image is downloaded from mixed revisions.
-          throw new Error(t("storageDialog.tryAgain"));
+          throw new Error(t("common.tryAgain"));
       };
       const cancel = new AbortController();
       const release = holdInput(() => cancel.abort());

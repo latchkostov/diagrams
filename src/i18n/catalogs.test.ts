@@ -255,11 +255,25 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
     const same = numberedKeys([{ "start.privacy": "Datenschutz", "shortcuts.privacy": "Datenschutz" }]);
     expect(same.has("start.privacy")).toBe(false);
     // One not translated yet reads its sibling's translation.
-    expect(numberedKeys([{ "start.privacy": "Datenschutz" }]).size).toBe(0);
+    const optional = numberedKeys([]);
+    expect(numberedKeys([{ "start.privacy": "Datenschutz" }])).toEqual(optional);
     const differ = numberedKeys([{ "start.privacy": "Datenschutz", "file.privacy": "Privatsphäre" }]);
-    expect([...differ].sort()).toEqual(["file.privacy", "shortcuts.privacy", "start.privacy"]);
+    expect([...differ].sort()).toEqual([...optional, "file.privacy", "shortcuts.privacy", "start.privacy"].sort());
     const out = rewriteCalls(`${uses}${call("t", "file.privacy")};`, differ, fail)!;
     expect(out).toContain(`t(${ids.indexOf("file.privacy")},"Privacy")`);
+  });
+
+  it("includes long optional plain messages in the numbered lookup keys", () => {
+    const numbered = numberedKeys([]);
+    for (const key of ["tutorials.apiGateway.addHint", "ai.agentRequestHint", "share.embedDesc"] as const) {
+      expect(numbered.has(key), key).toBe(true);
+      expect(rewriteCalls(`${uses}${call("t", key)};`, numbered, fail)).toContain(
+        `t(${ids.indexOf(key)},${JSON.stringify(en[key])})`,
+      );
+    }
+    expect(numbered.has("ai.aI")).toBe(false);
+    expect(numbered.has("tutorials.loading")).toBe(false);
+    expect(numbered.has("stencil.genericDatabaseName")).toBe(false);
   });
 
   it("English and every catalog agree on each message's placeholders", () => {

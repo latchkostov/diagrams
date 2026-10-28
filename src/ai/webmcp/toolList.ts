@@ -1,6 +1,5 @@
-import { msg } from "../../i18n";
-// The WebMCP tool names and their one-line descriptions for people (the AI panel's "What agents can do
-// here"). Kept apart from tools.ts so the panel can list them without loading the tools' code.
+// The WebMCP tool names. Kept apart from tools.ts so the panel can list them without loading the tools' code; their
+// one-line descriptions for people are ./toolHelp.ts, with the AI panel's catalog.
 
 import { SHARE_LINKS } from "../../lib/deployment";
 
@@ -29,14 +28,3 @@ export const LIVE_TOOLS: readonly PublishedTool[] = published(["describe_diagram
 
 /** The tools the page publishes now. */
 export const publishedTools = (live: boolean): readonly PublishedTool[] => (live ? LIVE_TOOLS : EDIT_TOOLS);
-
-/** What each tool lets an agent do, in a line, for the person. */
-export const TOOL_HELP: Record<PublishedTool, () => string> = {
-  describe_diagram: msg("ai.tool.describeDiagram"),
-  check_diagram: msg("ai.tool.checkDiagram"),
-  find_stencils: msg("ai.tool.findStencils"),
-  edit_diagram: msg("ai.tool.editDiagram"),
-  set_simulation: msg("ai.tool.setSimulation"),
-  new_diagram: msg("ai.tool.newDiagram"),
-  get_share_link: msg("ai.tool.getShareLink"),
-};

@@ -175,7 +175,7 @@ async function captureDiagramImage(kind: "png" | "svg", opts: ImageOptions, view
     const geometryRevision = geometrySnapshot();
     const check = () => {
       opts.check?.();
-      if (geometrySnapshot() !== geometryRevision) throw new Error(t("storageDialog.tryAgain"));
+      if (geometrySnapshot() !== geometryRevision) throw new Error(t("common.tryAgain"));
     };
     // Insert the header before yielding, then finish its Markdown before finding images or measuring it.
     // Loading belongs inside the input hold and cleanup, including cancellation and failed downloads.

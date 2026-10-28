@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../../i18n/surfaces";
 import { formatNumber } from "../../i18n/format";
 import { tRich } from "../../i18n/rich";
 import {
@@ -1026,4 +1027,22 @@ export function ImageDialog({
       </Disclosure>
     </Dialog>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function shareWhenReady() {
+  await surfaceCatalogs(["exports"]);
+  return ShareDialog;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function embedWhenReady() {
+  await surfaceCatalogs(["exports"]);
+  return EmbedDialog;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function imageWhenReady() {
+  await surfaceCatalogs(["exports"]);
+  return ImageDialog;
 }

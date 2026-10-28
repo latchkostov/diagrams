@@ -3,7 +3,7 @@ import { t } from "../i18n";
 
 export const NodeSections = defineLazySurface({
   id: "live.sections",
-  load: () => import("./NodeDetailSections").then((m) => m.NodeDetailSections),
+  load: () => import("./NodeDetailSections").then((m) => m.nodeSectionsWhenReady()),
   placeholder: {
     size: {},
     testId: "live.sections-loading",

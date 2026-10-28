@@ -1,3 +1,4 @@
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { tRich } from "../i18n/rich";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState } from "react";
@@ -242,4 +243,10 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
       </Disclosure>
     </Dialog>
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
+export async function htmlWhenReady() {
+  await surfaceCatalogs(["exports"]);
+  return HtmlExportDialog;
 }

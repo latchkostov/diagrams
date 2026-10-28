@@ -10,7 +10,7 @@ import { railLabel } from "../ai/ui/unseen";
 import { speechErrorMessage } from "../ai/ui/dictation";
 import { speechServiceNote } from "../ai/ui/useDictation";
 import { FAILED, CHANGED } from "../ai/ondevice/useOnDeviceRequest";
-import { TOOL_HELP } from "../ai/webmcp/toolList";
+import { TOOL_HELP } from "../ai/webmcp/toolHelp";
 import { readCatalog } from "../../scripts/i18n-plugin";
 import { failureText, type Failure } from "../ai/ui/failure";
 

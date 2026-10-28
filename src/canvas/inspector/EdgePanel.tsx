@@ -32,6 +32,7 @@ import { MessageFields } from "./lazyMessageFields";
 import { callPolicy } from "../../sim/callPolicy";
 import type { EdgeSimProps } from "../../sim/types";
 import { useCallerOverride } from "./useCallerOverride";
+import { loadCallWaitFields } from "./simulationLoaders";
 
 const EdgeAdvanced = defineLazySurface({
   id: "inspector.advanced",
@@ -47,7 +48,7 @@ const EdgeAdvanced = defineLazySurface({
  */
 const CallWaitFields = defineLazySurface({
   id: "inspector.call",
-  load: () => import("./CallWaitFields").then((m) => m.CallWaitFields),
+  load: loadCallWaitFields,
   placeholder: {
     size: {},
     testId: "inspector.call-loading",

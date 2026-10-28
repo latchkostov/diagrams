@@ -62,6 +62,9 @@ function report(code) {
 }
 
 if (command === "check") {
+  const { lintCatalogBuckets, lintSurfaceCatalogs } = await load("scripts/i18n-plugin.ts");
+  lintCatalogBuckets();
+  lintSurfaceCatalogs();
   const verbose = flags.includes("--verbose");
   let failed = 0;
   const total = Object.keys(en).length;

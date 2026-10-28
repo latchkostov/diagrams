@@ -352,7 +352,8 @@ export function viewerSwaps(root: string): Plugin {
     async resolveId(source, importer, options) {
       // Forward slashes, as Vite ids are: a Windows path would make a second copy of the module (two icon maps).
       if (source.endsWith("/stencils/iconUrls")) return normalizePath(resolve(root, "src/export/viewer/iconUrls.ts"));
-      if (/i18n\/stencils$/.test(source)) return normalizePath(resolve(root, "src/export/viewer/stencilText.ts"));
+      if (/i18n\/(?:stencils|stencilDescriptions)$/.test(source))
+        return normalizePath(resolve(root, "src/export/viewer/stencilText.ts"));
       // Development's content check for local-only examples: never in a file (a single bundle keeps a stub of
       // every module it reaches, used or not).
       if (source === "./localOnly.dev" && importer && own(importer, "/src/lib/localOnly.ts")) return NO_LOCAL;

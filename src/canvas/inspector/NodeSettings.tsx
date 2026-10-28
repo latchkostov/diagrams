@@ -13,13 +13,20 @@ import { Section } from "./fields";
 import { Disclosure } from "./Disclosure";
 import { PropsEditor } from "./lazyPropsEditor";
 import { customCount } from "./propertyValues";
-import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
+import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simKeys";
+import { loadNodeSimulation } from "./simulationLoaders";
 
 const EMPTY_PROPS: Record<string, unknown> = {};
 const NodeSimulation = defineLazySurface({
   id: "inspector.simulation",
-  load: () => import("./SimulationFields").then((m) => m.NodeSimulation),
-  placeholder: { size: {}, testId: "inspector.simulation-loading" },
+  load: loadNodeSimulation,
+  placeholder: {
+    render: (_props, status) => (
+      <div role="status" data-testid="inspector.simulation-loading" aria-busy={!status.failed}>
+        {status.failed ? t("fileDialog.loadFailed") : t("common.loading")}
+      </div>
+    ),
+  },
   focus: {},
   export: "skip",
   retryToast: true,
