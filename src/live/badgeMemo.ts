@@ -7,8 +7,8 @@ export const BROKERS: ReadonlySet<SimRole> = new Set(["queue", "topic", "stream"
 /** Details consume the whole snapshot; a closed badge only consumes these displayed values. */
 export function sameBadge(a: BadgeProps, b: BadgeProps): boolean {
   if (a.hovered || b.hovered || a.visible !== b.visible) return false;
-  // Retain every mounted readout. Off-pane counters stay in the parent's latest snapshot;
-  // the synchronous viewport subscription refreshes them before an entering card paints.
+  // Defer only visual ink: badgeSemantics writes current off-pane accessible readouts each publish.
+  // The synchronous viewport subscription refreshes visual ink before an entering card paints.
   // Brokers still observe each publish so their decaying depth peak is unchanged.
   if (
     a.node !== b.node ||

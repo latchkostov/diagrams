@@ -3,11 +3,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { outDir } from "../results";
-import { Bench, loadWorkload, test, uiSuite } from "./harness";
+import { Bench, loadWorkload, MODE, test, uiSizes, uiSuite } from "./harness";
 
 const s = uiSuite("live-scale");
+test.skip(MODE === "gates", "report-only");
 
-for (const n of [500, 1500])
+for (const n of uiSizes([500, 1500]))
   test(`live scale pipeline@${n}`, async ({ page }) => {
     test.setTimeout(600_000);
     const w = loadWorkload("pipeline", n);

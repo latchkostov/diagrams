@@ -37,15 +37,7 @@ const NodeDetails = defineLazySurface({
   id: "live.node-details",
   load: () => import("./NodeDetails").then((m) => m.NodeDetails),
   placeholder: {
-    render: (props, { failed }) => (
-      <DetailsLoading
-        kind="node"
-        id={props.node.id}
-        pinned={props.pinned}
-        focusClaim={props.focusClaim}
-        failed={failed}
-      />
-    ),
+    render: (props, { failed }) => <DetailsLoading {...props} kind="node" id={props.node.id} failed={failed} />,
   },
   focus: {},
   export: "skip",
@@ -56,9 +48,7 @@ const EdgeDetails = defineLazySurface({
   id: "live.edge-details",
   load: () => import("./NodeDetails").then((m) => m.EdgeDetails),
   placeholder: {
-    render: (props, { failed }) => (
-      <DetailsLoading kind="edge" id={props.id} pinned={props.pinned} focusClaim={props.focusClaim} failed={failed} />
-    ),
+    render: (props, { failed }) => <DetailsLoading {...props} kind="edge" failed={failed} />,
   },
   focus: {},
   export: "skip",
@@ -99,14 +89,15 @@ export function NodeBadges({
   const dock = useWorkbenchDock();
   const candidate = useHoveredNode(nodes, state);
   const edgesSelected = useStore((s) => s.edges?.some((e) => e.selected) ?? false);
-  const singleNode = nodes.filter((n) => n.selected).length === 1 && !edgesSelected;
+  const selection = nodes.filter((n) => n.selected);
+  const singleNode = selection.length === 1 && !edgesSelected;
   const pointed =
     !presenting &&
     ui.canEdit &&
     dock.value === "properties" &&
     singleNode &&
     candidate?.kind === "node" &&
-    nodes.some((n) => n.selected && n.id === candidate.id)
+    selection[0]?.id === candidate.id
       ? null
       : candidate;
   const focusClaim = useReadoutFocus(pointed);
@@ -125,17 +116,23 @@ export function NodeBadges({
     let dispose: (() => void) | undefined;
     void import("./badgeViewport")
       .then(({ watchBadgeViewport }) => {
-        if (mounted)
-          dispose = watchBadgeViewport(store.getState().domNode, (query) => {
-            setInViewport(() => query);
-          });
+        if (mounted) {
+          dispose = watchBadgeViewport(
+            store.getState().domNode,
+            (query) => {
+              setInViewport(() => query);
+            },
+            ui.controller,
+            store,
+          );
+        }
       })
       .catch(Boolean);
     return () => {
       mounted = false;
       dispose?.();
     };
-  }, [store]);
+  }, [store, ui.controller]);
   const visible = inViewport?.(store.getState());
   const zoom = transform[2];
   const boundaryFault = faults?.some((fault) => fault.kind === "boundary") ?? false;
@@ -191,6 +188,7 @@ export function NodeBadges({
             visible={!visible || visible.has(n.id)}
             configuration={state.configuration}
             diagram={diagram}
+            topology={topology}
             s={s}
             showOutageLoss={boundaryFault}
             fault={labels.get(n.id) ?? ""}
@@ -309,7 +307,9 @@ export interface BadgeProps {
   showOutageLoss: boolean;
 }
 
-const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
+const NodeBadge = memo(function NodeBadge(
+  props: BadgeProps & { topology: ReturnType<typeof readoutDiagram>["topology"] },
+) {
   const { node, s, hovered, cap, assignment, showOutageLoss, fault } = props;
   // Each broker owns one immutable peak observation; publishing no longer clones a diagram-wide Map.
   const broker = BROKERS.has(s.role);
@@ -490,7 +490,6 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} assignment={assignment} />
         </div>
       )}
-
       {hovered && <NodeDetails {...props} />}
     </div>
   );

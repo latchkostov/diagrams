@@ -1,3 +1,6 @@
+// @vitest-environment happy-dom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
@@ -5,6 +8,7 @@ import type { LiveState } from "./controller";
 import { EdgeDetails, NodeDetails } from "./NodeDetails";
 import type { BadgeProps } from "./NodeBadges";
 import { compileTopology } from "../sim/topology";
+import * as topology from "../sim/topology";
 import type { HoverCardProps } from "./HoverCard";
 
 const controller = vi.hoisted(() => ({ getState: vi.fn(), effectiveProps: vi.fn() }));
@@ -51,7 +55,41 @@ it("resolves hover-only processor settings from the current controller in the la
     s: { id: "a", role: "processor", status: "up", lag: {}, throughput: 0 },
     pinned: false,
   } as unknown as BadgeProps;
-  const html = renderToStaticMarkup(<NodeDetails {...props} />).replaceAll("&quot;", '"');
+  const html = renderToStaticMarkup(<NodeDetails {...props} topology={compileTopology(diagram)} />).replaceAll(
+    "&quot;",
+    '"',
+  );
   expect(JSON.parse(html)).toEqual({ concurrency: 7, currentModel: true });
   expect(controller.effectiveProps).toHaveBeenCalledWith("a");
+});
+
+it("compiles broker topology only once across live publications with an unchanged diagram", () => {
+  controller.getState.mockReturnValue({ snapshot: { edges: {} } });
+  const brokerDiagram = { ...diagram, nodes: [{ ...diagram.nodes[0], stencil: "generic.topic" }, diagram.nodes[1]] };
+  const compiled = compileTopology(brokerDiagram);
+  const compile = vi.spyOn(topology, "compileTopology");
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.createElement("div"));
+  try {
+    for (const processed of [1, 2, 3]) {
+      act(() =>
+        root.render(
+          <NodeDetails
+            topology={compiled}
+            {...({
+              node: { id: "a", data: { label: "Topic", stencil: "generic.topic" } },
+              diagram: brokerDiagram,
+              s: { id: "a", role: "topic", status: "up", processed, lag: {}, throughput: 0 },
+              pinned: false,
+            } as unknown as BadgeProps)}
+          />,
+        ),
+      );
+    }
+    expect(compile).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    vi.unstubAllGlobals();
+    compile.mockRestore();
+  }
 });
