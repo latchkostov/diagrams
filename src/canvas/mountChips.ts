@@ -69,18 +69,26 @@ export function mountChips(
       return;
     const zoom = state.transform[2];
     if (zoom >= 0.6) return clear();
-    const nodes = [...state.nodeLookup.values()].flatMap((n) => {
-      if (n.type !== "diagram" || n.hidden || !n.measured?.width || !n.measured.height) return [];
+    const visible = [...state.nodeLookup.values()].filter((n) => !n.hidden && n.measured?.width && n.measured.height);
+    const nodes = visible.flatMap((n) => {
+      if (n.type !== "diagram") return [];
       return [
         {
           id: n.id,
           label: "label" in n.data ? n.data.label : n.id,
           ...n.internals.positionAbsolute,
-          width: n.measured.width,
-          height: n.measured.height,
+          width: n.measured!.width!,
+          height: n.measured!.height!,
         },
       ];
     });
+    const obstacles = visible
+      .filter((n) => n.type === "annotation" && "kind" in n.data && n.data.kind !== "zone")
+      .map((n) => ({
+        ...n.internals.positionAbsolute,
+        width: n.measured!.width!,
+        height: n.measured!.height!,
+      }));
     const routes = selectRoutes(state, options);
     const members = new Map<string, string[]>();
     for (const node of state.nodes) {
@@ -97,17 +105,22 @@ export function mountChips(
         ids.push(parent);
       }
     }
-    const key = JSON.stringify([zoom, nodes, [...members], [...routes].map(([id, r]) => [id, r.path])]);
+    const key = JSON.stringify([zoom, nodes, obstacles, [...members], [...routes].map(([id, r]) => [id, r.path])]);
     if (key === previous) return;
     previous = key;
     root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
     if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") root.dataset.chipFits = String(++fits);
     const shown = (state as ChipState).ldChips;
-    const chips: Map<string, ChipLayout> = share(layoutChips(nodes, zoom, measure), shown?.nodes);
-    const { paths, lanes } = chipEdges(routes, zoom);
+    const chips: Map<string, ChipLayout> = share(layoutChips(nodes, zoom, measure, obstacles), shown?.nodes);
+    const { paths, lanes, shared } = chipEdges(routes, zoom);
     const edges = new Map<string, EdgeChip>();
     for (const [id, route] of routes)
-      edges.set(id, { path: paths.get(id) ?? route.path, natural: route.path, lane: lanes.get(id) ?? id });
+      edges.set(id, {
+        path: paths.get(id) ?? route.path,
+        natural: route.path,
+        lane: lanes.get(id) ?? id,
+        ...(shared.has(id) ? { shared: shared.get(id) } : {}),
+      });
     setLowZoom(store, {
       Edge: chipEdge,
       Node: ChipNode,

@@ -891,7 +891,7 @@ const FrameDecoration = memo(
         const routes = selectRoutes(store.getState(), { style, direction, captions, hideDependencies });
         for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
           const path = routes.get(el.dataset.id ?? "")?.path;
-          if (path) el.querySelector(".fe-path")?.setAttribute("d", path);
+          if (path) el.querySelector(".fe:not(.fe-chip) .fe-path")?.setAttribute("d", path);
           el.removeAttribute("data-live-near");
           el.removeAttribute("data-detail-selected-edge");
         }
@@ -912,7 +912,7 @@ const FrameDecoration = memo(
           if (text.classList.contains("grp-label") || text.classList.contains("ann-zone-label"))
             text.style.removeProperty("translate");
         }
-        for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
+        for (const body of root.querySelectorAll<HTMLElement>(".nb:not(.nb-chip)")) body.style.removeProperty("width");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");

@@ -1,5 +1,6 @@
 import { roundedPath } from "./geometry/path";
 import type { Point } from "./geometry/rect";
+import type { SharedChip } from "./lowZoom";
 
 /** Snap nearby, overlapping orthogonal lanes once per settled route layout. */
 export function chipEdges(routes: Map<string, { points: Point[] }>, zoom: number) {
@@ -85,6 +86,9 @@ export function chipEdges(routes: Map<string, { points: Point[] }>, zoom: number
     group.push(segment);
     groups.set(key, group);
   }
+  const shared = new Map<string, SharedChip[]>();
+  // Bound member storage for adversarial staggered intervals as well as coincident lanes.
+  let remaining = segments.length * 32;
   // An edge can traverse multiple merged segments. Union its component references
   // too, retaining exactly one group id per edge rather than copying member lists.
   const edgeParents = new Map(paths.map(({ id }) => [id, id]));
@@ -108,6 +112,29 @@ export function chipEdges(routes: Map<string, { points: Point[] }>, zoom: number
       s.points[s.i][axis] = c;
       s.points[s.i + 1][axis] = c;
     }
+    // Split at every endpoint: a member contributes only along the interval it traverses.
+    const events = group.flatMap((s) => [
+      { x: s.lo, id: s.id, delta: 1 },
+      { x: s.hi, id: s.id, delta: -1 },
+    ]);
+    events.sort((a, b) => a.x - b.x);
+    const active = new Map<string, number>();
+    let start = events[0].x;
+    for (const { x, id, delta } of events) {
+      if (x > start && active.size > 1 && remaining >= active.size) {
+        const members = [...active.keys()];
+        remaining -= members.length;
+        const owner = members[0];
+        const sections = shared.get(owner) ?? [];
+        const point = (v: number) => (group[0].horizontal ? `${v},${c}` : `${c},${v}`);
+        sections.push({ path: `M${point(start)} L${point(x)}`, members });
+        shared.set(owner, sections);
+      }
+      const count = (active.get(id) ?? 0) + delta;
+      if (count) active.set(id, count);
+      else active.delete(id);
+      start = x;
+    }
   }
   for (const { id } of paths) lanes.set(id, edgeGroup(id));
   const merged = new Map(
@@ -127,5 +154,5 @@ export function chipEdges(routes: Map<string, { points: Point[] }>, zoom: number
       return [id, roundedPath(points, 6 / zoom) + arrow];
     }),
   );
-  return { paths: merged, lanes };
+  return { paths: merged, lanes, shared };
 }

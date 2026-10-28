@@ -105,14 +105,34 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     <EdgeControls id={id} source={source} target={target} route={route} />
   );
   const denyMarker = deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />;
+  const settingsCard = (card || (chip && selected)) && settings.length > 0 && Details && (
+    <Details.SettingsCard
+      pointer={tooltip.pointer}
+      id={id}
+      relation={relation!}
+      settings={settings}
+      note={Details.referenceNote(relation!, sourceStencil)}
+      x={mid.x}
+      y={mid.y - (label?.height ?? 0) / 2}
+    />
+  );
   if (chip) {
     // While its route follows a held node (or it is being shaped), the edge draws its live natural path.
     const { value } = chip;
     const shown = !selected && value.natural === path ? value.path : path;
     return (
       <>
-        {chip.chips.Edge(id, shown, !!relation, !!selected, value.lane, denyMarker)}
+        {chip.chips.Edge(
+          id,
+          shown,
+          relation,
+          !!selected,
+          value.lane,
+          denyMarker,
+          shown === value.path ? value.shared : undefined,
+        )}
         {controls}
+        {settingsCard && <EdgeLabelRenderer>{settingsCard}</EdgeLabelRenderer>}
       </>
     );
   }
@@ -209,17 +229,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       {body && (
         <EdgeLabelRenderer>
           {body}
-          {card && settings.length > 0 && label && Details && (
-            <Details.SettingsCard
-              pointer={tooltip.pointer}
-              id={id}
-              relation={relation!}
-              settings={settings}
-              note={Details.referenceNote(relation!, sourceStencil)}
-              x={mid.x}
-              y={mid.y - label.height / 2}
-            />
-          )}
+          {settingsCard}
         </EdgeLabelRenderer>
       )}
     </g>

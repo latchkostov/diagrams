@@ -3,6 +3,12 @@ import type { NodeBodyProps } from "./nodes/variants";
 import { useStore, useStoreApi, type ReactFlowState } from "@xyflow/react";
 import type { Rect } from "./geometry/rect";
 import type { DiagramFlowEdge, FlowNode } from "./types";
+import type { DependencyRelation } from "../model/relations";
+
+export interface SharedChip {
+  path: string;
+  members: string[];
+}
 
 export interface ChipLayout extends Rect {
   lines: string;
@@ -15,9 +21,18 @@ export interface EdgeChip {
   path: string;
   natural: string;
   lane: string;
+  shared?: SharedChip[];
 }
 export interface LowZoom {
-  Edge(id: string, path: string, dependency: boolean, selected: boolean, lane: string, deny: ReactNode): ReactNode;
+  Edge(
+    id: string,
+    path: string,
+    relation: DependencyRelation | null,
+    selected: boolean,
+    lane: string,
+    deny: ReactNode,
+    shared?: SharedChip[],
+  ): ReactNode;
   Node: ComponentType<NodeBodyProps & { fit: ChipLayout }>;
   /** Each card's containing zones, innermost first (Live rolls trouble up into them). */
   zones: Map<string, string[]>;

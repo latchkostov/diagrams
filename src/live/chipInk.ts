@@ -70,15 +70,14 @@ export function decorate(
       }
   }
   rollup([...root.querySelectorAll<HTMLElement>(PILLS)], trouble);
-  const groups = new Map<string, number>();
   const cut = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
-  const groupOf = (el: HTMLElement) => el.firstElementChild?.getAttribute("data-chip-group") ?? el.dataset.id!;
+  const rate = (id: string) => (rates.get(id) ?? 0) * (snapshot.scale ?? 1);
   for (const el of edges) {
-    const group = groupOf(el);
-    groups.set(group, (groups.get(group) ?? 0) + (rates.get(el.dataset.id!) ?? 0) * (snapshot.scale ?? 1));
-  }
-  for (const el of edges) {
-    attr(el, "data-live-rate", String(rateLevel(groups.get(groupOf(el)) ?? 0)));
+    attr(el, "data-live-rate", String(rateLevel(rate(el.dataset.id!))));
+    for (const section of el.querySelectorAll("[data-chip-members]")) {
+      const members: string[] = JSON.parse(section.getAttribute("data-chip-members")!);
+      attr(section, "data-live-rate", String(rateLevel(members.reduce((sum, id) => sum + rate(id), 0))));
+    }
     attr(el, "data-live-cut", cut.has(el.dataset.id!) ? "1" : null);
   }
 }

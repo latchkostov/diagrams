@@ -97,25 +97,41 @@ export function fitChip(
   return { lines: first, font: 10.5, width: measure(first, 10.5) };
 }
 
-export function layoutChips(nodes: ChipInput[], zoom: number, measure: (s: string, font: number) => number) {
+export function layoutChips(
+  nodes: ChipInput[],
+  zoom: number,
+  measure: (s: string, font: number) => number,
+  obstacles: Rect[] = [],
+) {
   const far = zoom < 0.3;
   const icon = far ? 12 : 14;
   const chrome = far ? 30 : 38;
   const result = new Map<string, ChipLayout>();
-  const index = new SpatialGrid<ChipInput>();
+  const index = new SpatialGrid<Rect>();
   for (const node of nodes) index.insert(node, node);
+  for (const obstacle of obstacles) index.insert(obstacle, obstacle);
+  const budget = { remaining: (nodes.length + obstacles.length) * 32 };
   for (const n of nodes) {
     const f = { x: n.x * zoom, y: n.y * zoom, width: n.width * zoom, height: n.height * zoom };
     let left = 26,
       right = 26,
       up = 9,
       down = 9;
-    for (const { item: other } of index.query({
-      x: n.x - 52 / zoom,
-      y: n.y - 18 / zoom,
-      width: n.width + 104 / zoom,
-      height: n.height + 36 / zoom,
-    })) {
+    const neighbours =
+      budget.remaining > 0
+        ? index.query(
+            {
+              x: n.x - 52 / zoom,
+              y: n.y - 18 / zoom,
+              width: n.width + 104 / zoom,
+              height: n.height + 36 / zoom,
+            },
+            budget,
+          )
+        : null;
+    // An incomplete search cannot establish free space. Keep the natural box's limits.
+    if (!neighbours) left = right = up = down = 0;
+    for (const { item: other } of neighbours ?? []) {
       if (other === n) continue;
       const g = { x: other.x * zoom, y: other.y * zoom, width: other.width * zoom, height: other.height * zoom };
       if (Math.min(f.y + f.height, g.y + g.height) - Math.max(f.y, g.y) > -18) {

@@ -119,20 +119,54 @@ it("draws a hairline with React Flow's own hit stroke and the deny marker inside
       await flush();
       const Edge = state().ldChips!.Edge;
       const markup = renderToStaticMarkup(
-        createElement("svg", null, Edge("ab", "M0,0 L320,0", false, false, "ab", createElement("g", { id: "deny" }))),
+        createElement("svg", null, Edge("ab", "M0,0 L320,0", null, false, "ab", createElement("g", { id: "deny" }))),
       );
       expect(markup).toContain('data-deny="true"');
       expect(markup).toMatch(/<g id="deny"><\/g><\/g>/);
       // The natural edge's own width, so a hairline takes no more of the canvas than its card-view edge did.
       expect(markup).toContain('class="react-flow__edge-interaction" fill="none" stroke-opacity="0" stroke-width="22"');
       expect(
-        renderToStaticMarkup(createElement("svg", null, Edge("ab", "M0,0 L320,0", false, false, "ab", null))),
+        renderToStaticMarkup(createElement("svg", null, Edge("ab", "M0,0 L320,0", null, false, "ab", null))),
       ).not.toContain("data-deny");
+      expect(
+        renderToStaticMarkup(createElement("svg", null, Edge("ab", "M0,0 L320,0", "config", false, "ab", null))),
+      ).toContain('data-relation="config"');
     } finally {
       dispose();
     }
   })();
 });
+
+it.each(["note", "shape", "text"])(
+  "fits beside a visible %s without turning the annotation into a chip",
+  async (kind) => {
+    const { store, flush, dispose, state } = harness();
+    try {
+      const lookup = new Map(state().nodeLookup);
+      lookup.set("worker", card("worker", 0, "Unbreakable") as never);
+      lookup.set("annotation", {
+        id: "annotation",
+        type: "annotation",
+        data: { kind, text: "Keep this readable" },
+        measured: { width: 220, height: 72 },
+        internals: { positionAbsolute: { x: 240, y: 0 } },
+      } as never);
+      store.setState({ nodeLookup: lookup, transform: [0, 0, 0.4] });
+      await flush();
+      const chip = state().ldChips!.nodes.get("worker")!;
+      expect(chip.width).toBeGreaterThan(220);
+      expect(chip.x + chip.width).toBeLessThan(240);
+      expect(state().ldChips!.nodes.has("annotation")).toBe(false);
+      // Moving an obstacle invalidates the cached layout too.
+      lookup.set("annotation", { ...lookup.get("annotation")!, hidden: true });
+      store.setState({ nodeLookup: new Map(lookup), nodes: [] });
+      await flush();
+      expect(state().ldChips!.nodes.get("worker")!.x).toBe(0);
+    } finally {
+      dispose();
+    }
+  },
+);
 
 it("waits for a held node's release, then keeps every unchanged chip's identity", async () => {
   routes.current = new Map([

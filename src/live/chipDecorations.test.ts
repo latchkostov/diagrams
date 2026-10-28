@@ -7,6 +7,10 @@ import type { DiagramFile } from "../model/types";
 import { HealthWindow } from "./healthWindow";
 import { rateLevel, rollup } from "./chipInk";
 import { opGrowth } from "../test/opCounter";
+import { chipEdges } from "../canvas/chipEdges";
+import { chipEdge } from "../canvas/nodes/ChipNode";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 it("weights a merged trunk by the sum of its current rates, with bounded stable buckets", () => {
   expect(rateLevel(100)).toBe(3);
@@ -29,20 +33,46 @@ it.each([
   expect(pill.hasAttribute("data-failing")).toBe(!!failing);
 });
 
-it("uses real traffic units at every sampling scale and sums each merged component once", async () => {
+it("weights only shared sections by their members' rates at every sampling scale", async () => {
   await loadChipInk();
   const snapshot = new LiveController(retryStorm as DiagramFile).snapshot();
   const run = (n: number, scale = 1) => {
     const root = document.createElement("div");
-    root.innerHTML = Array.from(
-      { length: n },
-      (_, i) => `<g class="react-flow__edge" data-id="e${i}"><g data-chip-group="trunk"></g></g>`,
-    ).join("");
-    const edges = Object.fromEntries(
+    const routes = new Map(
       Array.from({ length: n }, (_, i) => [
         `e${i}`,
-        { ...Object.values(snapshot.edges)[0], id: `e${i}`, delivered: 1000 / scale },
+        {
+          points: [
+            { x: 0, y: 0 },
+            { x: 200, y: 0 },
+            { x: 200, y: i % 2 ? -100 : 100 },
+            { x: 400, y: i % 2 ? -100 : 100 },
+          ],
+        },
       ]),
+    );
+    routes.set("unrelated", {
+      points: [
+        { x: 0, y: 400 },
+        { x: 400, y: 400 },
+      ],
+    });
+    const { paths, shared, lanes } = chipEdges(routes, 0.4);
+    root.innerHTML = renderToStaticMarkup(
+      createElement(
+        "svg",
+        null,
+        [...routes.keys()].map((id) =>
+          createElement(
+            "g",
+            { key: id, className: "react-flow__edge", "data-id": id },
+            chipEdge(id, paths.get(id)!, null, false, lanes.get(id)!, null, shared.get(id)),
+          ),
+        ),
+      ),
+    );
+    const edges = Object.fromEntries(
+      [...routes.keys()].map((id) => [id, { ...Object.values(snapshot.edges)[0], id, delivered: 60 / scale }]),
     );
     const decorator = new Decorator(root);
     const snap = { ...snapshot, nodes: {}, edges, time: 1000, scale };
@@ -52,7 +82,15 @@ it("uses real traffic units at every sampling scale and sums each merged compone
   };
   for (const scale of [1, 20, 100]) {
     const { root } = run(2, scale);
-    expect([...root.children].map((el) => el.getAttribute("data-live-rate"))).toEqual(["4", "4"]);
+    expect([...root.querySelectorAll(".react-flow__edge")].map((el) => el.getAttribute("data-live-rate"))).toEqual([
+      "2",
+      "2",
+      "2",
+    ]);
+    const sections = [...root.querySelectorAll("[data-chip-members]")];
+    expect(sections).toHaveLength(1);
+    expect(sections[0].getAttribute("d")).toBe("M0,0 L200,0");
+    expect(sections[0].getAttribute("data-live-rate")).toBe("3");
   }
   const small = run(250),
     large = run(2000);

@@ -7,6 +7,7 @@ import type { DiagramFlowEdge, FlowNode } from "./types";
 import { ops } from "../test/opCounter";
 
 const fixture = vi.hoisted(() => ({
+  locale: "en",
   state: {} as { nodes: FlowNode[]; edges: DiagramFlowEdge[]; nodeLookup: Map<string, unknown>; transform: number[] },
   camera: {
     phase: "idle",
@@ -27,7 +28,7 @@ vi.mock("@xyflow/react", () => {
 });
 vi.mock("./camera/useCameraCore", () => ({ useCameraController: () => fixture.camera }));
 vi.mock("./IdentityDetail", () => ({ IdentityDetail: () => null }));
-vi.mock("../i18n", () => ({ useLocale: () => "en", t: (s: string) => s }));
+vi.mock("../i18n", () => ({ useLocale: () => fixture.locale, t: (s: string) => s }));
 vi.mock("./edges/useEdgeRoute", () => ({
   useRoutingOptions: () => ({ style: "straight", direction: "LR", captions: false, hideDependencies: false }),
   routeInputFromStore: () => ({ nodes: [] }),
@@ -51,6 +52,44 @@ afterEach(() => {
   vi.unstubAllGlobals();
   document.body.replaceChildren();
   fixture.listeners.clear();
+  fixture.locale = "en";
+});
+
+it("leaves chip-owned paths and widths intact when a language change resets decoration", async () => {
+  fixture.camera.subscribe.mockReturnValue(() => {});
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("requestAnimationFrame", () => 1);
+  vi.stubGlobal("cancelAnimationFrame", () => {});
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  fixture.state = {
+    nodes: [],
+    edges: [{ id: "a" }] as DiagramFlowEdge[],
+    nodeLookup: new Map(),
+    transform: [0, 0, 0.4],
+  };
+  const host = document.createElement("div");
+  host.dataset.lowZoom = "mid";
+  host.innerHTML =
+    '<div class="react-flow__viewport"><svg class="react-flow__edge" data-id="a"><g class="fe fe-chip"><path class="fe-path" d="M0,5 L100,5 M95,2 L100,5 L95,8" /></g></svg><div class="nb nb-chip" style="width:270px"></div><div class="nb" style="width:300px"></div></div>';
+  document.body.append(host);
+  const mount = document.createElement("div");
+  document.body.append(mount);
+  const root = createRoot(mount);
+  const render = () =>
+    act(() =>
+      root.render(<FrameDetail host={{ current: host }} routing={{ style: "straight", direction: "LR" }} decorate />),
+    );
+  try {
+    await render();
+    fixture.locale = "de";
+    await render();
+    expect(host.querySelector(".fe-path")!.getAttribute("d")).toBe("M0,5 L100,5 M95,2 L100,5 L95,8");
+    expect(host.querySelector<HTMLElement>(".nb-chip")!.style.width).toBe("270px");
+    expect(host.querySelector<HTMLElement>(".nb:not(.nb-chip)")!.style.width).toBe("");
+  } finally {
+    await act(() => root.unmount());
+  }
 });
 
 it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mutations (far: %s)", async (far) => {

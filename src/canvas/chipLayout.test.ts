@@ -21,6 +21,30 @@ describe("settled chips", () => {
     expect(raw).toHaveBeenCalledTimes(calls);
     expect(calls).toBeLessThan(12);
   });
+  it("bounds neighbour work across 5,000 coincident nodes and stops expanding when exhausted", () => {
+    const input = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        id: String(i),
+        label: "Continue watching",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 72,
+      }));
+    const small = input(625),
+      large = input(5000);
+    expect(
+      opGrowth(
+        () => layoutChips(small, 0.4, measure),
+        () => layoutChips(large, 0.4, measure),
+      ),
+    ).toBeLessThanOrEqual(24);
+    const last = layoutChips(large, 0.4, measure).get("4999")!;
+    expect(last.x).toBeGreaterThanOrEqual(0);
+    expect(last.x + last.width).toBeLessThanOrEqual(200);
+    expect(last.y).toBeGreaterThanOrEqual(0);
+    expect(last.y + last.height).toBeLessThanOrEqual(72);
+  });
   it.each([0.4, 0.25])("keeps natural routing boxes and grows only into free gaps at %s", (zoom) => {
     const input = [
       { id: "a", label: "Continue watching", x: 0, y: 0, width: 200, height: 72 },
