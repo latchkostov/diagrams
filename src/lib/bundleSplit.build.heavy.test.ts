@@ -277,6 +277,7 @@ describe("production bundle split", () => {
     const code = b.chunks.map((c) => c.code).join("\n");
     expect(code).not.toContain("data-processed");
     expect(code).not.toContain("data-utilization");
+    expect(code).not.toContain("logicalBefore");
     expect(
       found(
         bundled(closure([live!], b)),

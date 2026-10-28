@@ -2,7 +2,12 @@
 // ENGINE_DIAG=work|profile|memory|seek ENGINE_DIAG_RING=on|off|free ENGINE_DIAG_OUT=<directory>
 // fnm exec --using 24 -- node node_modules/vitest/vitest.mjs run --config tests/bench/vitest.config.ts
 //   tests/bench/node/engineDiagnosis.bench.ts
-import { it } from "vitest";
+import { it, vi } from "vitest";
+import * as resources from "../../../src/sim/engine/resources";
+import * as revisions from "../../../src/model/revisions";
+import { SampledLedger } from "../../../src/sim/ledger";
+import { STEP } from "../../../src/sim/timing";
+import { measureFresh } from "./harness";
 import { Session } from "node:inspector/promises";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -28,6 +33,78 @@ function save(name: string, value: unknown) {
 }
 const revision = () => execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const FRAME = 1000 / 60;
+
+// Untimed operation census; allocations below count explicit scratch objects in the inactive bodies.
+it.skipIf(mode !== "inactive")("engine diagnosis inactive paths @500", () => {
+  let inactiveCpu = 0;
+  const create = resources.createResources;
+  const factory = vi.spyOn(resources, "createResources").mockImplementation((...args) => {
+    const parts = [...create(...args)] as unknown as ReturnType<typeof create>;
+    const prepare = parts[7];
+    Object.assign(parts, {
+      7: (node: Parameters<typeof prepare>[0]) => {
+        if (!node.fleet && !node.props.resources && !node.cpuTail.size) inactiveCpu++;
+        return prepare(node);
+      },
+    });
+    return parts;
+  });
+  const revisionChecks = vi.spyOn(revisions, "revisionAtLeast");
+  const release = vi.spyOn(SampledLedger.prototype, "releaseDue");
+  const expire = vi.spyOn(SampledLedger.prototype, "expireCredits");
+  try {
+    const d = eventPipeline(500);
+    const sim = d.simulations?.find((s) => s.id === "steady");
+    if (!sim) throw new Error("Pipeline needs steady simulation");
+    const run = createSimulationRun(d, sim);
+    revisionChecks.mockClear();
+    while (!run.state().done) run.step(100);
+    const ticks = run.state().time / STEP;
+    save("inactive.json", {
+      revision: revision(),
+      ticks,
+      inactiveCpu,
+      inactiveCpuPerTick: inactiveCpu / ticks,
+      // prepareCpu: two closures, yielding array, return tuple; finishCpuTails: tailsAfter array.
+      inactiveScratchAllocations: inactiveCpu * 5,
+      revisionChecks: revisionChecks.mock.calls.length,
+      ledgerReleaseChecks: release.mock.calls.length,
+      ledgerCreditChecks: expire.mock.calls.length,
+      snapshotSha256: createHash("sha256").update(JSON.stringify(run.engine.snapshot())).digest("hex"),
+    });
+  } finally {
+    factory.mockRestore();
+    revisionChecks.mockRestore();
+    release.mockRestore();
+    expire.mockRestore();
+  }
+});
+
+it.skipIf(mode !== "replay")("engine diagnosis checkpointed replay @500", () => {
+  const { c } = controller(500, "on");
+  try {
+    c.setPlaying(false);
+    c.seek(60_000);
+    const start = calibrate().ms;
+    const timing = measureFresh(
+      () => () => {
+        c.seek(15_000);
+        c.seek(60_000);
+      },
+      { samples: 5, warmup: 1 },
+    );
+    const end = calibrate().ms;
+    save("replay-timing.json", {
+      revision: revision(),
+      timing,
+      calibrationMs: (start + end) / 2,
+      normalized: timing.median / ((start + end) / 2),
+      snapshotSha256: createHash("sha256").update(JSON.stringify(c.snapshot())).digest("hex"),
+    });
+  } finally {
+    c.dispose();
+  }
+});
 
 // Diagnostic access only: disable controller capture in one arm, without changing engine source or restore logic.
 type Internals = {
