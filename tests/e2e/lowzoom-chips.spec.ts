@@ -224,19 +224,22 @@ test("image exports never include the chips: the natural drawing's SVG at 40%, 2
     const natural = await context.newPage();
     await natural.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
     // Zones with moved headers, merged lanes and wrapped names: everything the chips restyle.
-    for (const p of [page, natural]) {
-      await gotoCanvas(p, "black-friday-commerce");
-      // A capture below 60% turns far-zoom cards back to natural ones while it copies them, so without this
-      // the natural reference would catch some borders and shadows mid-transition. Compare settled values.
-      await p.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
-    }
+    await Promise.all(
+      [page, natural].map(async (p) => {
+        await gotoCanvas(p, "black-friday-commerce");
+        // A capture below 60% turns far-zoom cards back to natural ones while it copies them, so without this
+        // the natural reference would catch some borders and shadows mid-transition. Compare settled values.
+        await p.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
+      }),
+    );
     // Back at 100% too: nothing the chips placed on the page stays behind.
     for (const zoom of [0.4, 0.25, 1]) {
       const tier = zoom < 0.3 ? "far" : "mid";
-      for (const p of [page, natural]) await zoomIdentity(p, zoom);
+      await Promise.all([page, natural].map((p) => zoomIdentity(p, zoom)));
       if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
       await expect(natural.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom");
-      expect({ zoom, digest: await svgDigest(page) }).toEqual({ zoom, digest: await svgDigest(natural) });
+      const [actual, expected] = await Promise.all([svgDigest(page), svgDigest(natural)]);
+      expect({ zoom, digest: actual }).toEqual({ zoom, digest: expected });
       // The capture hands the screen back to the chips.
       if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
     }
