@@ -2565,6 +2565,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     arrive(node, { message, remaining: latency(node), injected });
   }
   function admitPending(node: Node): void {
+    if (!node.pending.length && !node.resume.length && !node.takeovers.length) return;
     node.admissionDirty = true;
     // A thread-tail release can call back here from finish(). Let the normal
     // post-work admission phase handle it after working has been compacted.
