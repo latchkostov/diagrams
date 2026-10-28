@@ -9,6 +9,7 @@ import type { ChipState, LowZoom } from "./lowZoom";
 import { registerFrameCapture } from "./camera/frameCapture";
 import { subscribeGeometry } from "./shapes/geometry";
 import { mountChipHits } from "./chipHits";
+import type { InteractionController } from "./interaction/controller";
 
 /** Publication code stays in the lazy surface too. */
 function setLowZoom(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>, value: LowZoom | null) {
@@ -21,10 +22,11 @@ export function mountChips(
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
   camera: { readonly phase: string; readonly interacting: boolean; subscribe(listener: () => void): () => void } | null,
   options: RouteOptions,
+  interaction: InteractionController | null,
 ) {
   const context = document.createElement("canvas").getContext("2d");
   if (!context) return () => {};
-  const unhits = mountChipHits(root, context);
+  const unhits = mountChipHits(root, context, interaction, () => store.getState().elementsSelectable);
   const font = getComputedStyle(root).fontFamily;
   const measure = chipMeasurer((text, size) => {
     context.font = `560 ${size}px ${font}`;

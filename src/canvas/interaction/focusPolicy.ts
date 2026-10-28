@@ -22,7 +22,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | H2  | selection.changed(undo / redo)      | focus was elsewhere (toolbar)   | keep; the Tab stop moves to the selection              |
  * | P1  | selection.changed(palette)          | it added the node               | focus the node once drawn                              |
  * | P2  | selection.changed(palette)          | it went to the node             | focus the node when visible                                     |
- * | S1  | selection.changed(click, box,       |                                 | keep                                                   |
+ * | S2  | selection.changed(click)            | forwarded edge hit target       | focus the selected edge now                            |
+ * | S1  | selection.changed(click, box,       | ordinary click                  | keep                                                   |
  * |     | placement, programmatic)            |                                 |                                                        |
  * | N1  | naming.done (Enter / Esc in a name) |                                 | focus the named item on the canvas now                 |
  * | I1  | inspector.field                     | a new request                   | focus the field once mounted for its item, all of its  |
@@ -127,6 +128,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return keep({ openMenus: [...(state.openMenus ?? []), event.kind] });
     case "selection.changed": {
       const { cause, target } = event;
+      if (cause === "click" && event.forwarded && target?.kind === "edge")
+        return move({ target, when: "now", revealed: true });
       if (cause === "keyboard" && target)
         return move(
           { target: { kind: target.kind, id: target.id }, when: "measured", revealed: true },

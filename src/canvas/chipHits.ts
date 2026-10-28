@@ -1,12 +1,21 @@
+import type { InteractionController } from "./interaction/controller";
+
 /** A 22-screen-pixel transparent stroke, tested on demand without another DOM path per edge. */
-export function mountChipHits(root: HTMLElement, context: CanvasRenderingContext2D) {
+export function mountChipHits(
+  root: HTMLElement,
+  context: CanvasRenderingContext2D,
+  interaction: Pick<InteractionController, "panHeld" | "gesture" | "dispatch"> | null,
+  selectable: () => boolean,
+) {
   const paths = new WeakMap<SVGPathElement, { d: string; path: Path2D }>();
   const hit = (event: MouseEvent) => {
     if (
       !root.hasAttribute("data-low-zoom") ||
       !(event.target instanceof Element) ||
       !event.target.classList.contains("react-flow__pane") ||
-      event.button === 1
+      event.button === 1 ||
+      interaction?.panHeld ||
+      interaction?.gesture
     )
       return;
     for (const stroke of [...root.querySelectorAll<SVGPathElement>(".fe-chip .fe-path")].reverse()) {
@@ -27,6 +36,14 @@ export function mountChipHits(root: HTMLElement, context: CanvasRenderingContext
       stroke.dispatchEvent(
         event instanceof PointerEvent ? new PointerEvent(event.type, event) : new MouseEvent(event.type, event),
       );
+      const id = stroke.closest(".react-flow__edge")?.getAttribute("data-id");
+      if (event.type === "click" && event.button === 0 && id && selectable())
+        interaction?.dispatch({
+          type: "selection.changed",
+          cause: "click",
+          target: { kind: "edge", id },
+          forwarded: true,
+        });
       break;
     }
   };

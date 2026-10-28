@@ -15,27 +15,22 @@ for (const zoom of [0.4, 0.25])
     await zoomIdentity(page, zoom);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", zoom < 0.3 ? "far" : "mid");
     const line = page.getByTestId("connection-stroke-ab");
-    const offset = await line.evaluate((el: SVGPathElement) => {
-      const point = el.getPointAtLength(el.getTotalLength() / 2);
-      const matrix = el.getScreenCTM();
-      if (!matrix) throw new Error("Missing connection transform");
-      const p = new DOMPoint(point.x, point.y).matrixTransform(matrix);
-      return { x: p.x, y: p.y + 4 };
-    });
-    await page.mouse.click(offset.x, offset.y, { button: "right" });
-    await expect(page.getByTestId("context-menu-item-edge.reconnect")).toBeVisible();
-    await page.keyboard.press("Escape");
+    const offsetPoint = () =>
+      line.evaluate((el: SVGPathElement) => {
+        const point = el.getPointAtLength(el.getTotalLength() / 2);
+        const matrix = el.getScreenCTM();
+        if (!matrix) throw new Error("Missing connection transform");
+        const p = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+        return { x: p.x, y: p.y + 4 };
+      });
+    const offset = await offsetPoint();
     await page.mouse.click(offset.x, offset.y);
     await waitForSelectionSettled(page);
-    await page.getByTestId("edge-ab").evaluate((el) => (el.parentElement as unknown as SVGElement).focus());
-    await fitDiagram(page);
-    await zoomIdentity(page, zoom);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", zoom < 0.3 ? "far" : "mid");
     await expect(page.getByTestId("reconnect-ab-source")).toBeVisible();
     await expect(page.getByTestId("reconnect-ab-target")).toBeVisible();
     await expect(page.getByTestId("route-segment-ab-0")).toBeVisible();
     const before = await line.getAttribute("d");
-    await page.getByTestId("edge-ab").evaluate((el) => (el.parentElement as unknown as SVGElement).focus());
     await page.keyboard.press("ArrowDown");
     await expect.poll(() => line.getAttribute("d")).not.toBe(before);
     await expect.poll(async () => (await savedDiagram(page)).edges[0].waypoints?.length ?? 0).toBeGreaterThan(0);
@@ -52,6 +47,10 @@ for (const zoom of [0.4, 0.25])
     if (!source) throw new Error("Missing source control");
     expect(source.x + source.width / 2).toBeCloseTo(end.x, 0);
     expect(source.y + source.height / 2).toBeCloseTo(end.y, 0);
+    const menuPoint = await offsetPoint();
+    await page.mouse.click(menuPoint.x, menuPoint.y, { button: "right" });
+    await expect(page.getByTestId("context-menu-item-edge.reconnect")).toBeVisible();
+    await page.keyboard.press("Escape");
     await page.getByTestId("edge-ab").evaluate((el) => (el.parentElement as unknown as SVGElement).blur());
     await expect(page.getByTestId("edge-messages-ab")).not.toBeVisible();
     await fitDiagram(page);

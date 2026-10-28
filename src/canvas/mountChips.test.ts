@@ -66,6 +66,7 @@ it("publishes only settled layouts, reuses pan, and restores natural cards for c
     store as unknown as ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
     null,
     { style: "smoothstep", direction: "LR" },
+    null,
   );
   try {
     await flush();
