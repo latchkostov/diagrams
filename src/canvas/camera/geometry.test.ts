@@ -304,7 +304,8 @@ it.each([0.35, 0.92, 1, 1.5])("phone Follow preserves zoom %s above its readable
   state.transform = [0, 0, current];
   const view = followViewport(root, state, ["a", "b"], "b")!;
   expect(view.zoom).toBe(Math.max(0.92, current));
-  expect(view.x + 6090 * view.zoom).toBe(195);
+  expect(view.x + 6090 * view.zoom).toBe(current === 1.5 ? 247 : 257);
+  expect(view.x + 6180 * view.zoom).toBeLessThanOrEqual(382);
   expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
 });
 it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
@@ -338,7 +339,7 @@ it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exp
   state.transform = [-7000, -7000, 1];
   const follow = followViewport(root, state, ["a", "b"], "a")!;
   expect(follow.zoom).toBe(1);
-  expect(follow.x + 90 * follow.zoom).toBe(195);
+  expect(follow.x + 90 * follow.zoom).toBe(133);
   expect(follow.y + 40 * follow.zoom).toBe((800 - height) * 0.4);
 });
 

@@ -58,24 +58,28 @@ const zoom = async (page: Page) => Number((await viewportTransform(page)).match(
 const fits = async (page: Page, mark: number) =>
   (await cameraMoves(page, mark)).filter((m) => /^(fit|liveFit|noteFit|follow)/.test(m));
 
-test("Edit zoom then entering Live gives the automatic fit ownership of Inspector changes", async ({ page }) => {
+test("Edit zoom then entering Live keeps the manual camera through Inspector changes", async ({ page }) => {
   await open(page, false, false, 2);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
   await waitForCameraIdle(page);
   expect(await zoom(page)).toBe(1);
+  const before = await viewportTransform(page);
+  const entering = await cameraJournalMark(page);
   await page.getByTestId("live-toggle").click();
   await waitForLiveSession(page);
   await waitForCameraIdle(page);
+  // Owner decision: Live keeps the user's camera when content is visible.
+  expect(await viewportTransform(page)).toBe(before);
+  expect(await fits(page, entering)).toEqual([]);
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
   await expect(page.getByTestId("live-note")).toHaveCount(0);
   await pauseClock(page);
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-toggle").click();
   await page.clock.runFor(1500);
-  expect(await inPane(page)).toBe(true);
-  // Entering Live took the view back for the fit: the Inspector's pane change refits it (panePolicy L5).
-  expect(await fits(page, mark)).toEqual(["liveFit:pane"]);
+  expect(await viewportTransform(page)).toBe(before);
+  expect(await fits(page, mark)).toEqual([]);
 });
 
 test("Inspector resize preserves keyboard-only Live zoom", async ({ page }) => {
@@ -104,8 +108,9 @@ test("explicit Follow takes ownership after a manual pan and yields to later key
   const pane = await boxOf(page.getByTestId("canvas-wrap"));
   const point = await emptyCanvasPoint(page);
   await page.mouse.move(pane.x + point.x, pane.y + point.y);
-  await page.mouse.wheel(300, 80);
+  await page.mouse.wheel(3000, 80);
   await waitForStableViewport(page);
+  const chosenZoom = await zoom(page);
   const mark = await cameraJournalMark(page);
   await page.getByTestId("live-sim-picker").selectOption("inspector-note");
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
@@ -120,19 +125,23 @@ test("explicit Follow takes ownership after a manual pan and yields to later key
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
   expect(await inPane(page, ["kong", "orders"])).toBe(true);
-  // Explicit Follow takes the view back; each pane change reframes its subject.
-  expect((await fits(page, mark)).slice(0, 2), JSON.stringify(await cameraJournal(page, mark))).toEqual([
-    "follow",
-    "follow",
-  ]);
+  // Owner decision: Follow pans at the chosen zoom, including when the resized dock covers its subject.
+  expect(await zoom(page)).toBe(chosenZoom);
+  expect((await cameraJournal(page, mark)).filter((entry) => entry.command === "follow")).toHaveLength(3);
+  expect(await fits(page, mark), JSON.stringify(await cameraJournal(page, mark))).toEqual(["follow", "follow"]);
   expect(await fits(page, resized)).toEqual(["follow"]);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
   await page.clock.runFor(1500);
   expect(await zoom(page)).toBe(1);
+  const manual = await cameraJournalMark(page);
+  const manualView = await viewportTransform(page);
   await page.getByTestId("inspector-resize").press("Home");
   await page.clock.runFor(1500);
   expect(await zoom(page)).toBe(1);
+  expect(await viewportTransform(page)).toBe(manualView);
+  expect(await fits(page, manual)).toEqual([]);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "custom");
 });
 
 for (const locale of ["en", "ar", "en-XA"])
@@ -449,6 +458,7 @@ test("Inspector resize retains narration focus", async ({ page }) => {
   await waitForCameraIdle(page);
   await pauseClock(page);
   await page.clock.runFor(1500);
+  const chosenZoom = await zoom(page);
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
@@ -468,7 +478,8 @@ test("Inspector resize retains narration focus", async ({ page }) => {
       await expect(page.getByTestId(`rf__node-${id}`)).toHaveAttribute("data-detail-hidden", "");
   }
   expect(await zoom(page)).toBeGreaterThanOrEqual(0.9);
-  expect(await zoom(page)).toBeLessThanOrEqual(1);
+  // Owner decision: narration reveals at the current zoom rather than choosing a close-up zoom.
+  expect(await zoom(page)).toBe(chosenZoom);
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
   expect(await fits(page, mark)).toEqual(["noteFit:pane"]);
   // The explicit focus remains closer than fitting the entire boundary and its source.

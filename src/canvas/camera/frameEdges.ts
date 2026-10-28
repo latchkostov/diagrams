@@ -9,6 +9,17 @@ import type { RouteInput } from "../geometry/router";
 export type FrameEnd = "in" | "pinned" | "out";
 export type FrameSide = "left" | "right" | "top" | "bottom";
 export type Point = { x: number; y: number };
+/** A remote node above or below the pane owns that pin row, even when its route detours sideways. */
+export function pinAnchor(crossing: Point, side: FrameSide, target: Point, frame: Rect) {
+  if (target.y < frame.y) side = "top";
+  else if (target.y > frame.y + frame.height) side = "bottom";
+  const axis = side === "left" || side === "right" ? "y" : "x";
+  const length = axis === "y" ? frame.height : frame.width;
+  const point = { ...crossing, [axis]: Math.max(frame[axis], Math.min(target[axis], frame[axis] + length)) };
+  if (side === "top") point.y = frame.y;
+  if (side === "bottom") point.y = frame.y + frame.height;
+  return { point, side };
+}
 /** One decoration pass shares a finite collision budget and an index of occupied bands.
  * Exhaustion stacks titles above every obstacle, so imports remain linear plus capped search work.
  */

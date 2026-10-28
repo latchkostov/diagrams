@@ -11,6 +11,7 @@ import {
   frameCardBounds,
   edgeInFrame,
   frameCrossing,
+  pinAnchor,
   innerFrame,
   visibleCanvas,
   oneHop,
@@ -74,7 +75,7 @@ function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>
   const [tx, ty, zoom] = s.transform;
   const origin = root.getBoundingClientRect();
   const bands = new TitleBands(titleObstacles(s, zoom, routing));
-  const labels = [...root.querySelectorAll<HTMLElement>(".grp-label, .ann-zone-label")].filter(
+  const labels = [...root.querySelectorAll<HTMLElement>(".grp-label, .ann-zone-label:not(.is-empty)")].filter(
     (el) => !el.hasAttribute("data-detail-text-hidden") && !el.closest(".is-editing"),
   );
   for (const el of labels) el.style.removeProperty("translate");
@@ -97,7 +98,8 @@ function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>
       { x: at.x * zoom, y: at.y * zoom, width: (n.measured?.width ?? 0) * zoom, height: 0 },
       { width: el.offsetWidth, height: el.offsetHeight },
     );
-    el.style.transform = `scale(${1 / zoom}) translate(${title.x - at.x * zoom}px, ${title.y - at.y * zoom}px)`;
+    el.style.setProperty("--region-zoom", String(zoom));
+    el.style.transform = `scale(calc(1 / var(--region-zoom, 1))) translate(${title.x - at.x * zoom}px, ${title.y - at.y * zoom}px)`;
   }
 }
 
@@ -377,7 +379,7 @@ const FrameDecoration = memo(
           const painted =
             !cropped ||
             contains(inner, frameCardBounds(card)) ||
-            (view === "follow" && subjects.has(id) && intersects(frameBox, card));
+            (view === "follow" && id === subject && intersects(frameBox, card));
           const hidden =
             (n.type === "diagram" && !painted && cropped) ||
             (n.type === "annotation" &&
@@ -426,15 +428,20 @@ const FrameDecoration = memo(
                 inner,
               );
             }
-            if (crossing)
+            if (crossing) {
+              const anchor =
+                view === "follow"
+                  ? pinAnchor(crossing.point, crossing.side, screen(node.internals.positionAbsolute), inner)
+                  : crossing;
               candidates.push({
                 id,
                 name: "label" in node.data ? node.data.label : "",
-                crossing: crossing.point,
-                side: crossing.side,
+                crossing: anchor.point,
+                side: anchor.side,
                 width: Math.min(200, Math.max(80, ("label" in node.data ? node.data.label : "").length * 7 + 28)),
                 spotlit: lit.has(id),
               });
+            }
           }
         // Keep inline-end pins above the credit; stack from their own route crossing toward the centre.
         const pinBlockers = blockers.map((card) => ({
@@ -973,7 +980,10 @@ const FrameChips = memo(function FrameChips({
   useLayoutEffect(() => {
     const elements = host.current?.querySelectorAll<HTMLElement>(".detail-group-chip") ?? [];
     const update = () => {
-      if (root.current) placeRegionTitles(root.current, store.getState(), routing);
+      for (const el of elements) el.style.setProperty("--region-zoom", String(store.getState().transform[2]));
+      // CSS keeps titles readable and attached during a camera animation. Search
+      // for collision-free bands once it settles; held manual zoom still updates each frame.
+      if (root.current && !camera?.moving) placeRegionTitles(root.current, store.getState(), routing);
     };
     update();
     const sizes = new ResizeObserver(update);
@@ -985,7 +995,7 @@ const FrameChips = memo(function FrameChips({
       sizes.disconnect();
       unsubscribe();
     };
-  }, [chips, store, routing, root]);
+  }, [chips, store, routing, root, camera]);
   return (
     <ViewportPortal>
       <div ref={host} className="detail-group-chips" data-testid="zone-chip-layer" data-export="skip">

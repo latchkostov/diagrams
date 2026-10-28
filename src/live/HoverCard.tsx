@@ -78,6 +78,14 @@ export function HoverCard({
       });
       // A displaced card must still leave its originating node/connection actionable.
       obstacles.push({ x: rect.left - bounds.left, y: rect.top - bounds.top, width: rect.width, height: rect.height });
+      if (kind === "node") {
+        const badges = domNode.querySelector(`[data-testid="node-badge-${CSS.escape(id)}"]`);
+        for (const badge of badges?.querySelectorAll<HTMLElement>(".lv-metric,.lv-alert") ?? []) {
+          if (getComputedStyle(badge).visibility === "hidden") continue;
+          const r = badge.getBoundingClientRect();
+          obstacles.push({ x: r.left - bounds.left, y: r.top - bounds.top, width: r.width, height: r.height });
+        }
+      }
       let offset = calloutOffset(
         { x: left - bounds.left, y: top - bounds.top, width: size.width, height: size.height },
         { width: bounds.width, height: bottom - bounds.top },

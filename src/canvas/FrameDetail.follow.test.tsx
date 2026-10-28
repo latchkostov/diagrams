@@ -58,7 +58,7 @@ it.each([false, true])(
       return seq;
     });
     vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
-    fixture.camera.state.live.focus = narrated ? ["subject"] : [];
+    fixture.camera.state.live.focus = narrated ? ["subject", "neighbour"] : [];
     const node = {
       id: "subject",
       type: "diagram",
@@ -67,14 +67,27 @@ it.each([false, true])(
       internals: { positionAbsolute: { x: 0, y: 0 } },
       measured: { width: 220, height: 72 },
     } as FlowNode;
-    fixture.state = { nodes: [node], edges: [], nodeLookup: new Map([[node.id, node]]), transform: [-25, 300, 2] };
+    const neighbour = { ...node, id: "neighbour", data: { ...node.data, label: "Neighbour" } } as FlowNode;
+    fixture.state = {
+      nodes: [node, neighbour],
+      edges: [],
+      nodeLookup: new Map([
+        [node.id, node],
+        [neighbour.id, neighbour],
+      ]),
+      transform: [-25, 300, 2],
+    };
     const host = document.createElement("div");
     Object.defineProperties(host, { clientWidth: { value: 390 }, clientHeight: { value: 844 } });
     host.innerHTML =
-      '<div class="react-flow__node react-flow__node-diagram" data-id="subject"><div class="nb">Subject</div></div><div data-testid="node-badge-subject"><span class="lv-metric">1</span></div>';
+      '<div class="react-flow__node react-flow__node-diagram" data-id="subject"><div class="nb">Subject</div></div><div class="react-flow__node react-flow__node-diagram" data-id="neighbour"><div class="nb">Neighbour</div></div><div data-testid="node-badge-subject"><span class="lv-metric">1</span></div>';
     const card = host.firstElementChild!;
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-      return this === host ? new DOMRect(0, 0, 390, 844) : new DOMRect(-25, 300, 440, 144);
+      return this === host
+        ? new DOMRect(0, 0, 390, 844)
+        : this.getAttribute("data-id") === "neighbour"
+          ? new DOMRect(360, 520, 220, 72)
+          : new DOMRect(-25, 300, 440, 144);
     });
     vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(220);
     const mount = document.createElement("div");
@@ -101,6 +114,7 @@ it.each([false, true])(
       });
       expect(host.dataset.detailView).toBe("follow");
       expect(card.hasAttribute("data-detail-hidden")).toBe(false);
+      expect(host.querySelector('[data-id="neighbour"]')!.hasAttribute("data-detail-hidden")).toBe(true);
       expect(host.querySelector('[data-testid="node-badge-subject"]')!.hasAttribute("data-detail-hidden")).toBe(false);
       expect(mount.querySelector('[data-testid="focus-offscreen-subject"]')).toBeNull();
       expect(fixture.state.transform[2]).toBe(2);

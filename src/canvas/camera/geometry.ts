@@ -192,8 +192,15 @@ export function followViewport(
     (card.y + card.height) * zoom + ty <= frame.y + frame.height
   )
     return null;
+  const peers = phone ? union(nodeRects(s, new Set(focus.filter((key) => key !== id)))) : null;
+  // A phone cannot hold the narrated pair at its readable floor. Leave the
+  // caller's pin a lane beside the subject, without changing the chosen zoom.
+  const offset = peers
+    ? Math.sign(card.x + card.width / 2 - peers.x - peers.width / 2) *
+      Math.min(62, Math.max(0, (frame.width - card.width * zoom) / 2 - 8))
+    : 0;
   return {
-    x: frame.x + (frame.width - right) / 2 - (card.x + card.width / 2) * zoom,
+    x: frame.x + (frame.width - right) / 2 + offset - (card.x + card.width / 2) * zoom,
     y: frame.y + frame.height * (phone ? 0.4 : 0.5) - (card.y + card.height / 2) * zoom,
     zoom,
   };
