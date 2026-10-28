@@ -21,7 +21,7 @@ import { isDependency, relationOf, type DependencyRelation } from "../../model/r
 import { requireEdgeModules } from "./readiness";
 import { routeGeometry } from "../geometry/shapedRuntime";
 import { defineLazySurface } from "../../lib/lazySurface";
-import { useLowZoom } from "../lowZoom";
+import { useChip } from "../lowZoom";
 const EdgeControls = defineLazySurface({
   id: "edge.shaping",
   load: () => import("./EdgeRouteHandles").then((m) => m.EdgeRouteHandles),
@@ -43,7 +43,7 @@ const EdgeControls = defineLazySurface({
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source, target } = props;
-  const lowZoom = useLowZoom();
+  const chip = useChip("edges", id);
   const { rename, openEdgeMenu, reconnect } = useDiagram();
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
   const denied = !relation && isDenyRule(data?.props);
@@ -104,13 +104,18 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const controls = selected && reconnect && route.points.length > 1 && (
     <EdgeControls id={id} source={source} target={target} route={route} />
   );
-  if (lowZoom)
+  const denyMarker = deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />;
+  if (chip) {
+    // While its route follows a held node (or it is being shaped), the edge draws its live natural path.
+    const { value } = chip;
+    const shown = !selected && value.natural === path ? value.path : path;
     return (
       <>
-        {lowZoom.edge(id, !!relation, !!selected, path)}
+        {chip.chips.Edge(id, shown, !!relation, !!selected, value.lane, denyMarker)}
         {controls}
       </>
     );
+  }
 
   let body: ReactNode = null;
   if (label && label.mode !== "glyph") {
@@ -199,7 +204,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       />
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
       {title(deny ? Details?.denyTip : tip)}
-      {deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />}
+      {denyMarker}
       {controls}
       {body && (
         <EdgeLabelRenderer>

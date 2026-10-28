@@ -631,6 +631,12 @@ a laptop and on CI alike (`scripts/parity.mjs` starts it with the checkout mount
 per checkout, and the pnpm store live in Docker volumes, not in the checkout). Inside it, the harness builds the
 production bundle (`vite build`, no test hooks) and serves it with `vite preview` on port 6200.
 
+The canvas goldens pin the natural drawing at every fitted zoom: measured cards, routed edges and placed labels.
+Below 60% the editor draws settled, screen-only chips instead (hairline edges, two-line names). Chips never change a
+measured size, a layout, a route or an export, so every browser-tier test sets the `diagrams.lowZoom` storage key to
+`off` before the page loads (`tests/parity/browser/fixtures.ts`). The chips themselves are covered by
+`tests/e2e/lowzoom-*.spec.ts`.
+
 In that image, two runs give identical numbers and pixel-identical images, so the canvas and SVG goldens compare
 exactly. Image-export PNGs keep the existing 4× downscaled references and allow at most
 `min(floor(width × height × 0.001), 600)` pixels to differ by more than 16 of 255 in any RGBA channel.

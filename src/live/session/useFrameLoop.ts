@@ -152,7 +152,8 @@ export function useFrameLoop({
       lastGeneration = gen;
       march = slow ? 0 : still ? march : march + dt;
       const ui = now - lastUi >= UI_MS;
-      const lowZoom = (store.getState() as ChipState).ldChips;
+      // Slow motion replays over the natural drawing (the chips step aside for it).
+      const lowZoom = slow ? null : (store.getState() as ChipState).ldChips;
       if (ui) {
         lastUi = now;
         if (controller.isPlaying) controller.publish();
@@ -168,7 +169,7 @@ export function useFrameLoop({
       }
       if (!lowZoom) renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });
       if (ui) {
-        if (!lowZoom) slowRef.current?.ui(canvas, snap, renderer.slowLabels);
+        slowRef.current?.ui(canvas, snap, renderer.slowLabels);
         if (++stats % 2 === 0) {
           canvas.dataset.particles = String(lowZoom ? 0 : renderer.drawn);
           canvas.dataset.frames = String(renderer.frames);

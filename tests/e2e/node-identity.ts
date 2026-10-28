@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, viewportTransform, waitForCameraIdle } from "./fixtures";
+import { expect, fitDiagram, viewportTransform, waitForCameraIdle } from "./fixtures";
 
 export async function zoomIdentity(page: Page, target = 0.24) {
   await waitForCameraIdle(page);
@@ -16,6 +16,22 @@ export async function zoomIdentity(page: Page, target = 0.24) {
   await expect
     .poll(async () => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]))
     .toBeCloseTo(target, 2);
+  await waitForCameraIdle(page);
+}
+
+/**
+ * Live draws its particles at 60% zoom and above; below it the calm chip view stops the particle canvas on
+ * purpose (lowzoom-chips.spec.ts). A fitted Live view of a wide example can open below 60%, so this zooms in
+ * to read the particles (the same threshold as before) and then fits the view again.
+ */
+export async function expectLiveParticles(page: Page, min: number, timeout = 10_000) {
+  await waitForCameraIdle(page);
+  const zoom = Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
+  if (zoom < 0.6) await zoomIdentity(page, 0.8);
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")), { timeout })
+    .toBeGreaterThan(min);
+  if (zoom < 0.6) await fitDiagram(page);
   await waitForCameraIdle(page);
 }
 

@@ -5,15 +5,23 @@ import { chipMeasurer, chipTitles, layoutChips } from "./chipLayout";
 import { ChipNode, chipEdge } from "./nodes/ChipNode";
 import { chipEdges } from "./chipEdges";
 import { selectRoutes, type RouteOptions } from "./edges/useEdgeRoute";
-import type { ChipState, LowZoom } from "./lowZoom";
+import type { ChipLayout, ChipState, EdgeChip, LowZoom } from "./lowZoom";
 import { registerFrameCapture } from "./camera/frameCapture";
 import { subscribeGeometry } from "./shapes/geometry";
-import { mountChipHits } from "./chipHits";
-import type { InteractionController } from "./interaction/controller";
+import { safeStorage } from "../lib/storage";
 
 /** Publication code stays in the lazy surface too. */
 function setLowZoom(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>, value: LowZoom | null) {
   store.setState({ ldChips: value } as Partial<ChipState>);
+}
+
+/** Keeps the previous entry when nothing in it changed, so its subscriber doesn't render again. */
+function share<T extends object>(next: Map<string, T>, previous: Map<string, T> | undefined) {
+  for (const [id, value] of next) {
+    const old = previous?.get(id);
+    if (old && JSON.stringify(old) === JSON.stringify(value)) next.set(id, old);
+  }
+  return next;
 }
 
 /** The lazy identity surface owns fitting; renderers only subscribe to its settled result. */
@@ -22,11 +30,10 @@ export function mountChips(
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
   camera: { readonly phase: string; readonly interacting: boolean; subscribe(listener: () => void): () => void } | null,
   options: RouteOptions,
-  interaction: InteractionController | null,
 ) {
   const context = document.createElement("canvas").getContext("2d");
-  if (!context) return () => {};
-  const unhits = mountChipHits(root, context, interaction, () => store.getState().elementsSelectable);
+  // The browser parity tier pins the natural drawing at every fitted zoom (docs/PARITY.md).
+  if (!context || safeStorage.getItem("diagrams.lowZoom") === "off") return () => {};
   const font = getComputedStyle(root).fontFamily;
   const measure = chipMeasurer((text, size) => {
     context.font = `560 ${size}px ${font}`;
@@ -38,26 +45,36 @@ export function mountChips(
     ready = false,
     previous = "",
     fits = 0;
+  const TITLE = ["--chip-title-x", "--chip-title-y"];
+  /** Back to natural cards: nothing of the chips may stay on the page, where an export would copy it. */
+  const natural = () => {
+    root.removeAttribute("data-low-zoom");
+    for (const label of root.querySelectorAll<HTMLElement>(".grp-label"))
+      for (const name of TITLE) label.style.removeProperty(name);
+  };
+  const clear = () => {
+    if (previous) {
+      previous = "";
+      natural();
+      setLowZoom(store, null);
+    }
+  };
   const update = () => {
     frame = 0;
+    const state = store.getState();
     if (
       disposed ||
       suspended ||
       !ready ||
       root.hasAttribute("data-viewport-moving") ||
-      (camera && (camera.phase !== "idle" || camera.interacting))
+      (camera && (camera.phase !== "idle" || camera.interacting)) ||
+      // While a node is held, its routes follow the pointer; fitting waits for the release.
+      state.nodes.some((n) => n.dragging)
     )
       return;
-    const state = store.getState();
     const zoom = state.transform[2];
-    if (zoom >= 0.6) {
-      if (previous) {
-        previous = "";
-        root.removeAttribute("data-low-zoom");
-        setLowZoom(store, null);
-      }
-      return;
-    }
+    // Slow motion replays over the natural drawing, at any zoom.
+    if (zoom >= 0.6 || root.querySelector("[data-live-slowmo]")) return clear();
     const nodes = [...state.nodeLookup.values()].flatMap((n) => {
       if (n.type !== "diagram" || n.hidden || !n.measured?.width || !n.measured.height) return [];
       return [
@@ -90,9 +107,12 @@ export function mountChips(
     previous = key;
     root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
     if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") root.dataset.chipFits = String(++fits);
-    const chips = layoutChips(nodes, zoom, measure);
+    const shown = (state as ChipState).ldChips;
+    const chips: Map<string, ChipLayout> = share(layoutChips(nodes, zoom, measure), shown?.nodes);
     const { paths, lanes } = chipEdges(routes, zoom);
-    const naturalPaths = new Map([...routes].map(([id, route]) => [id, route.path]));
+    const edges = new Map<string, EdgeChip>();
+    for (const [id, route] of routes)
+      edges.set(id, { path: paths.get(id) ?? route.path, natural: route.path, lane: lanes.get(id) ?? id });
     const titles = chipTitles(nodes, chips, zones, zoom, measure, live);
     const members = new Map<string, string[]>();
     for (const node of state.nodes) {
@@ -113,27 +133,19 @@ export function mountChips(
       const id = label.closest<HTMLElement>("[data-caption-root]")?.dataset.captionRoot;
       const spot = titles.get(`group:${id}`);
       if (spot) {
-        label.style.setProperty("--chip-title-x", `${spot.x / zoom}px`);
-        label.style.setProperty("--chip-title-y", `${spot.y / zoom}px`);
+        label.style.setProperty(TITLE[0], `${spot.x / zoom}px`);
+        label.style.setProperty(TITLE[1], `${spot.y / zoom}px`);
       }
     }
     setLowZoom(store, {
-      // While a node is held, its router still follows the pointer; fitting waits for release.
-      edge: (id, dependency, selected, naturalPath) =>
-        chipEdge(
-          id,
-          !selected && naturalPaths.get(id) === naturalPath ? (paths.get(id) ?? naturalPath) : naturalPath,
-          dependency,
-          selected,
-          lanes.get(id) ?? id,
-        ),
+      Edge: chipEdge,
       Node: ChipNode,
       members,
       titles,
       tier: zoom < 0.3 ? "far" : "mid",
       zoom,
       nodes: chips,
-      paths,
+      edges: share(edges, shown?.edges),
     });
   };
   const schedule = () => {
@@ -149,12 +161,16 @@ export function mountChips(
   const uncam = camera?.subscribe(schedule);
   const ungeometry = subscribeGeometry(schedule);
   const observer = new MutationObserver(schedule);
-  observer.observe(root, { attributes: true, attributeFilter: ["data-viewport-moving"] });
+  observer.observe(root, {
+    attributes: true,
+    subtree: true,
+    attributeFilter: ["data-viewport-moving", "data-live-slowmo"],
+  });
   const viewport = root.querySelector(".react-flow__viewport");
   const uncap = viewport
     ? registerFrameCapture(viewport, () => {
         suspended = true;
-        root.removeAttribute("data-low-zoom");
+        natural();
         flushSync(() => setLowZoom(store, null));
         return () => {
           suspended = false;
@@ -171,8 +187,7 @@ export function mountChips(
     ungeometry();
     observer.disconnect();
     uncap();
-    unhits();
-    root.removeAttribute("data-low-zoom");
+    natural();
     setLowZoom(store, null);
   };
 }

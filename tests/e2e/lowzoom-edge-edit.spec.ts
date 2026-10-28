@@ -1,5 +1,16 @@
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
-import { test, expect, gotoCanvas, fitDiagram, savedDiagram, STORAGE_KEYS, waitForSelectionSettled } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  fitDiagram,
+  savedDiagram,
+  STORAGE_KEYS,
+  waitForSelectionSettled,
+  waitForCameraIdle,
+  cameraJournalMark,
+  cameraMoves,
+} from "./fixtures";
 import { zoomIdentity } from "./node-identity";
 
 for (const zoom of [0.4, 0.25])
@@ -24,9 +35,17 @@ for (const zoom of [0.4, 0.25])
         return { x: p.x, y: p.y + 4 };
       });
     const offset = await offsetPoint();
+    const mark = await cameraJournalMark(page);
+    // The hairline's 22-pixel hit stroke is React Flow's own: the click selects and focuses the connection
+    // natively, and (as for any selection below 50% in Edit) the camera opens the focus view on it.
     await page.mouse.click(offset.x, offset.y);
-    await waitForSelectionSettled(page);
+    await expect(page.getByTestId("reconnect-ab-source")).toBeVisible();
+    await waitForCameraIdle(page);
+    expect((await cameraMoves(page, mark)).some((move) => move.startsWith("focusSelection"))).toBe(true);
+    // Back below 60%, the selected connection keeps its focus, its editing controls and keyboard shaping.
+    await zoomIdentity(page, zoom);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", zoom < 0.3 ? "far" : "mid");
+    expect(await page.getByTestId("edge-ab").evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
     await expect(page.getByTestId("reconnect-ab-source")).toBeVisible();
     await expect(page.getByTestId("reconnect-ab-target")).toBeVisible();
     await expect(page.getByTestId("route-segment-ab-0")).toBeVisible();

@@ -8,7 +8,7 @@ Low zoom stops particle and march painting and suppresses glow, dashes and anima
 
 ## Layout and interaction
 
-Headers choose a clear band or an outside tab. Chip widths/heights respect neighbouring footprints. A routing anchor remains mounted so React Flow preserves every connection; selected chips reveal the editing ports. Connections follow a held node immediately while name fitting waits for release. Tier fitting waits for zoom settle and reuses pan geometry. A settled tier may reposition a header, while held gestures and later pans retain their anchors. Exports suspend the screen detail and restore the natural cards.
+Headers choose a clear band or an outside tab. Chip widths/heights respect neighbouring footprints. Every connection dot and the selected card's "+" stay mounted, so connecting, reconnecting and growing work as at 100%. Connections follow a held node immediately while name fitting waits for release. Tier fitting waits for zoom settle and reuses pan geometry. A settled tier may reposition a header, while held gestures and later pans retain their anchors. Exports suspend the screen detail and restore the natural cards.
 
 ## Decisions
 

@@ -3,6 +3,7 @@ import commerce from "../../src/examples/black-friday-commerce.json" with { type
 import delivery from "../../src/examples/delivery-dispatch.json" with { type: "json" };
 import { test, expect, gotoCanvas, gotoLive, waitForCameraIdle, pauseClock } from "./fixtures";
 import { zoomIdentity } from "./node-identity";
+import type { Page } from "@playwright/test";
 
 for (const [slug, diagram] of [
   ["recommendations-feature-store", recommendations],
@@ -98,19 +99,31 @@ test("chips publish a tier only after zoom settles and reuse it through pan", as
 
 test("low zoom removes most card and edge drawing elements", async ({ page }) => {
   await gotoCanvas(page, "black-friday-commerce");
+  // Drawing elements, apart from React Flow's interaction scaffolding: the connection dots and the edges'
+  // invisible hit strokes. Those stay one for one at every zoom, so connecting, reconnecting and clicking
+  // beside a hairline work as they do at 100% (flow-building.spec.ts, lowzoom-edge-edit.spec.ts).
+  const SCAFFOLD = ".react-flow__handle, .react-flow__edge-interaction";
   const count = () =>
-    page
-      .getByTestId("canvas-wrap")
-      .evaluate((root) =>
-        [...root.querySelectorAll('[data-testid^="node-"],[data-testid^="edge-"]')]
-          .filter((el) => /^(node|edge)-/.test(el.getAttribute("data-testid") ?? ""))
-          .reduce((n, el) => n + el.querySelectorAll("*").length + 1, 0),
-      );
+    page.getByTestId("canvas-wrap").evaluate((root, scaffold) => {
+      const elements = [...root.querySelectorAll('[data-testid^="node-"],[data-testid^="edge-"]')]
+        .filter((el) => /^(node|edge)-/.test(el.getAttribute("data-testid") ?? ""))
+        .flatMap((el) => [el, ...el.querySelectorAll("*")]);
+      return {
+        drawing: elements.filter((el) => !el.matches(scaffold)).length,
+        handles: elements.filter((el) => el.matches(".react-flow__handle")).length,
+        hits: elements.filter((el) => el.matches(".react-flow__edge-interaction")).length,
+      };
+    }, SCAFFOLD);
   await zoomIdentity(page, 1);
   const full = await count();
   await zoomIdentity(page, 0.4);
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
-  expect(await count()).toBeLessThan(full * 0.4);
+  const low = await count();
+  expect({ handles: low.handles, hits: low.hits }).toEqual({ handles: full.handles, hits: full.hits });
+  expect(full.hits).toBe(commerce.edges.length);
+  // The drawing shrinks to under 45% (black-friday-commerce: 386 of 876). The earlier bound, under 40% of
+  // everything with three of every four dots removed, allowed up to 47% of this drawing.
+  expect(low.drawing).toBeLessThan(full.drawing * 0.45);
 });
 
 test("a troubled drill accents chips and rolls up zone health without animated canvases", async ({ page }) => {
@@ -172,3 +185,62 @@ for (const renderer of ["worker", "main"])
     await page.clock.runFor(1000);
     expect(await frames()).toBeGreaterThan(resumed);
   });
+
+/**
+ * The saved SVG as a digest, canonicalized: generated ids renamed in order of appearance, and each tag's attributes
+ * and each copied style's declarations sorted. Those orders already vary with a page's history on the natural
+ * drawing alone (Chrome lists custom properties by zoom history; a label drawn before the lazy edge details gets
+ * its title appended), so only order is set aside: every element, attribute, name and value still counts.
+ */
+async function svgDigest(page: Page) {
+  return page.evaluate(async () => {
+    const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+    const text = await (await image.renderDiagramImage("svg")).text();
+    const names = new Map<string, string>();
+    const canonical = text
+      .replace(/\bu[0-9a-z]{4}\d+\b/g, (name) => {
+        if (!names.has(name)) names.set(name, `pseudo${names.size}`);
+        return names.get(name) ?? name;
+      })
+      .replace(/style="([^"]*)"/g, (_, style: string) => `style="${style.split("; ").sort().join("; ")}"`)
+      .replace(
+        /<([\w:-]+)((?:\s+[\w:-]+="[^"]*")+)/g,
+        (_, tag: string, attributes: string) =>
+          `<${tag} ${(attributes.match(/[\w:-]+="[^"]*"/g) ?? []).sort().join(" ")}`,
+      );
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  });
+}
+
+test("image exports never include the chips: the natural drawing's SVG at 40%, 25% and back at 100% @dev", async ({
+  page,
+  browser,
+}, info) => {
+  // The same canvas in a second browser with the chips switched off (the parity tier's switch).
+  const { baseURL, viewport, colorScheme, deviceScaleFactor } = info.project.use;
+  const context = await browser.newContext({ baseURL, viewport, colorScheme, deviceScaleFactor });
+  try {
+    const natural = await context.newPage();
+    await natural.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
+    // Zones with moved headers, merged lanes and wrapped names: everything the chips restyle.
+    for (const p of [page, natural]) {
+      await gotoCanvas(p, "black-friday-commerce");
+      // A capture below 60% turns far-zoom cards back to natural ones while it copies them, so without this
+      // the natural reference would catch some borders and shadows mid-transition. Compare settled values.
+      await p.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
+    }
+    // Back at 100% too: nothing the chips placed on the page stays behind.
+    for (const zoom of [0.4, 0.25, 1]) {
+      const tier = zoom < 0.3 ? "far" : "mid";
+      for (const p of [page, natural]) await zoomIdentity(p, zoom);
+      if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
+      await expect(natural.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom");
+      expect({ zoom, digest: await svgDigest(page) }).toEqual({ zoom, digest: await svgDigest(natural) });
+      // The capture hands the screen back to the chips.
+      if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
+    }
+  } finally {
+    await context.close();
+  }
+});

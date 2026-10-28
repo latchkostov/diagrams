@@ -8,7 +8,6 @@ import { FAR_ZOOM } from "./detail";
 import { mountIdentityZoom } from "./identityZoom";
 import { mountChips } from "./mountChips";
 import { useRoutingOptions } from "./edges/useEdgeRoute";
-import { useInteraction } from "./interaction/context";
 import "../styles/canvas/chips.css";
 
 /** Identity belongs to every canvas, including presentation, embeds and offline viewers. */
@@ -21,13 +20,11 @@ export const IdentityDetail = memo(function IdentityDetail({
 }) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const camera = useCameraController();
-  const interaction = useInteraction();
   const { style, direction, captions, hideDependencies } = useRoutingOptions();
   useEffect(() => {
     const root = host.current;
-    if (root && chips)
-      return mountChips(root, store, camera, { style, direction, captions, hideDependencies }, interaction);
-  }, [host, chips, store, camera, style, direction, captions, hideDependencies, interaction]);
+    if (root && chips) return mountChips(root, store, camera, { style, direction, captions, hideDependencies });
+  }, [host, chips, store, camera, style, direction, captions, hideDependencies]);
   useEffect(() => {
     const root = host.current;
     if (!root) return;

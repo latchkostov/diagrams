@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { StencilIcon } from "../../components/StencilIcon";
 import type { ChipLayout } from "../lowZoom";
 import type { NodeBodyProps } from "./variants";
@@ -33,12 +33,22 @@ export function ChipNode({ stencil, label, selected, fit }: NodeBodyProps & { fi
   );
 }
 
-export function chipEdge(id: string, path: string, dependency: boolean, selected: boolean, group: string) {
+export function chipEdge(
+  id: string,
+  path: string,
+  dependency: boolean,
+  selected: boolean,
+  group: string,
+  deny: ReactNode,
+) {
   return (
+    // Keyed: natural cards get fresh elements back, never patched chip ones (an export copies attribute order).
     <g
+      key="chip"
       className={`fe fe-chip${dependency ? " fe-dep" : ""}${selected ? " is-selected" : ""}`}
       data-testid={`edge-${id}`}
       data-chip-group={group}
+      data-deny={deny ? "true" : undefined}
     >
       <path
         data-testid={`connection-stroke-${id}`}
@@ -46,6 +56,9 @@ export function chipEdge(id: string, path: string, dependency: boolean, selected
         className="fe-path react-flow__edge-path"
         vectorEffect="non-scaling-stroke"
       />
+      {/* The hairline is only ink: React Flow's own hit target stays 22 screen pixels wide (chips.css). */}
+      <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
+      {deny}
     </g>
   );
 }

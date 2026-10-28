@@ -95,12 +95,6 @@ describe("focusPolicy: the rules, row by row", () => {
       ["focus:node:a@measured"],
     ],
     [
-      "S2 a forwarded edge selection restores native pointer focus without revealing it again",
-      state(),
-      [selected("click", { target: { kind: "edge", id: "e1" }, forwarded: true })],
-      ["focus:edge:e1@now"],
-    ],
-    [
       "K2 Ctrl+Alt+] to a connection: focus it next frame",
       state(),
       [selected("keyboard", { target: { kind: "edge", id: "e1" } })],
@@ -554,8 +548,7 @@ function allEvents(platform: Platform): FocusEvent[] {
       for (const origin of [undefined, "canvas" as const, "elsewhere" as const])
         for (const placed of [undefined, true])
           for (const selection of [undefined, { nodes: ["a"], edges: ["e"] }])
-            for (const forwarded of [undefined, true])
-              events.push(selected(cause, { target, origin, placed, selection, forwarded }));
+            events.push(selected(cause, { target, origin, placed, selection }));
   events.push(
     { type: "naming.done", flowId: "a" },
     { type: "inspector.field", seq: 1, name: "label" },
@@ -655,12 +648,8 @@ describe("focusPolicy: invariants over every state × event", () => {
       // Every other close never takes focus from something an action or a press focused.
       if (e.type === "menu.closed" && e.reason !== "escape" && d.command.type === "focus")
         expect(d.command.onlyIfLost).toBe(true);
-      // A forwarded edge click restores native focus; ordinary pointer selections leave it alone.
-      if (e.type === "selection.changed" && !MOVING_CAUSES.has(e.cause)) {
-        if (e.cause === "click" && e.forwarded && e.target?.kind === "edge")
-          expect(d.command).toMatchObject({ type: "focus", target: e.target, when: "now", revealed: true });
-        else expect(d.command.type).toBe("keep");
-      }
+      // Selection moves focus only from the keyboard, a history step on the canvas, or the palette.
+      if (e.type === "selection.changed" && !MOVING_CAUSES.has(e.cause)) expect(d.command.type).toBe("keep");
       // Undo from the toolbar (or anywhere off the canvas) never moves focus.
       if (e.type === "selection.changed" && (e.cause === "undo" || e.cause === "redo") && e.origin !== "canvas")
         expect(d.command.type).not.toBe("focus");

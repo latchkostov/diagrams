@@ -13,7 +13,7 @@ import { useShowDependencies } from "../dependencyVisibility";
 import { DependencyPips } from "./DependencyPips";
 import { GrowChip } from "./GrowChip";
 import { useConnectPort } from "../interaction/useConnectPort";
-import { useLowZoom } from "../lowZoom";
+import { useChip } from "../lowZoom";
 
 /**
  * The one selected thing, when it's a single node (only it shows a "+"); null otherwise. Worked out once per
@@ -55,9 +55,9 @@ function DiagramNodeImpl({
   const { nodeVariant } = useSettings();
   const { nodeDoubleClick, openDoc, grow, presenting } = useDiagram();
   const connectPort = useConnectPort(id);
-  const lowZoom = useLowZoom();
-  const fit = lowZoom?.nodes.get(id);
-  const Chip = lowZoom?.Node;
+  const low = useChip("nodes", id);
+  const fit = low?.value;
+  const Chip = low?.chips.Node;
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
   const unknown = stencil === FALLBACK_STENCIL;
@@ -134,9 +134,9 @@ function DiagramNodeImpl({
             <Icon name="note" size={11} />
           </span>
         ))}
-      {/* React Flow still needs one routing anchor while the other editing ports are folded away. */}
-      {!fit || selected || !isConnectable ? handles : handles.slice(0, 1)}
-      {!fit && chip}
+      {/* Every port and the "+" stay: connecting and growing work the same below 60%. */}
+      {handles}
+      {chip}
       {!fit && !showDeps && <DependencyPips id={id} />}
       {!fit && unknown && (
         <div className="dn-unknown" title={`Unknown stencil "${data.stencil}"`}>

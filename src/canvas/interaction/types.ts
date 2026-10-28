@@ -245,8 +245,6 @@ export type FocusEvent =
   | {
       type: "selection.changed";
       cause: SelectionCause;
-      /** A synthetic hit-target click suppressed the browser's native focus. */
-      forwarded?: boolean;
       /** Keyboard navigation's destination, the palette's node. */
       target?: { kind: "node" | "edge"; id: string };
       /** A history step's selection. */
