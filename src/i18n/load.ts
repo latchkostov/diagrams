@@ -40,7 +40,8 @@ export function relativeAgo(code: string): (at: number, now?: number) => string 
 const parts = new Map<string, Promise<Catalog>>();
 let installedFor: Catalog | undefined;
 const installed = new Set<SurfaceCatalog>();
-export type SurfaceCatalog = "tutorials" | "stencils" | "simulation" | "exports" | "ai";
+import type { SurfaceCatalog } from "./bucketManifest";
+export type { SurfaceCatalog } from "./bucketManifest";
 function catalogPart(code: string, bucket: SurfaceCatalog): Promise<Catalog> {
   const key = `${code}/${bucket}`;
   let pending = parts.get(key);

@@ -9,13 +9,24 @@ for (const code of ["de", "ar", "ru"]) {
     await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), code);
     const held = await holdChunk(
       page,
-      new RegExp(String.raw`/assets/${code}-(?:tutorials|stencils|simulation|exports|ai)-[\w-]+\.js(?:\?|$)`),
+      new RegExp(
+        String.raw`/assets/${code}-(?:tutorials|tutorialTitles|stencils|simulation|exports|ai)-[\w-]+\.js(?:\?|$)`,
+      ),
     );
     try {
       await gotoCanvas(page, "kafka-order-pipeline");
       const words = JSON.parse(readFileSync(`src/i18n/locales/${code}.json`, "utf8")) as Record<string, string>;
       await expect(page.getByTestId("file-button")).toContainText(words["file.menu"]);
       expect(await page.evaluate(() => document.documentElement.lang)).toBe(code);
+      await page.getByTestId("view-button").click();
+      await expect(page.getByTestId("theme-toggle")).toContainText(words["htmlExport.theme"]);
+      await page.getByTestId("theme-toggle").hover();
+      await expect(page.getByTestId("theme-light")).toContainText(words["htmlExport.light"]);
+      await expect(page.getByTestId("theme-dark")).toContainText(words["htmlExport.dark"]);
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await page.getByTestId("node-orders").click();
+      await expect(page.getByTestId("dock-tab-ai")).toContainText(words["ai.aI"]);
     } finally {
       held.release();
     }
@@ -114,4 +125,65 @@ for (const code of ["de", "ar"]) {
       }
     });
   }
+}
+
+for (const code of ["de", "ar"]) {
+  const words = JSON.parse(readFileSync(`src/i18n/locales/${code}.json`, "utf8")) as Record<string, string>;
+  for (const surface of ["gallery", "commands"] as const) {
+    test(`${code}: ${surface} retries a failed catalog without reloading the page`, async ({ page }) => {
+      await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), code);
+      const held = await holdChunk(page, new RegExp(`/assets/${code}-stencils-[\\w-]+\\.js(?:\\?|$)`));
+      try {
+        if (surface === "gallery") await page.goto("./?view=gallery");
+        else {
+          await gotoCanvas(page, "kafka-order-pipeline");
+          await page.keyboard.press("ControlOrMeta+k");
+        }
+        await expect.poll(held.requested).toBe(true);
+        const pending = surface === "gallery" ? "view-loading" : "lazy-dialog-loading";
+        const retry = surface === "gallery" ? "view-load-retry" : "lazy-dialog-retry";
+        await expect(page.getByTestId(pending)).toContainText(words["common.loading"]);
+        held.fail = true;
+        held.release();
+        await expect(page.getByTestId(retry)).toHaveText(words["common.retry"]);
+        await expect(page.getByTestId(surface === "gallery" ? "view-loading" : "lazy-dialog-error")).toContainText(
+          words["fileDialog.loadFailed"],
+        );
+        held.fail = false;
+        if (surface === "commands") {
+          await page.getByTestId(retry).focus();
+          await page.keyboard.press("Enter");
+        } else await page.getByTestId(retry).click();
+        if (surface === "gallery") {
+          await page.getByTestId("gallery-search").fill("generic.database");
+          await expect(page.getByTestId("stencil-tile-generic.database")).toContainText(
+            words["stencil.genericDatabaseDescription"],
+          );
+        } else {
+          await expect(page.getByTestId("command-input")).toBeFocused();
+          await page.getByTestId("command-input").fill("generic.database");
+          await expect(page.getByTestId("command-palette")).toContainText(words["stencil.genericDatabaseName"]);
+        }
+        await expect(page.getByTestId(retry)).toHaveCount(0);
+      } finally {
+        held.release();
+      }
+    });
+  }
+  test(`${code}: command discovery leaves lesson translations deferred`, async ({ page }) => {
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), code);
+    const lessons = await holdChunk(page, new RegExp(`/assets/${code}-tutorials-[\\w-]+\\.js(?:\\?|$)`));
+    try {
+      await gotoCanvas(page, "kafka-order-pipeline");
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(page.getByTestId("command-input")).toBeFocused();
+      await page.getByTestId("command-input").fill(words["tutorials.mobileApi.title"]);
+      await expect(page.getByTestId("command-palette")).toContainText(
+        words["tutorials.command"].replace("{title}", words["tutorials.mobileApi.title"]),
+      );
+      expect(lessons.requested()).toBe(false);
+    } finally {
+      lessons.release();
+    }
+  });
 }

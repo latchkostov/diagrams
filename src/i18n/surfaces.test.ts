@@ -1,8 +1,19 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it, vi } from "vitest";
-import { state } from "./core";
-import { surfaceCatalogs as ensure, usedCatalogs } from "./surfaces";
-import { chooseLocale, loadSurfaceCatalogs, setLocale, start } from "./load";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+let state: typeof import("./core").state;
+let ensure: typeof import("./surfaces").surfaceCatalogs;
+let usedCatalogs: typeof import("./surfaces").usedCatalogs;
+let chooseLocale: typeof import("./load").chooseLocale;
+let loadSurfaceCatalogs: typeof import("./load").loadSurfaceCatalogs;
+let setLocale: typeof import("./load").setLocale;
+let start: typeof import("./load").start;
+beforeEach(async () => {
+  vi.resetModules();
+  vi.resetAllMocks();
+  ({ state } = await import("./core"));
+  ({ surfaceCatalogs: ensure, usedCatalogs } = await import("./surfaces"));
+  ({ chooseLocale, loadSurfaceCatalogs, setLocale, start } = await import("./load"));
+});
 
 const loaders = vi.hoisted(() => ({ de: vi.fn(), ar: vi.fn(), tutorial: vi.fn() }));
 vi.mock("virtual:i18n/catalogs", () => ({
@@ -54,14 +65,24 @@ it("a surface used in English is ready before switching to Arabic, including RTL
   expect(document.documentElement.dir).toBe("rtl");
   expect(state.c).toEqual({ shell: "عربي", settings: "إعدادات" });
 });
-it("a surface arriving during a language switch cannot release untranslated content", async () => {
+it("waits for a newly used catalog during a language switch", async () => {
   usedCatalogs.add("tutorials");
   const held = deferred();
   loaders.tutorial.mockReturnValueOnce(held.promise);
   const switching = chooseLocale("de");
   await vi.waitFor(() => expect(loaders.tutorial).toHaveBeenCalled());
+  const simulation = deferred();
+  loaders.de.mockReturnValueOnce(simulation.promise);
+  let finished = false;
+  void switching.then(() => {
+    finished = true;
+  });
   const surface = loadSurfaceCatalogs(["simulation"]);
   held.resolve({ default: { lesson: "Lektion" } });
+  await vi.waitFor(() => expect(loaders.de).toHaveBeenCalledOnce());
+  expect(finished).toBe(false);
+  expect(state.l).toBe("en");
+  simulation.resolve({ default: { settings: "Einstellungen" } });
   await Promise.all([surface, switching]);
   expect(state.c).toEqual({ shell: "Deutsch", lesson: "Lektion", settings: "Einstellungen" });
 });

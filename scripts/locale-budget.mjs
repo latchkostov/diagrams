@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { catalogFile } from "../src/i18n/bucketManifest.ts";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 
@@ -34,7 +35,7 @@ export function checkLocaleSizes(sizes) {
   checkCoreLocaleSizes(sizes);
   const totals = new Map();
   for (const { file, gzip } of sizes) {
-    const code = /(?:^|\/)(.+?)-(?:core|tutorials|stencils|simulation|exports|ai)-/.exec(file)?.[1] ?? file;
+    const code = catalogFile.exec(file)?.[1] ?? file;
     totals.set(code, (totals.get(code) ?? 0) + gzip);
   }
   const combined = [...totals].map(([file, gzip]) => ({ file, gzip }));

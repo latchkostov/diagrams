@@ -596,6 +596,6 @@ declare global {
 
 // eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
 export async function tutorialWhenReady() {
-  await surfaceCatalogs(["tutorials", "stencils"]);
+  await surfaceCatalogs(["tutorialTitles", "tutorials", "stencils"]);
   return TutorialApp;
 }

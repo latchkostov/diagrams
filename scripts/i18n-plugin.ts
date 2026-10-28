@@ -39,20 +39,18 @@ const english = new Map(keys.map((k) => [k, compile(en[k], true)]));
 const plain = (key: Key) => (english.get(key) ?? "").startsWith('"');
 
 /** Prefix ownership is explicit: adding a namespace requires choosing its loading boundary. */
-export const catalogBuckets = {
-  core: "toast rail workbench examples route workspaceInspector messageTypes messageLoop viewerForge node latency liveSession inspector format cloud fileToast fileType importReport library importReason passwordLink importDetail importKind fileDialog embedDialog password exportToast collab storage workspaceLive live common topbar view file status shared privacy export gallery present start privateDialog clear language shortcuts edge keys menu command canvas edit chrome shape camera routing runResult trouble workspaceRoom workspaceValidation fault liveMenu resilience hover waitChecks health resilienceChecks".split(
-    " ",
-  ),
-  tutorials: ["tutorials"],
-  stencils: ["stencil"],
-  simulation: ["autoscaling", "admission", "threads", "broker", "planning"],
-  exports: ["htmlExport", "imageDialog", "storageDialog", "share"],
-  ai: ["ai"],
-  standalone: ["staticAuth", "staticSkill"],
-} as const;
-export type CatalogBucket = keyof typeof catalogBuckets;
+export { catalogBuckets } from "../src/i18n/bucketManifest";
+import { catalogBuckets, catalogSuffix, surfaceBuckets, type CatalogBucket } from "../src/i18n/bucketManifest";
 // Shell copy and stencil names are needed before the optional surfaces arrive.
 const coreMessages = new Set<Key>([
+  "htmlExport.simulations",
+  "htmlExport.theme",
+  "htmlExport.light",
+  "htmlExport.dark",
+  "ai.aI",
+  "ai.undo",
+  "ai.panelKeys",
+  "ai.unseen",
   "share.title",
   "tutorials.learnRetries",
   "tutorials.learnWaiting",
@@ -107,6 +105,8 @@ export function catalogBucket(key: string): CatalogBucket {
     throw new Error(`Catalog key must belong to exactly one bucket: ${key} (${matches.length})`);
   if (coreMessages.has(key as Key) || (namespace === "stencil" && /(?:Name$|^stencil\.(?:subtitle|vendor))/.test(key)))
     return "core";
+  if (/^tutorials\.[^.]+\.title$/.test(key) || key === "tutorials.command" || key === "tutorials.paletteKeywords")
+    return "tutorialTitles";
   if (simulationPrefixes.some((prefix) => key.startsWith(prefix))) return "simulation";
   return matches[0][0] as CatalogBucket;
 }
@@ -117,7 +117,7 @@ export function lintCatalogBuckets(messageKeys: string[] = keys): void {
 const byText = (key: Key, numbered: Set<Key>) =>
   plain(key) &&
   !numbered.has(key) &&
-  (!["tutorials", "ai", "exports"].includes(catalogBucket(key)) || en[key].length < 64);
+  (!["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) || en[key].length < 64);
 
 /** The languages with a catalog in src/i18n/locales (`de.json`; not the `.meta.json` beside it). */
 export function catalogLocales(dir = LOCALES_DIR): string[] {
@@ -460,8 +460,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
             : `export const coreCatalogs = {${codes.map((c) => `${JSON.stringify(c)}:()=>import(${JSON.stringify(CATALOG + c + "-core")})`).join(",")}};\nexport const surfaceCatalogs = {${codes
                 .map(
                   (c) =>
-                    `${JSON.stringify(c)}:{${Object.keys(catalogBuckets)
-                      .filter((b) => b !== "core" && b !== "standalone")
+                    `${JSON.stringify(c)}:{${surfaceBuckets
                       .map((b) => `${b}:()=>import(${JSON.stringify(CATALOG + c + "-" + b)})`)
                       .join(",")}}`,
                 )
@@ -471,7 +470,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
       }
       if (id.startsWith(`\0${CATALOG}`)) {
         const suffix = id.slice(`\0${CATALOG}`.length);
-        const split = /^(.*)-(core|tutorials|stencils|simulation|exports|ai)$/.exec(suffix);
+        const split = catalogSuffix.exec(suffix);
         const code = split?.[1] ?? suffix;
         const bucket = split?.[2];
         if (code !== PSEUDO_LOCALE) this.addWatchFile(path.join(LOCALES_DIR, `${code}.json`));

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { coreCatalogs, surfaceCatalogs, catalogs } from "virtual:i18n/catalogs";
 import { catalogBucket, catalogBuckets, lintCatalogBuckets } from "../../scripts/i18n-plugin";
@@ -13,7 +14,7 @@ it("assigns every key exactly once and rejects missing or overlapping prefixes",
     catalogBuckets.core.pop();
   }
   expect(catalogBucket("tutorials.loading")).toBe("core");
-  expect(catalogBucket("tutorials.runtime.title")).toBe("tutorials");
+  expect(catalogBucket("tutorials.runtime.title")).toBe("tutorialTitles");
   expect(catalogBucket("stencil.genericDatabaseName")).toBe("core");
   expect(catalogBucket("autoscaling.minCount")).toBe("simulation");
 });
@@ -35,3 +36,47 @@ it.each(["de", "ar", "ru", "en-XA"])(
     expect(Object.keys(core).length).toBeLessThan(Object.keys(full).length);
   },
 );
+
+// Shared shell components render before optional catalog readiness on multiple surfaces.
+it("keeps every message used by eagerly rendered shell components in core", () => {
+  const files = [
+    "src/App.tsx",
+    "src/components/TopBar.tsx",
+    "src/interop/ui/menus.tsx",
+    "src/canvas/chrome/ToolRail.tsx",
+    "src/canvas/chrome/CanvasControls.tsx",
+    "src/canvas/chrome/PrivateBadge.tsx",
+    "src/canvas/Inspector.tsx",
+    "src/canvas/inspector/DockTabs.tsx",
+    "src/components/ModeSwitch.tsx",
+    "src/canvas/StartCard.tsx",
+    "src/canvas/chrome/CanvasOverlays.tsx",
+    "src/ai/ui/events.ts",
+    "src/ai/ui/unseen.ts",
+  ];
+  const optional: string[] = [];
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    for (const [, key] of source.matchAll(/\b(?:t|msg|tRich)\("([^"]+)"/g))
+      if (catalogBucket(key) !== "core") optional.push(`${file}: ${key}`);
+  }
+  expect(optional).toEqual([]);
+});
+
+it("loads command titles separately from tutorial lesson text", async () => {
+  const titles = (await surfaceCatalogs.de.tutorialTitles!()).default as Record<string, unknown>;
+  const lessons = (await surfaceCatalogs.de.tutorials!()).default as Record<string, unknown>;
+  const full = (await catalogs.de()).default as Record<string, unknown>;
+  const key = Object.keys(en).sort().indexOf("tutorials.mobileApi.title");
+  const lookup = Object.hasOwn(full, key) ? key : en["tutorials.mobileApi.title"];
+  expect(String(titles[lookup])).toBe(String(full[lookup]));
+  expect(lessons[lookup]).toBeUndefined();
+  expect(Object.keys(titles).length).toBeLessThan(Object.keys(lessons).length / 8);
+});
+
+it("keeps command discovery messages within its requested catalogs", () => {
+  for (const file of ["src/palette/PaletteDialog.tsx", "src/palette/sources.ts", "src/palette/rank.ts"]) {
+    for (const [, key] of readFileSync(file, "utf8").matchAll(/\b(?:t|msg|tRich)\("([^"]+)"/g))
+      expect(["core", "tutorialTitles", "stencils"], `${file}: ${key}`).toContain(catalogBucket(key));
+  }
+});

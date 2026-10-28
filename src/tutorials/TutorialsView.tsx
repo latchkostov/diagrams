@@ -90,6 +90,6 @@ function Card({ tutorial }: { tutorial: Tutorial }) {
 
 // eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
 export async function tutorialsWhenReady() {
-  await surfaceCatalogs(["tutorials"]);
+  await surfaceCatalogs(["tutorialTitles", "tutorials"]);
   return TutorialsView;
 }
