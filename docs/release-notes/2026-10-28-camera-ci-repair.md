@@ -22,6 +22,11 @@ All 17 reported failures reproduce on PR head `12e48e3a6`. Every corresponding t
 on clean master `093cfb14a`: 136 passed, zero failed, zero flaky. No reported failure is classified
 as a pre-existing master flake.
 
+Additional verification findings are recorded separately: two
+[drawing-guide failures reproduced on master](../backlog/2026-10-28-drawing-guide-load-flakes.md),
+and one [unreproduced evidence sweep timeout](../backlog/2026-10-28-example-evidence-load-timeout.md).
+Those observations do not weaken or quarantine any test.
+
 | Original test location                | Class    | Repair                                                                                                                  |
 | ------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
 | workbench-council:5, phone light/dark | (a)      | Reveal leaves a caller-pin lane at the preserved zoom.                                                                  |
