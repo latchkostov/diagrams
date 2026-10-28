@@ -7,3 +7,5 @@ Config connections retain their dependency identity and settings list when focus
 Live traffic weights now sum rates only along shared route sections. Two 60 msg/s branches keep their own bucket 2 while their shared 120 msg/s trunk uses bucket 3. Separate lanes never inherit that traffic. Section membership storage is bounded for staggered imported routes.
 
 No parity goldens change: exports and the natural drawing retain their existing output.
+
+Shared-section strokes mount only in Live, preserving Edit's existing DOM reduction.

@@ -248,6 +248,37 @@ it("steps aside for slow motion at any zoom, and returns after it", async () => 
   }
 });
 
+it("publishes shared traffic sections only in Live and removes them on return to Edit", async () => {
+  const route = {
+    path: "M0,0 L320,0",
+    points: [
+      { x: 0, y: 0 },
+      { x: 320, y: 0 },
+    ],
+  };
+  routes.current = new Map([
+    ["a", route],
+    ["b", route],
+  ]);
+  const { root, store, flush, dispose, state } = harness();
+  const sections = () => [...state().ldChips!.edges.values()].flatMap((edge) => edge.shared ?? []);
+  try {
+    store.setState({ transform: [0, 0, 0.4] });
+    await flush();
+    expect(sections()).toHaveLength(0);
+    const flow = root.querySelector(".react-flow")!;
+    flow.setAttribute("data-live", "on");
+    await flush();
+    expect(sections()).toHaveLength(1);
+    expect(sections()[0].members).toEqual(["a", "b"]);
+    flow.removeAttribute("data-live");
+    await flush();
+    expect(sections()).toHaveLength(0);
+  } finally {
+    dispose();
+  }
+});
+
 it("never publishes chips when the natural drawing is pinned (the parity tier's switch)", async () => {
   localStorage.setItem("diagrams.lowZoom", "off");
   const { root, store, flush, dispose, state } = harness();

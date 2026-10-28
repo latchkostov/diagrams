@@ -90,6 +90,7 @@ export function mountChips(
         height: n.measured!.height!,
       }));
     const routes = selectRoutes(state, options);
+    const live = !!root.querySelector("[data-live]");
     const members = new Map<string, string[]>();
     for (const node of state.nodes) {
       if (node.type !== "diagram") continue;
@@ -105,7 +106,14 @@ export function mountChips(
         ids.push(parent);
       }
     }
-    const key = JSON.stringify([zoom, nodes, obstacles, [...members], [...routes].map(([id, r]) => [id, r.path])]);
+    const key = JSON.stringify([
+      zoom,
+      live,
+      nodes,
+      obstacles,
+      [...members],
+      [...routes].map(([id, r]) => [id, r.path]),
+    ]);
     if (key === previous) return;
     previous = key;
     root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
@@ -119,7 +127,7 @@ export function mountChips(
         path: paths.get(id) ?? route.path,
         natural: route.path,
         lane: lanes.get(id) ?? id,
-        ...(shared.has(id) ? { shared: shared.get(id) } : {}),
+        ...(live && shared.has(id) ? { shared: shared.get(id) } : {}),
       });
     setLowZoom(store, {
       Edge: chipEdge,
@@ -147,7 +155,7 @@ export function mountChips(
   observer.observe(root, {
     attributes: true,
     subtree: true,
-    attributeFilter: ["data-viewport-moving", "data-live-slowmo"],
+    attributeFilter: ["data-viewport-moving", "data-live-slowmo", "data-live"],
   });
   const viewport = root.querySelector(".react-flow__viewport");
   const uncap = viewport
