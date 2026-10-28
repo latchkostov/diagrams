@@ -37,6 +37,7 @@ import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
 import type { ChipState } from "./lowZoom";
+import { viewportParts } from "./viewportParts";
 
 type Chip = { id: string; name: string; x: number; y: number; width: number };
 
@@ -162,6 +163,7 @@ const FrameDecoration = memo(
       const fonts = new WeakMap<Element, number>();
       const cardWidths = new WeakMap<HTMLElement, { key: FlowNode["data"]; width: number }>();
       const wrapCache = new WeakMap<HTMLElement, { text: string; width: number; wrapped: boolean }>();
+      const inViewport = viewportParts();
       const measure = document.createElement("canvas").getContext("2d");
       const box = (el: Element, origin: DOMRect): Rect => {
         const r = el.getBoundingClientRect();
@@ -277,6 +279,18 @@ const FrameDecoration = memo(
         const pinnedSet = oneHop(s.edges, subjects);
         if (view === "follow") for (const id of lit) pinnedSet.add(id);
         const active = oneHop(s.edges, new Set([...selected, ...lit]));
+        // Focus/Follow retain their complete pin and clipping geometry. In a free view only
+        // the expensive DOM measurements/text fitting are culled; all wrappers and states remain.
+        const visible =
+          !cropped && s.nodes.length > 128
+            ? inViewport(s, [
+                ...active,
+                ...subjects,
+                document.activeElement?.closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id,
+                s.connection?.fromNode?.id,
+                s.connection?.toNode?.id,
+              ])
+            : null;
         if (selected.size || camera.state.zone) dismissed.current = true;
         root.dataset.detailView = view;
         root.toggleAttribute("data-detail-far", far);
@@ -304,7 +318,10 @@ const FrameDecoration = memo(
         const frameNodes = nodeElements.flatMap((el) => {
           const id = el.dataset.id!;
           const n = s.nodeLookup.get(id);
-          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb:not(.nb-chip)") }];
+          const detail = !visible || visible.has(id) || n?.type !== "diagram";
+          return !n || n.hidden
+            ? []
+            : [{ id, el, n, detail, body: detail ? el.querySelector<HTMLElement>(".nb:not(.nb-chip)") : null }];
         });
         const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
         // Reset every changed card before measuring any of them. Alternating a width
@@ -340,25 +357,33 @@ const FrameDecoration = memo(
           }
         // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
         // Card titles are not secondary text: the `.nb-label` rule in app-shared.css alone sizes them.
-        const textChanges = textElements.map((el) => {
-          if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
-          const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
-          const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
-          const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
-          const edge =
-            edgeLabel &&
-            edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
-          const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
-          const title = el.classList.contains("grp-label");
-          const detail =
-            title || el.classList.contains("ann-zone-label")
-              ? { show: !title || !far, scale: 1 }
-              : el.classList.contains("lv-alert") && id && lit.has(id)
-                ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-                : textDetail(fonts.get(el)!, zoom, title || isActive, view);
-          const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
-          return { el, whole, detail };
-        });
+        const textChanges = textElements
+          .filter((el) => {
+            if (!visible) return true;
+            const id = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']")?.dataset;
+            const key = id?.id ?? id?.testid?.slice("node-badge-".length);
+            return !key || visible.has(key) || s.nodeLookup.get(key)?.type !== "diagram";
+          })
+          .map((el) => {
+            if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
+            const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
+            const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
+            const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
+            const edge =
+              edgeLabel &&
+              edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
+            const isActive =
+              !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
+            const title = el.classList.contains("grp-label");
+            const detail =
+              title || el.classList.contains("ann-zone-label")
+                ? { show: !title || !far, scale: 1 }
+                : el.classList.contains("lv-alert") && id && lit.has(id)
+                  ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
+                  : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+            const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
+            return { el, whole, detail };
+          });
         for (const { el, whole, detail } of textChanges) {
           whole.toggleAttribute("data-detail-text-hidden", !detail.show);
           el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
@@ -390,7 +415,19 @@ const FrameDecoration = memo(
           if (el.hasAttribute("data-detail-wrapped") !== wrapped) {
             el.toggleAttribute("data-detail-wrapped", wrapped);
           }
-        const cardBoxes = new Map(frameNodes.map(({ id, el }) => [id, box(el, origin)]));
+        const cardBoxes = new Map(
+          frameNodes.map(({ id, el, n, detail }) => [
+            id,
+            detail
+              ? box(el, origin)
+              : {
+                  x: n.internals.positionAbsolute.x * zoom + tx,
+                  y: n.internals.positionAbsolute.y * zoom + ty,
+                  width: n.measured!.width! * zoom,
+                  height: n.measured!.height! * zoom,
+                },
+          ]),
+        );
         for (const { id, el, n } of frameNodes) {
           const card = cardBoxes.get(id)!;
           const painted =
@@ -813,6 +850,7 @@ const FrameDecoration = memo(
           s.transform !== old.transform ||
           s.nodes !== old.nodes ||
           s.edges !== old.edges ||
+          s.connection !== old.connection ||
           s.width !== old.width ||
           s.height !== old.height
         )

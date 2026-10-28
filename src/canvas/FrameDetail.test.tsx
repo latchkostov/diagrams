@@ -55,6 +55,70 @@ afterEach(() => {
   fixture.locale = "en";
 });
 
+it("spares off-screen cards layout reads in Custom while retaining selection and the full DOM", async () => {
+  fixture.camera.subscribe.mockReturnValue(() => {});
+  fixture.camera.state.view = "custom";
+  fixture.camera.state.mode = "edit";
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  vi.stubGlobal("getComputedStyle", () => ({ fontSize: "10px", direction: "ltr" }));
+  const frames = new Map<number, FrameRequestCallback>();
+  let seq = 0;
+  vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+    frames.set(++seq, run);
+    return seq;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  const nodes = Array.from({ length: 256 }, (_, i) => ({
+    id: String(i),
+    type: "diagram" as const,
+    position: { x: i * 1000, y: 0 },
+    selected: i === 200,
+    data: { label: `Service ${i}`, stencil: "service.go" },
+    measured: { width: 220, height: 72 },
+    internals: { positionAbsolute: { x: i * 1000, y: 0 } },
+  }));
+  fixture.state = {
+    nodes,
+    edges: [],
+    nodeLookup: new Map(nodes.map((n) => [n.id, n])),
+    transform: [0, 0, 0.75],
+    width: 1000,
+    height: 800,
+  } as typeof fixture.state;
+  const host = document.createElement("div");
+  host.innerHTML = `<div class="react-flow__viewport">${nodes.map((n) => `<div class="react-flow__node react-flow__node-diagram" data-id="${n.id}"><div class="nb"><span class="nb-sub">Subtitle</span></div></div>`).join("")}</div>`;
+  document.body.append(host);
+  const measured: string[] = [];
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    const id = (this as HTMLElement).dataset.id;
+    if (id) measured.push(id);
+    return new DOMRect(id ? Number(id) * 750 : 0, 0, this === host ? 1000 : 165, this === host ? 800 : 54);
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(220);
+  const root = createRoot(document.createElement("div"));
+  try {
+    await act(() =>
+      root.render(<FrameDetail host={{ current: host }} routing={{ style: "straight", direction: "LR" }} decorate />),
+    );
+    await act(async () => {
+      await Promise.resolve();
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const run of pending) run(0);
+    });
+    expect(measured).toContain("0");
+    expect(measured).toContain("200");
+    expect(measured).not.toContain("100");
+    expect(measured.length).toBeLessThan(12);
+    expect(host.querySelectorAll(".react-flow__node")).toHaveLength(256);
+    expect(host.querySelector('[data-id="100"]')!.hasAttribute("data-detail-hidden")).toBe(false);
+  } finally {
+    await act(() => root.unmount());
+  }
+});
+
 it("leaves chip-owned paths and widths intact when a language change resets decoration", async () => {
   fixture.camera.subscribe.mockReturnValue(() => {});
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
