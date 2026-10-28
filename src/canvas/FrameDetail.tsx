@@ -27,7 +27,7 @@ import {
   type FramePin,
 } from "./camera/frameEdges";
 import type { Rect } from "./geometry/rect";
-import { inflate, union } from "./geometry/rect";
+import { inflate, intersects, union } from "./geometry/rect";
 import { SpatialGrid } from "./geometry/spatial";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
@@ -65,6 +65,12 @@ function titleObstacles(s: Parameters<typeof selectRoutes>[0], zoom: number, rou
 }
 /** Both title renderers reserve in the same order, including during a held wheel zoom. */
 function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>[0], routing: RouteOptions) {
+  if (
+    !s.nodes.some(
+      (n) => n.type === "boundary" || (n.type === "annotation" && "kind" in n.data && n.data.kind === "zone"),
+    )
+  )
+    return;
   const [tx, ty, zoom] = s.transform;
   const origin = root.getBoundingClientRect();
   const bands = new TitleBands(titleObstacles(s, zoom, routing));
@@ -371,7 +377,7 @@ const FrameDecoration = memo(
           const painted =
             !cropped ||
             contains(inner, frameCardBounds(card)) ||
-            (view === "follow" && subjects.has(id) && contains(frameBox, card));
+            (view === "follow" && subjects.has(id) && intersects(frameBox, card));
           const hidden =
             (n.type === "diagram" && !painted && cropped) ||
             (n.type === "annotation" &&

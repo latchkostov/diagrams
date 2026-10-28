@@ -207,6 +207,34 @@ function harness() {
 }
 
 describe("camera controller", () => {
+  it("Following a shared run pans to the next off-screen note after the previous note expires", async () => {
+    const h = harness();
+    h.camera.mode({ live: true, presenting: false });
+    await h.refine();
+    await h.finish();
+    const zoom = h.view.current.zoom;
+    h.port.followTarget = (focus) =>
+      focus.length ? { x: focus[0] === "first" ? -1000 : -6000, y: -200, zoom: h.view.current.zoom } : null;
+    h.camera.dispatch({ type: "watching", on: true });
+    h.camera.dispatch({ type: "view.requested", view: "follow" });
+    h.camera.dispatch({ type: "narration", focus: ["first"] });
+    h.tick(2);
+    await h.finish();
+    expect(h.view.current).toEqual({ x: -1000, y: -200, zoom });
+    const before = { ...h.view.current };
+    h.moves.length = 0;
+    h.camera.dispatch({ type: "narration", focus: [] });
+    h.tick(2);
+    expect(h.moves).toEqual([]);
+    expect(h.view.current).toEqual(before);
+    expect(h.camera.state.pending).toBeNull();
+    h.camera.dispatch({ type: "narration", focus: ["next"] });
+    h.tick(2);
+    await h.finish();
+    expect(h.view.current).toEqual({ x: -6000, y: -200, zoom: before.zoom });
+    expect(h.camera.state.view).toBe("follow");
+  });
+
   it("narration uses linear viewport interpolation so a long pan cannot dip below its zoom", async () => {
     const follow = harness();
     follow.port.followTarget = () => ({ x: -6000, y: -2000, zoom: 1 });

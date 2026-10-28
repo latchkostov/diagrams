@@ -43,7 +43,7 @@ import type {
  * | F2  | fullscreen.changed            | presenting, owner fit                      | fit                                     |
  * | F3  | overlay.opened                | edit mode, owner fit                       | fit                                     |
  * | L1  | narration(focus)              |                                            | owner narration; pending := narration   |
- * | L2  | narration(no focus)           | a focused note ended                       | keep camera; owner manual              |
+ * | L2  | narration(no focus)           | a focused note ended                       | keep camera; explicit Follow stays on  |
  * | L3  | live.panel, live.card         | changed (the card: with no panel open)     | pending := live.panel / live.card       |
  * | L4  | live.added                    |                                            | pending := live.added                   |
  * | L5  | pane.settled                  | Live's work, or live panel work, owner fit | liveFit                                 |
@@ -218,7 +218,8 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (!state.live.focus.length) return next({ live });
       return next({
         live,
-        owner: "manual",
+        // Expiry is not a user override: an explicitly chosen Follow must accept the next watched note.
+        owner: state.viewChoice && state.view === "follow" ? "narration" : "manual",
         zoomPriority: false,
         pending: null,
       });
