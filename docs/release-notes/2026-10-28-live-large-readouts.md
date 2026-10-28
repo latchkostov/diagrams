@@ -10,6 +10,8 @@ synchronously refreshes every readout before measuring or cloning the drawing.
 The existing viewport index loads on demand. Hover-only concurrency, device and consumer-group
 preparation moves into the existing lazy details surface to fund the change within the fixed
 Live reserve. No budget, reserve or golden is raised or rewritten. **Changed goldens: none.**
+Exported viewers retain their existing complete-readout policy and omit the editor's viewport
+and image-capture adapter, keeping the skill ZIP inside its unchanged reserve too.
 
 ## Measurements
 
@@ -70,3 +72,7 @@ The full Live and canvas unit folders passed 3,345 tests with one skipped. Full 
 all 3,178 goldens and 110 Linux browser cases: zero changed, added, missing or stale goldens.
 The production-browser Live large-diagram spec passed all six tests. The final Linux gate
 results are recorded in the pull request.
+The full Linux attempt exposed a 338-byte skill ZIP reserve overflow; the viewer-only trim
+fixes it. That red run was stopped during its first all-project browser pass to respect the
+verification budget. The failing heavy spec and the task's browser specs are checked in the
+fix round; the full gate is left to PR CI without rerunning the local full suite.
