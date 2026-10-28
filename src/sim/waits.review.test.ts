@@ -1,4 +1,5 @@
-import { expect, it, vi } from "vitest";
+import { watchCheckpoints } from "../test/checkpointProbe";
+import { expect, it } from "vitest";
 import fc from "fast-check";
 import { waitingFixture } from "../lab/waitingFixture";
 import { cloudFixture } from "../lab/cloudFixture";
@@ -159,13 +160,13 @@ it("aggregates invisible echoes and keeps drained checkpoints small", () => {
   e.step(100);
   expect(e.snapshot().inSystem).toBe(0);
   expect(e.snapshot().edges["call-0"].active).toBe(8000);
-  const clone = vi.spyOn(globalThis, "structuredClone");
+  const probe = watchCheckpoints();
   const checkpoint = e.checkpoint();
-  const graph = clone.mock.calls[0][0] as { trips: unknown[]; echoExpiries: unknown[]; calls: Map<number, unknown> };
-  expect(graph.trips).toHaveLength(0);
-  expect(graph.echoExpiries.length).toBeLessThanOrEqual(4);
-  expect(graph.calls.size).toBe(0);
-  clone.mockRestore();
+  const graph = probe.sources[0];
+  expect(graph[4]).toHaveLength(0);
+  expect(graph[5].length).toBeLessThanOrEqual(4);
+  expect(graph[11].size).toBe(0);
+  probe.stop();
   e.step(21_000);
   expect(e.snapshot().edges["call-0"].active).toBe(0);
   e.restore(checkpoint);

@@ -4,6 +4,7 @@ import { faultTimelineProblem, FaultTimelineError } from "../model/faultRuntime"
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";
+import { checkpointBytes } from "./engine/checkpoint";
 import { createEngine, seedEngine, SOURCE_VOLUME_CAP, WorkBudgetError } from "./engine";
 import { realFrame, realSnapshot, resolveScale, resolveMultiplier, toRealUnits } from "./units";
 export { autoScale } from "./scale";
@@ -368,7 +369,10 @@ export function createSimulationRun(
     const manualState = manual.checkpoint();
     const clock = scheduler.checkpoint();
     const savedEpoch = epoch;
-    const token = Object.freeze({ time: metrics.time });
+    const token = Object.freeze({
+      time: metrics.time,
+      bytes: engineState.bytes + checkpointBytes({ saved, manualState }) + 128,
+    });
     checkpoints.set(token, () => {
       if (epoch !== savedEpoch) throw new Error("Checkpoint belongs to a previous run");
       engine.restore(engineState);

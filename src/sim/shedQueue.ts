@@ -71,9 +71,4 @@ export class ShedQueue<T extends { priority?: QueuePriority; queueProtected?: bo
     this.protected.clear();
     for (const q of this.queues) q.clear();
   }
-  /** Restore class prototypes after the engine clones its graph. */
-  restore(): void {
-    Object.setPrototypeOf(this.protected, Deque.prototype);
-    for (const q of this.queues) Object.setPrototypeOf(q, Deque.prototype);
-  }
 }

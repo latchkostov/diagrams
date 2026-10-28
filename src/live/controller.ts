@@ -61,6 +61,7 @@ import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type Li
 import { DEFAULT_SEED } from "./storm";
 import { snapshotContinuity } from "./snapshotContinuity";
 import { HealthWindow } from "./healthWindow";
+import { trimCheckpoints } from "./checkpointRing";
 import { own, replayed, tickTime, timeTick, type LiveOp, type LogEntry, type OpOrigin } from "./controlLog";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
@@ -197,7 +198,9 @@ export class LiveController {
     seq: number;
     trail: number;
     health: ReturnType<HealthWindow["checkpoint"]>;
+    bytes: number;
   }[] = [];
+  private checkpointAt = 0;
   private log: LogEntry[] = [];
   private seq = 0;
   /** The last logged op the engine's state reflects: `seq` live, behind it while a replay catches up. */
@@ -828,7 +831,8 @@ export class LiveController {
   lookAhead(): LookAhead {
     const runner = this.runner,
       engine = this.engine;
-    const cp = runner ? runner.checkpoint() : engine.checkpoint();
+    const owner = runner ?? engine;
+    const cp = owner.checkpoint();
     const time = () => (runner ? runner.state().time : engine.metrics().time);
     let budgetError: unknown;
     runner?.setTraceActions(false);
@@ -868,10 +872,8 @@ export class LiveController {
         return n ? Math.round(n.backlog * resolveScale(snap.scale)) : undefined;
       },
       restore: () => {
-        if (runner) {
-          runner.restore(cp as SimulationRunCheckpoint);
-          runner.setTraceActions(true);
-        } else engine.restore(cp);
+        owner.restore(cp);
+        runner?.setTraceActions(true);
         this.applySpeed();
         this.engine.setTraffic(this.traffic);
         this.dirty = true;
@@ -1055,6 +1057,7 @@ export class LiveController {
         this.runner.restore(found.cp);
         this.health.restore(found.health, this.generation);
         this.checkpoints = this.checkpoints.filter((p) => p.cp.time <= found.cp.time);
+        this.checkpointAt = found.cp.time;
         this.trail = this.trail.slice(0, found.trail);
         this.applySpeed();
         // Today's traffic switch from the checkpoint on: part of the run from here, so part of its trail.
@@ -1594,17 +1597,21 @@ export class LiveController {
   private captureCheckpoint(force = false): void {
     if (!this.runner) return;
     const time = this.runner.state().time;
-    const last = this.checkpoints.at(-1);
-    if (!force && last && time < last.cp.time + 5000) return;
+    if (!force && time < this.checkpointAt + 5000) return;
+    this.checkpointAt = time;
     this.observeHealth();
+    const cp = this.runner.checkpoint();
+    const health = this.health.checkpoint();
     this.checkpoints.push({
-      cp: this.runner.checkpoint(),
+      cp,
       seq: this.applied,
       trail: this.trail.length,
-      health: this.health.checkpoint(),
+      health,
+      // Health samples contain five numeric node counters and three edge counters.
+      // Count their fixed shapes without cloning the observational history just to size it.
+      bytes: cp.bytes + 160 + health.length * (128 + 80 * this.diagram.nodes.length + 64 * this.diagram.edges.length),
     });
-    // Keep the origin and at most 23 recent samples (~two minutes); old tokens are GC-able.
-    if (this.checkpoints.length > 24) this.checkpoints.splice(1, 1);
+    this.checkpoints = trimCheckpoints(this.checkpoints);
   }
 
   private build(): "ok" | "refused" {

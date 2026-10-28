@@ -3271,7 +3271,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     faultEdges,
     () => {
       lineage.shareRecords();
-      return {
+      return [
         nodes,
         partBudget,
         latencyBudget,
@@ -3282,24 +3282,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         drawnTrips,
         logical,
         logicalIndices,
-        ledger: ledger.state,
+        ledger.state,
         calls,
-        // Only the outcome oracle fills it (Vitest only).
-        ...(TEST_ORACLES && { outcomeChecks }),
         injections,
         events,
-        admission: {
+        {
           buckets: admission.buckets,
           inFlight: admission.inFlight,
           retainedExcess: admission.retainedExcess,
         },
-        lineage: lineage.state,
+        lineage.state,
         routeCounts,
         faults,
-      };
+        // Only the outcome oracle fills this optional slot (Vitest only).
+        ...(TEST_ORACLES ? ([outcomeChecks] as const) : ([] as const)),
+      ];
     },
-    () => ({
+    () => [
       time,
+      topology,
       incomingAt,
       incomingBeforeReleases,
       accumulator,
@@ -3318,39 +3319,39 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       eventHead,
       seed,
       randomCalls,
-      topology,
       scale,
       capacityMultiplier,
       sinceFault,
-    }),
+    ],
     (copy, clock, repair) => {
-      partBudget = copy.partBudget;
-      latencyBudget = copy.latencyBudget;
+      partBudget = copy[1];
+      latencyBudget = copy[2];
       repair(copy);
-      trips = copy.trips;
-      echoExpiries = copy.echoExpiries;
-      echoByTime = copy.echoByTime;
-      logical = copy.logical;
-      logicalIndices = copy.logicalIndices;
-      ledger.state = copy.ledger;
-      calls = copy.calls;
-      if (TEST_ORACLES) outcomeChecks = copy.outcomeChecks!;
-      drawnTrips = copy.drawnTrips;
-      injections.splice(0, injections.length, ...copy.injections);
-      events.splice(0, events.length, ...copy.events);
-      lineage.state = copy.lineage;
-      routeCounts = copy.routeCounts;
-      faults = copy.faults;
+      trips = copy[4];
+      echoExpiries = copy[5];
+      echoByTime = copy[6];
+      logical = copy[8];
+      logicalIndices = copy[9];
+      ledger.state = copy[10];
+      calls = copy[11];
+      if (TEST_ORACLES) outcomeChecks = copy[18]!;
+      drawnTrips = copy[7];
+      injections.splice(0, injections.length, ...copy[12]);
+      events.splice(0, events.length, ...copy[13]);
+      lineage.state = copy[15];
+      routeCounts = copy[16];
+      faults = copy[17];
       admission = emptyAdmission();
       reconfigureAdmission(
         admission,
         [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
         planning,
-        clock.time,
+        clock[0],
       );
-      restoreAdmission(admission, copy.admission);
-      ({
-        time,
+      restoreAdmission(admission, copy[14]);
+      [
+        time, // The owning topology was checked before installing this state.
+        ,
         incomingAt,
         incomingBeforeReleases,
         accumulator,
@@ -3372,7 +3373,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         scale,
         capacityMultiplier,
         sinceFault,
-      } = clock);
+      ] = clock;
       randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
       configuration = undefined;
     },

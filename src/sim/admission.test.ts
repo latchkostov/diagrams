@@ -1,3 +1,4 @@
+import { watchCheckpoints } from "../test/checkpointProbe";
 import { capacityView } from "../live/capacityView";
 import { sharedConcurrencyKey } from "./admissionPolicy";
 import { describe, expect, it, vi } from "vitest";
@@ -184,11 +185,11 @@ describe("P3 managed admission", () => {
   it("checkpoint cloning contains only mutable admission buckets and occupancy", () => {
     const e = load(diagram({ quotas: [q(2)], maxInFlight: 1 }));
     e.inject("api", 1);
-    const clone = vi.spyOn(globalThis, "structuredClone");
+    const probe = watchCheckpoints();
     const saved = e.checkpoint();
-    const graph = clone.mock.calls.map(([value]) => value as { admission?: object }).find((value) => value.admission);
-    expect(Object.keys(graph!.admission!).sort()).toEqual(["buckets", "inFlight", "retainedExcess"]);
-    clone.mockRestore();
+    const graph = probe.sources[0];
+    expect(Object.keys(graph[14]).sort()).toEqual(["buckets", "inFlight", "retainedExcess"]);
+    probe.stop();
     e.setNodeProps("api", { api: { quotas: [q(100)], maxInFlight: 10 } });
     e.restore(saved);
     e.inject("api", 1);
