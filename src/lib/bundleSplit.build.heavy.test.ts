@@ -253,6 +253,16 @@ describe("production bundle split", () => {
     const live = b.chunks.find((c) => c.name === "LiveSession");
     expect(live).toBeDefined();
     const extra = [...closure([live!], b)].filter((c) => !canvas.has(c));
+    expect(
+      [...canvas].some((c) =>
+        Object.keys(c.modules).some((id) => /[/\\]src[/\\]live[/\\]checkpointRing\.ts$/.test(id)),
+      ),
+    ).toBe(false);
+    expect(
+      [...canvas].some((c) =>
+        Object.keys(c.modules).some((id) => /[/\\]src[/\\]sim[/\\]engine[/\\]checkpoint\.ts$/.test(id)),
+      ),
+    ).toBe(false);
     const gzip = (set: Iterable<Rollup.OutputChunk>) =>
       [...set].reduce((bytes, c) => bytes + gzipSync(c.code, { level: 9 }).length, 0);
     const code = b.chunks.map((c) => c.code).join("\n");

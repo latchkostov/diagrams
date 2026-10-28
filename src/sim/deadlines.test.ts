@@ -1,4 +1,5 @@
-import { beforeAll, expect, it, vi } from "vitest";
+import { watchCheckpoints } from "../test/checkpointProbe";
+import { beforeAll, expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
@@ -176,10 +177,10 @@ it.each([false, true])("checkpoints only live deadlines after traffic drains (fa
   e.inject("source", 1000);
   e.step(100_000);
   expect(e.snapshot().inSystem).toBe(0);
-  const clone = vi.spyOn(globalThis, "structuredClone");
+  const probe = watchCheckpoints();
   try {
     const checkpoint = e.checkpoint();
-    const graph = clone.mock.calls[0][0] as { logical: { timeout?: boolean }[]; logicalIndices: Map<number, number> };
+    const graph = probe.sources[0];
     expect(graph.logical.filter((event) => event.timeout)).toHaveLength(0);
     expect(graph.logicalIndices.size).toBe(graph.logical.length);
     e.restore(checkpoint);
@@ -187,7 +188,7 @@ it.each([false, true])("checkpoints only live deadlines after traffic drains (fa
     e.step(1000);
     expect(e.snapshot().edges.call.calls!.timedOut).toBe(0);
   } finally {
-    clone.mockRestore();
+    probe.stop();
   }
 });
 

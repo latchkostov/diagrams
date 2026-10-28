@@ -1,6 +1,7 @@
+import { watchCheckpoints } from "../test/checkpointProbe";
 import { wholeDotTravelMs } from "../test/brokerFixtures";
 import fc from "fast-check";
-import { expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { settleOnce, raceReply, type Attempt } from "./attempt";
 import { createEngine } from "./engine";
 import {
@@ -645,12 +646,12 @@ it.each(["mixed", "non-blocking"] as const)(
 it("drained checkpoints keep no attempt history", () => {
   const { engine } = answered();
   engine.step(3000);
-  const clone = vi.spyOn(globalThis, "structuredClone");
+  const probe = watchCheckpoints();
   engine.checkpoint();
-  const graph = clone.mock.calls[0][0] as { calls: Map<number, unknown>; outcomeChecks: Map<number, unknown> };
+  const graph = probe.sources[0];
   expect(graph.calls.size).toBe(0);
-  expect(graph.outcomeChecks.size).toBe(0);
-  clone.mockRestore();
+  expect(graph.outcomeChecks!.size).toBe(0);
+  probe.stop();
 });
 
 it("checkpoint replay restores pending paused outcomes and subsequent attempt ids", () => {

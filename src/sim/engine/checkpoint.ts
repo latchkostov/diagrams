@@ -6,10 +6,8 @@ import type { LedgerState } from "../ledger";
 import type { LineageState } from "../lineage";
 import type { createCpuPartBudget } from "../resourceWork";
 import { shareLatencyRecorder, type createLatencyBudget } from "../latency";
-import { ShedQueue } from "../shedQueue";
-import { Deque } from "../deque";
 import type { EngineCheckpoint, LatencyMetrics, RouteCounts, SimEvent } from "../types";
-import type { Node, Edge, Trip, EchoExpiry, Logical, Call, Message, Injection, Work } from "./model";
+import type { Node, Edge, Trip, EchoExpiry, Logical, Call, Message, Injection } from "./model";
 
 /** Exactly the existing capture list: one clone preserves aliases across every slice. */
 export interface CheckpointGraph {
@@ -35,55 +33,104 @@ export interface CheckpointGraph {
 }
 
 /** Scalars captured after the graph, including topology's token scope. */
-export interface CheckpointClock {
-  time: number;
-  incomingAt: number | undefined;
-  incomingBeforeReleases: boolean;
-  accumulator: number;
-  speed: number;
-  traffic: boolean;
-  sourceRate: number;
-  sourceEmitted: number;
-  drawn: number;
-  nextMessage: number;
-  nextParticle: number;
-  nextInjection: number;
-  nextCall: number;
-  nextAttempt: number;
-  nextLogical: number;
-  inSystem: number;
-  eventHead: number;
-  seed: number;
-  randomCalls: number;
-  topology: number;
-  scale: number;
-  capacityMultiplier: number;
-  sinceFault: LatencyMetrics["sinceFault"];
+export type CheckpointClock = readonly [
+  time: number,
+  topology: number,
+  incomingAt: number | undefined,
+  incomingBeforeReleases: boolean,
+  accumulator: number,
+  speed: number,
+  traffic: boolean,
+  sourceRate: number,
+  sourceEmitted: number,
+  drawn: number,
+  nextMessage: number,
+  nextParticle: number,
+  nextInjection: number,
+  nextCall: number,
+  nextAttempt: number,
+  nextLogical: number,
+  inSystem: number,
+  eventHead: number,
+  seed: number,
+  randomCalls: number,
+  scale: number,
+  capacityMultiplier: number,
+  sinceFault: LatencyMetrics["sinceFault"],
+];
+
+/** Data-only engine graphs: count while copying, preserving cycles, aliases and queue
+ * prototypes. Estimate 32 B/object, 8 B/slot, 32 B/map entry, 16 B/set entry and UTF-16
+ * strings plus their 16 B header. Shared/COW payloads are charged in full per token.
+ * An explicit shared list requests a copy; omission only measures the graph.
+ */
+function cloneSized<T>(source: T, shared?: readonly (readonly [object, object])[]): [T, number] {
+  const seen = new Map<object, unknown>();
+  let bytes = 0;
+  let clone = false;
+  function visit(value: unknown): unknown {
+    if (!value || typeof value !== "object") {
+      if (typeof value === "string") bytes += 16 + value.length * 2;
+      return value;
+    }
+    const prior = seen.get(value);
+    if (prior) return prior;
+    bytes += 32;
+    if (value instanceof Map) {
+      const result = clone ? new Map<unknown, unknown>() : value;
+      seen.set(value, result);
+      bytes += value.size * 32;
+      for (const [key, item] of value) {
+        const k = visit(key),
+          v = visit(item);
+        if (clone) result.set(k, v);
+      }
+      return result;
+    }
+    if (value instanceof Set) {
+      const result = clone ? new Set<unknown>() : value;
+      seen.set(value, result);
+      bytes += value.size * 16;
+      for (const item of value) {
+        const v = visit(item);
+        if (clone) result.add(v);
+      }
+      return result;
+    }
+    const array = Array.isArray(value);
+    const keys = Object.keys(value);
+    const result = (
+      clone
+        ? array
+          ? Array(value.length)
+          : { __proto__: Object.getPrototypeOf(value) as object | null, ...value }
+        : value
+    ) as Record<string, unknown>;
+    seen.set(value, result);
+    bytes += (array ? value.length : keys.length) * 8;
+    for (const key of keys) {
+      const v = visit((value as Record<string, unknown>)[key]);
+      if (clone) result[key] = v;
+    }
+    return result;
+  }
+  // Seed entire immutable subgraphs first, including aliases from mutable rawProps.
+  for (const [original, replacement] of shared ?? []) seen.set(original, visit(replacement));
+  clone = !!shared;
+  return [visit(source) as T, bytes];
 }
 
-// structuredClone preserves the graph's shared/cyclic references. Deque methods are
-// reattached on restore; its queue contents and head are ordinary own properties.
-// Clone family identity with messages, but share recordings. Lineage copies a record on its
-// first write after capture, so finished history is never deep-cloned during playback.
-function cloneGraph(source: CheckpointGraph): CheckpointGraph {
-  const records = new Map([...source.lineage.store].map(([id, f]) => [id, f.trace]));
-  const latencies = new Map([...source.nodes].map(([id, node]) => [id, node.latency]));
-  let copy: CheckpointGraph;
-  try {
-    // Synchronous, internal-only graph: omit records just for structuredClone's traversal.
-    for (const family of source.lineage.store.values()) family.trace = undefined;
-    for (const node of source.nodes.values()) node.latency = undefined;
-    copy = structuredClone(source);
-  } finally {
-    for (const [id, family] of source.lineage.store) family.trace = records.get(id);
-    for (const [id, node] of source.nodes) node.latency = latencies.get(id);
+export const checkpointBytes = (source: unknown): number => cloneSized(source)[1];
+
+function cloneGraph(source: CheckpointGraph): [CheckpointGraph, number] {
+  const shared: [object, object][] = [];
+  for (const { trace } of source.lineage.store.values()) if (trace) shared.push([trace, trace]);
+  for (const node of source.nodes.values()) {
+    // Resolved configuration and its descendants are replaced on edits, never mutated.
+    shared.push([node.props, node.props]);
+    if (node.latency) shared.push([node.latency, shareLatencyRecorder(node.latency)]);
   }
-  for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
-  for (const [id, node] of copy.nodes) {
-    const recorder = latencies.get(id);
-    node.latency = recorder ? shareLatencyRecorder(recorder) : undefined;
-  }
-  return copy;
+  return cloneSized(source, shared);
 }
 
 /** Positional hooks keep internal function names out of shipped object properties. */
@@ -100,19 +147,6 @@ export function createCheckpoints(
   function repair(copy: CheckpointGraph): void {
     nodes.clear();
     for (const [id, node] of copy.nodes) {
-      if ("queues" in node.pending) {
-        Object.setPrototypeOf(node.pending, ShedQueue.prototype);
-        (node.pending as ShedQueue<Work>).restore();
-      } else Object.setPrototypeOf(node.pending, Deque.prototype);
-      Object.setPrototypeOf(node.resume, Deque.prototype);
-      for (const group of node.groups) {
-        Object.setPrototypeOf(group.pending, Deque.prototype);
-        for (const queue of group.staged.values()) Object.setPrototypeOf(queue, Deque.prototype);
-        // structuredClone gives dictionaries Object.prototype back: a consumer called "constructor" must stay a key.
-        Object.setPrototypeOf(group.activeByNode, null);
-      }
-      Object.setPrototypeOf(node.rejectionReasons, null);
-      Object.setPrototypeOf(node.routeRejections, null);
       nodes.set(id, node);
     }
     reindexGroups();
@@ -125,12 +159,12 @@ export function createCheckpoints(
   const checkpoints = new WeakMap<EngineCheckpoint, () => void>();
   return [
     () => {
-      const graph = cloneGraph(readGraph());
+      const [graph, bytes] = cloneGraph(readGraph());
       const clock = readClock();
-      const token = Object.freeze({ time: clock.time });
+      const token = Object.freeze({ time: clock[0], bytes: bytes + 128 });
       checkpoints.set(token, () => {
-        if (topology() !== clock.topology) throw new Error("Checkpoint belongs to a previous diagram");
-        const copy = cloneGraph(graph);
+        if (topology() !== clock[1]) throw new Error("Checkpoint belongs to a previous diagram");
+        const [copy] = cloneGraph(graph);
         installGraph(copy, clock, repair);
       });
       return token;

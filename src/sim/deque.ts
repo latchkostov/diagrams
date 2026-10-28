@@ -10,7 +10,7 @@ export class Deque<T> {
     return this.items[this.head];
   }
   peekBack(): T | undefined {
-    return this.length ? this.items[this.items.length - 1] : undefined;
+    return this.items.at(-1);
   }
   pop(): T | undefined {
     return this.length ? this.items.pop() : undefined;

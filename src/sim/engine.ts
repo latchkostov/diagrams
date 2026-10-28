@@ -3298,8 +3298,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         faults,
       };
     },
-    () => ({
+    () => [
       time,
+      topology,
       incomingAt,
       incomingBeforeReleases,
       accumulator,
@@ -3318,11 +3319,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       eventHead,
       seed,
       randomCalls,
-      topology,
       scale,
       capacityMultiplier,
       sinceFault,
-    }),
+    ],
     (copy, clock, repair) => {
       partBudget = copy.partBudget;
       latencyBudget = copy.latencyBudget;
@@ -3346,11 +3346,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         admission,
         [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
         planning,
-        clock.time,
+        clock[0],
       );
       restoreAdmission(admission, copy.admission);
-      ({
-        time,
+      [
+        time, // The owning topology was checked before installing this state.
+        ,
         incomingAt,
         incomingBeforeReleases,
         accumulator,
@@ -3372,7 +3373,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         scale,
         capacityMultiplier,
         sinceFault,
-      } = clock);
+      ] = clock;
       randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
       configuration = undefined;
     },
