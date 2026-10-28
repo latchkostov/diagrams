@@ -13,6 +13,8 @@ import { Bench, MODE, loadWorkload, repeat, round, runsFor, test, uiSizes, uiSui
 import type { Page } from "@playwright/test";
 
 const s = uiSuite("interact");
+const viewportOnly = process.env.BENCH_VIEWPORT_ONLY === "1";
+s.rec.info.viewportOnly = viewportOnly;
 
 // Report-only: the gates are elsewhere (renders.bench.ts, memory.bench.ts).
 test.skip(MODE === "gates", "report-only");
@@ -153,6 +155,7 @@ for (const [family, sizes] of FAMILIES)
           await b.settle(500);
 
           // Select: three nodes in turn; the first click also unfolds the inspector.
+          if (viewportOnly) return;
           for (let i = 0; i < 3; i++) {
             const target = await b.nodeNearCentre(ids.filter((_, k) => k % 3 === i));
             const at = await b.pointOn(target);

@@ -190,7 +190,7 @@ export class Decorator {
 }
 
 function setAttr(el: Element, name: string, value: string | null): void {
-  if (value === null) {
-    if (el.hasAttribute(name)) el.removeAttribute(name);
-  } else if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+  if (el.getAttribute(name) === value) return;
+  if (value === null) el.removeAttribute(name);
+  else el.setAttribute(name, value);
 }

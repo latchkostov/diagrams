@@ -9,6 +9,7 @@ import { mountIdentityZoom } from "./identityZoom";
 import { mountChips } from "./mountChips";
 import { useRoutingOptions } from "./edges/useEdgeRoute";
 import "../styles/canvas/chips.css";
+import { viewportParts } from "./viewportParts";
 
 /** Identity belongs to every canvas, including presentation, embeds and offline viewers. */
 export const IdentityDetail = memo(function IdentityDetail({
@@ -38,7 +39,15 @@ export const IdentityDetail = memo(function IdentityDetail({
     let fittedNodes: FlowNode[] | undefined;
     let fittedScale = "";
     let fittedFar = false;
+    let fittedTransform: number[] | undefined;
     let dirty = true;
+    const inViewport = viewportParts();
+    const fitted = new WeakMap<
+      HTMLElement,
+      { data: FlowNode["data"]; scale: string; far: boolean; revision: number }
+    >();
+    let revision = 0;
+    let titles: Map<string, HTMLElement> | undefined;
     const update = () => {
       frame = 0;
       if (
@@ -49,29 +58,56 @@ export const IdentityDetail = memo(function IdentityDetail({
       )
         return;
       if (root.hasAttribute("data-low-zoom")) return;
-      const { nodes, transform } = store.getState();
+      const state = store.getState();
+      const { nodes, transform } = state;
       // Counter-scaled titles outgrow their natural row: secondary card text keeps the far-zoom
       // floor in every view, including presentation, embeds and the offline viewer.
       const scale = root.style.getPropertyValue("--rf-zoom-exact");
       const far = Math.min(transform[2], Number(scale) || transform[2]) < FAR_ZOOM;
-      if (!dirty && nodes === fittedNodes && scale === fittedScale && far === fittedFar) return;
+      if (
+        !dirty &&
+        nodes === fittedNodes &&
+        scale === fittedScale &&
+        far === fittedFar &&
+        transform === fittedTransform
+      )
+        return;
+      if (dirty) revision++;
       dirty = false;
       fittedNodes = nodes;
       fittedScale = scale;
       fittedFar = far;
+      fittedTransform = transform;
+      const visible =
+        nodes.length > 128
+          ? inViewport(state, [
+              document.activeElement?.closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id,
+              state.connection?.fromNode?.id,
+              state.connection?.toNode?.id,
+              ...(camera?.state.focus ?? []),
+              ...(camera?.state.live?.focus ?? []),
+              camera?.state.live?.subject,
+            ])
+          : null;
       // One query indexes every title: a per-node selector search scans the whole canvas each time.
-      const titles = new Map<string, HTMLElement>();
-      for (const title of root.querySelectorAll<HTMLElement>('[data-testid="card-title"]')) {
-        const id = title.closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id;
-        if (id) titles.set(id, title);
+      if (!titles) {
+        titles = new Map();
+        for (const title of root.querySelectorAll<HTMLElement>('[data-testid="card-title"]')) {
+          const id = title.closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id;
+          if (id) titles.set(id, title);
+        }
       }
       // Read the whole canvas before writing: interleaving clientWidth and icon
       // mutations forces one complete layout per card.
       const identity = nodes.flatMap((n) => {
         if (n.type !== "diagram") return [];
-        const title = titles.get(n.id);
+        if (visible && !visible.has(n.id)) return [];
+        const title = titles!.get(n.id);
         const body = title?.closest<HTMLElement>(".nb");
         if (!title || !body) return [];
+        const old = fitted.get(title);
+        if (old?.data === n.data && old.scale === scale && old.far === far && old.revision === revision) return [];
+        fitted.set(title, { data: n.data, scale, far, revision });
         const icon = body.querySelector<HTMLElement>(".stencil-icon");
         const height = iconDetail(
           body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26,
@@ -107,13 +143,37 @@ export const IdentityDetail = memo(function IdentityDetail({
       schedule();
     });
     const unsubscribe = store.subscribe((s, old) => {
-      // Panning moves the frame without changing any fitting input.
-      if (s.transform[2] !== old.transform[2] || s.nodes !== old.nodes) schedule();
+      // Pan entrants must have their current icon/name in the pan's frame, even with the page clock held.
+      if (s.transform !== old.transform && s.transform[2] === old.transform[2]) update();
+      else if (
+        s.transform !== old.transform ||
+        s.nodes !== old.nodes ||
+        s.width !== old.width ||
+        s.height !== old.height ||
+        s.connection !== old.connection
+      ) {
+        fittedTransform = undefined;
+        schedule();
+      }
     });
-    const uncam = camera?.subscribe(schedule);
+    const focus = () => {
+      fittedTransform = undefined;
+      update();
+    };
+    root.addEventListener("focusin", focus);
+    const uncam = camera?.subscribe(() => {
+      fittedTransform = undefined;
+      if (camera.phase === "idle") update();
+      else schedule();
+    });
     // FrameDetail may resize cards after our store notification. React may also
     // replace a node variant or its title without changing the graph.
     const observer = new MutationObserver((records) => {
+      // Translation and text changes keep the title elements. Remounts invalidate the membership cache.
+      if (
+        records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node instanceof Element))
+      )
+        titles = undefined;
       if (
         records.some(
           (record) =>
@@ -160,6 +220,7 @@ export const IdentityDetail = memo(function IdentityDetail({
       disposed = true;
       cancelAnimationFrame(frame);
       unsubscribe();
+      root.removeEventListener("focusin", focus);
       unzoom();
       uncam?.();
       observer.disconnect();

@@ -765,7 +765,7 @@ describe("the downloadable skill", () => {
     const { html, modules } = await buildViewer(root);
     expect(
       modules.filter((id) =>
-        /\/(?:canvas\/(?:lazyPalette|AnnotateGroup)|components\/ContextMenu|lib\/stencil(?:Display)?Search)\.[jt]sx?$/.test(
+        /\/(?:canvas\/(?:lazyPalette|AnnotateGroup|viewportParts)|components\/ContextMenu|lib\/stencil(?:Display)?Search)\.[jt]sx?$/.test(
           id,
         ),
       ),
