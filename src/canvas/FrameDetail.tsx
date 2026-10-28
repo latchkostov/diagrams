@@ -257,6 +257,9 @@ const FrameDecoration = memo(
             : selected.size
               ? selected
               : new Set(fallback ? [fallback] : []);
+        // Follow keeps its primary card painted while it intersects the frame: the
+        // narrated subject, else the selection, hover or fallback card.
+        const primary = subject ? new Set([subject]) : subjects;
         const pinnedSet = oneHop(s.edges, subjects);
         if (view === "follow") for (const id of lit) pinnedSet.add(id);
         const active = oneHop(s.edges, new Set([...selected, ...lit]));
@@ -379,7 +382,7 @@ const FrameDecoration = memo(
           const painted =
             !cropped ||
             contains(inner, frameCardBounds(card)) ||
-            (view === "follow" && id === subject && intersects(frameBox, card));
+            (view === "follow" && primary.has(id) && intersects(frameBox, card));
           const hidden =
             (n.type === "diagram" && !painted && cropped) ||
             (n.type === "annotation" &&

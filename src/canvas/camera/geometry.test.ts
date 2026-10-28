@@ -308,6 +308,36 @@ it.each([0.35, 0.92, 1, 1.5])("phone Follow preserves zoom %s above its readable
   expect(view.x + 6180 * view.zoom).toBeLessThanOrEqual(382);
   expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
 });
+it.each([
+  { room: { panel: true }, peer: "right", width: 180, left: 8 },
+  { room: { panel: true }, peer: "left", width: 180, left: 32 },
+  { room: { card: true }, peer: "right", width: 180, left: 8 },
+  { room: { card: true }, peer: "left", width: 180, left: 32 },
+  { room: { panel: true }, peer: "right", width: 220, left: 0 },
+  { room: { card: true }, peer: "left", width: 220, left: 0 },
+  { room: { panel: true }, peer: "right", width: 300, left: -40 },
+  { room: { card: true }, peer: "left", width: 300, left: -40 },
+])(
+  "R-05d3d31dd8 phone Follow keeps a $width px subject in the width beside a $room reservation (peer $peer)",
+  ({ room, peer, width, left }) => {
+    const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
+    const state = workbenchState(6000);
+    state.transform = [-9000, 0, 1];
+    // With the subject on the left, its narrated peer sits to its right, and vice versa.
+    const id = peer === "right" ? "a" : "b";
+    const node = state.nodeLookup.get(id)!;
+    node.measured = { width, height: 80 };
+    const x = node.internals.positionAbsolute.x;
+    const view = followViewport(root, state, ["a", "b"], id, room)!;
+    // 390 px frame minus the 170 px reservation leaves [0, 220].
+    expect(view.zoom).toBe(1);
+    expect(view.x + x).toBe(left);
+    if (width <= 220) {
+      expect(view.x + x).toBeGreaterThanOrEqual(0);
+      expect(view.x + x + width).toBeLessThanOrEqual(220);
+    }
+  },
+);
 it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
   const root = {
     ...workbenchRoot,

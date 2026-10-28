@@ -14,7 +14,7 @@ const fixture = vi.hoisted(() => ({
       mode: "live",
       focus: undefined,
       zone: undefined,
-      live: { focus: [] as string[], subject: "subject" },
+      live: { focus: [] as string[], subject: "subject" as string | undefined },
     },
     subscribe: vi.fn(),
     dispatch: vi.fn(),
@@ -43,9 +43,15 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-it.each([false, true])(
-  "keeps an oversized Follow subject painted on a 390px phone at double zoom (narrated: %s)",
-  async (narrated) => {
+it.each([
+  { narrated: false, subject: "subject", selected: undefined, painted: "subject" },
+  { narrated: true, subject: "subject", selected: undefined, painted: "subject" },
+  // R-aa6c81ccac: free play without a callout has no narrated subject and no focus.
+  { narrated: false, subject: undefined, selected: undefined, painted: "subject" },
+  { narrated: false, subject: undefined, selected: "neighbour", painted: "neighbour" },
+])(
+  "keeps an oversized Follow subject painted on a 390px phone at double zoom (narrated: $narrated, subject: $subject, selected: $selected)",
+  async ({ narrated, subject, selected, painted }) => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("innerWidth", 390);
     fixture.camera.subscribe.mockReturnValue(() => {});
@@ -59,6 +65,7 @@ it.each([false, true])(
     });
     vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
     fixture.camera.state.live.focus = narrated ? ["subject", "neighbour"] : [];
+    fixture.camera.state.live.subject = subject;
     const node = {
       id: "subject",
       type: "diagram",
@@ -67,7 +74,12 @@ it.each([false, true])(
       internals: { positionAbsolute: { x: 0, y: 0 } },
       measured: { width: 220, height: 72 },
     } as FlowNode;
-    const neighbour = { ...node, id: "neighbour", data: { ...node.data, label: "Neighbour" } } as FlowNode;
+    const neighbour = {
+      ...node,
+      id: "neighbour",
+      selected: selected === "neighbour",
+      data: { ...node.data, label: "Neighbour" },
+    } as FlowNode;
     fixture.state = {
       nodes: [node, neighbour],
       edges: [],
@@ -113,14 +125,19 @@ it.each([false, true])(
         }
       });
       expect(host.dataset.detailView).toBe("follow");
-      expect(card.hasAttribute("data-detail-hidden")).toBe(false);
-      expect(host.querySelector('[data-id="neighbour"]')!.hasAttribute("data-detail-hidden")).toBe(true);
-      expect(host.querySelector('[data-testid="node-badge-subject"]')!.hasAttribute("data-detail-hidden")).toBe(false);
+      expect(card.hasAttribute("data-detail-hidden")).toBe(painted !== "subject");
+      expect(host.querySelector('[data-id="neighbour"]')!.hasAttribute("data-detail-hidden")).toBe(
+        painted !== "neighbour",
+      );
+      expect(host.querySelector('[data-testid="node-badge-subject"]')!.hasAttribute("data-detail-hidden")).toBe(
+        painted !== "subject",
+      );
       expect(mount.querySelector('[data-testid="focus-offscreen-subject"]')).toBeNull();
       expect(fixture.state.transform[2]).toBe(2);
     } finally {
       await act(() => root.unmount());
       fixture.camera.state.live.focus = [];
+      fixture.camera.state.live.subject = "subject";
     }
   },
 );
