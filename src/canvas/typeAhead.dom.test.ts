@@ -213,3 +213,22 @@ it("a pending modal's own buttons take Enter and Space; typing elsewhere is stil
     capture.stop();
   }
 });
+
+it("focus inside a pending modal's loading frame doesn't leave a pending rename; the loaded modal does", () => {
+  const canvas = document.createElement("div");
+  const dialog = document.createElement("div");
+  dialog.setAttribute("aria-modal", "true");
+  const close = document.createElement("button");
+  dialog.append(close);
+  document.body.append(canvas, dialog);
+  const port = createDomPort({ root: () => canvas, hasEdge: () => true });
+  expect(port.elsewhere?.(close)).toBe(true);
+  const pending = captureModalTypeAhead(vi.fn());
+  try {
+    expect(port.elsewhere?.(close)).toBe(false);
+    expect(port.elsewhere?.(document.body)).toBe(true);
+  } finally {
+    pending.stop();
+  }
+  expect(port.elsewhere?.(close)).toBe(true);
+});
