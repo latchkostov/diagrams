@@ -20,7 +20,7 @@ Raw job logs and downloaded JSON reports stay in ignored `tests/.output/nightly-
 | macOS unit job        | 16.5 min, incomplete | 11.8 min, complete   | Oct 28 coverage 276.3 s; heavy 381.1 s                        |
 | Windows E2E, six jobs | 133.5 runner-min     | 121.3 runner-min     | Oct 28 shards 1 and 6 interrupted at 25 min                   |
 | macOS E2E, eight jobs | 188.0 runner-min     | 201.0 runner-min     | Oct 28 shards 2, 4 and 7 interrupted at 25 min                |
-| Build �3, twelve jobs | 246.8 runner-min     | 247.1 runner-min     | Oct 28 shard 7: 1,032 tests selected, no final JSON at 30 min |
+| Build x3, twelve jobs | 246.8 runner-min     | 247.1 runner-min     | Oct 28 shard 7: 1,032 tests selected, no final JSON at 30 min |
 
 Oct 28 group D totals **597.8 runner-minutes**, including incomplete work. The comparison totals
 601.5. These are unweighted execution minutes from job start/end, excluding queue time and other
@@ -35,7 +35,7 @@ Oct 28 step breakdown (seconds):
 | Windows E2E 1/6 |        51 |             10 | 1,504 (deadline/termination) |                    6 |
 | macOS E2E 4/8   |        50 |             11 | 1,513 (deadline/termination) |                    5 |
 
-Linux Build �3 7/12 spends 1,813 s in its composite action, including 1,744 s in
+Linux Build x3 7/12 spends 1,813 s in its composite action, including 1,744 s in
 Playwright before cancellation. Setup/builds consume about 69 s, while the incomplete browser work
 consumes the rest. Artifact uploads are seconds on these native jobs, not the deadline bottleneck.
 
@@ -57,7 +57,7 @@ The later Windows heavy run completes all files in 353.5 s, with autoscaling 49.
 skill 45.3 s, deployment 45.3 s and offline 44.3 s.
 
 Completed E2E test-time lower bounds from Oct 28 reports are **18,465 s Windows**, **10,887 s macOS**
-and **35,498 s Linux Build �3** (one Linux report absent). Windows is dominated by tutorials
+and **35,498 s Linux Build x3** (one Linux report absent). Windows is dominated by tutorials
 (1,188.5 s, only 67 completed tests), showcase narration (662.9 s), i18n (632.5 s), Lab (631.5 s)
 and showcase stories (593.2 s). macOS is dominated by stories (406.7 s), showcase examples (404.1 s),
 tutorials (391.3 s, only 57 completed), narration (387.3 s), rooms (362.6 s) and layout (360.6 s).
@@ -68,14 +68,14 @@ macOS has 3 CPUs / 7 GiB and one auto worker; Windows has 4 CPUs / 16 GiB and th
 Linux browser shards use three. macOS's individual i18n/layout test totals are actually lower than
 Linux's single-repeat equivalents: fewer workers, incomplete work and unbalanced bins explain the
 wall-time pressure without claiming slower macOS Chromium. Native build steps are tens of seconds
-(Oct 28 Windows common builds 33�34 s in parallel; macOS 33 + 28 s serial), not the missing tens of
+(Oct 28 Windows common builds 33-34 s in parallel; macOS 33 + 28 s serial), not the missing tens of
 minutes. There is no per-operation filesystem/font/browser-start profile in these artifacts, so
 none is claimed as a proven OS-specific code cause.
 
 ## Distribution and cost
 
 Both old runs explicitly log a count-split fallback (21 missing timings in the comparison, five
-on Oct 28). The 30-minute Build �3 deadline leaves 1,744 s for browser work after setup; the selected
+on Oct 28). The 30-minute Build x3 deadline leaves 1,744 s for browser work after setup; the selected
 shard keeps producing passing dots until cancellation. This is excess assigned work, not evidence
 that a single assertion or browser teardown needs a larger timeout.
 
@@ -84,11 +84,11 @@ averaging successful first attempts. Uncovered files retain their earlier measur
 files still use the mean estimate. No interrupted run is treated as a complete timing sample.
 With this map, old count assignment versus greedy duration assignment projects:
 
-| Shards | Count split min�max test-seconds | Duration split min�max |
+| Shards | Count split min-max test-seconds | Duration split min-max |
 | ------ | -------------------------------- | ---------------------- |
-| 6      | 1,981�3,453                      | 2,415�2,416            |
-| 8      | 1,160�2,573                      | 1,810�1,813            |
-| 12     | 716�2,048                        | 1,206�1,211            |
+| 6      | 1,981-3,453                      | 2,415-2,416            |
+| 8      | 1,160-2,573                      | 1,810-1,813            |
+| 12     | 716-2,048                        | 1,206-1,211            |
 
 These are scheduling weights, not promised native wall times. Eight/twelve native shards allow
 unfinished tests and observed platform failures within the unchanged 25-minute steps. The Linux
@@ -109,3 +109,6 @@ Rejected: extending step/job/test limits, reducing sampling or repeats, raising 
 the existing memory budget, and speculative filesystem/font/Chromium changes without causal evidence.
 No output changes are intended and no goldens are re-recorded. Full local verification and the branch
 Nightly's measured outcomes are recorded in the PR and final handoff.
+
+The report follow-up repairs characters damaged by Windows' default text encoding using explicit
+UTF-8. The scheduling code and recorded measurements are unchanged.
