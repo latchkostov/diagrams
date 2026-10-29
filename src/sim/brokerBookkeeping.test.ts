@@ -71,7 +71,11 @@ it("idle brokers skip group scans and cache pending messages through splits, ret
   expect(expected.nodes.topic.backlog).toBe(0);
   e.restore(cp);
   expect(suffix()).toEqual(expected);
+  e.restore(cp);
+  expect(nodes.get("topic")!.brokerPending).toBeGreaterThan(0);
   e.reset();
+  expect(nodes.get("topic")!.brokerPending).toBe(0);
+  expect(nodes.get("topic")!.groups.every((group) => group.pending.length === 0)).toBe(true);
   e.step(10);
   e.load(d);
   e.step(10);

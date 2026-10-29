@@ -17,7 +17,12 @@ const fixture = vi.hoisted(() => {
     camera: {
       phase: "idle",
       interacting: false,
-      state: { owner: "manual", view: "custom" },
+      state: {
+        owner: "manual",
+        view: "custom",
+        focus: [] as string[],
+        live: { focus: [] as string[], subject: undefined as string | undefined },
+      },
       subscribe: (run: () => void) => {
         cameraListeners.add(run);
         return () => cameraListeners.delete(run);
@@ -41,7 +46,8 @@ it.each([
   { held: false, owned: false },
   { held: true, owned: false },
   { held: false, owned: true },
-])("fits pan entrants before paint (pointer held: $held, camera-owned fit: $owned)", async ({ held, owned }) => {
+  { held: false, owned: true, custom: true },
+])("fits pan entrants (held=$held, owned=$owned, custom=$custom)", async ({ held, owned, custom }) => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   fixture.camera.phase = "idle";
   fixture.listeners.clear();
@@ -49,7 +55,7 @@ it.each([
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
     measureText: (s: string) => ({ width: s.length * 6 }),
   } as CanvasRenderingContext2D);
-  const computed = vi.fn(() => ({
+  const computed = vi.fn((_el: Element) => ({
     fontWeight: "400",
     fontSize: "40px",
     fontFamily: "sans-serif",
@@ -75,6 +81,7 @@ it.each([
     type: "diagram" as const,
     position: { x: i * 1000, y: 0 },
     selected: i === 200,
+    dragging: i === 201,
     data: { label: `Processing service ${i}`, stencil: "service.go" },
   }));
   fixture.state = {
@@ -97,14 +104,34 @@ it.each([
   for (const title of host.querySelectorAll('[data-testid="card-title"]'))
     Object.defineProperty(title, "clientWidth", { get: () => 100 });
   const root = createRoot(document.createElement("div"));
+  document.body.append(host);
+  const focused = host.querySelector<HTMLElement>('[data-id="n202"]')!;
+  focused.tabIndex = -1;
+  focused.focus();
+  fixture.camera.state.focus = ["n203"];
+  fixture.camera.state.live = { focus: ["n204"], subject: "n205" };
+  fixture.state.connection = { fromNode: { id: "n206" }, toNode: { id: "n207" } } as ChipState["connection"];
   const target = host.querySelector<HTMLElement>('[data-id="n100"] .stencil-icon')!;
   const queries = vi.spyOn(host, "querySelectorAll");
   try {
     await act(() => root.render(<IdentityDetail host={{ current: host }} />));
     await flush();
-    expect(computed.mock.calls.length).toBeLessThan(12);
+    // Preserve the original viewport work bound while independently counting the seven extra
+    // protected off-pane identities added to this component fixture.
+    const extra = new Set(Array.from({ length: 7 }, (_, i) => `n${201 + i}`));
+    expect(
+      computed.mock.calls.filter(([el]) => extra.has(el.closest<HTMLElement>("[data-id]")!.dataset.id!)),
+    ).toHaveLength(7);
+    expect(
+      computed.mock.calls.filter(([el]) => !extra.has(el.closest<HTMLElement>("[data-id]")!.dataset.id!)).length,
+    ).toBeLessThan(12);
     expect(host.querySelectorAll("[aria-label]")).toHaveLength(256);
-    expect(host.querySelector<HTMLElement>('[data-id="n200"] .stencil-icon')!.style.height).not.toBe("");
+    for (let i = 200; i <= 207; i++)
+      expect(
+        host.querySelector<HTMLElement>(`[data-id="n${i}"] .stencil-icon`)!.style.height,
+        `protected n${i}`,
+      ).not.toBe("");
+    expect(host.querySelector<HTMLElement>('[data-id="n208"] .stencil-icon')!.style.height).toBe("");
     expect(target.style.height).toBe("");
     const traversals = queries.mock.calls.length;
     const previous = fixture.state;
@@ -112,7 +139,7 @@ it.each([
     fixture.camera.interacting = held;
     if (owned)
       await act(() => {
-        fixture.camera.state.view = "overview";
+        fixture.camera.state.view = custom ? "custom" : "overview";
         fixture.camera.phase = "animating";
         for (const run of fixture.cameraListeners) run();
       });
@@ -159,7 +186,10 @@ it.each([
     fixture.camera.interacting = false;
     fixture.camera.phase = "idle";
     fixture.camera.state.view = "custom";
+    fixture.camera.state.focus = [];
+    fixture.camera.state.live = { focus: [], subject: undefined };
     await act(() => root.unmount());
+    host.remove();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }

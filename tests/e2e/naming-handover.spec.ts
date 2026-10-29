@@ -135,6 +135,8 @@ for (const kind of ["clone", "quick-add"] as const) {
     await page.evaluate(() => (window as unknown as { holdMeasurement(): void }).holdMeasurement());
     await pick(page, kind);
     await page.keyboard.type(NAME);
+    // savedDiagram waits for a readable document, which can still be the pre-placement autosave.
+    await expect.poll(async () => (await savedDiagram(page)).nodes.some((node) => node.id !== "origin")).toBe(true);
     const added = (await savedDiagram(page)).nodes.find((node) => node.id !== "origin");
     if (!added) throw new Error("Expected the newly placed node");
     await expect(page.getByTestId(`rf__node-${added.id}`)).toBeHidden();

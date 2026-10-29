@@ -19,15 +19,18 @@ for (const n of uiSizes([500, 1500]))
         try {
           const page = await context.newPage();
           const b = await Bench.create(page);
-          await b.open(w, tracing ? { url: NAMES_URL } : {});
-          await b.canvasSettled();
-          if (view === "fitted") await b.fitDiagram();
-          else {
-            await page.getByTestId("zoom-100").click();
+          const prepare = async (reset = false) => {
+            await b.open(w, { ...(tracing ? { url: NAMES_URL } : {}), reset });
             await b.canvasSettled();
-            await b.zoom(await b.emptySpot(), 4, "out");
-            await b.canvasSettled();
-          }
+            if (view === "fitted") await b.fitDiagram();
+            else {
+              await page.getByTestId("zoom-100").click();
+              await b.canvasSettled();
+              await b.zoom(await b.emptySpot(), 4, "out");
+              await b.canvasSettled();
+            }
+          };
+          await prepare();
           await b.frames(8);
           const measure = async (name: string, act: () => Promise<void>) => {
             const key = `${name}-${view}`;
@@ -108,6 +111,9 @@ for (const n of uiSizes([500, 1500]))
             );
           }
           if (process.env.BENCH_PAN_LIVE === "0") continue;
+          // The Edit drag persists geometry and selection. Start Live from the original workload,
+          // with the same fitted/off-screen setup, rather than measuring its edited autosave.
+          await prepare(true);
           await b.goLive(0);
           await b.canvasSettled();
           await b.frames(60);

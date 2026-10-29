@@ -63,11 +63,10 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       [source],
     ),
   );
+  const settings = dep?.settings ?? [];
   // The settings open when the edge is reached from the keyboard (its label isn't a Tab stop: D14).
-  const edgeFocused = useKeyboardFocusOn(
-    dep?.settings?.length ? `.react-flow__edge[data-id="${CSS.escape(id)}"]` : null,
-  );
-  const tooltip = useTooltip(edgeFocused);
+  const edgeFocused = useKeyboardFocusOn(settings.length ? `.react-flow__edge[data-id="${CSS.escape(id)}"]` : null);
+  const tooltip = useTooltip(settings.length ? edgeFocused || (chip && selected) : false);
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
   if (!route) return custom && !routeGeometry ? <g data-route-pending="shaped" /> : null;
@@ -75,7 +74,6 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const mid = label ?? pointAlong(route.points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
   const deny = denied ? Details?.denyPoint(route.points) : undefined;
-  const settings = dep?.settings ?? [];
   const tip = relation ? Details?.dependencyTip(relation, dep, sourceStencil) : undefined;
   const marker = selected
     ? relation
@@ -105,7 +103,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     <EdgeControls id={id} source={source} target={target} route={route} />
   );
   const denyMarker = deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />;
-  const settingsCard = (card || (chip && selected)) && settings.length > 0 && Details && (
+  const settingsCard = card && settings.length > 0 && Details && (
     <Details.SettingsCard
       pointer={tooltip.pointer}
       id={id}

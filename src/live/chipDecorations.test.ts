@@ -12,6 +12,28 @@ import { chipEdge } from "../canvas/nodes/ChipNode";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+it("emphasizes the positive upper quartile, including empty rates and ties", () => {
+  const snapshot = new LiveController(retryStorm as DiagramFile).snapshot();
+  for (const [rates, threshold] of [
+    [[], Infinity],
+    [[0, 0], Infinity],
+    [[4], 4],
+    [[0, 4, 1, 3, 2], 4],
+    [[1, 3, 3, 3, 5], 3],
+  ] as const) {
+    const root = document.createElement("div");
+    root.innerHTML = rates.map((_, i) => `<g class="react-flow__edge" data-id="e${i}"></g>`).join("");
+    const edges = Object.fromEntries(
+      rates.map((rate, i) => [`e${i}`, { ...Object.values(snapshot.edges)[0], id: `e${i}`, delivered: rate }]),
+    );
+    const snap = { ...snapshot, nodes: {}, edges, time: 1000 };
+    new Decorator(root).apply({ snapshot: snap, health: snap, spotlight: null });
+    expect([...root.children].map((edge) => edge.hasAttribute("data-live-main"))).toEqual(
+      rates.map((rate) => rate >= threshold),
+    );
+  }
+});
+
 it("weights a merged trunk by the sum of its current rates, with bounded stable buckets", () => {
   expect(rateLevel(100)).toBe(3);
   expect(rateLevel(10)).toBe(2);

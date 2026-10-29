@@ -1,12 +1,42 @@
 import { eventPipeline } from "../../src/bench/workloads/pipeline";
 import { Bench } from "../bench/ui/harness";
-import { test, expect, pauseClock } from "./fixtures";
+import { test, expect, pauseClock, savedDiagram } from "./fixtures";
 
-test.beforeEach(async ({ page, baseURL }) => {
-  const d = eventPipeline(100);
+test.beforeEach(async ({ page, baseURL }, info) => {
+  const d = eventPipeline(info.title.startsWith("benchmark reset") ? 16 : 100);
   const b = await Bench.create(page);
   await b.open({ text: JSON.stringify(d), d }, { url: baseURL });
   await b.canvasSettled();
+});
+
+test("benchmark reset discards the Edit drag, selection and camera before measuring Live", async ({
+  page,
+  baseURL,
+}) => {
+  const b = new Bench(page, await page.context().newCDPSession(page));
+  const d = eventPipeline(16);
+  await b.fitDiagram();
+  const before = await b.viewport();
+  const id = await b.nodeNearCentre(d.nodes.map((n) => n.id));
+  await b.clickNode(id);
+  await b.selectionSettled();
+  await page.getByTestId(`rf__node-${id.slice(5)}`).focus();
+  await page.keyboard.press("ArrowRight");
+  const original = d.nodes.find((n) => n.id === id.slice(5));
+  if (!original) throw new Error("Missing benchmark node");
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === id.slice(5))?.x)
+    .not.toBe(original.x);
+  await b.open({ text: JSON.stringify(d), d }, { url: baseURL, reset: true });
+  await b.fitDiagram();
+  expect((await savedDiagram(page)).nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(
+    d.nodes.map(({ id, x, y }) => ({ id, x, y })),
+  );
+  await expect(page.getByTestId(`grow-chip-${id.slice(5)}`)).toHaveCount(0);
+  expect(await b.viewport()).toEqual(before);
+  await b.goLive(0);
+  await b.canvasSettled();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
 });
 
 test("zoomed-out Overview keeps every node silhouette reachable below the text floor", async ({ page }) => {
