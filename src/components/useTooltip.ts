@@ -60,6 +60,8 @@ export function useTooltip(shown = false) {
   };
   return {
     open,
+    // External triggers (such as canvas selection) start a new activation explicitly.
+    reactivate: () => setDismissed(false),
     pointer,
     trigger: {
       ...pointer,

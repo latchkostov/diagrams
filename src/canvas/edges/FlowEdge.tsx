@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
   useCallback,
   useEffect,
+  useState,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
@@ -67,6 +68,13 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   // The settings open when the edge is reached from the keyboard (its label isn't a Tab stop: D14).
   const edgeFocused = useKeyboardFocusOn(settings.length ? `.react-flow__edge[data-id="${CSS.escape(id)}"]` : null);
   const tooltip = useTooltip(settings.length ? edgeFocused || (chip && selected) : false);
+  const chipSelected = !!chip && !!selected;
+  const [activation, setActivation] = useState({ selected: chipSelected, focused: edgeFocused });
+  if (activation.selected !== chipSelected || activation.focused !== edgeFocused) {
+    setActivation({ selected: chipSelected, focused: edgeFocused });
+    // Reset only on a new activation; Escape stays dismissed within the current one.
+    if ((chipSelected && !activation.selected) || (edgeFocused && !activation.focused)) tooltip.reactivate();
+  }
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
   if (!route) return custom && !routeGeometry ? <g data-route-pending="shaped" /> : null;

@@ -1,42 +1,56 @@
 import { test, expect, gotoCanvas, gotoLive, pauseClock } from "./fixtures";
 import { zoomIdentity } from "./node-identity";
 
-test("keyboard focus and selection retain Config settings and Escape dismisses at 50%", async ({ page }) => {
-  await page.clock.install();
-  await gotoCanvas(page, "aks-app-config-key-vault");
-  await zoomIdentity(page, 0.5);
-  const edge = page.getByTestId("edge-api-to-appcfg");
-  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
-  await expect(edge).toHaveAttribute("data-relation", "config");
-  // React Flow's wrapper is the connection's keyboard stop.
-  await page.keyboard.press("Shift");
-  await edge.evaluate((el) => (el.parentElement as unknown as SVGElement).focus());
-  await zoomIdentity(page, 0.5);
-  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
-  const card = page.getByTestId("edge-settings-api-to-appcfg");
-  await expect(card).toBeVisible();
-  await expect(card).toContainText("Orders:PageSize");
-  await expect(page.getByTestId("edge-setting-api-to-appcfg-2")).toHaveAttribute("data-secret", "1");
-  await expect(page.getByTestId("edge-messages-api-to-appcfg")).not.toBeVisible();
-  await edge.dispatchEvent("click");
-  await page.getByTestId("canvas-wrap").focus();
-  await expect(card).toBeVisible();
-  const wrapper = page.getByTestId("relationship-wrapper-api-to-appcfg");
-  await page.keyboard.press("Shift");
-  await wrapper.focus();
-  await zoomIdentity(page, 0.5);
-  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
-  await expect(card).toBeVisible();
-  await expect(edge).toHaveClass(/is-selected/);
-  // Hold the queued canvas deselection: the card must dismiss through its own lifecycle.
-  await pauseClock(page);
-  await wrapper.press("Escape");
-  await expect(card).toHaveCount(0);
-  await expect(wrapper).toBeFocused();
-  await page.clock.resume();
-  // As at normal zoom, the canvas deselects while the settings dismiss and keyboard focus stays put.
-  await expect(edge).not.toHaveClass(/is-selected/);
-});
+for (const activation of ["pointer", "keyboard"] as const)
+  test(`Config settings dismiss and reopen on ${activation} reselection at 50%`, async ({ page }) => {
+    await page.clock.install();
+    await gotoCanvas(page, "aks-app-config-key-vault");
+    await zoomIdentity(page, 0.5);
+    const edge = page.getByTestId("edge-api-to-appcfg");
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+    await expect(edge).toHaveAttribute("data-relation", "config");
+    // React Flow's wrapper is the connection's keyboard stop.
+    await page.keyboard.press("Shift");
+    await edge.evaluate((el) => (el.parentElement as unknown as SVGElement).focus());
+    await zoomIdentity(page, 0.5);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+    const card = page.getByTestId("edge-settings-api-to-appcfg");
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("Orders:PageSize");
+    await expect(page.getByTestId("edge-setting-api-to-appcfg-2")).toHaveAttribute("data-secret", "1");
+    await expect(page.getByTestId("edge-messages-api-to-appcfg")).not.toBeVisible();
+    await edge.dispatchEvent("click");
+    await page.getByTestId("canvas-wrap").focus();
+    await expect(card).toBeVisible();
+    const wrapper = page.getByTestId("relationship-wrapper-api-to-appcfg");
+    await page.keyboard.press("Shift");
+    await wrapper.focus();
+    await zoomIdentity(page, 0.5);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+    await expect(card).toBeVisible();
+    await expect(edge).toHaveClass(/is-selected/);
+    // Hold the queued canvas deselection: the card must dismiss through its own lifecycle.
+    await pauseClock(page);
+    await wrapper.press("Escape");
+    await expect(card).toHaveCount(0);
+    await expect(wrapper).toBeFocused();
+    await page.clock.resume();
+    // As at normal zoom, the canvas deselects while the settings dismiss and keyboard focus stays put.
+    await expect(edge).not.toHaveClass(/is-selected/);
+    await page.getByTestId("node-appcfg").click();
+    await expect(card).toHaveCount(0);
+    await expect(edge).not.toHaveClass(/is-selected/);
+    if (activation === "pointer") await edge.dispatchEvent("click");
+    else {
+      // Reach the same incoming connection again using canvas keyboard navigation.
+      // eslint-disable-next-line no-restricted-syntax -- Edge navigation uses literal Ctrl on every platform.
+      await page.keyboard.press("Control+Alt+[");
+      await expect(wrapper).toBeFocused();
+    }
+    await expect(edge).toHaveClass(/is-selected/);
+    await expect(card).toBeVisible();
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+  });
 
 test("changing language preserves fitted chip widths and merged paths", async ({ page }) => {
   await gotoCanvas(page, "black-friday-commerce");
