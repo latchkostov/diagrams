@@ -284,7 +284,19 @@ async function cloneChildren(
   return clonedNode;
 }
 
-function cloneCSSStyle(nativeNode: HTMLElement, clonedNode: HTMLElement, options: Options) {
+/** PNG declarations stay in capture order, outside native CSSOM until style sharing. */
+export type RasterStyles = WeakMap<Element, Map<string, string>>;
+type CloneOptions = Options & { rasterStyles?: RasterStyles };
+const RESOURCE_STYLE = /^(font-family$|background|-webkit-mask|mask)/;
+
+function readStyle(style: CSSStyleDeclaration, record = new Map<string, string>()) {
+  for (const name of Array.from(style)) {
+    record.set(name, style.getPropertyValue(name) + (style.getPropertyPriority(name) ? " !important" : ""));
+  }
+  return record;
+}
+
+function cloneCSSStyle(nativeNode: HTMLElement, clonedNode: HTMLElement, options: CloneOptions) {
   const targetStyle = clonedNode.style;
   if (!targetStyle) return;
   const sourceStyle = window.getComputedStyle(nativeNode);
@@ -292,6 +304,16 @@ function cloneCSSStyle(nativeNode: HTMLElement, clonedNode: HTMLElement, options
     targetStyle.cssText = sourceStyle.cssText;
     targetStyle.transformOrigin = sourceStyle.transformOrigin;
     return;
+  }
+  const record = options.rasterStyles && readStyle(targetStyle);
+  if (record) {
+    options.rasterStyles!.set(clonedNode, record);
+    // Computed longhands replace inline shorthands and their priorities. Keep local
+    // custom properties that the document-wide computed property list may omit.
+    for (const name of record.keys()) {
+      if (!name.startsWith("--")) record.delete(name);
+    }
+    targetStyle.cssText = "";
   }
   const iframe = isInstanceOfElement(nativeNode, HTMLIFrameElement);
   for (const name of getStyleProperties(options)) {
@@ -303,7 +325,13 @@ function cloneCSSStyle(nativeNode: HTMLElement, clonedNode: HTMLElement, options
     if (iframe && name === "display" && value === "inline") value = "block";
     if (name === "d" && clonedNode.getAttribute("d")) value = `path(${clonedNode.getAttribute("d")})`;
     // A computed style's priority is always "" (the library read it per property).
-    targetStyle.setProperty(name, value, "");
+    if (record) {
+      if (value) record.set(name, value);
+      else record.delete(name);
+      // Font discovery and image embedding still consume native declarations. Keep all
+      // background/mask longhands so shorthand reads and URL replacement work as before.
+      if (RESOURCE_STYLE.test(name)) targetStyle.setProperty(name, value, "");
+    } else targetStyle.setProperty(name, value, "");
   }
 }
 
@@ -321,7 +349,7 @@ function cloneSelectValue(nativeNode: HTMLElement, clonedNode: HTMLElement) {
   }
 }
 
-function decorate(nativeNode: HTMLElement, clonedNode: HTMLElement, options: Options) {
+function decorate(nativeNode: HTMLElement, clonedNode: HTMLElement, options: CloneOptions) {
   if (isInstanceOfElement(clonedNode, Element)) {
     cloneCSSStyle(nativeNode, clonedNode, options);
     clonePseudoElements(nativeNode, clonedNode, options);
@@ -507,7 +535,7 @@ async function embedImages(root: Node, options: Options, slicer: Slicer): Promis
 /** The library's cloneNode, sliced. */
 export async function cloneNode<T extends HTMLElement>(
   node: T,
-  options: Options,
+  options: CloneOptions,
   slicer: Slicer,
   isRoot = false,
 ): Promise<T | null> {
@@ -646,7 +674,7 @@ export async function toSvgText(node: HTMLElement, options: Options, slicer: Sli
 }
 
 /** The clone with its fonts and images embedded and the options' style applied. */
-async function prepare(node: HTMLElement, options: Options, slicer: Slicer): Promise<HTMLElement> {
+async function prepare(node: HTMLElement, options: CloneOptions, slicer: Slicer): Promise<HTMLElement> {
   const clonedNode = (await cloneNode(node, options, slicer, true))!;
   slicer.progress(0.7);
   await slicer.pause();
@@ -664,27 +692,39 @@ async function prepare(node: HTMLElement, options: Options, slicer: Slicer): Pro
  * repeated blocks through rules in its private SVG; the downloadable SVG keeps its original bytes.
  * Every declaration remains explicit, so inheritance and browser defaults are unchanged.
  */
-async function shareRasterStyles(root: HTMLElement, slicer: Slicer) {
+export async function shareRasterStyles(root: HTMLElement, slicer: Slicer, captured?: RasterStyles) {
   const styles = new Map<string, { name: string; values: string[] }>();
   const blocks = new Map<string, { name: string; differences: string }>();
   const rules: string[] = [];
   for (const element of [root, ...root.getElementsByTagName("*")]) {
-    const css = element.getAttribute("style");
-    if (css) {
-      let block = blocks.get(css);
+    const style = (element as HTMLElement).style;
+    let record = captured?.get(element);
+    // Only the small resource block and final root overrides have been materialised.
+    // Read them after embedding, so shared rules contain the embedded URLs.
+    if (record) {
+      // CSSOM enumerates a canonical name for aliases, but the capture can include
+      // both spellings. Refresh both so an old prefixed URL cannot win the cascade.
+      for (const name of record.keys()) {
+        if (!RESOURCE_STYLE.test(name)) continue;
+        const value = style.getPropertyValue(name);
+        if (value) record.set(name, value);
+        else record.delete(name);
+      }
+      readStyle(style, record);
+    }
+    const css = record ? null : element.getAttribute("style");
+    if (record || css) {
+      let block = css ? blocks.get(css) : undefined;
       if (!block) {
-        const style = (element as HTMLElement).style;
-        const names = Array.from(style);
+        record ??= readStyle(style);
+        const names = [...record.keys()];
+        const values = [...record.values()];
         const key = JSON.stringify([element.namespaceURI, element.localName, names]);
-        const values = names.map((name) => {
-          const priority = style.getPropertyPriority(name);
-          return style.getPropertyValue(name) + (priority ? ` !${priority}` : "");
-        });
         let entry = styles.get(key);
         if (!entry) {
           entry = { name: `ld-raster-${styles.size}`, values };
           styles.set(key, entry);
-          rules.push(`.${entry.name}{${style.cssText}}`);
+          rules.push(`.${entry.name}{${css ?? names.map((name, i) => `${name}:${values[i]};`).join("")}}`);
         }
         const differences: string[] = [];
         for (let i = 0; i < names.length; i++) {
@@ -692,11 +732,12 @@ async function shareRasterStyles(root: HTMLElement, slicer: Slicer) {
           if (value !== entry.values[i]) differences.push(`${names[i]}:${value};`);
         }
         block = { name: entry.name, differences: differences.join("") };
-        blocks.set(css, block);
+        if (css) blocks.set(css, block);
       }
       element.setAttribute("class", `${element.getAttribute("class") ?? ""} ${block.name}`);
       element.setAttribute("style", block.differences);
     }
+    captured?.delete(element);
     await slicer.breathe();
   }
   const style = document.createElement("style");
@@ -707,8 +748,9 @@ async function shareRasterStyles(root: HTMLElement, slicer: Slicer) {
 /** PNG-only style sharing, clipped raster strips and asynchronous encoding keep yielding through the final phases. */
 export async function toPng(node: HTMLElement, options: Options, slicer: Slicer): Promise<string> {
   const { width, height } = getImageSize(node, options);
-  const clone = await prepare(node, options, slicer);
-  await shareRasterStyles(clone, slicer);
+  const rasterStyles: RasterStyles = new WeakMap();
+  const clone = await prepare(node, { ...options, rasterStyles }, slicer);
+  await shareRasterStyles(clone, slicer, rasterStyles);
   const svg = await nodeToDataURL(clone, width, height, slicer);
   await slicer.pause();
   slicer.progress(0.9);
