@@ -33,45 +33,51 @@ export function syncSimulation(
 
 /** The one boundary between the editor's document and the run: following-aware. */
 export class LiveSync {
-  private following = false;
-  private diagramWaits?: () => DiagramFile;
-  private simulationsWait?: { simulations: readonly Simulation[]; draftId: () => string | undefined };
-  private readonly known = new Set<string>();
+  #controller: LiveController;
+  #reloaded: () => void;
+
+  #following = false;
+  #diagramWaits?: () => DiagramFile;
+  #simulationsWait?: { simulations: readonly Simulation[]; draftId: () => string | undefined };
+  readonly #known = new Set<string>();
 
   constructor(
-    private readonly controller: LiveController,
+    controller: LiveController,
     /** A structural edit restarted the run. */
-    private readonly reloaded: () => void = () => {},
-  ) {}
+    reloaded: () => void = () => {},
+  ) {
+    this.#controller = controller;
+    this.#reloaded = reloaded;
+  }
 
   /** The diagram changed in the editor (`read` gives it as it is when the run takes it). */
   diagram(read: () => DiagramFile): void {
-    if (this.following) {
-      this.diagramWaits = read;
+    if (this.#following) {
+      this.#diagramWaits = read;
       return;
     }
-    if (syncDiagram(this.controller, read()) === "reloaded") this.reloaded();
+    if (syncDiagram(this.#controller, read()) === "reloaded") this.#reloaded();
   }
 
   /** The saved simulations changed. */
   simulations(simulations: readonly Simulation[], draftId: () => string | undefined): void {
-    for (const s of simulations) this.known.add(s.id);
-    if (this.following) {
-      this.simulationsWait = { simulations, draftId };
+    for (const s of simulations) this.#known.add(s.id);
+    if (this.#following) {
+      this.#simulationsWait = { simulations, draftId };
       return;
     }
-    syncSimulation(this.controller, simulations, draftId(), this.known);
+    syncSimulation(this.#controller, simulations, draftId(), this.#known);
   }
 
   /** Following starts (the document's changes wait) or ends (what waited is reconciled). */
   setFollowing(on: boolean): void {
-    if (on === this.following) return;
-    this.following = on;
+    if (on === this.#following) return;
+    this.#following = on;
     if (on) return;
-    const diagram = this.diagramWaits;
-    const sims = this.simulationsWait;
-    this.diagramWaits = undefined;
-    this.simulationsWait = undefined;
+    const diagram = this.#diagramWaits;
+    const sims = this.#simulationsWait;
+    this.#diagramWaits = undefined;
+    this.#simulationsWait = undefined;
     if (diagram) this.diagram(diagram);
     if (sims) this.simulations(sims.simulations, sims.draftId);
   }

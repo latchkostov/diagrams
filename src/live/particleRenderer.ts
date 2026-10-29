@@ -253,43 +253,48 @@ const REDUCED_MAX = 260;
 const TRAIL: Record<ParticleKind, number> = { message: 26, retry: 22, dlq: 40, reply: 0 };
 
 export class ParticleRenderer {
-  private ctx: CanvasRenderingContext2D;
+  #canvas: Surface;
+  #env: RenderEnv;
+  #opts: RenderOptions;
+  #overlay: Surface | undefined;
+
+  #ctx: CanvasRenderingContext2D;
   /** The overlay above the edge label pills (dimmed dots, the traced message); `ctx` without one. */
-  private octx: CanvasRenderingContext2D;
-  private overlayDrawn = false;
+  #octx: CanvasRenderingContext2D;
+  #overlayDrawn = false;
   /** Edge label pills this frame, device px [x0, y0, x1, y1, ...] (see deviceRects). */
-  private pills: number[] = [];
-  private sprites = new Map<string, Surface>();
+  #pills: number[] = [];
+  #sprites = new Map<string, Surface>();
   /** Calmer slow speeds: below 1×, only a sample of message families is drawn (slowmo/sampler.ts). */
-  private calm = new CalmSampler();
-  private batches = new Map<string, Batch>();
-  private pulses: Pulse[] = [];
-  private seen = new Map<number, Seen>();
-  private lastPulseAt = new Map<string, number>();
-  private failed = new Map<string, number>();
-  private frame = 0;
-  private pt = { x: 0, y: 0 };
-  private perEdge = new Map<string, number>();
-  private dpr = 1;
-  private w = 0;
-  private h = 0;
-  private lastKey = "";
-  private lastSnap: RenderSnapshot | null = null;
-  private lastFocus: number | undefined;
-  private lastPaths = -1;
-  private lastSpeed = NaN;
+  #calm = new CalmSampler();
+  #batches = new Map<string, Batch>();
+  #pulses: Pulse[] = [];
+  #seen = new Map<number, Seen>();
+  #lastPulseAt = new Map<string, number>();
+  #failed = new Map<string, number>();
+  #frame = 0;
+  #pt = { x: 0, y: 0 };
+  #perEdge = new Map<string, number>();
+  #dpr = 1;
+  #w = 0;
+  #h = 0;
+  #lastKey = "";
+  #lastSnap: RenderSnapshot | null = null;
+  #lastFocus: number | undefined;
+  #lastPaths = -1;
+  #lastSpeed = NaN;
   /** The overlay the last frame drew, and its revision (slow motion's drawings change on their own). */
-  private lastOverlay: RenderOverlay | undefined;
-  private lastRevision = -1;
-  private wasEmpty = true;
+  #lastOverlay: RenderOverlay | undefined;
+  #lastRevision = -1;
+  #wasEmpty = true;
   /** Particles drawn in the last frame (for the stats readout and tests). */
   drawn = 0;
   /** Frames painted so far (skipped frames don't count): a frame rate readout for tests and perf runs. */
   frames = 0;
   /** Hit targets from the last frame, in pane CSS px: x, y, message id (for click-to-trace). */
-  private hits: number[] = [];
+  #hits: number[] = [];
   /** The traced message's particles this frame (device px), drawn last, brighter and labelled. */
-  private focusHeads: {
+  #focusHeads: {
     id: number;
     x: number;
     y: number;
@@ -302,59 +307,64 @@ export class ParticleRenderer {
   /** The traced message's labels in the last frame, in pane CSS px (tests read them off the canvas). */
   labels: readonly PlacedLabel[] = [];
   /** Each label's spot last frame, so it stays put while it can. */
-  private labelSpots = new Map<number, number>();
+  #labelSpots = new Map<number, number>();
 
   constructor(
-    private canvas: Surface,
-    private env: RenderEnv,
-    private opts: RenderOptions,
+    canvas: Surface,
+    env: RenderEnv,
+    opts: RenderOptions,
     /** Drawn over the edge label pills; without it everything goes on `canvas`. */
-    private overlay?: Surface,
+    overlay?: Surface,
   ) {
-    this.ctx = context2d(canvas);
-    this.octx = overlay ? context2d(overlay) : this.ctx;
+    this.#canvas = canvas;
+    this.#env = env;
+    this.#opts = opts;
+    this.#overlay = overlay;
+
+    this.#ctx = context2d(canvas);
+    this.#octx = overlay ? context2d(overlay) : this.#ctx;
   }
 
   setOptions(opts: RenderOptions): void {
-    if (opts.theme !== this.opts.theme || opts.scale !== this.opts.scale || opts.tokens !== this.opts.tokens)
-      this.sprites.clear();
-    this.opts = opts;
-    this.lastKey = "";
+    if (opts.theme !== this.#opts.theme || opts.scale !== this.#opts.scale || opts.tokens !== this.#opts.tokens)
+      this.#sprites.clear();
+    this.#opts = opts;
+    this.#lastKey = "";
   }
 
   /** Forget per-message history (new engine, new diagram). */
   reset(): void {
-    this.seen.clear();
-    this.pulses.length = 0;
-    this.failed.clear();
-    this.lastPulseAt.clear();
-    this.lastKey = "";
+    this.#seen.clear();
+    this.#pulses.length = 0;
+    this.#failed.clear();
+    this.#lastPulseAt.clear();
+    this.#lastKey = "";
   }
 
   /** Paint the next frame even if nothing changed (the worker's fonts finished loading). */
   invalidate(): void {
-    this.lastKey = "";
+    this.#lastKey = "";
   }
 
   /**
    * Keeps the backing store at device resolution. (The canvas element's CSS size and its place over
    * the pane are the main thread's business: see CanvasPlacement in liveRenderer.ts.)
    */
-  private layout(): readonly [number, number, number] {
-    const t = this.env.transform();
-    const { width, height } = this.env.size();
-    const dpr = this.env.dpr();
-    if (width !== this.w || height !== this.h || dpr !== this.dpr) {
-      this.w = width;
-      this.h = height;
-      this.dpr = dpr;
-      this.canvas.width = Math.max(1, Math.round(width * dpr));
-      this.canvas.height = Math.max(1, Math.round(height * dpr));
-      if (this.overlay) {
-        this.overlay.width = this.canvas.width;
-        this.overlay.height = this.canvas.height;
+  #layout(): readonly [number, number, number] {
+    const t = this.#env.transform();
+    const { width, height } = this.#env.size();
+    const dpr = this.#env.dpr();
+    if (width !== this.#w || height !== this.#h || dpr !== this.#dpr) {
+      this.#w = width;
+      this.#h = height;
+      this.#dpr = dpr;
+      this.#canvas.width = Math.max(1, Math.round(width * dpr));
+      this.#canvas.height = Math.max(1, Math.round(height * dpr));
+      if (this.#overlay) {
+        this.#overlay.width = this.#canvas.width;
+        this.#overlay.height = this.#canvas.height;
       }
-      this.lastKey = "";
+      this.#lastKey = "";
     }
     return t;
   }
@@ -364,17 +374,17 @@ export class ParticleRenderer {
    * Uses the last frame's positions, so it costs nothing until someone clicks or hovers.
    */
   hitTest(x: number, y: number, radius = 12): number | undefined {
-    return hitTestPoints(this.hits, x, y, radius);
+    return hitTestPoints(this.#hits, x, y, radius);
   }
 
   /** The last frame's hit targets in pane CSS px: x, y, message id, ... (the worker posts them back). */
   get hitPoints(): readonly number[] {
-    return this.hits;
+    return this.#hits;
   }
 
   /** Arrival pulses or failure flashes are still fading: the next frame differs even if nothing else does. */
   get animating(): boolean {
-    return this.pulses.length > 0;
+    return this.#pulses.length > 0;
   }
 
   /**
@@ -383,11 +393,11 @@ export class ParticleRenderer {
    * `speed`: the playback speed; below 1× the calm sampler draws a sample of message families.
    */
   draw(snap: RenderSnapshot, now: number, focus?: number, slow?: RenderOverlay, speed = 1): void {
-    this.calm.setSpeed(speed);
-    const [tx, ty, zoom] = this.layout();
-    const key = `${tx}|${ty}|${zoom}|${this.w}|${this.h}`;
-    const moved = key !== this.lastKey;
-    const paths = this.env.pathsVersion();
+    this.#calm.setSpeed(speed);
+    const [tx, ty, zoom] = this.#layout();
+    const key = `${tx}|${ty}|${zoom}|${this.#w}|${this.#h}`;
+    const moved = key !== this.#lastKey;
+    const paths = this.#env.pathsVersion();
     // Paused (the controller hands back the same snapshot), nothing fading out, the view and the
     // edges where they were: the canvas already shows this frame, and the hit targets still hold.
     // Slow motion animates over a frozen snapshot: skip only while its overlay is unchanged too (a
@@ -395,57 +405,59 @@ export class ParticleRenderer {
     // the calm sampler draws a different sample below 1x, paused or not.
     const revision = slow?.revision ?? -1;
     if (
-      speed === this.lastSpeed &&
-      slow === this.lastOverlay &&
-      revision === this.lastRevision &&
+      speed === this.#lastSpeed &&
+      slow === this.#lastOverlay &&
+      revision === this.#lastRevision &&
       !moved &&
-      snap === this.lastSnap &&
-      focus === this.lastFocus &&
-      !this.pulses.length &&
-      paths === this.lastPaths
+      snap === this.#lastSnap &&
+      focus === this.#lastFocus &&
+      !this.#pulses.length &&
+      paths === this.#lastPaths
     )
       return;
-    this.lastSnap = snap;
-    this.lastSpeed = speed;
-    this.lastFocus = focus;
-    this.lastOverlay = slow;
-    this.lastRevision = revision;
-    this.lastPaths = paths;
-    this.frame++;
-    this.lastKey = key;
+    this.#lastSnap = snap;
+    this.#lastSpeed = speed;
+    this.#lastFocus = focus;
+    this.#lastOverlay = slow;
+    this.#lastRevision = revision;
+    this.#lastPaths = paths;
+    this.#frame++;
+    this.#lastKey = key;
     if (slow) {
       focus = undefined;
-      this.pulses.length = 0;
-    } else this.detectFailures(snap, now);
-    const empty = snap.particles.length === 0 && this.pulses.length === 0 && !slow;
-    this.hits.length = 0;
+      this.#pulses.length = 0;
+    } else this.#detectFailures(snap, now);
+    const empty = snap.particles.length === 0 && this.#pulses.length === 0 && !slow;
+    this.#hits.length = 0;
     // Nothing to draw and nothing was drawn: skip the clear (keeps idle live mode at ~0% CPU).
-    if (empty && this.wasEmpty && !moved) {
-      this.trackArrivals(snap.particles, now);
+    if (empty && this.#wasEmpty && !moved) {
+      this.#trackArrivals(snap.particles, now);
       return;
     }
-    this.wasEmpty = empty;
+    this.#wasEmpty = empty;
     this.frames++;
-    const { ctx, octx, dpr } = this;
+    const ctx = this.#ctx,
+      octx = this.#octx,
+      dpr = this.#dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    if (octx !== ctx && this.overlayDrawn) {
+    ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+    if (octx !== ctx && this.#overlayDrawn) {
       octx.setTransform(1, 0, 0, 1, 0, 0);
-      octx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      octx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
     }
-    this.overlayDrawn = false;
+    this.#overlayDrawn = false;
     const k = zoom * dpr;
     const ox = tx * dpr;
     const oy = ty * dpr;
-    const pills = deviceRects(this.env.labelRects?.() ?? [], k, ox, oy, this.pills);
-    const reduced = this.opts.reducedMotion;
+    const pills = deviceRects(this.#env.labelRects?.() ?? [], k, ox, oy, this.#pills);
+    const reduced = this.#opts.reducedMotion;
     // Particles stay legible when zoomed out and don't balloon when zoomed in.
-    const size = 3.5 * this.opts.scale * Math.min(1.5, Math.max(0.75, Math.sqrt(zoom))) * dpr;
+    const size = 3.5 * this.#opts.scale * Math.min(1.5, Math.max(0.75, Math.sqrt(zoom))) * dpr;
     const margin = 40 * dpr;
-    const W = this.canvas.width + margin;
-    const H = this.canvas.height + margin;
+    const W = this.#canvas.width + margin;
+    const H = this.#canvas.height + margin;
 
-    for (const b of this.batches.values()) {
+    for (const b of this.#batches.values()) {
       b.heads.length = 0;
       b.trails.length = 0;
       b.dim.length = 0;
@@ -453,9 +465,9 @@ export class ParticleRenderer {
 
     const particles = snap.particles;
     const stride = reduced && particles.length > REDUCED_MAX ? Math.ceil(particles.length / REDUCED_MAX) : 1;
-    const calm = slow || !this.calm.active ? undefined : this.calm;
+    const calm = slow || !this.#calm.active ? undefined : this.#calm;
     calm?.begin(particles, now);
-    const perEdge = this.perEdge;
+    const perEdge = this.#perEdge;
     perEdge.clear();
     for (let i = 0; i < particles.length; i += stride) {
       if (calm && !calm.keep(particles[i], focus)) continue;
@@ -463,14 +475,14 @@ export class ParticleRenderer {
       perEdge.set(id, (perEdge.get(id) ?? 0) + 1);
     }
     let drawn = 0;
-    this.focusHeads.length = 0;
+    this.#focusHeads.length = 0;
     for (let i = 0; i < particles.length; i += stride) {
       const p = particles[i];
-      const ink = this.env.edgeInk?.(p.edgeId);
+      const ink = this.#env.edgeInk?.(p.edgeId);
       if (ink?.alpha === 0 || (zoom < 0.6 && ink && !ink.near)) continue;
       const inkAlpha = (ink?.alpha ?? 1) * (zoom < 0.6 ? 0.5 : 1);
       const inkScale = zoom < 0.6 ? 0.6 : 1;
-      const s = this.env.samples(p.edgeId);
+      const s = this.#env.samples(p.edgeId);
       if (!s || s.length === 0) continue;
       const focused = focus !== undefined && p.rootId === focus;
       if (calm && !calm.keep(p, focus)) continue;
@@ -478,31 +490,31 @@ export class ParticleRenderer {
       if (!focused && crowd > 1 && p.id % crowd !== 0) continue;
       const reverse = p.kind === "reply" || p.kind === "retry";
       const t = reverse ? 1 - p.progress : p.progress;
-      pointOnSamples(s, t, this.pt);
-      const x = this.pt.x * k + ox;
-      const y = this.pt.y * k + oy;
+      pointOnSamples(s, t, this.#pt);
+      const x = this.#pt.x * k + ox;
+      const y = this.#pt.y * k + oy;
       if (x < -margin || y < -margin || x > W || y > H) continue;
-      if (p.kind !== "reply") this.hits.push(x / dpr, y / dpr, p.messageId);
+      if (p.kind !== "reply") this.#hits.push(x / dpr, y / dpr, p.messageId);
       // A refused reply (404, 429) takes the failure tint and a cross; a route keeps its marker otherwise.
       const color = p.code
-        ? this.opts.tokens.fail
+        ? this.#opts.tokens.fail
         : p.kind === "retry" || (p.callAttempt ?? 1) > 1
-          ? this.opts.tokens.retry
+          ? this.#opts.tokens.retry
           : p.kind === "dlq"
-            ? this.opts.tokens.dlq
+            ? this.#opts.tokens.dlq
             : p.color;
       const marker: ParticleMarker | undefined = p.code ? "cross" : p.marker;
       if (focused) {
         const trail: number[] = [];
         if (!reduced && p.kind !== "reply")
-          this.pushTrail(trail, s, t, reverse, (TRAIL[p.kind] * 2) / s.length, k, ox, oy);
-        this.focusHeads.push({ id: p.messageId, x, y, color, kind: p.kind, type: p.type, trail, marker });
+          this.#pushTrail(trail, s, t, reverse, (TRAIL[p.kind] * 2) / s.length, k, ox, oy);
+        this.#focusHeads.push({ id: p.messageId, x, y, color, kind: p.kind, type: p.type, trail, marker });
         drawn++;
         continue;
       }
       const paintKey = `${inkAlpha}|${inkScale}|`;
       const bk = paintKey + (marker ? `${p.kind}|${color}|${marker}` : `${p.kind}|${color}`);
-      let b = this.batches.get(bk);
+      let b = this.#batches.get(bk);
       if (!b) {
         b = {
           color,
@@ -514,42 +526,42 @@ export class ParticleRenderer {
           dim: [],
           ...(marker ? { marker } : {}),
         };
-        this.batches.set(bk, b);
+        this.#batches.set(bk, b);
       }
       // Behind a label pill: the pill hides the trail; the dot shows through, dimmed, on the overlay.
       if (pills.length && insideAny(pills, x, y)) b.dim.push(x, y);
       else b.heads.push(x, y);
       const trail = TRAIL[p.kind];
-      if (trail > 0 && !reduced && !slow) this.pushTrail(b.trails, s, t, reverse, trail / s.length, k, ox, oy);
+      if (trail > 0 && !reduced && !slow) this.#pushTrail(b.trails, s, t, reverse, trail / s.length, k, ox, oy);
       drawn++;
     }
     this.drawn = drawn;
 
     // Trails under heads: a wide faint pass along the full trail, then a narrow brighter one.
     // While a message is traced, everything else steps back.
-    const dark = this.opts.theme === "dark";
+    const dark = this.#opts.theme === "dark";
     const dim = focus !== undefined ? 0.2 : 1;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const b of this.batches.values()) {
+    for (const b of this.#batches.values()) {
       if (!b.trails.length) continue;
       ctx.strokeStyle = b.color;
       ctx.globalAlpha = (dark ? 0.26 : 0.2) * dim * b.alpha;
       ctx.lineWidth = size * (b.kind === "dlq" ? 1.6 : 1.25);
-      this.strokeTrails(b.trails, 1);
+      this.#strokeTrails(b.trails, 1);
       ctx.globalAlpha = (dark ? 0.62 : 0.5) * dim * b.alpha;
       ctx.lineWidth = size * 0.7;
-      this.strokeTrails(b.trails, 0.5);
+      this.#strokeTrails(b.trails, 0.5);
     }
     ctx.globalAlpha = 1;
 
     // Heads: a light-like glow on dark canvases, normal blending on light ones.
     // "screen" glows like light but, unlike "lighter", keeps the hue when particles pile up.
     ctx.globalCompositeOperation = dark && !reduced ? "screen" : "source-over";
-    for (const b of this.batches.values()) {
+    for (const b of this.#batches.values()) {
       if (!b.heads.length) continue;
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
-      const sprite = this.sprite(b.color, b.kind, r * b.scale, b.marker);
+      const sprite = this.#sprite(b.color, b.kind, r * b.scale, b.marker);
       const half = sprite.width / 2;
       ctx.globalAlpha =
         (b.kind === "reply" ? 0.55 : 1) * b.alpha * (slow ? slow.backgroundAlpha : focus !== undefined ? 0.28 : 1);
@@ -558,16 +570,16 @@ export class ParticleRenderer {
       ctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = "source-over";
-    this.drawDimmed(size, focus !== undefined || !!slow);
-    if (this.focusHeads.length) this.drawFocus(size, dpr);
+    this.#drawDimmed(size, focus !== undefined || !!slow);
+    if (this.#focusHeads.length) this.#drawFocus(size, dpr);
     else if (this.labels.length) {
       this.labels = [];
-      this.labelSpots.clear();
+      this.#labelSpots.clear();
     }
 
     if (slow) {
       // Its dots and words go on the overlay, above the edge label pills (like trace labels).
-      this.overlayDrawn = true;
+      this.#overlayDrawn = true;
       slow.paint({
         ctx,
         over: octx,
@@ -576,27 +588,27 @@ export class ParticleRenderer {
         ox,
         oy,
         size,
-        width: this.canvas.width,
-        height: this.canvas.height,
-        theme: this.opts.theme,
-        tokens: this.opts.tokens,
+        width: this.#canvas.width,
+        height: this.#canvas.height,
+        theme: this.#opts.theme,
+        tokens: this.#opts.tokens,
         reduced,
-        samples: (id) => this.env.samples(id),
-        sprite: (color, kind, r, marker) => this.sprite(color, kind, r, marker),
-        nodeRect: (id) => this.env.nodeRect(id),
-        obstacles: () => this.env.obstacles?.(),
+        samples: (id) => this.#env.samples(id),
+        sprite: (color, kind, r, marker) => this.#sprite(color, kind, r, marker),
+        nodeRect: (id) => this.#env.nodeRect(id),
+        obstacles: () => this.#env.obstacles?.(),
       });
       return;
     }
-    this.trackArrivals(particles, now);
-    this.drawPulses(now, k, ox, oy, size);
+    this.#trackArrivals(particles, now);
+    this.#drawPulses(now, k, ox, oy, size);
   }
 
   /** Dots passing behind edge label pills: a plain dimmed disc (no glow) over the pill. */
-  private drawDimmed(size: number, focused: boolean): void {
-    const ctx = this.octx;
+  #drawDimmed(size: number, focused: boolean): void {
+    const ctx = this.#octx;
     let any = false;
-    for (const b of this.batches.values()) {
+    for (const b of this.#batches.values()) {
       if (!b.dim.length) continue;
       any = true;
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
@@ -613,36 +625,36 @@ export class ParticleRenderer {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    if (any) this.overlayDrawn = true;
+    if (any) this.#overlayDrawn = true;
   }
 
   /** The traced message and its copies: a long bright trail, a halo ring and a type label. */
-  private drawFocus(size: number, dpr: number): void {
+  #drawFocus(size: number, dpr: number): void {
     // Above the edge label pills, like the trace labels always were.
-    const ctx = this.octx;
-    this.overlayDrawn = true;
-    const dark = this.opts.theme === "dark";
+    const ctx = this.#octx;
+    this.#overlayDrawn = true;
+    const dark = this.#opts.theme === "dark";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const f of this.focusHeads) {
+    for (const f of this.#focusHeads) {
       if (!f.trail.length) continue;
       ctx.strokeStyle = f.color;
       ctx.globalAlpha = 0.35;
       ctx.lineWidth = size * 1.8;
-      this.strokeTrails(f.trail, 1, ctx);
+      this.#strokeTrails(f.trail, 1, ctx);
       ctx.globalAlpha = 0.9;
       ctx.lineWidth = size * 0.9;
-      this.strokeTrails(f.trail, 0.6, ctx);
+      this.#strokeTrails(f.trail, 0.6, ctx);
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = dark ? "screen" : "source-over";
-    for (const f of this.focusHeads) {
+    for (const f of this.#focusHeads) {
       const r = f.kind === "reply" ? size * 0.9 : size * 1.55;
-      const sprite = this.sprite(f.color, f.kind === "reply" ? "message" : f.kind, r, f.marker);
+      const sprite = this.#sprite(f.color, f.kind === "reply" ? "message" : f.kind, r, f.marker);
       ctx.drawImage(sprite, f.x - sprite.width / 2, f.y - sprite.height / 2);
     }
     ctx.globalCompositeOperation = "source-over";
-    for (const f of this.focusHeads) {
+    for (const f of this.#focusHeads) {
       // A ring that reads on any background.
       ctx.globalAlpha = 0.95;
       ctx.strokeStyle = dark ? "#ffffff" : f.color;
@@ -651,7 +663,7 @@ export class ParticleRenderer {
       ctx.arc(f.x, f.y, size * 2.3, 0, Math.PI * 2);
       ctx.stroke();
     }
-    this.drawLabels(size, dpr);
+    this.#drawLabels(size, dpr);
     ctx.globalAlpha = 1;
   }
 
@@ -660,18 +672,18 @@ export class ParticleRenderer {
    * badges, chrome and each other (see traceLabels.ts). Labels follow the particle size (zoom and
    * presentation) but never drop below 11 px, so they read at a distance.
    */
-  private drawLabels(size: number, dpr: number): void {
+  #drawLabels(size: number, dpr: number): void {
     // On the overlay, so trace labels stay above the edge label pills.
-    const ctx = this.octx;
+    const ctx = this.#octx;
     const font = Math.max(11 * dpr, size * 3.2);
     ctx.font = `600 ${font}px "Mona Sans Canvas", "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
     ctx.textBaseline = "middle";
     const scaled = (r: Rect): Box => ({ x: r.x * dpr, y: r.y * dpr, w: r.width * dpr, h: r.height * dpr });
-    const found = this.env.obstacles?.();
+    const found = this.#env.obstacles?.();
     const ring = size * 2.4;
     const colors = new Map<number, string>();
     const reqs = [];
-    for (const f of this.focusHeads) {
+    for (const f of this.#focusHeads) {
       if (f.kind === "reply") continue;
       colors.set(f.id, f.color);
       reqs.push({
@@ -685,18 +697,18 @@ export class ParticleRenderer {
     const placed = placeTraceLabels(reqs, {
       measure: (text) => ({ w: ctx.measureText(text).width + font * 1.1, h: font * 1.75 }),
       offset: size * 2.6,
-      bounds: { x: 4 * dpr, y: 4 * dpr, w: this.canvas.width - 8 * dpr, h: this.canvas.height - 8 * dpr },
+      bounds: { x: 4 * dpr, y: 4 * dpr, w: this.#canvas.width - 8 * dpr, h: this.#canvas.height - 8 * dpr },
       hard: found?.hard.map(scaled) ?? [],
       // Other traced particles stay visible where they can.
       soft: [
         ...(found?.soft.map(scaled) ?? []),
-        ...this.focusHeads.map((f) => ({ x: f.x - ring, y: f.y - ring, w: ring * 2, h: ring * 2 })),
+        ...this.#focusHeads.map((f) => ({ x: f.x - ring, y: f.y - ring, w: ring * 2, h: ring * 2 })),
       ],
-      previous: this.labelSpots,
+      previous: this.#labelSpots,
     });
-    this.labelSpots.clear();
+    this.#labelSpots.clear();
     for (const l of placed) {
-      this.labelSpots.set(l.id, l.spot);
+      this.#labelSpots.set(l.id, l.spot);
       const color = colors.get(l.id) ?? "#888888";
       if (l.leader) {
         const end = nearestOnBox(l, l.ax, l.ay);
@@ -730,7 +742,7 @@ export class ParticleRenderer {
   }
 
   /** Appends the polyline from the trail's tail to the head, walking the path samples. */
-  private pushTrail(
+  #pushTrail(
     out: number[],
     s: PathSamples,
     t: number,
@@ -745,8 +757,8 @@ export class ParticleRenderer {
     const countAt = out.length;
     out.push(0);
     let n = 0;
-    pointOnSamples(s, tail, this.pt);
-    out.push(this.pt.x * k + ox, this.pt.y * k + oy);
+    pointOnSamples(s, tail, this.#pt);
+    out.push(this.#pt.x * k + ox, this.#pt.y * k + oy);
     n++;
     const a = sampleIndex(s, Math.min(t, tail));
     const b = sampleIndex(s, Math.max(t, tail));
@@ -761,14 +773,14 @@ export class ParticleRenderer {
         n++;
       }
     }
-    pointOnSamples(s, t, this.pt);
-    out.push(this.pt.x * k + ox, this.pt.y * k + oy);
+    pointOnSamples(s, t, this.#pt);
+    out.push(this.#pt.x * k + ox, this.#pt.y * k + oy);
     n++;
     out[countAt] = n;
   }
 
   /** Strokes every trail in a batch; `part` < 1 draws only the part nearest the head. */
-  private strokeTrails(trails: number[], part: number, ctx = this.ctx): void {
+  #strokeTrails(trails: number[], part: number, ctx = this.#ctx): void {
     ctx.beginPath();
     for (let i = 0; i < trails.length;) {
       const n = trails[i];
@@ -785,71 +797,71 @@ export class ParticleRenderer {
    * A message that vanished near the end of its edge has arrived: pulse at the target. Entries are
    * updated in place (no per-particle allocation per frame) and stamped with the frame they were seen.
    */
-  private trackArrivals(particles: readonly Particle[], now: number): void {
-    const frame = this.frame;
+  #trackArrivals(particles: readonly Particle[], now: number): void {
+    const frame = this.#frame;
     for (const p of particles) {
-      const s = this.seen.get(p.id);
+      const s = this.#seen.get(p.id);
       if (s) {
         s.progress = p.progress;
         s.frame = frame;
       } else
-        this.seen.set(p.id, {
+        this.#seen.set(p.id, {
           edgeId: p.edgeId,
           kind: p.kind,
-          color: (p.callAttempt ?? 1) > 1 ? this.opts.tokens.retry : p.color,
+          color: (p.callAttempt ?? 1) > 1 ? this.#opts.tokens.retry : p.color,
           progress: p.progress,
           frame,
         });
     }
-    for (const [id, s] of this.seen) {
+    for (const [id, s] of this.#seen) {
       if (s.frame === frame) continue;
-      this.seen.delete(id);
-      if (this.opts.reducedMotion || s.progress < 0.55 || s.kind === "reply") continue;
-      const last = this.lastPulseAt.get(s.edgeId) ?? -Infinity;
-      if (now - last < 110 || this.pulses.length >= MAX_PULSES) continue;
-      const samples = this.env.samples(s.edgeId);
+      this.#seen.delete(id);
+      if (this.#opts.reducedMotion || s.progress < 0.55 || s.kind === "reply") continue;
+      const last = this.#lastPulseAt.get(s.edgeId) ?? -Infinity;
+      if (now - last < 110 || this.#pulses.length >= MAX_PULSES) continue;
+      const samples = this.#env.samples(s.edgeId);
       if (!samples || !samples.length) continue;
-      this.lastPulseAt.set(s.edgeId, now);
+      this.#lastPulseAt.set(s.edgeId, now);
       // Retries end back at the broker (the edge's source).
-      pointOnSamples(samples, s.kind === "retry" ? 0 : 1, this.pt);
-      const color = s.kind === "retry" ? this.opts.tokens.retry : s.kind === "dlq" ? this.opts.tokens.dlq : s.color;
-      this.pulses.push({ x: this.pt.x, y: this.pt.y, color, start: now, type: "ring" });
+      pointOnSamples(samples, s.kind === "retry" ? 0 : 1, this.#pt);
+      const color = s.kind === "retry" ? this.#opts.tokens.retry : s.kind === "dlq" ? this.#opts.tokens.dlq : s.color;
+      this.#pulses.push({ x: this.#pt.x, y: this.#pt.y, color, start: now, type: "ring" });
     }
   }
 
   /** Failed or dead-lettered counts went up since the last frame: flash the node. */
-  private detectFailures(snap: RenderSnapshot, now: number): void {
+  #detectFailures(snap: RenderSnapshot, now: number): void {
     for (const id in snap.nodes) {
       const n = snap.nodes[id];
       const bad = n.failed + n.deadLettered + n.dropped;
-      const before = this.failed.get(id);
-      this.failed.set(id, bad);
-      if (before === undefined || bad <= before || this.opts.reducedMotion) continue;
-      const last = this.lastPulseAt.get(`node:${id}`) ?? -Infinity;
+      const before = this.#failed.get(id);
+      this.#failed.set(id, bad);
+      if (before === undefined || bad <= before || this.#opts.reducedMotion) continue;
+      const last = this.#lastPulseAt.get(`node:${id}`) ?? -Infinity;
       if (now - last < 260) continue;
-      const r = this.env.nodeRect(id);
+      const r = this.#env.nodeRect(id);
       if (!r) continue;
-      this.lastPulseAt.set(`node:${id}`, now);
-      this.pulses.push({
+      this.#lastPulseAt.set(`node:${id}`, now);
+      this.#pulses.push({
         x: r.x,
         y: r.y,
         w: r.width,
         h: r.height,
-        color: this.opts.tokens.fail,
+        color: this.#opts.tokens.fail,
         start: now,
         type: "flash",
       });
     }
   }
 
-  private drawPulses(now: number, k: number, ox: number, oy: number, size: number): void {
-    const ctx = this.ctx;
+  #drawPulses(now: number, k: number, ox: number, oy: number, size: number): void {
+    const ctx = this.#ctx;
     let keep = 0;
-    for (const p of this.pulses) {
+    for (const p of this.#pulses) {
       const age = now - p.start;
       const life = p.type === "flash" ? FLASH_MS : PULSE_MS;
       if (age >= life || age < 0) continue;
-      this.pulses[keep++] = p;
+      this.#pulses[keep++] = p;
       const e = age / life;
       const ease = 1 - (1 - e) * (1 - e);
       ctx.strokeStyle = p.color;
@@ -871,18 +883,18 @@ export class ParticleRenderer {
         ctx.stroke();
       }
     }
-    this.pulses.length = keep;
+    this.#pulses.length = keep;
     ctx.globalAlpha = 1;
   }
 
   /** Pre-rendered glow + core for a colour / kind / radius. */
-  private sprite(color: string, kind: ParticleKind, r: number, marker?: ParticleMarker): Surface {
+  #sprite(color: string, kind: ParticleKind, r: number, marker?: ParticleMarker): Surface {
     const rr = Math.round(r * 4) / 4;
     const key = marker ? `${color}|${kind}|${rr}|${marker}` : `${color}|${kind}|${rr}`;
-    let c = this.sprites.get(key);
+    let c = this.#sprites.get(key);
     if (c) return c;
-    const reduced = this.opts.reducedMotion;
-    const { core, glowOpacity, glowBlur } = this.opts.tokens;
+    const reduced = this.#opts.reducedMotion;
+    const { core, glowOpacity, glowBlur } = this.#opts.tokens;
     // --particle-glow-blur sets how far the halo reaches beyond the head.
     const reach = 1.6 + glowBlur * 0.22;
     const glow = kind === "reply" || reduced ? 1.2 : kind === "dlq" ? reach + 0.5 : reach;
@@ -890,7 +902,7 @@ export class ParticleRenderer {
     c = createSurface(side, side);
     const g = context2d(c);
     const m = side / 2;
-    const dark = this.opts.theme === "dark";
+    const dark = this.#opts.theme === "dark";
     if (glow > 1.5) {
       const grad = g.createRadialGradient(m, m, rr * 0.4, m, m, rr * glow);
       grad.addColorStop(0, withAlpha(color, glowOpacity * 0.8));
@@ -922,7 +934,7 @@ export class ParticleRenderer {
         g.globalAlpha = 1;
         g.stroke();
       }
-      this.sprites.set(key, c);
+      this.#sprites.set(key, c);
       return c;
     }
     g.beginPath();
@@ -946,7 +958,7 @@ export class ParticleRenderer {
         g.stroke();
       }
     }
-    this.sprites.set(key, c);
+    this.#sprites.set(key, c);
     return c;
   }
 }

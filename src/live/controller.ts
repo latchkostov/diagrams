@@ -169,26 +169,28 @@ function unreachable(op: never): void {
 }
 
 export class LiveController {
-  private diagram: DiagramFile;
+  #opts: ControllerOptions;
+
+  #diagram: DiagramFile;
   /** What runs: the selected simulation with the panel's inputs applied. */
-  private sim: Simulation | null = null;
+  #sim: Simulation | null = null;
   /** The selected simulation as saved (or the unsaved draft); null in free play. */
-  private base: Simulation | null = null;
-  private inputs: LiveInputs = emptyInputs();
+  #base: Simulation | null = null;
+  #inputs: LiveInputs = emptyInputs();
   /** Free play: the engine props the inputs currently override, and the dot scale. */
-  private freeApplied: Record<string, Record<string, unknown>> = {};
-  private freeScale = 1;
-  private replayFrame: (() => void) | undefined;
-  private replayTarget: number | null = null;
-  private replayTimer: ReturnType<typeof setTimeout> | undefined;
+  #freeApplied: Record<string, Record<string, unknown>> = {};
+  #freeScale = 1;
+  #replayFrame: (() => void) | undefined;
+  #replayTarget: number | null = null;
+  #replayTimer: ReturnType<typeof setTimeout> | undefined;
   private engine!: SimEngine;
   private runner: SimulationRun | null = null;
-  private snap!: SimSnapshot;
-  private continuity = {};
-  private real: RealSimSnapshot | null = null;
-  private health = new HealthWindow();
+  #snap!: SimSnapshot;
+  #continuity = {};
+  #real: RealSimSnapshot | null = null;
+  #health = new HealthWindow();
   /** Free play's fractional injection credit per node and type (runs keep their own). */
-  private injector!: ReturnType<typeof createRealCountInjector>;
+  #injector!: ReturnType<typeof createRealCountInjector>;
   /**
    * Full-run checkpoints, each with the log position it was taken at (ops after it are replayed on restore) and the
    * trail's length then.
@@ -200,52 +202,51 @@ export class LiveController {
     health: ReturnType<HealthWindow["checkpoint"]>;
     bytes: number;
   }[] = [];
-  private checkpointAt = 0;
-  private log: LogEntry[] = [];
-  private seq = 0;
+  #checkpointAt = 0;
+  #log: LogEntry[] = [];
+  #seq = 0;
   /** The last logged op the engine's state reflects: `seq` live, behind it while a replay catches up. */
-  private applied = 0;
+  #applied = 0;
   /** Logged tweaks a newer panel or diagram edit replaced, by seq: the props keys (and "status") replay skips. */
-  private superseded = new Map<number, Set<string>>();
+  #superseded = new Map<number, Set<string>>();
   /** Live tweaks that arrived while a replay was catching up: applied, in order, on the tick it reaches. */
-  private queued: { op: LiveOp; origin: OpOrigin }[] = [];
-  private run = 0;
+  #queued: { op: LiveOp; origin: OpOrigin }[] = [];
+  #run = 0;
   /** Who the ops being made now come from (`as`). */
-  private origin: OpOrigin = "user";
-  private opListeners = new Set<(entry: LogEntry, origin: OpOrigin) => void>();
-  private runState: SimulationRunState | null = null;
-  private dirty = true;
-  private playing = false;
+  #origin: OpOrigin = "user";
+  #opListeners = new Set<(entry: LogEntry, origin: OpOrigin) => void>();
+  #runState: SimulationRunState | null = null;
+  #dirty = true;
+  #playing = false;
   /** Slow motion holds live still (see `hold`): play, step, continue and seek wait. */
-  private held = false;
-  private speed = 1;
-  private traffic = false;
+  #held = false;
+  #speed = 1;
+  #traffic = false;
   /** What the current engine was built from, detached (see `verificationContext`). */
-  private runOrigin!: VerificationOrigin;
+  #runOrigin!: VerificationOrigin;
   /** Every control applied to the current engine since it was built, in order; checkpoints remember its length. */
-  private trail: TimedReplayControl[] = [];
+  #trail: TimedReplayControl[] = [];
   /** Increases with every change to the origin or the trail, and whenever a rebuild is pending. */
-  private revision = 0;
-  private context: VerificationContext | undefined;
-  private generation = 0;
+  #revision = 0;
+  #context: VerificationContext | undefined;
+  #generation = 0;
   readonly runHistory = new RunHistory();
-  private tweaks = new Map<string, NodeTweak>();
-  private listeners = new Set<() => void>();
-  private state!: LiveState;
-  private resourceError?: string;
-  private needsRestart = false;
-  private structKey: string;
-  private nodeProps = new Map<string, string>();
+  #tweaks = new Map<string, NodeTweak>();
+  #listeners = new Set<() => void>();
+  #state!: LiveState;
+  #resourceError?: string;
+  #needsRestart = false;
+  #structKey: string;
+  #nodeProps = new Map<string, string>();
 
-  constructor(
-    diagram: DiagramFile,
-    private opts: ControllerOptions = {},
-  ) {
-    this.diagram = diagram;
-    this.structKey = structuralKey(diagram);
-    this.rememberProps(diagram);
-    this.newRun();
-    if (this.build() === "refused") throw new Error("Initial free-play build refused");
+  constructor(diagram: DiagramFile, opts: ControllerOptions = {}) {
+    this.#opts = opts;
+
+    this.#diagram = diagram;
+    this.#structKey = structuralKey(diagram);
+    this.#rememberProps(diagram);
+    this.#newRun();
+    if (this.#build() === "refused") throw new Error("Initial free-play build refused");
     this.publish();
   }
 
@@ -258,18 +259,18 @@ export class LiveController {
 
   /** The run the log belongs to (bumps on restart, another simulation and a structural edit). */
   get runId(): number {
-    return this.run;
+    return this.#run;
   }
 
   /** This run's ops so far, in order. */
   controlLog(): readonly LogEntry[] {
-    return this.log;
+    return this.#log;
   }
 
   /** Only losses actually caused by the simulation's explicitly overridden deadlines are expected. */
   expectedTimeoutLosses(): Record<string, number> {
     const edges = new Set(
-      Object.entries(this.sim?.setup?.edges ?? {})
+      Object.entries(this.#sim?.setup?.edges ?? {})
         .filter(([, setup]) => !!setup.caller?.deadlineMs)
         .map(([id]) => id),
     );
@@ -283,7 +284,7 @@ export class LiveController {
    * seek, a rebuild (pending or done). Time passing and the simulation's own timeline never change it.
    */
   get verificationRevision(): number {
-    return this.revision;
+    return this.#revision;
   }
 
   /**
@@ -292,56 +293,56 @@ export class LiveController {
    * the engine is at its logged state (not `busy`, not `needsRestart`).
    */
   verificationContext(): VerificationContext {
-    return (this.context ??= Object.freeze({
-      revision: this.revision,
-      origin: this.runOrigin,
-      controls: Object.freeze([...this.trail]),
+    return (this.#context ??= Object.freeze({
+      revision: this.#revision,
+      origin: this.#runOrigin,
+      controls: Object.freeze([...this.#trail]),
     }));
   }
 
-  private invalidateVerification(): void {
-    this.revision++;
-    this.context = undefined;
+  #invalidateVerification(): void {
+    this.#revision++;
+    this.#context = undefined;
   }
 
   /**
    * Applies one change to the running engine and keeps it in the trail, at the engine's time. A change a budget
    * refuses is validated before it touches the run (src/sim/simulation.ts `transaction`), so it isn't kept.
    */
-  private mutate(op: ReplayControl): void {
+  #mutate(op: ReplayControl): void {
     const runner = this.runner;
     const time = this.engine.metrics().time;
-    this.invalidateVerification();
+    this.#invalidateVerification();
     dispatchReplayControl(op, {
       engine: this.engine,
       resume: () => runner?.resume(),
-      inject: (node, count, opts) => this.injectReal(node, count, opts),
+      inject: (node, count, opts) => this.#injectReal(node, count, opts),
       setMultipliers: runner ? (patch) => runner.setMultipliers(patch) : undefined,
     });
-    this.dirty = true;
-    this.trail.push(deepFreeze({ time, op: structuredClone(op) }));
+    this.#dirty = true;
+    this.#trail.push(deepFreeze({ time, op: structuredClone(op) }));
   }
 
   /** Each op as it's logged, with who made it (shared Live sends them; nothing else listens yet). */
   onOp(listener: (entry: LogEntry, origin: OpOrigin) => void): () => void {
-    this.opListeners.add(listener);
-    return () => this.opListeners.delete(listener);
+    this.#opListeners.add(listener);
+    return () => this.#opListeners.delete(listener);
   }
 
   /** Runs `fn` with the ops it makes attributed to `origin` (a document sync, the room's host). */
   as<T>(origin: OpOrigin, fn: () => T): T {
-    const was = this.origin;
-    this.origin = origin;
+    const was = this.#origin;
+    this.#origin = origin;
     try {
       return fn();
     } finally {
-      this.origin = was;
+      this.#origin = was;
     }
   }
 
   /** A replay or a rebuild is on its way or under way: the engine isn't at the logged ops' state yet. */
   get busy(): boolean {
-    return this.replayTarget !== null || this.replayTimer !== undefined;
+    return this.#replayTarget !== null || this.#replayTimer !== undefined;
   }
 
   /**
@@ -369,9 +370,9 @@ export class LiveController {
         case "base":
           return this.setBase(op.simulation);
         case "commit":
-          return this.commitInputs(op.simulation, op.props ? this.withProps(op.props) : undefined);
+          return this.commitInputs(op.simulation, op.props ? this.#withProps(op.props) : undefined);
         case "patch":
-          return this.patchRemote(op.patches, op.statuses, op.nodes ?? {});
+          return this.#patchRemote(op.patches, op.statuses, op.nodes ?? {});
         case "traffic":
           return this.setTraffic(op.on);
         case "inject":
@@ -398,8 +399,11 @@ export class LiveController {
   }
 
   /** The diagram with these node props (by id) in place of its own. */
-  private withProps(props: Record<string, Record<string, unknown>>): DiagramFile {
-    return { ...this.diagram, nodes: this.diagram.nodes.map((n) => (props[n.id] ? { ...n, props: props[n.id] } : n)) };
+  #withProps(props: Record<string, Record<string, unknown>>): DiagramFile {
+    return {
+      ...this.#diagram,
+      nodes: this.#diagram.nodes.map((n) => (props[n.id] ? { ...n, props: props[n.id] } : n)),
+    };
   }
 
   /**
@@ -408,7 +412,7 @@ export class LiveController {
    * passes it); on the way to a seek's target (`seeking`) it passes them, as the host's seek did.
    */
   advanceTo(tick: number, seeking = false): void {
-    if (this.needsRestart || this.held || this.replayTarget !== null) return;
+    if (this.#needsRestart || this.#held || this.#replayTarget !== null) return;
     const target = tickTime(tick);
     if (this.runner) {
       for (let guard = 0; guard < 10_000; guard++) {
@@ -416,19 +420,19 @@ export class LiveController {
         if (s.done || s.time >= target - 5) break;
         if (s.waiting) {
           if (!seeking) break;
-          if (!this.updateRunner(() => this.mutate({ kind: "resume" }))) return;
+          if (!this.#updateRunner(() => this.#mutate({ kind: "resume" }))) return;
           continue;
         }
         const before = s.time;
-        if (!this.updateRunner(() => this.runner?.step(Math.min(1000, target - s.time) / this.speed))) return;
-        this.dirty = true;
-        this.captureCheckpoint();
+        if (!this.#updateRunner(() => this.runner?.step(Math.min(1000, target - s.time) / this.#speed))) return;
+        this.#dirty = true;
+        this.#captureCheckpoint();
         if (this.runner.state().time <= before) break;
       }
     } else {
       const ms = target - this.engine.metrics().time;
-      if (ms > 0 && !this.updateRunner(() => this.engine.step(ms / this.speed))) return;
-      this.dirty = true;
+      if (ms > 0 && !this.#updateRunner(() => this.engine.step(ms / this.#speed))) return;
+      this.#dirty = true;
     }
   }
 
@@ -452,17 +456,17 @@ export class LiveController {
    * Applies an engine tweak now and logs it on this tick. While a replay is catching up it waits, in order, for the
    * tick the replay is heading for (the replay keeps its slices: nothing runs it to the end at once).
    */
-  private apply(op: LiveOp): void {
-    if (this.needsRestart) return;
+  #apply(op: LiveOp): void {
+    if (this.#needsRestart) return;
     // Behind a replay, or behind earlier ops still waiting (a refused Continue): in order, after them.
-    if (this.replayTarget !== null || this.queued.length) {
-      this.queued.push({ op: own(op), origin: this.origin });
+    if (this.#replayTarget !== null || this.#queued.length) {
+      this.#queued.push({ op: own(op), origin: this.#origin });
       this.publish();
       return;
     }
-    if (!this.updateRunner(() => this.execute(op))) return;
-    this.record(op);
-    this.dirty = true;
+    if (!this.#updateRunner(() => this.#execute(op))) return;
+    this.#record(op);
+    this.#dirty = true;
     this.publish();
   }
 
@@ -470,54 +474,54 @@ export class LiveController {
    * The replay reached its tick: the tweaks that waited for it apply and are logged there, in order. A Continue the
    * resource budget refuses stops here: it and the rest keep waiting for a retry (Continue again) or a cancel.
    */
-  private applyQueued(): void {
-    while (!this.needsRestart && this.queued.length) {
-      const { origin } = this.queued[0];
-      const op = structuredClone(this.queued[0].op) as LiveOp;
+  #applyQueued(): void {
+    while (!this.#needsRestart && this.#queued.length) {
+      const { origin } = this.#queued[0];
+      const op = structuredClone(this.#queued[0].op) as LiveOp;
       if (op.kind === "resume") {
-        if (!this.continueRun()) return;
-      } else if (!this.updateRunner(() => this.execute(op))) return;
-      this.queued.shift();
-      this.record(op, origin);
+        if (!this.#continueRun()) return;
+      } else if (!this.#updateRunner(() => this.#execute(op))) return;
+      this.#queued.shift();
+      this.#record(op, origin);
     }
   }
 
   /** Continue after a pausing note, guarded: a lifecycle budget refusal becomes the recoverable error state. */
-  private continueRun(): boolean {
-    return this.updateRunner(() => this.execute({ kind: "resume" }));
+  #continueRun(): boolean {
+    return this.#updateRunner(() => this.#execute({ kind: "resume" }));
   }
 
   /** Logs an op on this tick. The log keeps its own frozen copy, and only the latest Inputs snapshot. */
-  private record(op: LiveOp, origin = this.origin): void {
+  #record(op: LiveOp, origin = this.#origin): void {
     // During a replay, an op (play, pause, Inputs…) belongs on the tick the replay is heading for.
-    const tick = this.replayTarget !== null ? timeTick(this.replayTarget) : this.tick;
-    const entry: LogEntry = Object.freeze({ run: this.run, seq: ++this.seq, tick, op: own(op) });
-    if (op.kind === "inputs") this.log = this.log.filter((e) => e.op.kind !== "inputs");
-    this.log.push(entry);
+    const tick = this.#replayTarget !== null ? timeTick(this.#replayTarget) : this.tick;
+    const entry: LogEntry = Object.freeze({ run: this.#run, seq: ++this.#seq, tick, op: own(op) });
+    if (op.kind === "inputs") this.#log = this.#log.filter((e) => e.op.kind !== "inputs");
+    this.#log.push(entry);
     // Live, every op is reflected at once; a replay advances `applied` as it reaches each one.
-    if (this.replayTarget === null) this.applied = this.seq;
-    for (const listener of this.opListeners) listener(entry, origin);
+    if (this.#replayTarget === null) this.#applied = this.#seq;
+    for (const listener of this.#opListeners) listener(entry, origin);
   }
 
   /** A new run: its log starts empty. */
-  private newRun(): void {
-    this.invalidateVerification();
-    this.run++;
-    this.seq = 0;
-    this.applied = 0;
-    this.log = [];
-    this.superseded = new Map();
-    this.queued = [];
+  #newRun(): void {
+    this.#invalidateVerification();
+    this.#run++;
+    this.#seq = 0;
+    this.#applied = 0;
+    this.#log = [];
+    this.#superseded = new Map();
+    this.#queued = [];
   }
 
   /**
    * A panel or diagram edit replaced these props (and statuses) from now on: older logged tweaks of the same
    * node and key no longer apply when the run is replayed, so the newer choice keeps precedence.
    */
-  private supersede(changed: ReadonlyMap<string, ReadonlySet<string>>): void {
+  #supersede(changed: ReadonlyMap<string, ReadonlySet<string>>): void {
     if (!changed.size) return;
     // Tweaks still waiting on a replay: the same keys go, the rest (and the order) stay.
-    this.queued = this.queued.flatMap((q): { op: LiveOp; origin: OpOrigin }[] => {
+    this.#queued = this.#queued.flatMap((q): { op: LiveOp; origin: OpOrigin }[] => {
       const op = q.op;
       const keys = (op.kind === "props" || op.kind === "status") && changed.get(op.node);
       if (!keys) return [q];
@@ -526,7 +530,7 @@ export class LiveController {
       const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => !keys.has(k)));
       return Object.keys(patch).length ? [{ ...q, op: { ...op, patch: patch as NodeSimProps } }] : [];
     });
-    for (const e of this.log) {
+    for (const e of this.#log) {
       if (e.op.kind !== "props" && e.op.kind !== "status") continue;
       const keys = changed.get(e.op.node);
       if (!keys) continue;
@@ -537,14 +541,14 @@ export class LiveController {
             ? ["status"]
             : [];
       if (!hit.length) continue;
-      const set = this.superseded.get(e.seq) ?? new Set<string>();
+      const set = this.#superseded.get(e.seq) ?? new Set<string>();
       for (const k of hit) set.add(k);
-      this.superseded.set(e.seq, set);
+      this.#superseded.set(e.seq, set);
     }
   }
 
   /** The node props keys whose values differ between two override maps (by node). */
-  private static changedKeys(
+  static #changedKeys(
     before: Record<string, Record<string, unknown>> | undefined,
     after: Record<string, Record<string, unknown>> | undefined,
   ): Map<string, Set<string>> {
@@ -561,8 +565,8 @@ export class LiveController {
   }
 
   /** A logged op as a replay applies it: a copy, without what a newer edit superseded (null: nothing left). */
-  private replayOp(entry: LogEntry): LiveOp | null {
-    const gone = this.superseded.get(entry.seq);
+  #replayOp(entry: LogEntry): LiveOp | null {
+    const gone = this.#superseded.get(entry.seq);
     const op = structuredClone(entry.op) as LiveOp;
     if (!gone) return op;
     if (op.kind === "status") return gone.has("status") ? null : op;
@@ -572,33 +576,33 @@ export class LiveController {
   }
 
   /** What an engine op does, live or replayed on its tick. */
-  private execute(op: LiveOp): void {
+  #execute(op: LiveOp): void {
     switch (op.kind) {
       case "resume":
         // Kept even with no note waiting (it changes nothing there, live or replayed): its place in the order counts.
-        return this.mutate(op);
+        return this.#mutate(op);
       case "traffic":
-        this.traffic = op.on && !this.engine.trafficLimit();
-        return this.mutate(op);
+        this.#traffic = op.on && !this.engine.trafficLimit();
+        return this.#mutate(op);
       case "inject":
       case "sendOne":
       case "fault":
-        return this.mutate(op);
+        return this.#mutate(op);
       case "injectSources":
-        for (const id of this.sourceIds()) this.mutate({ kind: "inject", node: id, count: op.count });
+        for (const id of this.#sourceIds()) this.#mutate({ kind: "inject", node: id, count: op.count });
         return;
       case "status": {
-        this.mutate(op);
-        const t = this.tweaks.get(op.node) ?? { props: {} };
-        this.tweaks = new Map(this.tweaks);
-        this.tweaks.set(op.node, { ...t, status: op.status });
+        this.#mutate(op);
+        const t = this.#tweaks.get(op.node) ?? { props: {} };
+        this.#tweaks = new Map(this.#tweaks);
+        this.#tweaks.set(op.node, { ...t, status: op.status });
         return;
       }
       case "props": {
-        this.mutate(op);
-        const t = this.tweaks.get(op.node) ?? { props: {} };
-        this.tweaks = new Map(this.tweaks);
-        this.tweaks.set(op.node, { ...t, props: { ...t.props, ...op.patch } });
+        this.#mutate(op);
+        const t = this.#tweaks.get(op.node) ?? { props: {} };
+        this.#tweaks = new Map(this.#tweaks);
+        this.#tweaks.set(op.node, { ...t, props: { ...t.props, ...op.patch } });
         return;
       }
       default:
@@ -607,29 +611,29 @@ export class LiveController {
   }
 
   /** The logged tweaks after `seq` up to `tick`, to replay in order as the run reaches each one's tick. */
-  private pendingAfter(seq: number, tick = Infinity): LogEntry[] {
-    return this.log.filter((e) => e.seq > seq && e.tick <= tick && replayed(e));
+  #pendingAfter(seq: number, tick = Infinity): LogEntry[] {
+    return this.#log.filter((e) => e.seq > seq && e.tick <= tick && replayed(e));
   }
 
   /** The logged tweaks after `seq` up to `tick`, timed for the shared replay boundaries (src/sim/replayControls.ts). */
-  private timedPending(seq: number, tick = Infinity): { time: number; entry: LogEntry }[] {
-    return this.pendingAfter(seq, tick).map((entry) => ({ time: tickTime(entry.tick), entry }));
+  #timedPending(seq: number, tick = Infinity): { time: number; entry: LogEntry }[] {
+    return this.#pendingAfter(seq, tick).map((entry) => ({ time: tickTime(entry.tick), entry }));
   }
 
   /**
    * Applies the pending ops whose tick the run has reached, in order; returns the next cursor. `applied` follows.
    * Callers pass a pausing note only after this, as a headless replay does.
    */
-  private reapply(pending: readonly { time: number; entry: LogEntry }[], cursor: number): number {
+  #reapply(pending: readonly { time: number; entry: LogEntry }[], cursor: number): number {
     return applyDue(pending, cursor, this.engine.metrics().time, ({ entry }) => {
-      const op = this.replayOp(entry);
-      if (op) this.execute(op);
-      this.applied = entry.seq;
+      const op = this.#replayOp(entry);
+      if (op) this.#execute(op);
+      this.#applied = entry.seq;
     });
   }
 
   /** Sim ms until the next pending op's tick (Infinity when none): a step never runs past it. */
-  private untilNext(pending: readonly { time: number }[], cursor: number): number {
+  #untilNext(pending: readonly { time: number }[], cursor: number): number {
     return untilDue(pending, cursor, this.engine.metrics().time);
   }
 
@@ -637,20 +641,20 @@ export class LiveController {
 
   /** Latest engine snapshot; recomputed at most once per advance / action. */
   snapshot(): SimSnapshot {
-    if (this.dirty) {
-      this.snap = this.engine.snapshot();
-      snapshotContinuity.set(this.snap, this.continuity);
-      this.runState = this.runner?.state() ?? null;
-      this.real = null;
-      this.dirty = false;
+    if (this.#dirty) {
+      this.#snap = this.engine.snapshot();
+      snapshotContinuity.set(this.#snap, this.#continuity);
+      this.#runState = this.runner?.state() ?? null;
+      this.#real = null;
+      this.#dirty = false;
     }
-    return this.snap;
+    return this.#snap;
   }
 
   /** The latest snapshot in real units (converted once per change). */
   realSnapshot(): RealSimSnapshot {
     const snap = this.snapshot();
-    return (this.real ??= realSnapshot(snap));
+    return (this.#real ??= realSnapshot(snap));
   }
 
   /** Real messages represented by one sampled dot. */
@@ -658,64 +662,64 @@ export class LiveController {
     return resolveScale(this.snapshot().scale);
   }
 
-  getState = (): LiveState => this.state;
+  getState = (): LiveState => this.#state;
 
   subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   };
 
   /** Rebuilds the published state and tells subscribers. Called by actions and the UI clock. */
   publish(): void {
     const snapshot = this.realSnapshot();
-    this.runHistory.sample(snapshot, this.generation);
-    this.health.observe(snapshot, this.generation);
+    this.runHistory.sample(snapshot, this.#generation);
+    this.#health.observe(snapshot, this.#generation);
     const configuration = this.engine.configuration();
     // Inputs, diagram edits, timeline actions and seeking can supersede a live tweak.
     // Keep only keys still present in the engine, preserving unrelated tweaks and old snapshots.
-    for (const [id, tweak] of this.tweaks) {
+    for (const [id, tweak] of this.#tweaks) {
       const props = Object.fromEntries(
         Object.entries(tweak.props).filter(([key, value]) => valueKey(value) === valueKey(configuration[id]?.[key])),
       );
       const status = tweak.status === snapshot.nodes[id]?.status ? tweak.status : undefined;
       if (Object.keys(props).length === Object.keys(tweak.props).length && status === tweak.status) continue;
-      this.tweaks = new Map(this.tweaks);
-      if (Object.keys(props).length || status) this.tweaks.set(id, { props, ...(status ? { status } : {}) });
-      else this.tweaks.delete(id);
+      this.#tweaks = new Map(this.#tweaks);
+      if (Object.keys(props).length || status) this.#tweaks.set(id, { props, ...(status ? { status } : {}) });
+      else this.#tweaks.delete(id);
     }
-    this.state = {
-      needsRestart: this.needsRestart,
+    this.#state = {
+      needsRestart: this.#needsRestart,
       resourceError:
-        this.resourceError ?? (this.engine.trafficLimit() === "resources" ? t("autoscaling.cpuBudget") : undefined),
+        this.#resourceError ?? (this.engine.trafficLimit() === "resources" ? t("autoscaling.cpuBudget") : undefined),
       scale: resolveScale(snapshot.scale),
-      playing: this.playing,
-      speed: this.speed,
+      playing: this.#playing,
+      speed: this.#speed,
       // A traffic change waiting on a replay shows as chosen (a second press reverses it).
-      traffic: (this.queuedTraffic() ?? this.traffic) && !this.engine.trafficLimit(),
-      simulation: this.base,
-      running: this.sim,
-      inputs: this.inputs,
+      traffic: (this.#queuedTraffic() ?? this.#traffic) && !this.engine.trafficLimit(),
+      simulation: this.#base,
+      running: this.#sim,
+      inputs: this.#inputs,
       snapshot,
-      run: this.runState,
-      tweaks: this.tweaks,
+      run: this.#runState,
+      tweaks: this.#tweaks,
       configuration,
-      generation: this.generation,
-      diagramBasis: this.structKey,
-      trace: this.readTrace(),
+      generation: this.#generation,
+      diagramBasis: this.#structKey,
+      trace: this.#readTrace(),
     };
-    for (const l of this.listeners) l();
+    for (const l of this.#listeners) l();
   }
 
-  private queuedTraffic(): boolean | undefined {
-    for (let i = this.queued.length - 1; i >= 0; i--) {
-      const op = this.queued[i].op;
+  #queuedTraffic(): boolean | undefined {
+    for (let i = this.#queued.length - 1; i >= 0; i--) {
+      const op = this.#queued[i].op;
       if (op.kind === "traffic") return op.on;
     }
     return undefined;
   }
 
   get isPlaying(): boolean {
-    return this.playing;
+    return this.#playing;
   }
 
   /**
@@ -730,22 +734,22 @@ export class LiveController {
     playing: boolean;
   } {
     return {
-      simulation: this.base,
-      traffic: this.traffic,
-      inputs: this.inputs,
-      speed: this.speed,
-      playing: this.playing,
+      simulation: this.#base,
+      traffic: this.#traffic,
+      inputs: this.#inputs,
+      speed: this.#speed,
+      playing: this.#playing,
     };
   }
 
   /** The saved simulation's run as it is now (waiting at a note, finished), published or not; null in free play. */
   get runNow(): SimulationRunState | null {
     this.snapshot();
-    return this.runState;
+    return this.#runState;
   }
 
   get currentDiagram(): DiagramFile {
-    return this.diagram;
+    return this.#diagram;
   }
 
   // ---------------------------------------------------------------- message trace
@@ -800,7 +804,7 @@ export class LiveController {
 
   /** One sampled message at a node, whatever the dot scale ("Send one now" while a trace waits there). */
   sendOne(nodeId: string, type?: string): void {
-    this.apply({ kind: "sendOne", node: nodeId, ...(type ? { type } : {}) });
+    this.#apply({ kind: "sendOne", node: nodeId, ...(type ? { type } : {}) });
   }
 
   endTrace(): void {
@@ -815,11 +819,11 @@ export class LiveController {
    * Rebuilds (restart, a structural edit) still happen; slow motion drops itself then.
    */
   hold(on: boolean): void {
-    this.held = on;
+    this.#held = on;
   }
 
   get isHeld(): boolean {
-    return this.held;
+    return this.#held;
   }
 
   /**
@@ -849,21 +853,21 @@ export class LiveController {
           try {
             // Several pausing notes can share a moment: pass them all before stepping.
             for (let guard = 0; runner.state().waiting && guard < 1000; guard++) runner.resume();
-            runner.step(simMs / this.speed);
+            runner.step(simMs / this.#speed);
           } catch (error) {
             if (!(error instanceof LifecycleBudgetError) && !(error instanceof WorkBudgetError)) throw error;
             budgetError = error;
             // Stop the forecast; its caller restores the sandbox before publishing anything.
             return false;
           }
-        } else engine.step(simMs / this.speed);
+        } else engine.step(simMs / this.#speed);
         return time() > before;
       },
       // Free play with no traffic and nothing in the system: no message can ever arrive.
       idle: () => {
         if (runner) return runner.state().done;
         const m = engine.metrics();
-        return !this.traffic && m.inSystem === 0 && m.pendingInjections === 0;
+        return !this.#traffic && m.inSystem === 0 && m.pendingInjections === 0;
       },
       lag: (nodeId) => {
         // Read the engine directly: the published (frozen) snapshot must not move.
@@ -874,17 +878,17 @@ export class LiveController {
       restore: () => {
         owner.restore(cp);
         runner?.setTraceActions(true);
-        this.applySpeed();
-        this.engine.setTraffic(this.traffic);
-        this.dirty = true;
-        if (budgetError !== undefined && this.recoverBudget(budgetError)) {
+        this.#applySpeed();
+        this.engine.setTraffic(this.#traffic);
+        this.#dirty = true;
+        if (budgetError !== undefined && this.#recoverBudget(budgetError)) {
           this.publish();
         }
       },
     };
   }
 
-  private readTrace(): LiveTrace | null {
+  #readTrace(): LiveTrace | null {
     const tracer = this.engine.tracer;
     const rootId = tracer.followed();
     const pending = tracer.pending();
@@ -893,7 +897,7 @@ export class LiveController {
   }
 
   /** Scrubbing restores older engine state: keep following the same message (ids are deterministic). */
-  private keepTrace(intent: TraceIntent): void {
+  #keepTrace(intent: TraceIntent): void {
     if (intent.kind === "root") this.engine.tracer.followRoot(intent.rootId);
     else if (intent.kind === "pending") this.engine.tracer.request(intent.request);
     else this.engine.tracer.clear();
@@ -903,72 +907,72 @@ export class LiveController {
 
   /** Advance by wall-clock ms (speed applies). No-op while paused, waiting on a note, or done. */
   advance(wallMs: number): void {
-    if (this.needsRestart || !this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
+    if (this.#needsRestart || !this.#playing || this.#held || this.#replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
-      if (!this.updateRunner(() => this.runner?.step(wallMs))) return;
-      this.dirty = true;
-      this.captureCheckpoint();
+      if (!this.#updateRunner(() => this.runner?.step(wallMs))) return;
+      this.#dirty = true;
+      this.#captureCheckpoint();
       this.snapshot();
-      if (this.runState?.done) {
-        this.playing = false;
+      if (this.#runState?.done) {
+        this.#playing = false;
         this.publish();
       }
     } else {
-      if (!this.updateRunner(() => this.engine.step(wallMs))) return;
-      this.dirty = true;
+      if (!this.#updateRunner(() => this.engine.step(wallMs))) return;
+      this.#dirty = true;
     }
   }
   /** A refused timeline edit leaves the previous fleet intact and the session renderable. */
-  private updateRunner(update: () => void): boolean {
+  #updateRunner(update: () => void): boolean {
     try {
       update();
       return true;
     } catch (error) {
-      if (!this.recoverBudget(error)) throw error;
+      if (!this.#recoverBudget(error)) throw error;
       this.publish();
       return false;
     }
   }
 
-  private recoverBudget(error: unknown): boolean {
+  #recoverBudget(error: unknown): boolean {
     if (!(error instanceof LifecycleBudgetError) && !(error instanceof WorkBudgetError)) return false;
-    this.invalidateVerification();
-    this.resourceError = error instanceof WorkBudgetError ? t("liveSession.workBudget") : error.message;
+    this.#invalidateVerification();
+    this.#resourceError = error instanceof WorkBudgetError ? t("liveSession.workBudget") : error.message;
     // A replay slice exits on refusal: abandon its target and queued ops until a rebuild.
     // Queued Continue runs after the target clears, so lifecycle refusals there stay retryable.
-    if (error instanceof WorkBudgetError || this.replayTarget !== null) {
-      this.needsRestart = true;
-      this.cancelReplay();
+    if (error instanceof WorkBudgetError || this.#replayTarget !== null) {
+      this.#needsRestart = true;
+      this.#cancelReplay();
     }
-    this.playing = false;
-    this.dirty = true;
+    this.#playing = false;
+    this.#dirty = true;
     return true;
   }
 
   setPlaying(on: boolean): void {
-    if (this.held || this.needsRestart) return;
+    if (this.#held || this.#needsRestart) return;
     // A finished run plays again from the start.
-    if (on && this.runState?.done) {
-      this.cancelReplay();
-      this.newRun();
-      if (this.build() === "refused") {
+    if (on && this.#runState?.done) {
+      this.#cancelReplay();
+      this.#newRun();
+      if (this.#build() === "refused") {
         this.publish();
         return;
       }
     }
-    this.playing = on;
-    this.record({ kind: "play", on });
+    this.#playing = on;
+    this.#record({ kind: "play", on });
     this.publish();
   }
 
   togglePlaying(): void {
-    this.setPlaying(!this.playing);
+    this.setPlaying(!this.#playing);
   }
 
   setSpeed(speed: number): void {
-    this.speed = Math.max(0.25, Math.min(8, speed));
-    if (!this.needsRestart) this.applySpeed();
-    this.record({ kind: "speed", speed: this.speed });
+    this.#speed = Math.max(0.25, Math.min(8, speed));
+    if (!this.#needsRestart) this.#applySpeed();
+    this.#record({ kind: "speed", speed: this.#speed });
     this.publish();
   }
 
@@ -984,48 +988,48 @@ export class LiveController {
   }
 
   setTraffic(on: boolean): void {
-    this.apply({ kind: "traffic", on });
+    this.#apply({ kind: "traffic", on });
   }
 
   /** Advance a fixed slice of sim time, playing or not. */
   step(simMs = STEP_MS): void {
-    if (this.needsRestart || this.held || this.replayTarget !== null) return;
-    const wall = simMs / this.speed;
-    this.record({ kind: "step", simMs });
+    if (this.#needsRestart || this.#held || this.#replayTarget !== null) return;
+    const wall = simMs / this.#speed;
+    this.#record({ kind: "step", simMs });
     if (this.runner) {
-      if (this.runState?.waiting || this.runState?.done) return;
-      if (!this.updateRunner(() => this.runner?.step(wall))) return;
-      this.dirty = true;
-      this.captureCheckpoint();
+      if (this.#runState?.waiting || this.#runState?.done) return;
+      if (!this.#updateRunner(() => this.runner?.step(wall))) return;
+      this.#dirty = true;
+      this.#captureCheckpoint();
     } else {
-      if (!this.updateRunner(() => this.engine.step(wall))) return;
-      this.dirty = true;
+      if (!this.#updateRunner(() => this.engine.step(wall))) return;
+      this.#dirty = true;
     }
     this.publish();
   }
 
   /** Continue after a pausing note. */
   resume(): void {
-    if (this.held || this.needsRestart) return;
-    if (this.replayTarget !== null) return this.apply({ kind: "resume" });
+    if (this.#held || this.#needsRestart) return;
+    if (this.#replayTarget !== null) return this.#apply({ kind: "resume" });
     // A refused Continue left ops waiting: this is its retry, then theirs, in order.
-    if (this.queued.length) {
-      this.applyQueued();
-      this.dirty = true;
+    if (this.#queued.length) {
+      this.#applyQueued();
+      this.#dirty = true;
       return this.publish();
     }
-    if (!this.continueRun()) return;
-    this.record({ kind: "resume" });
-    this.dirty = true;
+    if (!this.#continueRun()) return;
+    this.#record({ kind: "resume" });
+    this.#dirty = true;
     this.publish();
   }
 
   /** Start over: same diagram, same simulation and seed; live tweaks are dropped (a new run, a new log). */
   restart(): boolean {
-    this.cancelReplay();
-    this.newRun();
-    const result = this.build();
-    this.record({ kind: "restart" });
+    this.#cancelReplay();
+    this.#newRun();
+    const result = this.#build();
+    this.#record({ kind: "restart" });
     this.publish();
     return result === "ok";
   }
@@ -1036,13 +1040,13 @@ export class LiveController {
    * apply again on their ticks; moving back cuts the log at the target.
    */
   seek(targetMs: number): void {
-    if (this.needsRestart || !this.runner || this.held) return;
+    if (this.#needsRestart || !this.runner || this.#held) return;
     if (!Number.isFinite(targetMs)) return;
     this.runHistory.reset();
     const target = Math.max(0, targetMs);
-    this.continuity = {};
-    this.cancelReplay();
-    let after = this.applied;
+    this.#continuity = {};
+    this.#cancelReplay();
+    let after = this.#applied;
     if (target < this.snapshot().time - 1) {
       const rootId = this.engine.tracer.followed(),
         pending = this.engine.tracer.pending();
@@ -1055,80 +1059,80 @@ export class LiveController {
       const found = [...this.checkpoints].reverse().find((p) => p.cp.time <= target);
       if (found) {
         this.runner.restore(found.cp);
-        this.health.restore(found.health, this.generation);
+        this.#health.restore(found.health, this.#generation);
         this.checkpoints = this.checkpoints.filter((p) => p.cp.time <= found.cp.time);
-        this.checkpointAt = found.cp.time;
-        this.trail = this.trail.slice(0, found.trail);
-        this.applySpeed();
+        this.#checkpointAt = found.cp.time;
+        this.#trail = this.#trail.slice(0, found.trail);
+        this.#applySpeed();
         // Today's traffic switch from the checkpoint on: part of the run from here, so part of its trail.
-        this.mutate({ kind: "traffic", on: this.traffic });
-        after = this.applied = found.seq;
+        this.#mutate({ kind: "traffic", on: this.#traffic });
+        after = this.#applied = found.seq;
       } else {
-        if (this.build() === "refused") {
+        if (this.#build() === "refused") {
           this.publish();
           return;
         }
         after = 0;
       }
-      this.keepTrace(intent);
+      this.#keepTrace(intent);
     }
-    const pending = this.timedPending(after);
-    this.dirty = true;
-    this.observeHealth();
+    const pending = this.#timedPending(after);
+    this.#dirty = true;
+    this.#observeHealth();
     let cursor = 0;
     let guard = 0;
     while (guard++ < 10_000) {
-      if (!this.updateRunner(() => (cursor = this.reapply(pending, cursor)))) return;
+      if (!this.#updateRunner(() => (cursor = this.#reapply(pending, cursor)))) return;
       const s = this.runner.state();
       if (s.done || s.time >= target - 5) break;
       if (s.waiting) {
-        if (!this.updateRunner(() => this.mutate({ kind: "resume" }))) return;
+        if (!this.#updateRunner(() => this.#mutate({ kind: "resume" }))) return;
         continue;
       }
       const before = s.time;
-      const ms = Math.min(1000, target - s.time, this.untilNext(pending, cursor));
-      if (!this.updateRunner(() => this.runner?.step(ms / this.speed))) return;
-      this.dirty = true;
-      this.observeHealth();
-      this.captureCheckpoint();
+      const ms = Math.min(1000, target - s.time, this.#untilNext(pending, cursor));
+      if (!this.#updateRunner(() => this.runner?.step(ms / this.#speed))) return;
+      this.#dirty = true;
+      this.#observeHealth();
+      this.#captureCheckpoint();
       if (this.runner.state().time <= before && !this.runner.state().waiting) break;
     }
     // What came after the target is a branch no longer taken.
     const reached = this.tick;
-    if (this.log.some((e) => e.tick > reached)) this.log = this.log.filter((e) => e.tick <= reached);
-    this.invalidateVerification();
-    this.record({ kind: "seek", targetMs: target });
+    if (this.#log.some((e) => e.tick > reached)) this.#log = this.#log.filter((e) => e.tick <= reached);
+    this.#invalidateVerification();
+    this.#record({ kind: "seek", targetMs: target });
     this.publish();
   }
 
   /** Switch between free play (null) and a saved simulation. Rebuilds, keeps play / pause, clears inputs. */
   selectSimulation(sim: Simulation | null): SimulationSelection {
-    const problem = sim && (simulationProblem(sim) ?? faultTimelineProblem(this.diagram, sim));
+    const problem = sim && (simulationProblem(sim) ?? faultTimelineProblem(this.#diagram, sim));
     if (problem) {
-      this.resourceError = problem;
+      this.#resourceError = problem;
       this.publish();
       return "rejected";
     }
-    if (sim && revisionAtLeast(this.diagram.planning?.revision, "p3-a1")) {
+    if (sim && revisionAtLeast(this.#diagram.planning?.revision, "p3-a1")) {
       const candidate = {
-        ...this.diagram,
-        simulations: [...(this.diagram.simulations ?? []).filter((s) => s.id !== sim.id), sim],
+        ...this.#diagram,
+        simulations: [...(this.#diagram.simulations ?? []).filter((s) => s.id !== sim.id), sim],
       };
       const validated = validateDiagram(candidate);
       const error = simulationProblem(sim) ?? (!validated.ok ? validated.error : undefined);
       if (error) {
-        this.resourceError = error;
+        this.#resourceError = error;
         this.publish();
         return "rejected";
       }
     }
-    this.cancelReplay();
-    this.base = sim;
-    this.inputs = emptyInputs();
-    this.sim = sim;
-    this.newRun();
-    const result = this.build();
-    this.record({ kind: "select", simulation: sim });
+    this.#cancelReplay();
+    this.#base = sim;
+    this.#inputs = emptyInputs();
+    this.#sim = sim;
+    this.#newRun();
+    const result = this.#build();
+    this.#record({ kind: "select", simulation: sim });
     this.publish();
     return result === "ok" ? "selected" : "selected-refused";
   }
@@ -1140,12 +1144,12 @@ export class LiveController {
    * stay on top. Prop and multiplier changes patch the running run; anything else replays it.
    */
   setBase(sim: Simulation): void {
-    this.supersede(
-      LiveController.changedKeys(this.sim?.setup?.props, effectiveSimulation(sim, this.inputs).setup?.props),
+    this.#supersede(
+      LiveController.#changedKeys(this.#sim?.setup?.props, effectiveSimulation(sim, this.#inputs).setup?.props),
     );
-    this.base = sim;
-    this.record({ kind: "base", simulation: sim });
-    this.applyInputs();
+    this.#base = sim;
+    this.#record({ kind: "base", simulation: sim });
+    this.#applyInputs();
   }
 
   /**
@@ -1154,22 +1158,22 @@ export class LiveController {
    * after the last change (or immediately with `replayDelayMs: 0`).
    */
   setInputs(inputs: LiveInputs): void {
-    const simulation = this.base ? effectiveSimulation(this.base, inputs) : undefined;
-    const props = simulation?.setup?.props ?? freePlayProps(this.diagram, inputs);
-    const previous = this.sim?.setup?.props ?? this.freeApplied;
+    const simulation = this.#base ? effectiveSimulation(this.#base, inputs) : undefined;
+    const props = simulation?.setup?.props ?? freePlayProps(this.#diagram, inputs);
+    const previous = this.#sim?.setup?.props ?? this.#freeApplied;
     if (
-      revisionAtLeast(this.diagram.planning?.revision, "p3-a1") &&
+      revisionAtLeast(this.#diagram.planning?.revision, "p3-a1") &&
       resourceBudgetExceeded(
         {
-          ...this.diagram,
-          nodes: this.diagram.nodes.map((n) => ({
+          ...this.#diagram,
+          nodes: this.#diagram.nodes.map((n) => ({
             ...n,
             props: {
               ...this.engine.effectiveProps(n.id),
               ...Object.fromEntries(
                 Object.keys(previous[n.id] ?? {})
                   .filter((key) => !(key in (props[n.id] ?? {})))
-                  .map((key) => [key, this.diagramProp(n.id, key)]),
+                  .map((key) => [key, this.#diagramProp(n.id, key)]),
               ),
               ...props[n.id],
             },
@@ -1180,15 +1184,15 @@ export class LiveController {
       )
     )
       throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
-    this.supersede(LiveController.changedKeys(previous, props));
-    this.inputs = inputs;
-    this.record({ kind: "inputs", inputs });
-    this.applyInputs();
+    this.#supersede(LiveController.#changedKeys(previous, props));
+    this.#inputs = inputs;
+    this.#record({ kind: "inputs", inputs });
+    this.#applyInputs();
   }
 
   /** Saved: `saved` becomes the base and the inputs are folded into it (no restart when equal). */
   commitInputs(saved: Simulation | null, diagram?: DiagramFile): void {
-    if (!saved && diagram && !this.needsRestart) {
+    if (!saved && diagram && !this.#needsRestart) {
       // Fold saved base props and normalize the multiplier in ONE allocation pass.
       const patches = Object.fromEntries(
         diagram.nodes.map((n) => [
@@ -1200,71 +1204,71 @@ export class LiveController {
             : (n.props ?? {}),
         ]),
       );
-      this.mutate({ kind: "configuration", patches, capacity: 1 });
+      this.#mutate({ kind: "configuration", patches, capacity: 1 });
     }
     // What a follower needs to do the same: the saved simulation, and the props of the nodes the save changed
     // (each node's whole props, so a removed key goes too). Nothing when it changed none.
     const changed = diagram
-      ? diagram.nodes.filter((n) => this.nodeProps.get(n.id) !== propsKey(n.props)).map((n) => [n.id, n.props ?? {}])
+      ? diagram.nodes.filter((n) => this.#nodeProps.get(n.id) !== propsKey(n.props)).map((n) => [n.id, n.props ?? {}])
       : [];
     if (diagram) {
-      this.diagram = diagram;
-      this.rememberProps(diagram);
+      this.#diagram = diagram;
+      this.#rememberProps(diagram);
     }
-    this.inputs = emptyInputs();
-    if (saved) this.base = saved;
-    if (!saved && diagram) this.freeApplied = {};
-    this.record({
+    this.#inputs = emptyInputs();
+    if (saved) this.#base = saved;
+    if (!saved && diagram) this.#freeApplied = {};
+    this.#record({
       kind: "commit",
       simulation: saved,
       ...(changed.length ? { props: Object.fromEntries(changed) } : {}),
     });
-    this.applyInputs();
+    this.#applyInputs();
   }
 
   /** Runs a pending replay now (before saving, and in tests). */
   flush(): void {
-    if (this.replayTimer === undefined) return;
-    this.cancelReplay(true);
-    this.replay();
+    if (this.#replayTimer === undefined) return;
+    this.#cancelReplay(true);
+    this.#replay();
   }
 
   /** Stop timers (the live view unmounted). */
   dispose(): void {
-    this.cancelReplay();
+    this.#cancelReplay();
   }
 
-  private applyInputs(): void {
-    if (this.base) {
-      const next = effectiveSimulation(this.base, this.inputs);
-      const prev = this.sim;
-      this.sim = next;
+  #applyInputs(): void {
+    if (this.#base) {
+      const next = effectiveSimulation(this.#base, this.#inputs);
+      const prev = this.#sim;
+      this.#sim = next;
       if (
         !prev ||
-        this.needsRestart ||
+        this.#needsRestart ||
         !this.runner ||
-        this.replayTarget !== null ||
-        this.replayTimer !== undefined ||
+        this.#replayTarget !== null ||
+        this.#replayTimer !== undefined ||
         !sameScript(prev, next)
       )
-        this.scheduleReplay();
-      else this.patchRun(prev, next);
-    } else if (this.needsRestart || freePlayScale(this.diagram, this.inputs) !== this.freeScale) {
-      this.scheduleReplay();
+        this.#scheduleReplay();
+      else this.#patchRun(prev, next);
+    } else if (this.#needsRestart || freePlayScale(this.#diagram, this.#inputs) !== this.#freeScale) {
+      this.#scheduleReplay();
     } else {
-      this.patchFree();
+      this.#patchFree();
     }
-    this.dirty = true;
+    this.#dirty = true;
     this.publish();
   }
 
   /** Diagram value for a prop no override covers any more. */
-  private diagramProp(id: string, key: string): unknown {
-    return this.diagram.nodes.find((n) => n.id === id)?.props?.[key];
+  #diagramProp(id: string, key: string): unknown {
+    return this.#diagram.nodes.find((n) => n.id === id)?.props?.[key];
   }
 
   /** The props patch from one override map to another (a key no override covers any more: the diagram's value). */
-  private patchProps(
+  #patchProps(
     before: Record<string, Record<string, unknown>>,
     after: Record<string, Record<string, unknown>>,
   ): Record<string, NodeSimProps> {
@@ -1274,17 +1278,17 @@ export class LiveController {
         b = after[id] ?? {};
       const delta: Record<string, unknown> = {};
       for (const key of new Set([...Object.keys(a), ...Object.keys(b)]))
-        if (valueKey(a[key]) !== valueKey(b[key])) delta[key] = key in b ? b[key] : this.diagramProp(id, key);
+        if (valueKey(a[key]) !== valueKey(b[key])) delta[key] = key in b ? b[key] : this.#diagramProp(id, key);
       if (Object.keys(delta).length) patches[id] = delta as NodeSimProps;
     }
     return patches;
   }
 
-  private patchRun(prev: Simulation, next: Simulation): void {
+  #patchRun(prev: Simulation, next: Simulation): void {
     this.checkpoints = [];
-    this.mutate({
+    this.#mutate({
       kind: "configuration",
-      patches: this.patchProps(prev.setup?.props ?? {}, next.setup?.props ?? {}),
+      patches: this.#patchProps(prev.setup?.props ?? {}, next.setup?.props ?? {}),
       multipliers: {
         traffic: resolveMultiplier(next.multipliers?.traffic),
         capacity: resolveMultiplier(next.multipliers?.capacity),
@@ -1292,46 +1296,46 @@ export class LiveController {
     });
   }
 
-  private patchFree(): void {
-    const props = freePlayProps(this.diagram, this.inputs);
-    this.mutate({
+  #patchFree(): void {
+    const props = freePlayProps(this.#diagram, this.#inputs);
+    this.#mutate({
       kind: "configuration",
-      patches: this.patchProps(this.freeApplied, props),
-      capacity: this.inputs.capacity ?? 1,
+      patches: this.#patchProps(this.#freeApplied, props),
+      capacity: this.#inputs.capacity ?? 1,
     });
-    this.freeApplied = props;
+    this.#freeApplied = props;
   }
 
-  private scheduleReplay(): void {
-    const delay = this.opts.replayDelayMs ?? 250;
+  #scheduleReplay(): void {
+    const delay = this.#opts.replayDelayMs ?? 250;
     // The run is about to be rebuilt with history rewritten: what was verified no longer describes it.
-    this.invalidateVerification();
-    this.cancelReplay(true);
-    if (delay <= 0) return this.replay();
-    this.replayTimer = setTimeout(() => {
-      this.replayTimer = undefined;
-      this.replay();
+    this.#invalidateVerification();
+    this.#cancelReplay(true);
+    if (delay <= 0) return this.#replay();
+    this.#replayTimer = setTimeout(() => {
+      this.#replayTimer = undefined;
+      this.#replay();
     }, delay);
   }
 
-  private cancelReplay(keepTarget = false): void {
-    clearTimeout(this.replayTimer);
-    this.replayTimer = undefined;
-    this.replayFrame?.();
-    this.replayFrame = undefined;
+  #cancelReplay(keepTarget = false): void {
+    clearTimeout(this.#replayTimer);
+    this.#replayTimer = undefined;
+    this.#replayFrame?.();
+    this.#replayFrame = undefined;
     if (keepTarget) return;
     // The replay is abandoned (a restart, another simulation, a seek, the view gone): so are the tweaks waiting on it.
-    this.replayTarget = null;
-    this.queued = [];
+    this.#replayTarget = null;
+    this.#queued = [];
   }
 
-  private yieldReplay(work: () => void): void {
+  #yieldReplay(work: () => void): void {
     if (typeof requestAnimationFrame === "function") {
       const id = requestAnimationFrame(work);
-      this.replayFrame = () => cancelAnimationFrame(id);
+      this.#replayFrame = () => cancelAnimationFrame(id);
     } else {
       const id = setTimeout(work, 1);
-      this.replayFrame = () => clearTimeout(id);
+      this.#replayFrame = () => clearTimeout(id);
     }
   }
 
@@ -1339,52 +1343,52 @@ export class LiveController {
    * Each slice handles at most 200 ticks / ~6 ms, then yields to the next browser frame. The run is rebuilt with
    * the new inputs from the start (history rewritten), and the logged tweaks apply again on their ticks.
    */
-  private replay(): void {
-    const target = this.replayTarget ?? this.snapshot().time;
-    if (this.build() === "refused") {
+  #replay(): void {
+    const target = this.#replayTarget ?? this.snapshot().time;
+    if (this.#build() === "refused") {
       this.publish();
       return;
     }
     if (!this.runner || target <= 0) {
       // Free play starts over (nothing to replay to); so does its log. A run at its start keeps tick 0's tweaks.
-      if (!this.runner) this.newRun();
-      else if (!this.updateRunner(() => this.reapply(this.timedPending(0, 0), 0))) return;
-      this.applied = this.seq;
-      this.replayTarget = null;
-      this.applyQueued();
+      if (!this.runner) this.#newRun();
+      else if (!this.#updateRunner(() => this.#reapply(this.#timedPending(0, 0), 0))) return;
+      this.#applied = this.#seq;
+      this.#replayTarget = null;
+      this.#applyQueued();
       this.publish();
       return;
     }
-    this.replayTarget = target;
+    this.#replayTarget = target;
     const runner = this.runner;
     // The rebuilt origin reflects no op yet: checkpoints taken on the way record how far the replay got.
-    const pending = this.timedPending(0, timeTick(target));
+    const pending = this.#timedPending(0, timeTick(target));
     let cursor = 0;
     const chunk = () => {
-      this.replayFrame = undefined;
+      this.#replayFrame = undefined;
       const start = performance.now();
       for (let slices = 0; slices < 20; slices++) {
-        if (!this.updateRunner(() => (cursor = this.reapply(pending, cursor)))) return;
+        if (!this.#updateRunner(() => (cursor = this.#reapply(pending, cursor)))) return;
         const s = runner.state();
         if (s.done || s.time >= target - 5) {
-          this.replayTarget = null;
-          this.applied = this.seq;
-          this.applyQueued();
+          this.#replayTarget = null;
+          this.#applied = this.#seq;
+          this.#applyQueued();
           break;
         }
         if (
-          !this.updateRunner(() => {
-            if (s.waiting) this.mutate({ kind: "resume" });
-            else runner.step(Math.min(100, target - s.time, this.untilNext(pending, cursor)) / this.speed);
+          !this.#updateRunner(() => {
+            if (s.waiting) this.#mutate({ kind: "resume" });
+            else runner.step(Math.min(100, target - s.time, this.#untilNext(pending, cursor)) / this.#speed);
           })
         )
           return;
-        this.dirty = true;
-        this.captureCheckpoint();
+        this.#dirty = true;
+        this.#captureCheckpoint();
         if (performance.now() - start >= 6) break;
       }
       this.publish();
-      if (this.replayTarget !== null) this.yieldReplay(chunk);
+      if (this.#replayTarget !== null) this.#yieldReplay(chunk);
     };
     // The first slice is bounded too; even replayDelayMs: 0 never seeks synchronously.
     chunk();
@@ -1394,39 +1398,39 @@ export class LiveController {
 
   /** Inject `count` real messages (sampled to dots at the current scale). */
   inject(nodeId: string, count: number, opts?: InjectOptions): void {
-    this.apply({ kind: "inject", node: nodeId, count, ...(opts ? { opts } : {}) });
+    this.#apply({ kind: "inject", node: nodeId, count, ...(opts ? { opts } : {}) });
   }
 
   /** Injects at every node that has no incoming edges (the diagram's entry points). */
   injectAtSources(count: number): string[] {
-    if (this.needsRestart) return [];
-    this.apply({ kind: "injectSources", count });
-    return this.sourceIds();
+    if (this.#needsRestart) return [];
+    this.#apply({ kind: "injectSources", count });
+    return this.#sourceIds();
   }
 
   /** The diagram's entry points: nodes with outgoing flow and no incoming edges. */
-  private sourceIds(): string[] {
-    const edges = flowEdges(this.diagram.edges);
+  #sourceIds(): string[] {
+    const edges = flowEdges(this.#diagram.edges);
     const targets = new Set(edges.map((e) => e.to));
-    return this.diagram.nodes.filter((n) => !targets.has(n.id) && edges.some((e) => e.from === n.id)).map((n) => n.id);
+    return this.#diagram.nodes.filter((n) => !targets.has(n.id) && edges.some((e) => e.from === n.id)).map((n) => n.id);
   }
 
   setFault(fault: Fault): void {
-    this.apply({ kind: "fault", fault });
+    this.#apply({ kind: "fault", fault });
   }
 
   setNodeStatus(nodeId: string, status: NodeStatus): void {
-    this.apply({ kind: "status", node: nodeId, status });
+    this.#apply({ kind: "status", node: nodeId, status });
   }
 
   setNodeProps(nodeId: string, patch: NodeSimProps): void {
-    this.apply({ kind: "props", node: nodeId, patch });
+    this.#apply({ kind: "props", node: nodeId, patch });
   }
 
   /** Forget a node's tweaks (after saving them to the diagram, for instance). */
   clearTweaks(nodeId: string): void {
-    this.tweaks = new Map(this.tweaks);
-    this.tweaks.delete(nodeId);
+    this.#tweaks = new Map(this.#tweaks);
+    this.#tweaks.delete(nodeId);
     this.publish();
   }
 
@@ -1452,7 +1456,7 @@ export class LiveController {
 
   updateDiagram(next: DiagramFile): DiagramUpdate {
     const key = structuralKey(next);
-    const previousNodes = new Map(this.diagram.nodes.map((n) => [n.id, n]));
+    const previousNodes = new Map(this.#diagram.nodes.map((n) => [n.id, n]));
     const resourceChanged = next.nodes.some((n) => {
       const before = previousNodes.get(n.id);
       return (
@@ -1460,14 +1464,14 @@ export class LiveController {
         valueKey(before?.props?.autoscaling) !== valueKey(n.props?.autoscaling)
       );
     });
-    if (this.needsRestart || key !== this.structKey || resourceChanged) {
-      this.cancelReplay();
-      this.diagram = next;
-      this.structKey = key;
-      this.rememberProps(next);
-      this.newRun();
-      const result = this.build();
-      this.record({ kind: "reload" });
+    if (this.#needsRestart || key !== this.#structKey || resourceChanged) {
+      this.#cancelReplay();
+      this.#diagram = next;
+      this.#structKey = key;
+      this.#rememberProps(next);
+      this.#newRun();
+      const result = this.#build();
+      this.#record({ kind: "reload" });
       this.publish();
       return result === "ok" ? "reloaded" : "refused";
     }
@@ -1476,11 +1480,11 @@ export class LiveController {
     const statuses: Record<string, NodeStatus> = {};
     for (const node of next.nodes) {
       const k = propsKey(node.props);
-      if (this.nodeProps.get(node.id) === k) continue;
-      const before = JSON.parse(this.nodeProps.get(node.id) ?? "{}") as Record<string, unknown>;
+      if (this.#nodeProps.get(node.id) === k) continue;
+      const before = JSON.parse(this.#nodeProps.get(node.id) ?? "{}") as Record<string, unknown>;
       const after = node.props ?? {};
       // Keys a simulation's setup (or the panel) overrides keep their override.
-      const covered = (this.sim ? this.sim.setup?.props?.[node.id] : this.freeApplied[node.id]) ?? {};
+      const covered = (this.#sim ? this.#sim.setup?.props?.[node.id] : this.#freeApplied[node.id]) ?? {};
       const delta = Object.fromEntries(
         [...new Set([...Object.keys(before), ...Object.keys(after)])]
           .filter((p) => valueKey(after[p]) !== valueKey(before[p]) && !(p in covered))
@@ -1495,13 +1499,13 @@ export class LiveController {
     }
     if (!patched) {
       this.engine.setNodePropsBatch(patches);
-      this.diagram = next;
+      this.#diagram = next;
       return "none";
     }
     const nodes = Object.fromEntries(
       next.nodes.filter((n) => n.id in patches || n.id in statuses).map((n) => [n.id, n.props ?? {}]),
     );
-    this.applyDiagramPatch(patches, statuses, nodes, next);
+    this.#applyDiagramPatch(patches, statuses, nodes, next);
     return "patched";
   }
 
@@ -1510,24 +1514,24 @@ export class LiveController {
    * sent): statuses and props into the engine, the diagram and its remembered props, the tweaks it supersedes, the
    * log, free play's inputs and the checkpoints. One transition for both, so host and follower can't drift apart.
    */
-  private applyDiagramPatch(
+  #applyDiagramPatch(
     patches: Record<string, NodeSimProps>,
     statuses: Record<string, NodeStatus>,
     nodes: Record<string, Record<string, unknown>>,
     next: DiagramFile,
   ): void {
-    this.mutate({ kind: "configuration", statuses, patches });
-    for (const [id, props] of Object.entries(nodes)) this.nodeProps.set(id, propsKey(props));
-    this.diagram = next;
+    this.#mutate({ kind: "configuration", statuses, patches });
+    for (const [id, props] of Object.entries(nodes)) this.#nodeProps.set(id, propsKey(props));
+    this.#diagram = next;
     const changed = new Map<string, Set<string>>();
     for (const [id, delta] of Object.entries(patches))
       if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
     for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
-    this.supersede(changed);
-    this.record({ kind: "patch", patches, statuses, nodes });
-    if (!this.sim) this.applyInputs();
+    this.#supersede(changed);
+    this.#record({ kind: "patch", patches, statuses, nodes });
+    if (!this.#sim) this.#applyInputs();
     this.checkpoints = [];
-    this.captureCheckpoint(true);
+    this.#captureCheckpoint(true);
     this.publish();
   }
 
@@ -1535,49 +1539,49 @@ export class LiveController {
    * A diagram edit the room's host's run took (its `patch` op): the same props and statuses, on this tick, whatever
    * this editor's copy of the diagram says by now (a later edit comes as its own op).
    */
-  private patchRemote(
+  #patchRemote(
     patches: Record<string, NodeSimProps>,
     statuses: Record<string, NodeStatus>,
     nodes: Record<string, Record<string, unknown>>,
   ): void {
-    if (this.needsRestart) return;
+    if (this.#needsRestart) return;
     // The diagram as the host's run had it after the edit: free play's inputs and the next edit read it.
-    const known = Object.fromEntries(Object.entries(nodes).filter(([id]) => this.nodeProps.has(id)));
-    this.applyDiagramPatch(patches, statuses, known, this.withProps(known));
+    const known = Object.fromEntries(Object.entries(nodes).filter(([id]) => this.#nodeProps.has(id)));
+    this.#applyDiagramPatch(patches, statuses, known, this.#withProps(known));
   }
 
   // ---------------------------------------------------------------- internals
 
   /** Runs may own their speed (a `setSpeed` on the runner); otherwise the engine's speed applies. */
-  private applySpeed(): void {
+  #applySpeed(): void {
     const runner = this.runner as (SimulationRun & { setSpeed?: (speed: number) => void }) | null;
-    if (runner?.setSpeed) runner.setSpeed(this.speed);
-    else this.engine.setSpeed(this.speed);
+    if (runner?.setSpeed) runner.setSpeed(this.#speed);
+    else this.engine.setSpeed(this.#speed);
   }
 
-  private injectReal(nodeId: string, count: number, opts?: InjectOptions): void {
+  #injectReal(nodeId: string, count: number, opts?: InjectOptions): void {
     if (this.runner) return this.runner.inject(nodeId, count, opts);
-    this.injector.inject(nodeId, count, this.scale, opts);
+    this.#injector.inject(nodeId, count, this.scale, opts);
   }
 
-  private rememberProps(d: DiagramFile): void {
-    this.nodeProps = new Map(d.nodes.map((n) => [n.id, propsKey(n.props)]));
+  #rememberProps(d: DiagramFile): void {
+    this.#nodeProps = new Map(d.nodes.map((n) => [n.id, propsKey(n.props)]));
   }
 
   /** Replay samples health without building rendering snapshots for models without waiting calls. */
-  private observeHealth(): void {
-    if (revisionAtLeast(this.diagram.planning?.revision, "p3-w1")) {
-      this.health.observe(this.realSnapshot(), this.generation);
+  #observeHealth(): void {
+    if (revisionAtLeast(this.#diagram.planning?.revision, "p3-w1")) {
+      this.#health.observe(this.realSnapshot(), this.#generation);
     } else {
-      const scale = this.state?.scale ?? 1;
+      const scale = this.#state?.scale ?? 1;
       const measure = (node: string, field: "failed" | "dropped" | "rejected" | "backlog") =>
         (this.engine.measure({ node, field }) ?? 0) * scale;
-      this.health.observe(
+      this.#health.observe(
         {
           time: this.engine.metrics().time,
           scale,
           nodes: Object.fromEntries(
-            this.diagram.nodes.map(({ id }) => [
+            this.#diagram.nodes.map(({ id }) => [
               id,
               {
                 failed: measure(id, "failed"),
@@ -1589,100 +1593,105 @@ export class LiveController {
           ),
           edges: {},
         },
-        this.generation,
+        this.#generation,
       );
     }
   }
 
-  private captureCheckpoint(force = false): void {
+  #captureCheckpoint(force = false): void {
     if (!this.runner) return;
     const time = this.runner.state().time;
-    if (!force && time < this.checkpointAt + 5000) return;
-    this.checkpointAt = time;
-    this.observeHealth();
+    if (!force && time < this.#checkpointAt + 5000) return;
+    this.#checkpointAt = time;
+    this.#observeHealth();
     const cp = this.runner.checkpoint();
-    const health = this.health.checkpoint();
+    const health = this.#health.checkpoint();
     this.checkpoints.push({
       cp,
-      seq: this.applied,
-      trail: this.trail.length,
+      seq: this.#applied,
+      trail: this.#trail.length,
       health,
       // Health samples contain five numeric node counters and three edge counters.
       // Count their fixed shapes without cloning the observational history just to size it.
-      bytes: cp.bytes + 160 + health.length * (128 + 80 * this.diagram.nodes.length + 64 * this.diagram.edges.length),
+      bytes: cp.bytes + 160 + health.length * (128 + 80 * this.#diagram.nodes.length + 64 * this.#diagram.edges.length),
     });
     this.checkpoints = trimCheckpoints(this.checkpoints);
   }
 
-  private build(): "ok" | "refused" {
-    this.continuity = {};
-    this.resourceError = this.sim ? faultTimelineProblem(this.diagram, this.sim) : undefined;
-    if (this.resourceError) {
-      this.sim = null;
-      this.base = null;
+  #build(): "ok" | "refused" {
+    this.#continuity = {};
+    this.#resourceError = this.#sim ? faultTimelineProblem(this.#diagram, this.#sim) : undefined;
+    if (this.#resourceError) {
+      this.#sim = null;
+      this.#base = null;
     }
-    const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles, traceHistory: TRACE_HISTORY };
+    const engineOpts = {
+      roleOf: this.#opts.roleOf,
+      maxParticles: this.#opts.maxParticles,
+      traceHistory: TRACE_HISTORY,
+    };
     let start: Simulation;
-    if (this.sim) {
+    if (this.#sim) {
       // No saved dot scale: pick one from the traffic (the 1/2/5 series, about 60 dots a second at
       // most), so dense runs stay readable as separate dots instead of merging into solid lines.
-      const sim = this.sim.scale === undefined ? { ...this.sim, scale: autoScale(this.sim, this.diagram) } : this.sim;
-      start = { ...sim, seed: sim.seed ?? this.opts.seed ?? DEFAULT_SEED };
+      const sim =
+        this.#sim.scale === undefined ? { ...this.#sim, scale: autoScale(this.#sim, this.#diagram) } : this.#sim;
+      start = { ...sim, seed: sim.seed ?? this.#opts.seed ?? DEFAULT_SEED };
       try {
-        this.runner = createSimulationRun(this.diagram, sim, {
+        this.runner = createSimulationRun(this.#diagram, sim, {
           ...engineOpts,
-          seed: this.opts.seed ?? DEFAULT_SEED,
+          seed: this.#opts.seed ?? DEFAULT_SEED,
         });
       } catch (error) {
-        if (!this.recoverBudget(error)) throw error;
-        this.needsRestart = true;
-        this.cancelReplay();
+        if (!this.#recoverBudget(error)) throw error;
+        this.#needsRestart = true;
+        this.#cancelReplay();
         return "refused";
       }
       this.engine = this.runner.engine;
     } else {
       this.runner = null;
-      this.engine = createEngine({ ...engineOpts, seed: this.opts.seed ?? DEFAULT_SEED });
-      this.engine.load(this.diagram);
+      this.engine = createEngine({ ...engineOpts, seed: this.#opts.seed ?? DEFAULT_SEED });
+      this.engine.load(this.#diagram);
       // Free play's inputs: overrides, rates × traffic, Capacity × and an automatic dot scale.
-      this.freeScale = freePlayScale(this.diagram, this.inputs);
-      this.engine.setScale(this.freeScale);
-      this.freeApplied = freePlayProps(this.diagram, this.inputs);
-      this.engine.setNodePropsBatch(this.freeApplied as Record<string, NodeSimProps>, this.inputs.capacity ?? 1);
+      this.#freeScale = freePlayScale(this.#diagram, this.#inputs);
+      this.engine.setScale(this.#freeScale);
+      this.#freeApplied = freePlayProps(this.#diagram, this.#inputs);
+      this.engine.setNodePropsBatch(this.#freeApplied as Record<string, NodeSimProps>, this.#inputs.capacity ?? 1);
       // Free play as a simulation with no script of its own: the diagram's entry rates run while traffic is on.
       start = {
         id: "free-play",
         title: "Free play",
-        seed: this.opts.seed ?? DEFAULT_SEED,
-        scale: this.freeScale,
+        seed: this.#opts.seed ?? DEFAULT_SEED,
+        scale: this.#freeScale,
         durationMs: 60000,
         traffic: [],
-        setup: { props: this.freeApplied },
-        multipliers: { capacity: this.inputs.capacity ?? 1 },
+        setup: { props: this.#freeApplied },
+        multipliers: { capacity: this.#inputs.capacity ?? 1 },
       };
     }
-    this.applySpeed();
-    this.engine.setTraffic(this.traffic);
+    this.#applySpeed();
+    this.engine.setTraffic(this.#traffic);
     // A new engine: a new origin, detached from anything that can change later, and an empty trail.
-    this.runOrigin = deepFreeze(
-      structuredClone({ diagram: this.diagram, simulation: start, initialTraffic: this.traffic }),
+    this.#runOrigin = deepFreeze(
+      structuredClone({ diagram: this.#diagram, simulation: start, initialTraffic: this.#traffic }),
     );
-    this.trail = [];
-    this.invalidateVerification();
-    this.tweaks = new Map();
-    this.injector = createRealCountInjector(
+    this.#trail = [];
+    this.#invalidateVerification();
+    this.#tweaks = new Map();
+    this.#injector = createRealCountInjector(
       this.engine,
-      (id) => this.diagram.nodes.find((n) => n.id === id),
-      this.opts.roleOf ?? stencilRole,
-      this.diagram.planning,
+      (id) => this.#diagram.nodes.find((n) => n.id === id),
+      this.#opts.roleOf ?? stencilRole,
+      this.#diagram.planning,
     );
     this.checkpoints = [];
     // A fresh engine reflects no logged op: whoever replays the log moves this on.
-    this.applied = 0;
-    this.generation++;
-    this.needsRestart = false;
-    this.dirty = true;
-    this.captureCheckpoint(true);
+    this.#applied = 0;
+    this.#generation++;
+    this.#needsRestart = false;
+    this.#dirty = true;
+    this.#captureCheckpoint(true);
     return "ok";
   }
 }

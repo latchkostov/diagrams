@@ -49,29 +49,29 @@ const callCounts = (c: EdgeSimState["calls"]) => [c?.failed ?? 0, c?.timedOut ??
 /** One bounded history per Live controller, shared by cards, badges, Properties and trouble announcements.
  * Rebuilds start a new interval; checkpoints preserve observations while seeking. Unknown history never invents an incident. */
 export class HealthWindow {
-  private samples: Sample[] = [];
-  private generation: unknown;
+  #samples: Sample[] = [];
+  #generation: unknown;
   checkpoint(): Sample[] {
-    return [...this.samples];
+    return [...this.#samples];
   }
 
   restore(samples: Sample[], generation: unknown): void {
-    this.samples = [...samples];
-    this.generation = generation;
+    this.#samples = [...samples];
+    this.#generation = generation;
   }
 
   observe(frame: Frame, generation: unknown, countScale = 1): void {
-    const last = this.samples.at(-1);
+    const last = this.#samples.at(-1);
     if (
-      generation !== this.generation ||
+      generation !== this.#generation ||
       (last && (frame.time < last.time || frame.time - last.time > HEALTH_WINDOW_MS))
     )
-      this.samples = [];
-    this.generation = generation;
-    while (this.samples.length > 1 && this.samples[1].time <= frame.time - HEALTH_WINDOW_MS) this.samples.shift();
-    const oldest = this.samples[0];
-    const middle = this.samples[Math.floor(this.samples.length / 2)];
-    const recent = this.samples.at(-2);
+      this.#samples = [];
+    this.#generation = generation;
+    while (this.#samples.length > 1 && this.#samples[1].time <= frame.time - HEALTH_WINDOW_MS) this.#samples.shift();
+    const oldest = this.#samples[0];
+    const middle = this.#samples[Math.floor(this.#samples.length / 2)];
+    const recent = this.#samples.at(-2);
     const delta = (now: number, before: number | undefined) => (before === undefined ? 0 : Math.max(0, now - before));
     for (const [id, n] of Object.entries(frame.nodes)) {
       const before = oldest?.nodes[id];
@@ -103,8 +103,8 @@ export class HealthWindow {
         breaker: !!e.breaker && e.breaker.state !== "closed",
       });
     }
-    if (!this.samples.length || frame.time - this.samples.at(-1)!.time >= HEALTH_SAMPLE_MS)
-      this.samples.push({
+    if (!this.#samples.length || frame.time - this.#samples.at(-1)!.time >= HEALTH_SAMPLE_MS)
+      this.#samples.push({
         time: frame.time,
         nodes: Object.fromEntries(Object.entries(frame.nodes).map(([id, n]) => [id, nodeCounts(n)])),
         edges: Object.fromEntries(Object.entries(frame.edges).map(([id, e]) => [id, callCounts(e.calls)])),
