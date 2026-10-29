@@ -335,7 +335,7 @@ Shards are balanced by measured time, not by test count. `scripts/e2e-shard.mjs`
 longest first, each to the least loaded shard, using the seconds per file in `tests/e2e-timings.json`.
 Inside a shard, `fullyParallel` spreads the tests over the workers. Playwright's own `--shard` splits by
 test count in file order, which put the slow specs together: two shards ran 35 to 55 s longer than the rest.
-A spec file missing from the timings counts as an average one. Setup and builds cost every shard about the
+A spec file missing from the timings counts as the mean of the known files; it never discards the other files' measured weights. Setup and builds cost every shard about the
 same (35 to 40 s), so only test time needs balancing. Refresh the timings from the latest pull request run
 when the shards' wall times drift apart, or after adding, speeding up or splitting a slow spec. Use runs
 of the current code: averaging in older runs left the first balanced split 54 s apart, because specs had
@@ -392,15 +392,14 @@ locally and in PR CI, as in the full gate and Nightly. Fix a failure instead of 
 `.github/workflows/nightly.yml` runs every night (04:23 UTC) and on demand (Actions › Nightly › Run
 workflow). It covers what pull requests skip for speed, with no retries:
 
-- **Native portability:** Windows and macOS each run unit coverage in a separate job, plus
-  `pnpm gate full --no-docker --only e2e --shard i/n` across six Windows shards and eight macOS
-  shards. Together each OS covers all five browser projects once with auto workers and no retries.
-  The interrupted runs projected to about 59 minutes of Windows E2E and 75 minutes of macOS E2E;
-  six/eight balanced shards target about ten minutes each. E2E steps have 25 minutes inside
-  35-minute jobs; unit steps have 15 minutes inside 25-minute jobs, leaving setup/upload margin.
-  Both matrices use `fail-fast: false`. Per-OS/per-shard artifacts, partial browser counts and unit
-  failures feed the same failure issue, with interrupted runs explicitly marked.
-  [Dated portability audit](design-review/2026-10-17-portable-gate.md).
+- **Native portability:** Windows and macOS each run three unit coverage shards and three serial
+  heavy-file shards. Vitest partitions each project independently; coverage and heavy work no longer
+  share a 15-minute step. Production E2E uses `pnpm gate full --no-docker --only e2e --shard i/n`
+  across eight Windows shards and twelve macOS shards, with auto workers and no retries. Together
+  each OS covers all five browser projects once. E2E steps retain 25 minutes inside 35-minute jobs;
+  unit/heavy steps retain 15 minutes inside 25-minute jobs. Matrices use `fail-fast: false` and
+  unique per-project/OS/shard reports, with interrupted counts explicitly marked.
+  [Deadline measurements](release-notes/2026-10-28-nightly-deadlines.md).
 
 - **Dev server 1/8 … 8/8:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on
   the Vite dev server, and `subpath` on the production build. Checks of the e2e build itself skip
@@ -408,7 +407,8 @@ workflow). It covers what pull requests skip for speed, with no retries:
 - **Build ×3 1/12 … 12/12:** the production-build suite, as on pull requests, with `--repeat-each=3`. A test
   that fails once in three runs is a flake.
 
-Linux browser shards have a 30-minute action deadline inside a 40-minute job, leaving time to
+Linux browser shards download the four served profiles from one same-run build job, including dev-server
+shards that need production HTML for framed-header checks. They have a 30-minute action deadline inside a 40-minute job, leaving time to
 upload results after a step failure. Random properties use four file shards, each with a 20-minute
 test deadline inside a 30-minute job. All matrices keep `fail-fast: false`. Every dispatch keeps its
 own run without a workflow concurrency group that could replace a pending run.

@@ -238,8 +238,8 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
   const native = jobs["native-e2e"];
   expect(native.strategy["fail-fast"]).toBe(false);
   for (const [os, total] of [
-    ["windows-latest", 6],
-    ["macos-latest", 8],
+    ["windows-latest", 8],
+    ["macos-latest", 12],
   ] as const) {
     const entries = native.strategy.matrix.include.filter((entry: { os: string }) => entry.os === os);
     expect(entries.map((entry: { shard: number }) => entry.shard)).toEqual(
@@ -248,7 +248,9 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
     expect(entries.every((entry: { total: number }) => entry.total === total)).toBe(true);
   }
   for (const job of [jobs["native-unit"], native]) {
-    const run = job.steps.find((step: { run?: string }) => step.run?.startsWith("pnpm gate"));
+    const run = job.steps.find(
+      (step: { run?: string }) => step.run?.includes("vitest run") || step.run?.startsWith("pnpm gate"),
+    );
     expect(run["timeout-minutes"]).toBeLessThan(job["timeout-minutes"]);
     expect(
       job.steps
@@ -256,7 +258,15 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
         .every((step: { if: string }) => step.if === "always()"),
     ).toBe(true);
   }
-  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e", "properties", "engines", "canvas-engines"]);
+  expect(jobs.report.needs).toEqual([
+    "e2e-build",
+    "e2e",
+    "native-unit",
+    "native-e2e",
+    "properties",
+    "engines",
+    "canvas-engines",
+  ]);
   expect(jobs["native-unit"].strategy.matrix.os).toEqual(["windows-latest", "macos-latest"]);
 });
 

@@ -60,24 +60,33 @@ it("uses whole-file greedy duration bins with disjoint and complete coverage", (
   expect(planShards(2, root)).toEqual(shards);
 });
 
-it.each([
-  undefined,
-  "{",
-  "{}",
-  "null",
-  '{"seconds":null}',
-  '{"seconds":{"a.spec.ts":100}}',
-  '{"seconds":{"a.spec.ts":"100"}}',
-])("uses a count split when duration data is missing, incomplete or invalid: %s", (data) => {
+it.each([undefined, "{", "{}", "null", '{"seconds":null}', '{"seconds":{"a.spec.ts":"100"}}'])(
+  "uses a count split when no valid duration data exists: %s",
+  (data) => {
+    const root = fixture();
+    for (const file of ["a.spec.ts", "b.spec.ts", "c.spec.ts", "d.spec.ts", "e.spec.ts"])
+      writeFileSync(join(root, "tests/e2e", file), "");
+    if (data !== undefined) writeFileSync(join(root, "tests/e2e-timings.json"), data);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(planShards(2, root)).toEqual([
+      { files: ["a.spec.ts", "c.spec.ts", "e.spec.ts"], seconds: 3 },
+      { files: ["b.spec.ts", "d.spec.ts"], seconds: 2 },
+    ]);
+  },
+);
+
+it("keeps measured weights when new or invalid specs need estimates", () => {
   const root = fixture();
-  for (const file of ["a.spec.ts", "b.spec.ts", "c.spec.ts", "d.spec.ts", "e.spec.ts"])
-    writeFileSync(join(root, "tests/e2e", file), "");
-  if (data !== undefined) writeFileSync(join(root, "tests/e2e-timings.json"), data);
+  const seconds = { "a.spec.ts": 100, "b.spec.ts": 10, "c.spec.ts": 10, "d.spec.ts": 0 };
+  for (const file of [...Object.keys(seconds), "e.spec.ts"]) writeFileSync(join(root, "tests/e2e", file), "");
+  writeFileSync(join(root, "tests/e2e-timings.json"), JSON.stringify({ seconds }));
   vi.spyOn(console, "error").mockImplementation(() => {});
-  expect(planShards(2, root)).toEqual([
-    { files: ["a.spec.ts", "c.spec.ts", "e.spec.ts"], seconds: 3 },
-    { files: ["b.spec.ts", "d.spec.ts"], seconds: 2 },
+  const shards = planShards(2, root);
+  expect(shards).toEqual([
+    { files: ["a.spec.ts"], seconds: 100 },
+    { files: ["b.spec.ts", "c.spec.ts", "d.spec.ts", "e.spec.ts"], seconds: 100 },
   ]);
+  expect(shards.flatMap((shard) => shard.files).sort()).toEqual([...Object.keys(seconds), "e.spec.ts"]);
 });
 
 it("refreshes timings from a download directory, averaging first passes while ignoring retries and failures", () => {

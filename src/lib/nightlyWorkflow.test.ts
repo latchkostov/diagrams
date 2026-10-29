@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
+import { E2E_PROFILES } from "../../scripts/e2e-profiles.mjs";
 import { fuzzSeeds } from "../test/fuzzSeeds";
 
 it("keeps overlapping Nightly dispatches and every matrix sibling", () => {
@@ -85,4 +86,40 @@ it("partitions all 5,000 resource seeds into small jobs within the existing runn
     expect(partitions.flat().sort((a, b) => a - b)).toEqual(whole);
     for (const partition of partitions) expect(partition.length).toBeLessThanOrEqual(Math.ceil(whole.length / 16));
   }
+});
+
+it("partitions native coverage and all heavy assertions independently, preserving reports for every shard", () => {
+  const { jobs } = parse(readFileSync(".github/workflows/nightly.yml", "utf8"));
+  const job = jobs["native-unit"];
+  expect(job.strategy.matrix).toEqual({
+    os: ["windows-latest", "macos-latest"],
+    project: ["unit", "heavy"],
+    shard: [1, 2, 3],
+  });
+  const run = job.steps.find((s: { run?: string }) => s.run?.includes("vitest run"));
+  expect(run.run).toContain('--project="$PROJECT" --shard="$SHARD/3"');
+  expect(run.run).toContain('--coverage --maxWorkers="$workers"');
+  expect(run.run).toContain("--maxWorkers=1");
+  expect(run.run).toContain("--allowOnly=false");
+  expect(run["timeout-minutes"]).toBe(15);
+  expect(job["timeout-minutes"]).toBe(25);
+  const uploads = job.steps.filter((s: { uses?: string }) => s.uses?.startsWith("actions/upload-artifact"));
+  expect(uploads).toHaveLength(2);
+  for (const upload of uploads) {
+    expect(upload.if).toBe("always()");
+    for (const axis of ["project", "os", "shard"]) expect(upload.with.name).toContain(`matrix.${axis}`);
+  }
+});
+
+it("builds Linux Nightly profiles once, serving the same artifacts in dev and three-repeat shards", () => {
+  const { jobs } = parse(readFileSync(".github/workflows/nightly.yml", "utf8"));
+  const producer = jobs["e2e-build"];
+  expect(producer.steps.some((s: { run?: string }) => s.run === "node scripts/ci/e2e-builds.mjs build")).toBe(true);
+  const upload = producer.steps.find((s: { uses?: string }) => s.uses?.startsWith("actions/upload-artifact"));
+  expect(upload.with.path.trim().split("\n")).toEqual(Object.values(E2E_PROFILES).map((p) => p.outDir));
+  expect(jobs.e2e.needs).toBe("e2e-build");
+  const consumer = jobs.e2e.steps.find((s: { uses?: string }) => s.uses === "./.github/actions/e2e");
+  expect(consumer.with["builds-artifact"]).toBe(upload.with.name);
+  expect(jobs.report.needs).toContain("e2e-build");
+  expect(jobs.report.if).toContain("needs.e2e-build.result == 'failure'");
 });
