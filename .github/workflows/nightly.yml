@@ -134,20 +134,38 @@ jobs:
           retention-days: 14
 
   native-unit:
-    name: Native unit (${{ matrix.os }})
+    name: Native ${{ matrix.project }} (${{ matrix.os }}) ${{ matrix.shard }}/3
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
+        project: [unit, heavy]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
       - uses: ./.github/actions/chromium-cache
+        if: matrix.project == 'heavy'
+      # Coverage and serial heavy work no longer consume the same 15-minute step.
+      # Each project is partitioned by Vitest: every file and assertion still runs once per OS.
       - name: Native unit tests
         timeout-minutes: 15
-        run: pnpm gate full --no-docker --only unit
+        shell: bash
+        env:
+          PROJECT: ${{ matrix.project }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p "tests/.output/g/native/$PROJECT"
+          args=(--project="$PROJECT" --shard="$SHARD/3" --allowOnly=false)
+          if [ "$PROJECT" = unit ]; then
+            workers="$(node --input-type=module -e 'import os from "node:os"; import { workerCount } from "./scripts/gate/logic.mjs"; console.log(workerCount(os.availableParallelism(), os.totalmem()))')"
+            args+=(--coverage --maxWorkers="$workers")
+          else
+            args+=(--maxWorkers=1)
+          fi
+          pnpm exec vitest run "${args[@]}" --reporter=default --reporter=./scripts/ci/vitest-json.mjs --outputFile="tests/.output/g/native/$PROJECT/results.json"
       - name: Collect native counts or interruption marker
         if: always()
         run: node scripts/e2e-failures.mjs --collect-native tests/.output/g tests/.output/native-results.json
@@ -155,14 +173,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: nightly-native-unit-${{ matrix.os }}
+          name: nightly-native-${{ matrix.project }}-${{ matrix.os }}-${{ matrix.shard }}
           path: tests/.output/g
           retention-days: 14
       - name: Upload native counts for the failure issue
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: nightly-results-native-unit-${{ matrix.os }}
+          name: nightly-results-native-${{ matrix.project }}-${{ matrix.os }}-${{ matrix.shard }}
           path: tests/.output/native-results.json
           retention-days: 14
 
@@ -174,23 +192,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The interrupted runs project to ~59 minutes on Windows (3 auto workers)
-          # and ~75 on macOS (1). Six/eight balanced shards target ~10 minutes of
-          # tests each; a 25-minute step and 35-minute job leave setup/upload margin.
-          - { os: windows-latest, shard: 1, total: 6 }
-          - { os: windows-latest, shard: 2, total: 6 }
-          - { os: windows-latest, shard: 3, total: 6 }
-          - { os: windows-latest, shard: 4, total: 6 }
-          - { os: windows-latest, shard: 5, total: 6 }
-          - { os: windows-latest, shard: 6, total: 6 }
-          - { os: macos-latest, shard: 1, total: 8 }
-          - { os: macos-latest, shard: 2, total: 8 }
-          - { os: macos-latest, shard: 3, total: 8 }
-          - { os: macos-latest, shard: 4, total: 8 }
-          - { os: macos-latest, shard: 5, total: 8 }
-          - { os: macos-latest, shard: 6, total: 8 }
-          - { os: macos-latest, shard: 7, total: 8 }
-          - { os: macos-latest, shard: 8, total: 8 }
+          # Completed test time in Oct 28's partial reports: 308m Windows (3 workers),
+          # 181m macOS (1). Missing timings had disabled balancing for the entire suite.
+          # Eight/twelve duration-balanced shards leave room for the unfinished tests.
+          - { os: windows-latest, shard: 1, total: 8 }
+          - { os: windows-latest, shard: 2, total: 8 }
+          - { os: windows-latest, shard: 3, total: 8 }
+          - { os: windows-latest, shard: 4, total: 8 }
+          - { os: windows-latest, shard: 5, total: 8 }
+          - { os: windows-latest, shard: 6, total: 8 }
+          - { os: windows-latest, shard: 7, total: 8 }
+          - { os: windows-latest, shard: 8, total: 8 }
+          - { os: macos-latest, shard: 1, total: 12 }
+          - { os: macos-latest, shard: 2, total: 12 }
+          - { os: macos-latest, shard: 3, total: 12 }
+          - { os: macos-latest, shard: 4, total: 12 }
+          - { os: macos-latest, shard: 5, total: 12 }
+          - { os: macos-latest, shard: 6, total: 12 }
+          - { os: macos-latest, shard: 7, total: 12 }
+          - { os: macos-latest, shard: 8, total: 12 }
+          - { os: macos-latest, shard: 9, total: 12 }
+          - { os: macos-latest, shard: 10, total: 12 }
+          - { os: macos-latest, shard: 11, total: 12 }
+          - { os: macos-latest, shard: 12, total: 12 }
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
@@ -235,7 +259,26 @@ jobs:
           A1_FUZZ_NIGHTLY: "1"
           RESOURCE_FUZZ_SHARD: ${{ matrix.shard }}/${{ matrix.total }}
 
+  e2e-build:
+    name: Shared Nightly E2E builds
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - run: node scripts/ci/e2e-builds.mjs build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nightly-e2e-builds
+          path: |
+            tests/.output/e2e-dist
+            tests/.output/preview-dist
+            tests/.output/internal-dist
+            tests/.output/locked-dist
+          retention-days: 1
+
   e2e:
+    needs: e2e-build
     name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}
     runs-on: ubuntu-26.04
     # Oct 27: successful old shards took up to 38.4m; seven hit the 40m job limit.
@@ -278,6 +321,7 @@ jobs:
         uses: ./.github/actions/e2e
         with:
           target: ${{ matrix.target }}
+          builds-artifact: nightly-e2e-builds
           shard: ${{ matrix.shard }}
           total: ${{ matrix.total }}
           retries: "0"
@@ -418,9 +462,9 @@ jobs:
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
     name: Report failure
-    needs: [e2e, native-unit, native-e2e, properties, engines, canvas-engines]
+    needs: [e2e-build, e2e, native-unit, native-e2e, properties, engines, canvas-engines]
     if: >-
-      always() && (needs.e2e.result == 'failure' || needs.native-unit.result == 'failure' ||
+      always() && (needs.e2e-build.result == 'failure' || needs.e2e.result == 'failure' || needs.native-unit.result == 'failure' ||
       needs.native-e2e.result == 'failure' || needs.native-unit.result == 'cancelled' ||
       needs.native-e2e.result == 'cancelled' || needs.properties.result == 'failure' ||
       needs.engines.result == 'failure' || needs.canvas-engines.result == 'failure')
@@ -478,7 +522,7 @@ jobs:
             fi
             echo
             echo "Each test ran once on the dev server and three times on the production build, with no retries."
-            echo "Native Windows/macOS run unit tests separately and every production E2E project once across 6/8 shards, with auto workers and no retries. Interrupted counts are partial."
+            echo "Native Windows/macOS run unit and heavy tests in three shards each and every production E2E project once across 8/12 duration-balanced shards, with auto workers and no retries. Interrupted counts are partial."
             echo "Random property tests explore new seeds with FC_RUN_MULTIPLIER=20; replay the failing test with its reported FC_SEED and FC_PATH."
             echo "Fix the cause; this issue stays open until someone closes it."
           } > body.md
