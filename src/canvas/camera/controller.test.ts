@@ -869,6 +869,51 @@ const follow = command("slowmo.follow", (_m, r) => {
 });
 
 describe("camera controller: interleavings", () => {
+  it("discards narration's pane sample if a frame actually passes while the panel is deferred", () => {
+    const h = harness();
+    h.camera.slowmo({ plan: () => ({ x: 30, y: 30, zoom: 0.7 }), pane: () => "hold" });
+    h.camera.dispatch({ type: "menu.opened", kind: "context" });
+    h.camera.dispatch({ type: "narration", focus: ["a"] });
+    h.tick();
+    h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+    h.tick();
+    expect(h.journal).toEqual([]);
+    h.camera.dispatch({ type: "slowmo", on: true });
+    h.tick();
+    expect(h.journal).toEqual([]);
+    h.tick();
+    expect(h.journal.map((entry) => entry.command)).toEqual(["slowmoPlan"]);
+  });
+
+  it("keeps narration's pane sample when a menu-deferred panel is folded into slow motion before the next frame", async () => {
+    const h = harness();
+    h.camera.slowmo({ plan: () => ({ x: 30, y: 30, zoom: 0.7 }), pane: () => "hold" });
+    h.camera.mode({ live: true, presenting: false });
+    await h.refine();
+    await h.finish();
+    h.tick(3);
+    const mark = h.journal.length;
+
+    // Nightly seed -1137467820, path 3725:3:5: no rendered frame separates the panel and the take.
+    h.camera.dispatch({ type: "menu.opened", kind: "context" });
+    h.camera.dispatch({ type: "narration", focus: ["a"] });
+    h.tick();
+    h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+    expect(h.camera.phase).toBe("deferred");
+    h.camera.dispatch({ type: "slowmo", on: true });
+    expect(h.ownership.owner).toBe("slowmo");
+    h.tick();
+
+    expect(h.journal.slice(mark).map((entry) => entry.command)).toEqual(["slowmoPlan"]);
+    expect(h.camera.state.pending).toBeNull();
+    expect(h.env.panePending).toBe(false);
+    await h.finish();
+    h.camera.dispatch({ type: "menu.closed" });
+    h.tick(3);
+    expect(h.journal.slice(mark).map((entry) => entry.command)).toEqual(["slowmoPlan"]);
+    expect(h.camera.phase).toBe("idle");
+  });
+
   it("folds a panel refit into slow motion's take, including when a menu deferred it", async () => {
     const h = harness();
     h.camera.slowmo({ plan: () => ({ x: 30, y: 30, zoom: 0.7 }), pane: () => "hold" });
