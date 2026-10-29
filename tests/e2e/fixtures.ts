@@ -704,7 +704,11 @@ export async function openLiveNodeDetails(page: Page, id: string, section: strin
   const card = page.getByTestId(`node-detail-${id}`);
   await expect(card).toBeVisible();
   // Enter names selected items; the header's public pin action works for either selection state.
-  if ((await card.getAttribute("data-pinned")) !== "true") await card.click({ position: { x: 16, y: 16 } });
+  if ((await card.getAttribute("data-pinned")) !== "true") {
+    await waitForStableBox(card);
+    await card.getByTestId("hover-full-name").click();
+  }
+  await expect(card).toHaveAttribute("data-pinned", "true");
   const row = page.getByTestId(`hover-section-${section}`);
   await expect(row).toBeVisible();
   if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();

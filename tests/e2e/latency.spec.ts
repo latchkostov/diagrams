@@ -254,6 +254,7 @@ for (const surface of ["embed", "presentation"]) {
     await input.press("ArrowRight");
     await waitForCameraIdle(page);
     if (surface === "presentation") await fitDiagram(page);
+    await waitForCameraIdle(page);
     const node = page.getByTestId("node-billing");
     await node.hover();
     // A fitted, zoomed-out diagram leaves the whole card tiny. Inspect at a readable zoom.
@@ -261,6 +262,7 @@ for (const surface of ["embed", "presentation"]) {
     await page.mouse.wheel(0, -1600);
     await page.keyboard.up("Control");
     await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     await node.hover();
     await openLiveNodeDetails(page, "billing", "latency");
     const detail = page.getByTestId("node-detail-billing");
