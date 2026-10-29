@@ -96,6 +96,13 @@ Definitions:
 
 ## Measured results
 
+Validation correction (2026-10-29): the original Run simulations timings below waited only for a
+fulfilled worker promise, without verifying that both simulations played. The five-minute Live heap
+readings retained the timing observer's growing history. Keep these as historical raw observations,
+not validated complete-run timings or application-only heap retention. The corrected helper verifies
+the UI's played count and skip notes and clears observer history before every heap reading; these
+two metrics need fresh measurements before further performance conclusions.
+
 All times are milliseconds unless shown otherwise. Values are medians; ranges are the observed sample
 min–max, not confidence intervals. Every row gives its sample count.
 

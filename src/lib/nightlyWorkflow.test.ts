@@ -97,6 +97,7 @@ it("partitions native coverage and all heavy assertions independently, preservin
     shard: [1, 2, 3],
   });
   const run = job.steps.find((s: { run?: string }) => s.run?.includes("vitest run"));
+  expect(run.env).toMatchObject({ PROJECT: "${{ matrix.project }}", SHARD: "${{ matrix.shard }}" });
   expect(run.run).toContain('--project="$PROJECT" --shard="$SHARD/3"');
   expect(run.run).toContain('--coverage --maxWorkers="$workers"');
   expect(run.run).toContain("--maxWorkers=1");
