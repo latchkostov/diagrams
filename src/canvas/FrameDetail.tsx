@@ -23,6 +23,7 @@ import {
   frameObstacles,
   clipFrameRoute,
   stackPins,
+  TitleBands,
   type FrameEnd,
   type FramePin,
 } from "./camera/frameEdges";
@@ -37,10 +38,83 @@ import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
 import type { ChipState } from "./lowZoom";
 import { viewportParts } from "./viewportParts";
-import { geometryPreparation } from "./geometryPreparation";
-import { placeRegionTitles } from "./regionTitles";
 
 type Chip = { id: string; name: string; x: number; y: number; width: number };
+
+function titleObstacles(s: Parameters<typeof selectRoutes>[0], zoom: number, routing: RouteOptions): Rect[] {
+  const obstacles: Rect[] = [...s.nodeLookup.values()]
+    .filter(
+      (n) =>
+        n.type !== "boundary" && !(n.type === "annotation" && "kind" in n.data && n.data.kind === "zone") && !n.hidden,
+    )
+    .map((n) => ({
+      x: n.internals.positionAbsolute.x * zoom,
+      y: n.internals.positionAbsolute.y * zoom,
+      width: (n.measured?.width ?? n.width ?? 0) * zoom,
+      height: (n.measured?.height ?? n.height ?? 0) * zoom,
+    }));
+  // Below 60% a chip can reach past its card into free space: titles keep clear of what is drawn.
+  for (const [id, chip] of (s as ChipState).ldChips?.nodes ?? []) {
+    const at = s.nodeLookup.get(id)?.internals.positionAbsolute;
+    if (at)
+      obstacles.push({
+        x: (at.x + chip.x) * zoom,
+        y: (at.y + chip.y) * zoom,
+        width: chip.width * zoom,
+        height: chip.height * zoom,
+      });
+  }
+  for (const route of selectRoutes(s, routing).values())
+    for (let i = 1; i < route.points.length; i++) {
+      const a = route.points[i - 1],
+        b = route.points[i];
+      obstacles.push({
+        x: Math.min(a.x, b.x) * zoom - 2,
+        y: Math.min(a.y, b.y) * zoom - 2,
+        width: Math.abs(a.x - b.x) * zoom + 4,
+        height: Math.abs(a.y - b.y) * zoom + 4,
+      });
+    }
+  return obstacles;
+}
+/** Both title renderers reserve in the same order, including during a held wheel zoom. */
+function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>[0], routing: RouteOptions) {
+  if (
+    !s.nodes.some(
+      (n) => n.type === "boundary" || (n.type === "annotation" && "kind" in n.data && n.data.kind === "zone"),
+    )
+  )
+    return;
+  const [tx, ty, zoom] = s.transform;
+  const origin = root.getBoundingClientRect();
+  const bands = new TitleBands(titleObstacles(s, zoom, routing));
+  const labels = [...root.querySelectorAll<HTMLElement>(".grp-label, .ann-zone-label:not(.is-empty)")].filter(
+    (el) => !el.hasAttribute("data-detail-text-hidden") && !el.closest(".is-editing"),
+  );
+  for (const el of labels) el.style.removeProperty("translate");
+  const reads = labels.map((el) => ({ el, rect: el.getBoundingClientRect() }));
+  for (const { el, rect } of reads) {
+    const n = s.nodeLookup.get(el.closest<HTMLElement>(".react-flow__node")?.dataset.id ?? "");
+    if (!n) continue;
+    const at = n.internals.positionAbsolute;
+    const title = bands.place(
+      { x: at.x * zoom, y: at.y * zoom, width: (n.measured?.width ?? 0) * zoom, height: 0 },
+      { width: rect.width, height: rect.height },
+    );
+    el.style.translate = `${(title.x - (rect.x - origin.x - tx)) / zoom}px ${(title.y - (rect.y - origin.y - ty)) / zoom}px`;
+  }
+  for (const el of root.querySelectorAll<HTMLElement>(".detail-group-chip")) {
+    const n = s.nodeLookup.get(el.dataset.regionId ?? "");
+    if (!n) continue;
+    const at = n.internals.positionAbsolute;
+    const title = bands.place(
+      { x: at.x * zoom, y: at.y * zoom, width: (n.measured?.width ?? 0) * zoom, height: 0 },
+      { width: el.offsetWidth, height: el.offsetHeight },
+    );
+    el.style.setProperty("--region-zoom", String(zoom));
+    el.style.transform = `scale(calc(1 / var(--region-zoom, 1))) translate(${title.x - at.x * zoom}px, ${title.y - at.y * zoom}px)`;
+  }
+}
 
 type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
 const empty: Drawing = { pins: [], chips: [], hint: false };
@@ -76,8 +150,6 @@ const FrameDecoration = memo(
     useEffect(() => {
       const root = host.current;
       if (!root || !camera) return;
-      const geometry = geometryPreparation(root);
-      geometry.clear();
       let frame = 0;
       let suspended = false;
       let disposed = false;
@@ -87,8 +159,6 @@ const FrameDecoration = memo(
         schedule();
       });
       let lastDrawing = "";
-      let lastGeometry = -1;
-      let forced = true;
       let dirty = true;
       const fonts = new WeakMap<Element, number>();
       const cardWidths = new WeakMap<HTMLElement, { key: FlowNode["data"]; width: number }>();
@@ -116,11 +186,6 @@ const FrameDecoration = memo(
         if (!dirty) return;
         dirty = false;
         const s = store.getState();
-        const revision = geometry.sync(s);
-        if (!forced && revision === lastGeometry) return;
-        forced = false;
-        lastGeometry = revision;
-        geometry.count("frame");
         // One root traversal; classify each element once rather than rescan the
         // canvas for every kind of decoration.
         const nodeElements: HTMLElement[] = [],
@@ -258,8 +323,7 @@ const FrameDecoration = memo(
             ? []
             : [{ id, el, n, detail, body: detail ? el.querySelector<HTMLElement>(".nb:not(.nb-chip)") : null }];
         });
-        const appearance = [root.className, !!root.closest(".is-live"), !!root.closest(".is-presenting")];
-        const widths: { id: string; body: HTMLElement; key: FlowNode["data"] }[] = [];
+        const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
         // Reset every changed card before measuring any of them. Alternating a width
         // write with offsetWidth forced one whole-canvas layout per node on imports.
         for (const { id, el, n, body } of frameNodes) {
@@ -280,15 +344,11 @@ const FrameDecoration = memo(
                   if ("label" in n.data && text.textContent !== n.data.label) text.textContent = n.data.label;
                 } else if (original) text.style.fontSize = `${original}px`;
               }
-              widths.push({ id, body, key });
+              widths.push({ body, key });
             }
           }
         }
-        for (const { id, body, key } of widths)
-          cardWidths.set(body, {
-            key,
-            width: geometry.measure(id, "card-width", [key, body.className, ...appearance], () => body.offsetWidth),
-          });
+        for (const { body, key } of widths) cardWidths.set(body, { key, width: body.offsetWidth });
         for (const { body, n } of frameNodes)
           if (body && n.type === "diagram") {
             const width = `${cardWidths.get(body)!.width}px`;
@@ -305,27 +365,9 @@ const FrameDecoration = memo(
             return !key || visible.has(key) || s.nodeLookup.get(key)?.type !== "diagram";
           })
           .map((el) => {
+            if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
             const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
             const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
-            if (!fonts.has(el)) {
-              const read = () => parseFloat(getComputedStyle(el).fontSize);
-              fonts.set(
-                el,
-                id && node?.classList.contains("react-flow__node") && el.matches(".nb-title,.nb-sub,.nb-kind")
-                  ? geometry.measure(
-                      id,
-                      `font:${el.className}`,
-                      [
-                        s.nodeLookup.get(id)?.data,
-                        el.closest(".nb")?.className,
-                        root.style.getPropertyValue("--rf-zoom-exact"),
-                        ...appearance,
-                      ],
-                      read,
-                    )
-                  : read(),
-              );
-            }
             const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
             const edge =
               edgeLabel &&
@@ -344,8 +386,7 @@ const FrameDecoration = memo(
           });
         for (const { el, whole, detail } of textChanges) {
           whole.toggleAttribute("data-detail-text-hidden", !detail.show);
-          const size = `${fonts.get(el)! * detail.scale}px`;
-          if (el.style.fontSize !== size) el.style.fontSize = size;
+          el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
         }
         placeRegionTitles(root, s, { style, direction, captions, hideDependencies });
         // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
@@ -375,46 +416,17 @@ const FrameDecoration = memo(
             el.toggleAttribute("data-detail-wrapped", wrapped);
           }
         const cardBoxes = new Map(
-          frameNodes.map(({ id, el, n, detail }) => {
-            const at = n.internals?.positionAbsolute ?? n.position;
-            if (detail && (cropped || !far)) {
-              // Keep exact measured dimensions and the wrapper's local offset.
-              // Translation-only camera moves and bulk position changes share them.
-              const local = geometry.measure(
-                id,
-                "frame-box",
-                [
-                  n.data,
-                  n.measured?.width,
-                  n.measured?.height,
-                  zoom,
-                  view,
-                  camera.state.mode,
-                  dock,
-                  phone,
-                  el.className,
-                  selected.has(id),
-                  lit.has(id),
-                  flagged.has(id),
-                  el.hasAttribute("data-detail-wrapped"),
-                ],
-                () => {
-                  const rect = box(el, origin);
-                  return { ...rect, x: rect.x - at.x * zoom - tx, y: rect.y - at.y * zoom - ty };
+          frameNodes.map(({ id, el, n, detail }) => [
+            id,
+            detail
+              ? box(el, origin)
+              : {
+                  x: n.internals.positionAbsolute.x * zoom + tx,
+                  y: n.internals.positionAbsolute.y * zoom + ty,
+                  width: n.measured!.width! * zoom,
+                  height: n.measured!.height! * zoom,
                 },
-              );
-              return [id, { ...local, x: at.x * zoom + tx + local.x, y: at.y * zoom + ty + local.y }] as const;
-            }
-            return [
-              id,
-              {
-                x: at.x * zoom + tx,
-                y: at.y * zoom + ty,
-                width: (n.measured?.width ?? 0) * zoom,
-                height: (n.measured?.height ?? 0) * zoom,
-              },
-            ] as const;
-          }),
+          ]),
         );
         for (const { id, el, n } of frameNodes) {
           const card = cardBoxes.get(id)!;
@@ -524,9 +536,7 @@ const FrameDecoration = memo(
         ];
         const pinsById = new Map(pins.map((pin) => [pin.id, pin]));
         const edgePins = new Map(
-          pins.length
-            ? s.edges.map((edge) => [edge.id, pinsById.get(edge.source) ?? pinsById.get(edge.target)] as const)
-            : [],
+          s.edges.map((edge) => [edge.id, pinsById.get(edge.source) ?? pinsById.get(edge.target)]),
         );
         const retained = new Set(pins.map((pin) => pin.id));
         for (const [id, state] of states) if (state === "pinned" && !retained.has(id)) states.set(id, "out");
@@ -534,24 +544,20 @@ const FrameDecoration = memo(
         // Space lanes in screen pixels, including after clipping to pins. This
         // presentation pass never changes authored routes or exported geometry.
         const screenRoutes = new Map<string, { x: number; y: number }[]>();
-        const routeObstacles =
-          cropped || !far
-            ? frameObstacles(
-                routeInputFromStore(
-                  [...s.nodeLookup.values()].filter((n) => states.get(n.id) === "in"),
-                  [],
-                  { style, direction, captions, hideDependencies },
-                ),
-                screen,
-              )
-            : [];
+        const routeObstacles = frameObstacles(
+          routeInputFromStore(
+            [...s.nodeLookup.values()].filter((n) => states.get(n.id) === "in"),
+            [],
+            { style, direction, captions, hideDependencies },
+          ),
+          screen,
+        );
         // Expanded cards can paint beyond their measured routing bounds.
-        if (cropped || !far)
-          routeObstacles.push(
-            ...[...cards.keys()].filter((id) => states.get(id) === "in").map((id) => cardBoxes.get(id)!),
-          );
+        routeObstacles.push(
+          ...[...cards.keys()].filter((id) => states.get(id) === "in").map((id) => cardBoxes.get(id)!),
+        );
         routeObstacles.push(...pins.map((p) => p.box));
-        for (const edge of cropped || !far ? s.edges : []) {
+        for (const edge of s.edges) {
           const route = routes.get(edge.id);
           if (!route) continue;
           const ends = edgeInFrame(states.get(edge.source) ?? "out", states.get(edge.target) ?? "out", true);
@@ -620,17 +626,7 @@ const FrameDecoration = memo(
           if (far) setHidden(label, true);
         }
         // Far labels are hidden entirely; retain the batched reads only for visible detail.
-        if (!far)
-          for (const [id, label] of edgeLabels)
-            originalLabels.set(
-              id,
-              geometry.measure(
-                label,
-                "label-box",
-                [routes.get(id), edges.get(id)?.data, tx, ty, zoom, view, label.className, label.textContent],
-                () => box(label, origin),
-              ),
-            );
+        if (!far) for (const [id, label] of edgeLabels) originalLabels.set(id, box(label, origin));
         const labelIndex = new SpatialGrid<string>();
         for (const [id, rect] of originalLabels) labelIndex.insert(rect, id);
         const pathIndex = new SpatialGrid<string>();
@@ -779,12 +775,8 @@ const FrameDecoration = memo(
         for (const write of labelWrites) write();
         // Call annotations belong to their edge too; a pinned caller must not leave a clipped pill.
         for (const pill of pills) pill.style.removeProperty("translate");
-        const pillBoxes = new Map((far ? [] : pills).map((pill) => [pill, box(pill, origin)]));
+        const pillBoxes = new Map(pills.map((pill) => [pill, box(pill, origin)]));
         for (const pill of pills) {
-          if (far) {
-            setHidden(pill, true);
-            continue;
-          }
           const edge = edges.get(pill.dataset.callEdge ?? "");
           if (!edge) continue;
           const ends = edgeInFrame(
@@ -840,18 +832,11 @@ const FrameDecoration = memo(
         if (widths.length || root.dataset.detailZoom !== String(zoom)) root.dataset.detailZoom = String(zoom);
         // Our own text/decoration commits are already represented by this pass.
         observer.takeRecords();
-        geometry.report();
       };
       const schedule = () => {
         dirty = true;
         if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
       };
-      const fontsChanged = () => {
-        geometry.clear();
-        schedule();
-      };
-      document.fonts.addEventListener?.("loadingdone", fontsChanged);
-      document.fonts.addEventListener?.("loadingerror", fontsChanged);
       const selectionStyle = () => {
         const selected = store.getState().nodes.filter((n) => n.selected && n.type !== "boundary");
         root.toggleAttribute("data-detail-single-selection", selected.length === 1);
@@ -881,7 +866,6 @@ const FrameDecoration = memo(
         if (next.some((value, i) => value !== cameraInputs[i])) {
           cameraInputs = next;
           dirty = true;
-          forced = true;
         }
         if (dirty && !frame) frame = requestAnimationFrame(update);
       });
@@ -894,11 +878,6 @@ const FrameDecoration = memo(
               record.type === "childList" &&
               record.target instanceof Element &&
               (record.target.matches('[data-testid="card-title"], .chip-trouble') ||
-                record.target.closest(".detail-group-chips") ||
-                ([...record.addedNodes, ...record.removedNodes].length > 0 &&
-                  [...record.addedNodes, ...record.removedNodes].every(
-                    (node) => node instanceof Element && node.matches(".detail-group-chips"),
-                  )) ||
                 (root.hasAttribute("data-detail-far") && record.target.closest('[data-testid^="node-badge-"]')))
             ),
         );
@@ -917,14 +896,6 @@ const FrameDecoration = memo(
                   ),
                 );
           return;
-        }
-        forced = true;
-        for (const record of relevant) {
-          const node = record.target instanceof Element ? record.target.closest(".react-flow__node") : null;
-          if (node) geometry.forget(node);
-          const label = record.target instanceof Element ? record.target.closest(".fe-label") : null;
-          if (label) geometry.forget(label);
-          else if (record.attributeName === "data-detail-measure") geometry.clear();
         }
         schedule();
       });
@@ -997,7 +968,6 @@ const FrameDecoration = memo(
       const unregister = viewport
         ? registerFrameCapture(viewport, () => {
             suspended = true;
-            geometry.clear();
             // suspendFrameCapture normalizes the identity scale for capture in every view.
             reset();
             return () => {
@@ -1014,8 +984,6 @@ const FrameDecoration = memo(
         unstore();
         uncam();
         observer.disconnect();
-        document.fonts.removeEventListener?.("loadingdone", fontsChanged);
-        document.fonts.removeEventListener?.("loadingerror", fontsChanged);
         window.removeEventListener("keydown", key);
         unregister();
         reset();
@@ -1070,13 +1038,10 @@ const FrameChips = memo(function FrameChips({
       for (const el of elements) el.style.setProperty("--region-zoom", String(store.getState().transform[2]));
       // CSS keeps titles readable and attached during a camera animation. Search
       // for collision-free bands once it settles; held manual zoom still updates each frame.
-      if (root.current) placeRegionTitles(root.current, store.getState(), routing, camera);
+      if (root.current && !camera?.moving) placeRegionTitles(root.current, store.getState(), routing);
     };
     update();
-    const sizes = new ResizeObserver((entries) => {
-      if (root.current) for (const entry of entries) geometryPreparation(root.current).forget(entry.target);
-      update();
-    });
+    const sizes = new ResizeObserver(update);
     for (const el of elements) sizes.observe(el);
     const unsubscribe = store.subscribe((s, old) => {
       if (

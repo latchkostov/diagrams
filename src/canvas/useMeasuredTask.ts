@@ -6,8 +6,6 @@ import type { DiagramFlowEdge, FlowNode } from "./types";
 import { OVERLAY_SELECTOR, overlayRects } from "./useOverlayFit";
 import { createFontReadiness } from "./fontReadiness";
 import { settledTask } from "./settledTask";
-import { overlayAnimations } from "./overlayAnimations";
-import { geometryPreparation } from "./geometryPreparation";
 
 /** One fit transaction: committed React state, delivered ResizeObservers, loaded fonts, and
  * stable routes/chrome. No guessed delay, frame limit, or unmeasured default-size fallback. */
@@ -33,21 +31,28 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
   let mutations: MutationObserver | undefined;
   let isPending = false;
   let fontsReady = false;
-  let animationGate: ReturnType<typeof overlayAnimations> | undefined;
-  let previousReady = false;
+  const animations = new WeakSet<Animation>();
   const size = (el: HTMLElement) => `${el.offsetWidth}:${el.offsetHeight}`;
   const queue = settledTask(
     () => {
-      const confirm = previousReady;
-      previousReady = false;
       const el = root;
       if (!el || !observer || !fontsReady || document.fonts.status !== "loaded") return null;
       if (edgeGeometryPending(el)) return null;
       const s = store.getState();
-      const geometry = geometryPreparation(el);
-      geometry.sync(s);
-      geometry.count("readiness");
-      geometry.report();
+      // A delayed entrance animation can hold the same geometry for several frames before
+      // moving the hint. Its completion, rather than two samples during its delay, is final.
+      let animating = false;
+      for (const animation of el.getAnimations({ subtree: true })) {
+        const target = (animation.effect as KeyframeEffect | null)?.target;
+        if (!(target instanceof Element) || !target.closest(OVERLAY_SELECTOR)) continue;
+        if (animation.playState === "finished" || animation.effect?.getComputedTiming().endTime === Infinity) continue;
+        animating = true;
+        if (!animations.has(animation)) {
+          animations.add(animation);
+          void animation.finished.then(queue.wake, queue.wake);
+        }
+      }
+      if (animating) return null;
       // React Flow's node wrappers by their id (not a test id: Live's hover borrows the wrapper's).
       const targets = [el, ...el.querySelectorAll<HTMLElement>(`.react-flow__node[data-id],${OVERLAY_SELECTOR}`)];
       const wanted = new Set<Element>(targets);
@@ -59,23 +64,19 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       }
       let ready = true;
       const nodeElements = new Map<string, HTMLElement>();
-      const sizes = new Map<Element, { width: number; height: number }>();
       for (const target of targets) {
-        geometry.count("reads");
-        const width = target.offsetWidth,
-          height = target.offsetHeight;
-        sizes.set(target, { width, height });
         if (target.classList.contains("react-flow__node") && target.dataset.id)
           nodeElements.set(target.dataset.id, target);
         if (!observed.has(target)) {
           observed.set(target, "");
           observer.observe(target, { box: "border-box" });
         }
-        if (observed.get(target) !== `${width}:${height}`) ready = false;
+        if (observed.get(target) !== size(target)) ready = false;
         if (
           !target.dataset.collapsed &&
           target.dataset.overlayWidth &&
-          (Number(target.dataset.overlayWidth) !== width || Number(target.dataset.overlayHeight) !== height)
+          (Number(target.dataset.overlayWidth) !== target.offsetWidth ||
+            Number(target.dataset.overlayHeight) !== target.offsetHeight)
         )
           ready = false;
       }
@@ -87,16 +88,15 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         // its measurement; it has no area to fit. Its members still have to be measured.
         const internal = s.nodeLookup.get(n.id);
         const dom = nodeElements.get(n.id);
-        const measured = dom && sizes.get(dom);
-        if (n.type === "boundary" && measured && (!measured.width || !measured.height)) continue;
+        if (n.type === "boundary" && dom && (!dom.offsetWidth || !dom.offsetHeight)) continue;
         if (
           !dom ||
           !internal?.measured?.width ||
           !internal.measured.height ||
           internal.position.x !== n.position.x ||
           internal.position.y !== n.position.y ||
-          internal.measured.width !== measured?.width ||
-          internal.measured.height !== measured.height
+          internal.measured.width !== dom.offsetWidth ||
+          internal.measured.height !== dom.offsetHeight
         )
           return null;
         boxes.push([n.id, n.position, internal.measured]);
@@ -109,13 +109,7 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         })
       )
         return null;
-      // Discover animations only after this revision's measurements are delivered.
-      // Native animation discovery flushes styles even when its subtree is tiny.
-      // A delayed entrance still holds readiness until its real completion.
-      animationGate ??= overlayAnimations(el, queue.wake, () => geometry.count("animations"));
-      if (animationGate.pending(confirm)) return null;
       const paths = [...el.querySelectorAll('[data-testid^="edge-"] path')].map((p) => p.getAttribute("d"));
-      previousReady = true;
       return JSON.stringify([boxes, paths, overlayRects(el), s.width, s.height]);
     },
     (run) => {
@@ -130,12 +124,10 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         observer?.disconnect();
         observed.clear();
       }
-      if (!pending) animationGate = undefined;
-      if (root && root.dataset.fitPending !== String(pending)) root.dataset.fitPending = String(pending);
+      if (root) root.dataset.fitPending = String(pending);
     },
   );
   const request = (run: () => unknown, readinessOnly: boolean) => {
-    previousReady = false;
     fontsReady = false;
     const measuredRun = () => {
       // Commit this task's React updates before the next task can sample.
@@ -160,7 +152,6 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
   return {
     ...queue,
     commit(el: HTMLElement | null, nodes: FlowNode[], edges: DiagramFlowEdge[], typography: string) {
-      if (el && current.typography !== typography) geometryPreparation(el).clear();
       root = el;
       current = { nodes, edges, typography };
       queue.wake();
@@ -171,15 +162,10 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
           if (observed.has(entry.target)) observed.set(entry.target, size(entry.target as HTMLElement));
         queue.wake();
       });
-      mutations = new MutationObserver((records) => {
-        animationGate?.changed(records);
-        queue.wake();
-      });
+      mutations = new MutationObserver(queue.wake);
       if (isPending && root) mutations.observe(root, { subtree: true, childList: true, attributes: true });
       const fontsChanged = () => {
         fonts.invalidate();
-        if (root) geometryPreparation(root).clear();
-        animationGate?.invalidate();
         queue.wake();
       };
       document.fonts.addEventListener("loadingdone", fontsChanged);

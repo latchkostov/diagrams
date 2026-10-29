@@ -1,54 +1,17 @@
-## Bulk geometry preparation
+## Bulk geometry survey comparisons
 
-Auto-layout and Paste share canvas preparation instead of rediscovering unchanged geometry.
-Animation discovery visits floating overlays, caches its results while measurements are pending,
-and refreshes them on the confirming sample so a new programmatic entrance still holds the fit.
-Removing an overlay releases its cached animations. Live size checks, delivered ResizeObservers,
-fonts, final routes and the camera's measured refinement remain required.
+The Compare browser benchmarks workflow can run the opt-in survey's Auto-layout and Paste cases
+for 500 and 1,500 parts. Selecting `survey2` in its title filter enables the helper and prepares both
+sizes. It retains both revisions' raw samples and reports median/range action times, requiring at
+least three finite unprofiled observations per action and size. Other filters keep their existing
+comparison path. Use full commit SHAs for base and head.
+Use the complete title filter `survey2 (layout|paste) pipeline@(500|1500)$`: the report requires
+all four groups so incomplete runs cannot silently supply an acceptance result.
 
-A canvas-local geometry revision coalesces equivalent store publications across readiness, frame
-decoration and identity. Unchanged card boxes, identity metrics, labels and region-title inputs are
-reused. Region chips read their sizes together and own their portal's placement; mounting that portal
-does not prepare the whole scene again. Region placement waits for the camera's readiness phase.
+## Product outcome
 
-## Measurement
-
-Same-worktree Windows Chromium 156, Node 24.22.0, 1440 × 900, one worker, 2× main-thread throttle.
-The survey's unchanged 500/1,500-node pipeline, three fresh-context samples per action and size;
-layout includes the same one-second quiet observation, and Paste adds exactly 50 nodes to Overview.
-Unprofiled observations are compared separately from diagnostic traces. This is a local comparison,
-with other desktop activity possible, rather than a controlled CI prediction.
-
-Baseline medians (observed range), milliseconds:
-
-| Action      |           500 parts |         1,500 parts |
-| ----------- | ------------------: | ------------------: |
-| Auto-layout | 3,430 (3,331–4,644) | 5,708 (5,539–5,904) |
-| Paste 50    | 2,765 (2,699–3,632) | 6,863 (6,765–6,999) |
-
-The PR records final measurements and verification. The comparison workflow retains both revisions'
-complete raw survey sample groups for review.
-
-The opt-in survey helper records preparation counter deltas per action from `data-geometry-work`:
-readiness, frame and identity passes, geometry measurement groups/cache misses, revisions and animation
-discoveries. Counters do not add a production UI surface. Unit tests also count native reads and
-reservation calls, and deliberately reverted implementations must fail the regressions.
-
-## Rejected approaches and output contract
-
-The initial scoped-animation/cache prototype did not establish a greater-than-10% improvement at
-1,500 parts. It was not treated as acceptance evidence. Subsequent tracing identified premature
-region-title preparation, an unused canvas rectangle read and synchronous early-fit pane reads.
-A scoped pane/chrome borrowing prototype was rejected because its observed action-level benefit
-was below 10%. Readiness timeouts, budget/reserve increases, weakened assertions and golden updates
-are excluded.
-No output golden is intended to change; acceptance requires the complete parity suite unchanged.
-
-## Verification
-
-The complete parity run preserved all 3,178 goldens: zero changed, added, missing or stale. Targeted
-unit guards pass, and deliberate removal of the preparation fixes fails their regressions. Production
-build, entry size and fixed canvas/Live reserve checks pass. The initial Live reserve failure was
-resolved by stripping diagnostic counters from production builds; no budget or reserve changed.
-The regenerated skill viewer is included. Local timing groups that overlapped another browser
-benchmark are excluded from acceptance; use the PR's same-job comparison and raw artifacts.
+The geometry-preparation prototype missed the requested greater-than-10% improvement. At 1,500
+parts, the controlled comparison improved layout by 2.3% and regressed paste by 2.1%. No product
+optimization is retained. The evidence, rejected approaches and next bounded investigation are in
+[the blocker report](../backlog/2026-10-28-bulk-geometry-preparation-blocker.md). No output golden,
+budget, reserve or assertion changed.
