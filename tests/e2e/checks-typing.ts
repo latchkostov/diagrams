@@ -74,7 +74,9 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     buffer: Buffer.from(JSON.stringify(diagram)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Large", { timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText(/\d+ warnings/, {
+  // The previous document already has a warning. Wait for this fixture's 100 request
+  // cycles and one aggregate capacity warning, not that document's still-visible count.
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("101 warnings", {
     timeout: 60_000,
   });
 

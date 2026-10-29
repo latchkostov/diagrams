@@ -1,6 +1,7 @@
 import { test, expect, gotoCanvas, waitForStableViewport, savedDiagram, STORAGE_KEYS } from "./fixtures";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
 import { chunk } from "./chunk";
+import { waitForQuickAddResults } from "./fixtures";
 
 // Settings must never own the pending name or delay the eager menu's pick.
 test("held node settings preserve quick-add naming, completion and one-step undo", async ({ page }) => {
@@ -31,6 +32,7 @@ test("held node settings preserve quick-add naming, completion and one-step undo
     await page.keyboard.press("Alt+ArrowRight");
     await expect(page.getByTestId("quick-add-search")).toBeFocused();
     await page.keyboard.type("cache");
+    await waitForQuickAddResults(page);
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
     await page.keyboard.type("Cache audit");

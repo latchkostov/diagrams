@@ -42,6 +42,18 @@ export async function openCheckFinding(page: Page, id: string) {
   await waitForChecks(page);
 }
 
+/** Navigation and a frozen measurement clock start after stencil search has published its choices. */
+export async function waitForQuickAddResults(page: Page) {
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("quick-add")
+        .getByTestId(/^context-menu-item-/)
+        .evaluateAll((rows) => rows.some((row) => row.getAttribute("data-active") === "true")),
+    )
+    .toBe(true);
+}
+
 /** Theme choices moved into the View menu. */
 export async function openViewMenu(page: Page) {
   const view = page.getByTestId("view-button");
@@ -293,9 +305,9 @@ const sharedTest = (slowmoDiagnosticEnabled() ? slowmoDiagnosticTest : base).ext
 });
 export const test = withSlowmoDiagnostic(sharedTest);
 
-/** DOM snapshots of the stress diagrams are test instrumentation, not application input work. */
+/** Capturing stress diagrams is instrumentation work: retain action traces and failure PNGs without per-frame capture. */
 export const performanceTest = test.extend({
-  trace: { mode: "retain-on-failure", snapshots: false },
+  trace: { mode: "retain-on-failure", snapshots: false, screenshots: false },
 });
 
 export { expect };
@@ -692,7 +704,11 @@ export async function openLiveNodeDetails(page: Page, id: string, section: strin
   const card = page.getByTestId(`node-detail-${id}`);
   await expect(card).toBeVisible();
   // Enter names selected items; the header's public pin action works for either selection state.
-  if ((await card.getAttribute("data-pinned")) !== "true") await card.click({ position: { x: 16, y: 16 } });
+  if ((await card.getAttribute("data-pinned")) !== "true") {
+    await waitForStableBox(card);
+    await card.getByTestId("hover-full-name").click();
+  }
+  await expect(card).toHaveAttribute("data-pinned", "true");
   const row = page.getByTestId(`hover-section-${section}`);
   await expect(row).toBeVisible();
   if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();

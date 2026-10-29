@@ -1,4 +1,4 @@
-import { openLibrary, openEditProperties } from "./fixtures";
+import { openLibrary, openEditProperties, waitForQuickAddResults } from "./fixtures";
 import { TEXT_END, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
@@ -356,6 +356,7 @@ test.describe("renaming in the inspector", () => {
     await expect(page.getByTestId("quick-add-search")).toBeFocused();
     await page.keyboard.type("redis cache");
     await expect(page.getByTestId("quick-add-search")).toHaveValue("redis cache");
+    await waitForQuickAddResults(page);
     await page.keyboard.press("Enter");
     await page.keyboard.type("Hot keys", { delay: 0 });
     const label = page.getByTestId("inspector-field-label");
@@ -370,6 +371,7 @@ test.describe("renaming in the inspector", () => {
     const r = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
     await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
     await page.getByTestId("quick-add-search").fill("redis cache");
+    await waitForQuickAddResults(page);
     await page.clock.install();
     await pauseClock(page);
     // Hold the frame that measures the new card: Backspace arrives in the type-ahead buffer,
@@ -401,6 +403,7 @@ test.describe("renaming in the inspector", () => {
         await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
       }
       await page.getByTestId("quick-add-search").fill("triangle");
+      await waitForQuickAddResults(page);
       await page.clock.install();
       await pauseClock(page);
       await page.keyboard.press("Enter");
