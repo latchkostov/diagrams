@@ -4,7 +4,7 @@
 // a shard `fullyParallel` spreads its tests over the workers.
 //
 // Durations come from tests/e2e-timings.json: seconds of test time per spec file, measured on CI. A spec
-// file missing from it falls back to a deterministic file-count split. Refresh when summaries drift:
+// file missing from it gets the mean known duration, preserving the measured weights. Refresh when summaries drift:
 //   gh run download <run-id> -p 'e2e-durations-*' -D <dir>
 //   node scripts/e2e-shard.mjs --update <dir>
 //
@@ -56,12 +56,14 @@ export function planShards(total, root = process.cwd()) {
   // Empty shards must never fall back to running the whole Playwright suite.
   if (total > files.length) throw new Error("More shards than spec files; use fewer shards");
   const timings = readTimings(root);
-  const unknown = files.filter((f) => !Number.isFinite(timings[f]) || timings[f] <= 0);
-  if (unknown.length)
+  const known = files.filter((f) => Number.isFinite(timings[f]) && timings[f] > 0);
+  const unknown = files.length - known.length;
+  const fallback = known.length ? known.reduce((sum, f) => sum + timings[f], 0) / known.length : 1;
+  if (unknown)
     console.error(
-      `e2e-shard: missing/invalid timings for ${unknown.length} spec(s); using a count split. Refresh with --update.`,
+      `e2e-shard: missing/invalid timings for ${unknown} spec(s); estimating each at ${fallback.toFixed(1)}s. Refresh with --update.`,
     );
-  const weight = (f) => (unknown.length ? 1 : timings[f]);
+  const weight = (f) => (Number.isFinite(timings[f]) && timings[f] > 0 ? timings[f] : fallback);
   const shards = Array.from({ length: total }, () => ({ files: [], seconds: 0 }));
   for (const f of [...files].sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
     const target = shards.reduce((min, s) => (s.seconds < min.seconds ? s : min), shards[0]);
