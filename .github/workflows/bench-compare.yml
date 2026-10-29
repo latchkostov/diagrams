@@ -43,6 +43,14 @@ jobs:
           node -e 'if (!(Number.isFinite(+process.env.BENCH_CPU) && +process.env.BENCH_CPU > 0)) throw Error("BENCH_CPU must be positive"); if (!process.env.BENCH_GREP.trim()) throw Error("Select benchmarks with --grep"); new RegExp(process.env.BENCH_GREP)'
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Preserve workflow comparison tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/bench-compare/tools"
+          cp scripts/perf/survey2-compare.mjs scripts/perf/survey2-compare.test.mjs "$RUNNER_TEMP/bench-compare/tools/"
+      - uses: actions/checkout@v7
+        with:
           ref: ${{ inputs.base }}
           persist-credentials: false
       - uses: ./.github/actions/toolchain
@@ -81,8 +89,8 @@ jobs:
         run: |
           out="$RUNNER_TEMP/bench-compare"
           if [ "$SURVEY2" = "1" ]; then
-            node --test scripts/perf/survey2-compare.test.mjs
-            node scripts/perf/survey2-compare.mjs "$out/base/survey2/samples.jsonl" "$out/head/survey2/samples.jsonl" > "$out/compare.md"
+            node --test "$out/tools/survey2-compare.test.mjs"
+            node "$out/tools/survey2-compare.mjs" "$out/base/survey2/samples.jsonl" "$out/head/survey2/samples.jsonl" > "$out/compare.md"
             {
               echo "Base: $(cat "$out/base/sha.txt")"
               echo "Head: $(cat "$out/head/sha.txt")"

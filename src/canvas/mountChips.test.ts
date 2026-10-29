@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
-import { createElement } from "react";
+import { createElement, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { useStoreApi } from "@xyflow/react";
 import { mountChips } from "./mountChips";
@@ -32,7 +34,7 @@ function harness() {
     return seq;
   });
   vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
-  const flush = async () => {
+  const flush = async (afterFrame?: () => void) => {
     await Promise.resolve();
     await Promise.resolve();
     // MutationObserver callbacks are microtasks too.
@@ -40,6 +42,8 @@ function harness() {
     const pending = [...frames.values()];
     frames.clear();
     for (const run of pending) run(0);
+    // Assert in the frame's task: awaiting flush() would let React's queued commit hide the race.
+    afterFrame?.();
   };
   const root = document.createElement("div");
   root.innerHTML = '<div class="react-flow"><div class="react-flow__viewport"></div></div>';
@@ -79,6 +83,41 @@ afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+it("clears chip readiness only after rendered subscribers commit", async () => {
+  const { root, store, flush, dispose, state } = harness();
+  const host = document.createElement("div");
+  root.append(host);
+  const react = createRoot(host);
+  function Subscriber() {
+    const chips = useSyncExternalStore(
+      (notify) => store.subscribe(() => notify()),
+      () => state().ldChips,
+    );
+    return createElement("span", null, chips ? chips.nodes.get("worker")!.lines : "natural");
+  }
+  try {
+    flushSync(() => react.render(createElement(Subscriber)));
+    await flush();
+    store.setState({ transform: [0, 0, 0.4] });
+    await flush(() => {
+      expect(root.dataset.chipsPending).toBe("false");
+      expect(host.textContent).toBe(state().ldChips!.nodes.get("worker")!.lines);
+    });
+    const resume = suspendFrameCapture(root.querySelector(".react-flow__viewport")!);
+    expect(host.textContent).toBe("natural");
+    resume();
+    await flush(() => expect(host.textContent).not.toBe("natural"));
+    store.setState({ transform: [0, 0, 0.6] });
+    await flush(() => {
+      expect(root.dataset.chipsPending).toBe("false");
+      expect(host.textContent).toBe("natural");
+    });
+  } finally {
+    dispose();
+    react.unmount();
+  }
 });
 
 it("publishes only settled layouts, reuses pan, and restores natural cards for capture", async () => {

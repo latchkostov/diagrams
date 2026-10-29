@@ -1,4 +1,85 @@
 import { test, expect, gotoCanvas, gotoLive, publicExamples, pageLoadTimeout } from "./fixtures";
+import { readFileSync } from "node:fs";
+
+test(
+  "PNG embeds fonts, backgrounds and both mask spellings before style sharing",
+  { tag: "@dev" },
+  async ({ page }) => {
+    const font = readFileSync("node_modules/@fontsource-variable/mona-sans/files/mona-sans-latin-wght-normal.woff2");
+    await page.route("**/png-capture-font.woff2", (route) => route.fulfill({ body: font, contentType: "font/woff2" }));
+    await page.route("**/png-capture-*.svg", (route) =>
+      route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><path fill="red" d="M0 0h8v8H0z"/></svg>',
+      }),
+    );
+    await gotoCanvas(page, publicExamples[0].slug);
+    const result = await page.evaluate(async () => {
+      const { toPng, Slicer } = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const style = document.createElement("style");
+      style.textContent =
+        '@font-face { font-family: "PNG capture"; src: url("/png-capture-font.woff2") format("woff2"); }';
+      document.head.append(style);
+      const source = document.createElement("div");
+      source.textContent = "Embedded resources";
+      source.style.cssText =
+        'font-family: "PNG capture"; width: 160px; height: 80px; background-image: url("/png-capture-background.svg"); mask-image: url("/png-capture-mask.svg");';
+      document.body.append(source);
+      const fetch = window.fetch;
+      const requests: string[] = [];
+      window.fetch = async (url, init) => {
+        if (String(url).includes("png-capture-")) requests.push(String(url));
+        return fetch(url, init);
+      };
+      const decode = HTMLImageElement.prototype.decode;
+      let svg = "";
+      HTMLImageElement.prototype.decode = function () {
+        if (this.src.startsWith("data:image/svg+xml;charset=utf-8,"))
+          svg = decodeURIComponent(this.src.split(",").slice(1).join(","));
+        return decode.call(this);
+      };
+      const slicer = new Slicer(1);
+      try {
+        const png = await toPng(
+          source,
+          {
+            width: 160,
+            height: 80,
+            pixelRatio: 1,
+            includeStyleProperties: [
+              "font-family",
+              "font-size",
+              "background-image",
+              "mask-image",
+              "-webkit-mask-image",
+              "width",
+              "height",
+            ],
+          },
+          slicer,
+        );
+        return { png: png.startsWith("data:image/png;base64,"), svg, requests };
+      } finally {
+        slicer.dispose();
+        HTMLImageElement.prototype.decode = decode;
+        window.fetch = fetch;
+        source.remove();
+        style.remove();
+      }
+    });
+    expect(result.png).toBe(true);
+    expect(result.requests.some((url) => url.endsWith("png-capture-font.woff2"))).toBe(true);
+    for (const name of ["background", "mask"])
+      expect(result.requests.some((url) => url.endsWith(`png-capture-${name}.svg`))).toBe(true);
+    expect(result.svg).toContain("@font-face");
+    expect(result.svg).toMatch(/src:\s*url\(["']?data:application\/font-woff;base64,/);
+    for (const property of ["background-image", "mask-image", "-webkit-mask-image"])
+      expect(result.svg).toContain(`${property}:url("data:image/svg+xml;base64,`);
+    expect(result.svg).not.toContain("png-capture-");
+  },
+);
 
 test.describe("image resource cancellation", { tag: "@dev" }, () => {
   test("SVG preparation reports visible progress before cloning starts", async ({ page }) => {

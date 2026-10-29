@@ -12,7 +12,8 @@ import { execFileSync } from "node:child_process";
 import type { Page } from "@playwright/test";
 import type { DiagramFile } from "../../../src/model/types";
 import { outDir } from "../results";
-import { APP_URL, Bench, expect, loadWorkload, NAMES_URL, PORT, test, type AppHooks } from "./harness";
+import { APP_URL, Bench, expect, loadWorkload, NAMES_URL, PORT, test } from "./harness";
+import { runSurveySimulations, surveyMemory } from "./survey2Checks";
 
 const TRACE = process.env.SURVEY2_TRACE === "1";
 const SAMPLES = Number(process.env.SURVEY2_SAMPLES ?? (TRACE ? 1 : 3));
@@ -399,12 +400,8 @@ for (const n of [500, 1500]) {
         await b.canvasSettled();
         await b.settle(1000, 300_000);
         await menu(b, "canvas.run-simulations");
-        const before = await page.evaluate(() => (window as AppHooks).__simulations?.finished ?? 0);
         await operation(b, `run-simulations-${n}`, async () => {
-          await page.getByTestId("context-menu-item-canvas.run-simulations").click();
-          await page.waitForFunction((was) => ((window as AppHooks).__simulations?.finished ?? 0) > was, before, {
-            timeout: 300_000,
-          });
+          await runSurveySimulations(page, 2);
         });
         await page.keyboard.press("Escape");
         if (n !== 1500) continue;
@@ -552,10 +549,6 @@ test("survey2 viewer pipeline@500", async ({ browser }) => {
   }
 });
 
-async function memory(b: Bench) {
-  return { heap: await b.heap(), ...(await b.domCounters()) };
-}
-
 test("survey2 memory live five minutes pipeline@1500", async ({ page }) => {
   test.setTimeout(600_000);
   const { b } = await open(page, 1500);
@@ -565,16 +558,13 @@ test("survey2 memory live five minutes pipeline@1500", async ({ page }) => {
   const start = Date.now();
   for (let minute = 0; minute <= 5; minute++) {
     while (Date.now() - start < minute * 60_000) await delay(10_000);
-    record("memory-live-1500", { minute, wall: Date.now() - start, ...(await memory(b)) });
+    record("memory-live-1500", { minute, wall: Date.now() - start, ...(await surveyMemory(b)) });
   }
 });
 
 test("survey2 memory reopen five diagrams", async ({ page }) => {
   const { b, d } = await open(page, 500);
-  const read = async () => {
-    await b.mark();
-    return memory(b);
-  };
+  const read = () => surveyMemory(b);
   const slugs: string[] = [];
   for (let i = 0; i < 5; i++) {
     const title = `Survey synthetic pipeline ${i + 1}`;
