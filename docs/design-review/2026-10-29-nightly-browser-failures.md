@@ -19,3 +19,7 @@ attribute and its removal for image capture.
 The tutorial change concerns only its browser-test clock driver; the learner's
 Skip action and application runner remain unchanged. No new simulation, planning
 or stencil feature is added, so no new showcase is needed.
+
+The inspector test follows the existing Enter-to-finish naming interaction before
+opening Simulation. It waits on planning readiness and stable geometry; the
+application's disclosure, keyboard behavior and undo semantics are unchanged.

@@ -50,6 +50,42 @@ const requiredBox = async (locator: import("@playwright/test").Locator) => {
   return box;
 };
 
+async function openNodeSimulation(page: Page) {
+  // Finish the naming transaction before a blur can change the planning row
+  // between the pointer's press and release.
+  await page.getByTestId("inspector-field-label").press("Enter");
+  const button = page.getByTestId("inspector-section-node-simulation");
+  await expect(button).toBeVisible();
+  await expect(page.getByTestId("planning-loading")).toHaveCount(0);
+  await waitForStableBox(button);
+  await expect(button).toHaveAttribute("aria-expanded", "false");
+  await button.click();
+}
+
+test("inspector Simulation opening settles the name before a planning layout change", async ({ page }) => {
+  await page.setContent(
+    '<input data-testid="inspector-field-label"><div data-testid="planning-loading" style="height:20px">Loading</div><button data-testid="inspector-section-node-simulation" aria-expanded="false">Simulation</button>',
+  );
+  await page.getByTestId("inspector-field-label").evaluate((element) => {
+    const input = element as HTMLInputElement;
+    const planning = document.querySelector<HTMLElement>('[data-testid="planning-loading"]');
+    const button = document.querySelector<HTMLElement>('[data-testid="inspector-section-node-simulation"]');
+    if (!planning || !button) throw new Error("Missing inspector fixture");
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") input.blur();
+    });
+    input.addEventListener("blur", () => {
+      // Naming completion can replace a short loading row with a planning explanation.
+      planning.style.height = "180px";
+      planning.dataset.testid = "planning-ready";
+    });
+    button.addEventListener("click", () => button.setAttribute("aria-expanded", "true"));
+  });
+  await page.getByTestId("inspector-field-label").fill("Order API");
+  await openNodeSimulation(page);
+  await expect(page.getByTestId("inspector-section-node-simulation")).toHaveAttribute("aria-expanded", "true");
+});
+
 test.describe("editor", () => {
   test.beforeEach(async ({ page }) => {
     await gotoCanvas(page, SLUG);
@@ -276,7 +312,7 @@ test.describe("editor", () => {
     await expect(page.getByTestId("node-orders")).toContainText("Order API");
     // Simulation fields sit in a collapsed section and follow the stencil's role (processor).
     await expect(page.getByTestId("inspector-field-concurrency")).toHaveCount(0);
-    await page.getByTestId("inspector-section-node-simulation").click();
+    await openNodeSimulation(page);
     await expect(page.getByTestId("inspector-field-concurrency")).toBeVisible();
     await expect(page.getByTestId("inspector-field-ratePerSec")).toHaveCount(0);
     await page.getByTestId("inspector-field-failureRate").fill("0.2");

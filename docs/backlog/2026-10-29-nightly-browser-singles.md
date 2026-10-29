@@ -63,12 +63,11 @@ These are unresolved, not declared fixed by an isolated passing replay. Preserve
 the exact assertions and obtain a failing controlled reproduction before changing
 the application or broadening test readiness.
 
-| Case                                                   | Nightly error and retained evidence                                                                                                                                                                                                                                                                                | Next discriminating check                                                                                                                                                                                                           |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dev inspector edit, `editor:272`                       | [Job 123249703928](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703928): concurrency field absent after Simulation click. Trace resolves a collapsed section, reports click at `(1254.5, 672.17)`, and subsequent snapshots still show it collapsed with Description editing active. | Hold the planning sibling's load while naming, then release at the press; distinguish a moving click target from an actual disclosure-state reset.                                                                                  |
-| Dev Arabic Checks, `requests-wait-checks:68`           | [Job 123249703925](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703925): primary fix absent. Snapshot shows the correct diagram and Checks dock with `Checking…`, no findings yet.                                                                                                   | Hold the current document's worker result and observe readiness before opening its finding. Do not infer completion from a previous warning count.                                                                                  |
-| Dev timeline roving stop, `ux-resilience-followup:116` | [Job 123249703980](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703980): immediate count is zero rather than one. Controls can mount before the separate lazy `Timeline` surface.                                                                                                    | A held-Timeline test with explicit marker readiness passes, but removing the added wait also passed locally. That candidate was discarded rather than claimed as a proven fix. Capture the lazy-surface boundary deterministically. |
-| Build job's dev SVG export, `lowzoom-chips:216 @dev`   | [Job 123249703984](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703984): two of three executions exhaust the existing whole-test timeout in `svgDigest`/`renderDiagramImage`; the test compares six exports from two browser contexts.                                               | Capture export progress/resource readiness under load and distinguish module/font loading from clone work. Keep every SVG digest, the workload and the existing backstop.                                                           |
+| Case                                                   | Nightly error and retained evidence                                                                                                                                                                                                                                  | Next discriminating check                                                                                                                                                                                                           |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dev Arabic Checks, `requests-wait-checks:68`           | [Job 123249703925](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703925): primary fix absent. Snapshot shows the correct diagram and Checks dock with `Checking…`, no findings yet.                                                     | Hold the current document's worker result and observe readiness before opening its finding. Do not infer completion from a previous warning count.                                                                                  |
+| Dev timeline roving stop, `ux-resilience-followup:116` | [Job 123249703980](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703980): immediate count is zero rather than one. Controls can mount before the separate lazy `Timeline` surface.                                                      | A held-Timeline test with explicit marker readiness passes, but removing the added wait also passed locally. That candidate was discarded rather than claimed as a proven fix. Capture the lazy-surface boundary deterministically. |
+| Build job's dev SVG export, `lowzoom-chips:216 @dev`   | [Job 123249703984](https://github.com/latchkostov/diagrams/actions/runs/40813604106/job/123249703984): two of three executions exhaust the existing whole-test timeout in `svgDigest`/`renderDiagramImage`; the test compares six exports from two browser contexts. | Capture export progress/resource readiness under load and distinguish module/font loading from clone work. Keep every SVG digest, the workload and the existing backstop.                                                           |
 
 ## Verification
 
@@ -118,3 +117,24 @@ spec pass twice against Vite dev on Windows, Node 24.22.0, four workers, ports
 backstops are unchanged. Reports: `tests/.output/nightly-evidence/dev-fixed.json`.
 Playwright stopped both servers. The four remaining singles passed both times;
 their original Nightly causes remain unproven rather than silently marked fixed.
+
+## Dispatched Nightly and inspector naming
+
+[Nightly 40825477973](https://github.com/latchkostov/diagrams/actions/runs/40825477973)
+confirms the locale paths and Greek rail labels pass. Its Linux font report selects
+DejaVu Sans for both Greek generic families, confirming the real layout overflow.
+All eight Dev shards completed: seven pass; Dev 4 reproduces the inspector failure.
+The Simulation click remains collapsed at the same coordinates while naming is
+active and the planning explanation replaces a shorter row above it.
+
+The inspector driver now completes naming with Enter, waits for planning to leave
+its loading state and the button to settle, then clicks. A controlled DOM fixture
+moves the button on name blur: the old pointer-only helper fails; the corrected
+helper passes. All original concurrency, persistence and two undo assertions remain.
+Dev runs both cases twice (four passes); Linux Build runs the whole editor spec twice
+(36 passes, zero failed/flaky/skipped). No application disclosure behavior changes.
+
+The Arabic Checks, timeline and dev SVG export cases pass in this dispatch; their
+original failure mechanisms remain documented above. Build 11 instead reports an
+unrelated quick-add naming failure in `trim3`; master #392 already adds the missing
+ready-results signal to that exact test. Sync that upstream fix rather than duplicate it.

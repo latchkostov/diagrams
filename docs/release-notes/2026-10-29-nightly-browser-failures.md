@@ -25,3 +25,7 @@ does not duplicate that fix. Remaining single failures and verification evidence
 are recorded in [the investigation](../backlog/2026-10-29-nightly-browser-singles.md).
 Full output parity passes: 3,178 goldens, zero changed, added, missing or stale.
 No goldens were re-recorded.
+
+The inspector undo test completes naming and waits for the planning row to settle
+before opening Simulation. A controlled blur/layout regression catches the old
+missed click; the original edit and undo assertions are preserved.
