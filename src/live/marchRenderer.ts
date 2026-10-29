@@ -52,75 +52,78 @@ export function parseDash(value: string): number[] {
 }
 
 export class MarchRenderer {
-  private ctx: CanvasRenderingContext2D;
-  private edges: readonly MarchEdge[] = [];
-  private paths = new Map<string, Path2D>();
-  private key = "";
-  private w = 0;
-  private h = 0;
-  private dpr = 0;
-  private drawnAny = false;
+  #canvas: Surface;
+  #makePath: (d: string) => Path2D;
+
+  #ctx: CanvasRenderingContext2D;
+  #edges: readonly MarchEdge[] = [];
+  #paths = new Map<string, Path2D>();
+  #key = "";
+  #w = 0;
+  #h = 0;
+  #dpr = 0;
+  #drawnAny = false;
   /** Frames painted (skipped frames don't count). */
   frames = 0;
 
-  constructor(
-    private canvas: Surface,
-    private makePath: (d: string) => Path2D = (d) => new Path2D(d),
-  ) {
-    this.ctx = context2d(canvas);
+  constructor(canvas: Surface, makePath: (d: string) => Path2D = (d) => new Path2D(d)) {
+    this.#canvas = canvas;
+    this.#makePath = makePath;
+
+    this.#ctx = context2d(canvas);
   }
 
   setEdges(edges: readonly MarchEdge[]): void {
-    this.edges = edges;
+    this.#edges = edges;
     const keep = new Set(edges.map((e) => e.d));
-    for (const d of this.paths.keys()) if (!keep.has(d)) this.paths.delete(d);
-    this.key = "";
+    for (const d of this.#paths.keys()) if (!keep.has(d)) this.#paths.delete(d);
+    this.#key = "";
   }
 
   get count(): number {
-    return this.edges.length;
+    return this.#edges.length;
   }
 
-  private path(d: string): Path2D {
-    let p = this.paths.get(d);
-    if (!p) this.paths.set(d, (p = this.makePath(d)));
+  #path(d: string): Path2D {
+    let p = this.#paths.get(d);
+    if (!p) this.#paths.set(d, (p = this.#makePath(d)));
     return p;
   }
 
   /** Draws the march `phaseMs` in; skips when nothing would change. */
   draw(v: MarchView, phaseMs: number, reduced: boolean): void {
-    if (v.width !== this.w || v.height !== this.h || v.dpr !== this.dpr) {
-      this.w = v.width;
-      this.h = v.height;
-      this.dpr = v.dpr;
-      this.canvas.width = Math.max(1, Math.round(v.width * v.dpr));
-      this.canvas.height = Math.max(1, Math.round(v.height * v.dpr));
-      this.key = "";
-      this.drawnAny = true;
+    if (v.width !== this.#w || v.height !== this.#h || v.dpr !== this.#dpr) {
+      this.#w = v.width;
+      this.#h = v.height;
+      this.#dpr = v.dpr;
+      this.#canvas.width = Math.max(1, Math.round(v.width * v.dpr));
+      this.#canvas.height = Math.max(1, Math.round(v.height * v.dpr));
+      this.#key = "";
+      this.#drawnAny = true;
     }
     const offset = marchOffset(phaseMs, reduced);
     const key = `${v.x}|${v.y}|${v.zoom}|${offset}`;
-    if (key === this.key) return;
-    this.key = key;
-    const ctx = this.ctx;
-    if (!this.edges.length && !this.drawnAny) return;
+    if (key === this.#key) return;
+    this.#key = key;
+    const ctx = this.#ctx;
+    if (!this.#edges.length && !this.#drawnAny) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.drawnAny = this.edges.length > 0;
-    if (!this.edges.length) return;
+    ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+    this.#drawnAny = this.#edges.length > 0;
+    if (!this.#edges.length) return;
     this.frames++;
     const k = v.zoom * v.dpr;
     ctx.setTransform(k, 0, 0, k, v.x * v.dpr, v.y * v.dpr);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const e of this.edges) {
+    for (const e of this.#edges) {
       if (!(e.opacity > 0) || !(e.width > 0)) continue;
       ctx.globalAlpha = Math.min(1, e.opacity);
       ctx.strokeStyle = e.color;
       ctx.lineWidth = e.width;
       ctx.setLineDash(e.dash);
       ctx.lineDashOffset = offset;
-      ctx.stroke(this.path(e.d));
+      ctx.stroke(this.#path(e.d));
     }
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;

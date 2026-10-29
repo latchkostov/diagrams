@@ -45,27 +45,27 @@ export const CALM_HYSTERESIS = 0.25;
 export class CalmSampler {
   /** Current stride: one family in `k` is drawn. */
   k = 1;
-  private speed = 1;
-  private lastAt = -Infinity;
+  #speed = 1;
+  #lastAt = -Infinity;
   /** The first plan after a speed change goes straight to the ideal stride. */
-  private fresh = true;
-  private decided = new Map<number, boolean>();
-  private seen = new Set<number>();
+  #fresh = true;
+  #decided = new Map<number, boolean>();
+  #seen = new Set<number>();
 
   setSpeed(speed: number): void {
-    if (speed === this.speed) return;
-    this.speed = speed;
+    if (speed === this.#speed) return;
+    this.#speed = speed;
     // A new speed re-plans at once (it's an explicit choice), straight to the ideal stride.
-    this.lastAt = -Infinity;
-    this.fresh = true;
+    this.#lastAt = -Infinity;
+    this.#fresh = true;
     if (!(speed < 1)) {
       this.k = 1;
-      this.decided.clear();
+      this.#decided.clear();
     }
   }
 
   get active(): boolean {
-    return this.speed < 1;
+    return this.#speed < 1;
   }
 
   /**
@@ -74,11 +74,11 @@ export class CalmSampler {
    */
   begin(particles: readonly Particle[], now: number): void {
     if (!this.active) return;
-    if (now - this.lastAt >= CALM_INTERVAL) {
-      this.lastAt = now;
-      const target = calmTarget(this.speed);
-      if (this.fresh) {
-        this.fresh = false;
+    if (now - this.#lastAt >= CALM_INTERVAL) {
+      this.#lastAt = now;
+      const target = calmTarget(this.#speed);
+      if (this.#fresh) {
+        this.#fresh = false;
         this.k = idealStride(particles.length, target);
       }
       const drawn = particles.length / this.k;
@@ -90,11 +90,11 @@ export class CalmSampler {
       this.k = Math.max(1, Math.min(this.k, idealStride(particles.length, target) * 2));
     }
     // Forget families no longer on screen (their decision ends with their journey).
-    const seen = this.seen;
+    const seen = this.#seen;
     seen.clear();
     for (const p of particles) seen.add(p.rootId);
-    if (this.decided.size > seen.size * 2 + 64)
-      for (const root of this.decided.keys()) if (!seen.has(root)) this.decided.delete(root);
+    if (this.#decided.size > seen.size * 2 + 64)
+      for (const root of this.#decided.keys()) if (!seen.has(root)) this.#decided.delete(root);
   }
 
   /**
@@ -104,10 +104,10 @@ export class CalmSampler {
    */
   keep(p: Particle, focus?: number): boolean {
     if (!this.active || p.rootId === focus || p.kind === "retry" || p.kind === "dlq") return true;
-    let on = this.decided.get(p.rootId);
+    let on = this.#decided.get(p.rootId);
     if (on === undefined) {
       on = familyHash(p.rootId) % this.k === 0;
-      this.decided.set(p.rootId, on);
+      this.#decided.set(p.rootId, on);
     }
     return on;
   }

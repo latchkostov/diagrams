@@ -146,80 +146,81 @@ export type FromWorker =
 
 /** Interns strings as small integers, reporting the new ones. */
 class Table {
-  private ids = new Map<string, number>();
-  private fresh: string[] = [];
+  #ids = new Map<string, number>();
+  #fresh: string[] = [];
   index(s: string): number {
-    let i = this.ids.get(s);
+    let i = this.#ids.get(s);
     if (i === undefined) {
-      i = this.ids.size;
-      this.ids.set(s, i);
-      this.fresh.push(s);
+      i = this.#ids.size;
+      this.#ids.set(s, i);
+      this.#fresh.push(s);
     }
     return i;
   }
   take(): string[] | undefined {
-    if (!this.fresh.length) return undefined;
-    const out = this.fresh;
-    this.fresh = [];
+    if (!this.#fresh.length) return undefined;
+    const out = this.#fresh;
+    this.#fresh = [];
     return out;
   }
   clear(): void {
-    this.ids.clear();
-    this.fresh = [];
+    this.#ids.clear();
+    this.#fresh = [];
   }
 }
 
 /** Main thread: packs snapshots into transferable buffers. */
 export class SnapshotPacker {
-  private edges = new Table();
-  private nodes = new Table();
+  #edges = new Table();
+  #nodes = new Table();
   /** type → colour → style index (no string building per particle). */
-  private styles = new Map<string, Map<string, number>>();
-  private styleCount = 0;
-  private freshStyles: Style[] = [];
+  #styles = new Map<string, Map<string, number>>();
+  #styleCount = 0;
+  #freshStyles: Style[] = [];
   /** Routed styles by their full key (unrouted ones use the nested map above). */
-  private routed = new Map<string, number>();
-  private pool: ArrayBuffer[] = [];
+  #routed = new Map<string, number>();
+  #pool: ArrayBuffer[] = [];
 
   /** Start over (the worker dropped its tables). */
   clear(): void {
-    this.edges.clear();
-    this.nodes.clear();
-    this.styles.clear();
-    this.routed.clear();
-    this.styleCount = 0;
-    this.freshStyles = [];
+    this.#edges.clear();
+    this.#nodes.clear();
+    this.#styles.clear();
+    this.#routed.clear();
+    this.#styleCount = 0;
+    this.#freshStyles = [];
   }
 
   /** A buffer the worker handed back. */
   recycle(buf: ArrayBuffer): void {
-    if (this.pool.length < 4) this.pool.push(buf);
+    if (this.#pool.length < 4) this.#pool.push(buf);
   }
 
-  private style(type: string, color: string, p?: Particle): number {
+  #style(type: string, color: string, p?: Particle): number {
     if (p && (p.marker || p.route || p.code)) {
       const key = `${type}\u0000${color}\u0000${p.marker ?? ""}\u0000${p.route ?? ""}\u0000${p.code ?? ""}`;
-      let i = this.routed.get(key);
+      let i = this.#routed.get(key);
       if (i === undefined) {
-        i = this.styleCount++;
-        this.routed.set(key, i);
-        this.freshStyles.push([type, color, p.marker ?? "", p.route ?? "", p.code ?? 0]);
+        i = this.#styleCount++;
+        this.#routed.set(key, i);
+        this.#freshStyles.push([type, color, p.marker ?? "", p.route ?? "", p.code ?? 0]);
       }
       return i;
     }
-    let byColor = this.styles.get(type);
-    if (!byColor) this.styles.set(type, (byColor = new Map()));
+    let byColor = this.#styles.get(type);
+    if (!byColor) this.#styles.set(type, (byColor = new Map()));
     let i = byColor.get(color);
     if (i === undefined) {
-      i = this.styleCount++;
+      i = this.#styleCount++;
       byColor.set(color, i);
-      this.freshStyles.push([type, color]);
+      this.#freshStyles.push([type, color]);
     }
     return i;
   }
 
-  private buffer(bytes: number): ArrayBuffer {
-    for (let i = 0; i < this.pool.length; i++) if (this.pool[i].byteLength >= bytes) return this.pool.splice(i, 1)[0];
+  #buffer(bytes: number): ArrayBuffer {
+    for (let i = 0; i < this.#pool.length; i++)
+      if (this.#pool[i].byteLength >= bytes) return this.#pool.splice(i, 1)[0];
     let size = 4096;
     while (size < bytes) size *= 2;
     return new ArrayBuffer(size);
@@ -229,7 +230,7 @@ export class SnapshotPacker {
     const particles = snap.particles;
     let nodeCount = 0;
     for (const _ in snap.nodes) nodeCount++;
-    const buf = this.buffer((HEADER + particles.length * STRIDE + nodeCount * 2) * 4);
+    const buf = this.#buffer((HEADER + particles.length * STRIDE + nodeCount * 2) * 4);
     const ints = new Int32Array(buf);
     const floats = new Float32Array(buf);
     ints[0] = particles.length;
@@ -239,14 +240,14 @@ export class SnapshotPacker {
       ints[o] = p.id;
       ints[o + 1] = p.messageId;
       ints[o + 2] = p.rootId;
-      ints[o + 3] = this.edges.index(p.edgeId);
-      ints[o + 4] = KIND_INDEX[p.kind] | (this.style(p.type, p.color, p) << 2);
+      ints[o + 3] = this.#edges.index(p.edgeId);
+      ints[o + 4] = KIND_INDEX[p.kind] | (this.#style(p.type, p.color, p) << 2);
       floats[o + 5] = p.progress;
       o += STRIDE;
     }
     for (const id in snap.nodes) {
       const n = snap.nodes[id];
-      ints[o] = this.nodes.index(id);
+      ints[o] = this.#nodes.index(id);
       ints[o + 1] = n.failed + n.deadLettered + n.dropped;
       o += 2;
     }
@@ -255,10 +256,10 @@ export class SnapshotPacker {
 
   /** Strings first used since the last call (send them with the frame that packed them). */
   takeDict(): DictDelta | undefined {
-    const edges = this.edges.take();
-    const nodes = this.nodes.take();
-    const styles = this.freshStyles.length ? this.freshStyles : undefined;
-    this.freshStyles = [];
+    const edges = this.#edges.take();
+    const nodes = this.#nodes.take();
+    const styles = this.#freshStyles.length ? this.#freshStyles : undefined;
+    this.#freshStyles = [];
     if (!edges && !nodes && !styles) return undefined;
     return { ...(edges && { edges }), ...(nodes && { nodes }), ...(styles && { styles }) };
   }
@@ -266,22 +267,22 @@ export class SnapshotPacker {
 
 /** Worker: turns packed buffers back into what the renderer reads, reusing particle objects. */
 export class SnapshotUnpacker {
-  private edges: string[] = [];
-  private nodes: string[] = [];
-  private styles: Style[] = [];
-  private pool: Particle[] = [];
+  #edges: string[] = [];
+  #nodes: string[] = [];
+  #styles: Style[] = [];
+  #pool: Particle[] = [];
 
   clear(): void {
-    this.edges = [];
-    this.nodes = [];
-    this.styles = [];
+    this.#edges = [];
+    this.#nodes = [];
+    this.#styles = [];
   }
 
   apply(dict: DictDelta | undefined): void {
     if (!dict) return;
-    if (dict.edges) this.edges.push(...dict.edges);
-    if (dict.nodes) this.nodes.push(...dict.nodes);
-    if (dict.styles) this.styles.push(...dict.styles);
+    if (dict.edges) this.#edges.push(...dict.edges);
+    if (dict.nodes) this.#nodes.push(...dict.nodes);
+    if (dict.styles) this.#styles.push(...dict.styles);
   }
 
   /** A fresh snapshot object (the renderer compares identity) over pooled particles. */
@@ -289,7 +290,7 @@ export class SnapshotUnpacker {
     const ints = new Int32Array(packed.buf);
     const floats = new Float32Array(packed.buf);
     const n = packed.particles;
-    const pool = this.pool;
+    const pool = this.#pool;
     while (pool.length < n)
       pool.push({ id: 0, edgeId: "", messageId: 0, rootId: 0, kind: "message", progress: 0, type: "", color: "" });
     const particles = pool.slice(0, n);
@@ -297,11 +298,11 @@ export class SnapshotUnpacker {
     for (let i = 0; i < n; i++) {
       const p = particles[i];
       const packedKind = ints[o + 4];
-      const style = this.styles[packedKind >> 2] ?? ["", ""];
+      const style = this.#styles[packedKind >> 2] ?? ["", ""];
       p.id = ints[o];
       p.messageId = ints[o + 1];
       p.rootId = ints[o + 2];
-      p.edgeId = this.edges[ints[o + 3]] ?? "";
+      p.edgeId = this.#edges[ints[o + 3]] ?? "";
       p.kind = KINDS[packedKind & 3];
       p.type = style[0];
       p.color = style[1];
@@ -313,7 +314,7 @@ export class SnapshotUnpacker {
     }
     const nodes: Record<string, { failed: number; deadLettered: number; dropped: number }> = {};
     for (let i = 0; i < packed.nodes; i++) {
-      const id = this.nodes[ints[o]];
+      const id = this.#nodes[ints[o]];
       if (id !== undefined) nodes[id] = { failed: ints[o + 1], deadLettered: 0, dropped: 0 };
       o += 2;
     }

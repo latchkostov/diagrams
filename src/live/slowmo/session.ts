@@ -85,75 +85,79 @@ function defaultSchedule(work: () => void): () => void {
 }
 
 export class SlowMotion {
-  private machine = createMachine(slowMachine);
-  private state: SlowState = slowInitial;
+  #controller: LiveController;
+  #env: SlowEnv;
+
+  #machine = createMachine(slowMachine);
+  #state: SlowState = slowInitial;
   /** The view executes camera commands synchronously, before React can batch a take away. */
   cameraCommand?: (command: Extract<SlowCommand, { type: "camera" }>) => void;
   get machineState() {
-    return this.machine.state.value;
+    return this.#machine.state.value;
   }
   get journal() {
-    return this.machine.journal;
+    return this.#machine.journal;
   }
-  private listeners = new Set<() => void>();
-  private wasPlaying = false;
-  private liveSpeed: number | null = null;
-  private cancel: (() => void) | null = null;
-  private sandbox: LookAhead | null = null;
-  private cached: { t: number; script: SlowScript; frame: SlowFrame } | null = null;
-  private pendingStart: SlowSource | null = null;
+  #listeners = new Set<() => void>();
+  #wasPlaying = false;
+  #liveSpeed: number | null = null;
+  #cancel: (() => void) | null = null;
+  #sandbox: LookAhead | null = null;
+  #cached: { t: number; script: SlowScript; frame: SlowFrame } | null = null;
+  #pendingStart: SlowSource | null = null;
 
-  constructor(
-    private controller: LiveController,
-    private env: SlowEnv = { build: () => missingEnv() },
-  ) {}
+  constructor(controller: LiveController, env: SlowEnv = { build: () => missingEnv() }) {
+    this.#controller = controller;
+    this.#env = env;
+  }
 
   /** Armed: start as soon as the awaited message is on its way. Returns the unsubscribe. */
   watch(): () => void {
-    return this.controller.subscribe(() => {
-      if (this.pendingStart && !this.controller.busy) {
-        const source = this.pendingStart;
-        this.pendingStart = null;
-        if (this.controller.getState().needsRestart) this.end();
+    return this.#controller.subscribe(() => {
+      if (this.#pendingStart && !this.#controller.busy) {
+        const source = this.#pendingStart;
+        this.#pendingStart = null;
+        if (this.#controller.getState().needsRestart) this.end();
         else this.start(source);
         return;
       }
-      if (this.state.status === "armed" && this.controller.getState().trace?.current) this.start({ kind: "followed" });
+      if (this.#state.status === "armed" && this.#controller.getState().trace?.current)
+        this.start({ kind: "followed" });
     });
   }
 
   /** Supplies the script builder (the live view's screen geometry) after construction. */
   configure(env: SlowEnv): void {
-    this.env = env;
+    this.#env = env;
   }
 
-  getState = (): SlowState => this.state;
+  getState = (): SlowState => this.#state;
 
   subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   };
 
   get active(): boolean {
-    return this.state.status === "on" || this.state.status === "capturing";
+    return this.#state.status === "on" || this.#state.status === "capturing";
   }
 
   get on(): boolean {
-    return this.state.status === "on";
+    return this.#state.status === "on";
   }
 
   /** The script code, given or downloaded; always there once a script exists. */
-  private code(): SlowScriptCode | undefined {
-    return this.env.code ?? slowScript();
+  #code(): SlowScriptCode | undefined {
+    return this.#env.code ?? slowScript();
   }
 
   /** The frame at the current time (cached per time). */
   frame(): SlowFrame | null {
-    const { script, t } = this.state;
+    const { script, t } = this.#state;
     if (!script) return null;
-    if (this.cached && this.cached.t === t && this.cached.script === script) return this.cached.frame;
-    const frame = this.code()!.frameAt(script, t, this.controller.currentDiagram);
-    this.cached = { t, script, frame };
+    if (this.#cached && this.#cached.t === t && this.#cached.script === script) return this.#cached.frame;
+    const frame = this.#code()!.frameAt(script, t, this.#controller.currentDiagram);
+    this.#cached = { t, script, frame };
     return frame;
   }
 
@@ -161,38 +165,38 @@ export class SlowMotion {
   start(source: SlowSource): void {
     // Flush a debounced Inputs rebuild before taking the checkpoint. A replay to a
     // later time can yield: wait for it before borrowing the engine for recording.
-    this.controller.flush();
-    if (this.controller.getState().needsRestart) {
+    this.#controller.flush();
+    if (this.#controller.getState().needsRestart) {
       // A start that waited for its code gives live back.
-      if (this.state.status === "capturing") this.end();
+      if (this.#state.status === "capturing") this.end();
       return;
     }
-    this.send({ type: "start", source });
+    this.#send({ type: "start", source });
   }
 
-  private capture(source: SlowSource, prev: SlowState["status"]): void {
-    if (prev === "capturing") this.abortCapture();
-    if (prev === "off") this.wasPlaying = this.controller.isPlaying;
-    if (prev === "armed") this.wasPlaying = this.wasPlaying || this.controller.isPlaying;
+  #capture(source: SlowSource, prev: SlowState["status"]): void {
+    if (prev === "capturing") this.#abortCapture();
+    if (prev === "off") this.#wasPlaying = this.#controller.isPlaying;
+    if (prev === "armed") this.#wasPlaying = this.#wasPlaying || this.#controller.isPlaying;
     // The first start downloads the script code first: live is frozen meanwhile, as for the look-ahead itself.
-    if (!this.code()) return this.load(source);
-    if (this.controller.busy) {
-      this.pendingStart = source;
+    if (!this.#code()) return this.#load(source);
+    if (this.#controller.busy) {
+      this.#pendingStart = source;
       return;
     }
-    this.pendingStart = null;
-    this.controller.setPlaying(false);
-    this.controller.hold(true);
-    const sandbox = this.controller.lookAhead();
-    this.sandbox = sandbox;
+    this.#pendingStart = null;
+    this.#controller.setPlaying(false);
+    this.#controller.hold(true);
+    const sandbox = this.#controller.lookAhead();
+    this.#sandbox = sandbox;
     const tracer = sandbox.tracer;
     if (source.kind === "next") tracer.request({ next: "message", node: source.node });
     else if (source.kind === "root") tracer.followRoot(source.rootId);
     const from = sandbox.time();
-    const schedule = this.env.schedule ?? defaultSchedule;
+    const schedule = this.#env.schedule ?? defaultSchedule;
     let stopped = false;
     const slice = () => {
-      this.cancel = null;
+      this.#cancel = null;
       const began = Date.now();
       const until = Math.min(from + LOOK_AHEAD_MS, sandbox.time() + SLICE_SIM_MS);
       while (!stopped) {
@@ -202,8 +206,8 @@ export class SlowMotion {
         else if (!sandbox.step(CHECK_EVERY_MS)) stopped = true;
         else if (sandbox.time() >= until || Date.now() - began >= SLICE_WORK_MS) break;
       }
-      if (stopped) this.finish(source);
-      else this.cancel = schedule(slice);
+      if (stopped) this.#finish(source);
+      else this.#cancel = schedule(slice);
     };
     slice();
   }
@@ -213,12 +217,12 @@ export class SlowMotion {
    * recorded: Continue, step and seek wait, so the journey starts where the person asked for it. A start that was
    * ended, dropped or replaced meanwhile does nothing; a failed download releases live and tells the view.
    */
-  private load(source: SlowSource): void {
-    const token = this.machine.state.epoch;
-    const current = () => token === this.machine.state.epoch && this.state.status === "capturing";
-    this.send({ type: "captureProgress", epoch: token, loading: true });
-    this.controller.setPlaying(false);
-    this.controller.hold(true);
+  #load(source: SlowSource): void {
+    const token = this.#machine.state.epoch;
+    const current = () => token === this.#machine.state.epoch && this.#state.status === "capturing";
+    this.#send({ type: "captureProgress", epoch: token, loading: true });
+    this.#controller.setPlaying(false);
+    this.#controller.hold(true);
     loadSlowScript().then(
       () => {
         if (current()) this.start(source);
@@ -226,14 +230,14 @@ export class SlowMotion {
       (error: unknown) => {
         if (!current()) return;
         console.error("[diagrams] lazy load failed", error);
-        this.send({ type: "chunkFailure", epoch: token, source });
+        this.#send({ type: "chunkFailure", epoch: token, source });
       },
     );
   }
 
-  private finish(source: SlowSource): void {
-    const sandbox = this.sandbox!;
-    this.sandbox = null;
+  #finish(source: SlowSource): void {
+    const sandbox = this.#sandbox!;
+    this.#sandbox = null;
     const trace = sandbox.tracer.current();
     let waiting: { lag(nodeId: string): number | undefined } | undefined;
     if (trace && !trace.done) {
@@ -244,7 +248,7 @@ export class SlowMotion {
     }
     sandbox.restore();
     if (sandbox.refused) {
-      this.send({ type: "captureRefused", epoch: this.machine.state.epoch });
+      this.#send({ type: "captureRefused", epoch: this.#machine.state.epoch });
       return;
     }
     const tracer = sandbox.tracer;
@@ -252,149 +256,149 @@ export class SlowMotion {
       // Nothing came (free play with no traffic, or a run that ended): wait for it live.
       if (source.kind === "next") tracer.request({ next: "message", node: source.node });
       else if (source.kind === "root") tracer.followRoot(source.rootId);
-      this.send({
+      this.#send({
         type: "captureEmpty",
-        epoch: this.machine.state.epoch,
+        epoch: this.#machine.state.epoch,
         node: source.kind === "next" ? source.node : undefined,
       });
       return;
     }
     // Live keeps following the same message: after slow motion it plays out at real speed.
     tracer.followRoot(trace.rootId);
-    const script = this.env.build(trace, waiting);
-    this.send({ type: "captureDone", epoch: this.machine.state.epoch, script, trace });
+    const script = this.#env.build(trace, waiting);
+    this.#send({ type: "captureDone", epoch: this.#machine.state.epoch, script, trace });
   }
 
-  private abortCapture(): void {
-    this.cancel?.();
-    this.cancel = null;
-    this.sandbox?.restore();
-    this.sandbox = null;
+  #abortCapture(): void {
+    this.#cancel?.();
+    this.#cancel = null;
+    this.#sandbox?.restore();
+    this.#sandbox = null;
   }
 
   /** Back to live: exactly where it was, playing if it was. */
   end(): void {
-    this.send({ type: "exit" });
+    this.#send({ type: "exit" });
   }
 
   roomChanged(): void {
-    this.send({ type: "roomChanged" });
+    this.#send({ type: "roomChanged" });
   }
 
   escape(): void {
-    this.send({ type: "Escape" });
+    this.#send({ type: "Escape" });
   }
 
   /** Drop an invalidated journey; a capture awaiting this rebuild survives it. */
   drop(): boolean {
-    if (this.pendingStart && this.controller.busy) return false;
-    this.send({ type: "liveChanged" });
+    if (this.#pendingStart && this.#controller.busy) return false;
+    this.#send({ type: "liveChanged" });
     return true;
   }
 
-  private send(event: SlowEvent, publish = true): void {
-    const previous = this.machine.state;
-    const result = this.machine.send(event);
+  #send(event: SlowEvent, publish = true): void {
+    const previous = this.#machine.state;
+    const result = this.#machine.send(event);
     if (result.state === previous && !result.commands.length) return;
     // The machine owns the playback clock; derived readouts change only when published.
-    const { row, activeRows, real, caption, done } = this.state;
-    this.state = { ...result.state, row, activeRows, real, caption, done };
-    for (const command of result.commands) this.run(command);
+    const { row, activeRows, real, caption, done } = this.#state;
+    this.#state = { ...result.state, row, activeRows, real, caption, done };
+    for (const command of result.commands) this.#run(command);
     // Commands may synchronously send another event (a short capture finishes without yielding).
     if (publish) this.publish();
   }
 
-  private run(command: SlowCommand): void {
+  #run(command: SlowCommand): void {
     switch (command.type) {
       case "capture":
-        this.capture(command.source, command.previous);
+        this.#capture(command.source, command.previous);
         break;
       case "release":
-        this.pendingStart = null;
+        this.#pendingStart = null;
         if (command.discard) {
-          this.cancel?.();
-          this.cancel = null;
-          this.sandbox = null;
-        } else this.abortCapture();
-        this.restoreSpeed();
-        this.controller.hold(false);
-        if (command.resume) this.controller.setPlaying(this.wasPlaying);
+          this.#cancel?.();
+          this.#cancel = null;
+          this.#sandbox = null;
+        } else this.#abortCapture();
+        this.#restoreSpeed();
+        this.#controller.hold(false);
+        if (command.resume) this.#controller.setPlaying(this.#wasPlaying);
         break;
       case "armed":
-        this.restoreSpeed();
-        this.controller.hold(false);
-        this.controller.setPlaying(this.wasPlaying);
+        this.#restoreSpeed();
+        this.#controller.hold(false);
+        this.#controller.setPlaying(this.#wasPlaying);
         break;
       case "replay":
-        this.liveSpeed ??= this.controller.getState().speed;
-        this.controller.setSpeed(1);
-        this.controller.publish();
+        this.#liveSpeed ??= this.#controller.getState().speed;
+        this.#controller.setSpeed(1);
+        this.#controller.publish();
         break;
       case "unavailable":
-        this.env.unavailable?.(command.source);
+        this.#env.unavailable?.(command.source);
         break;
       case "camera":
         this.cameraCommand?.(command);
         break;
       case "speed":
-        this.controller.setSpeed(command.speed);
+        this.#controller.setSpeed(command.speed);
         break;
     }
   }
 
-  private restoreSpeed(): void {
-    const speed = this.liveSpeed;
-    this.liveSpeed = null;
-    if (speed !== null) this.controller.setSpeed(speed);
+  #restoreSpeed(): void {
+    const speed = this.#liveSpeed;
+    this.#liveSpeed = null;
+    if (speed !== null) this.#controller.setSpeed(speed);
   }
 
   /** The live view unmounted: stop any look-ahead in progress (the engine goes with the view). */
   dispose(): void {
-    this.pendingStart = null;
-    this.send({ type: "liveChanged" });
+    this.#pendingStart = null;
+    this.#send({ type: "liveChanged" });
   }
 
   /** Advance the replay by wall-clock ms; `speed` (the speed select) scales the pacing. */
   advance(wallMs: number, speed: number): void {
     const previous = this.machineState;
-    this.send({ type: "tick", wallMs, speed }, false);
+    this.#send({ type: "tick", wallMs, speed }, false);
     if (previous === "playing" && this.machineState === "finished") this.publish();
   }
 
   play(): void {
-    this.send({ type: "play" });
+    this.#send({ type: "play" });
   }
   pause(): void {
-    this.send({ type: "pause" });
+    this.#send({ type: "pause" });
   }
   speed(speed: number): void {
-    this.send({ type: "speed", speed });
+    this.#send({ type: "speed", speed });
   }
 
   toggle(): void {
-    if (this.state.playing) this.pause();
+    if (this.#state.playing) this.pause();
     else this.play();
   }
 
   /** Replay from the start (the camera fits the whole path again). */
   restart(): void {
-    this.send({ type: "restart" });
+    this.#send({ type: "restart" });
   }
 
   seek(t: number): void {
-    this.send({ type: "seek", t });
+    this.#send({ type: "seek", t });
   }
 
   /** Next (+1) or previous (-1) hop, then pause there. */
   step(dir: 1 | -1): void {
-    const s = this.state;
+    const s = this.#state;
     if (!s.script) return;
-    this.send({ type: "step", t: this.code()!.stepStop(s.script, s.t, dir) });
+    this.#send({ type: "step", t: this.#code()!.stepStop(s.script, s.t, dir) });
   }
 
   /** A trace card row was clicked: tell the story from that hop. */
   seekRow(key: string): boolean {
-    const at = this.state.script?.rowStart.get(key);
+    const at = this.#state.script?.rowStart.get(key);
     if (at === undefined) return false;
     this.seek(at);
     return true;
@@ -402,18 +406,18 @@ export class SlowMotion {
 
   /** Republish the derived fields (current row, clock, caption) for React. */
   publish(): void {
-    this.set(this.state);
+    this.#set(this.#state);
   }
 
-  private set(next: SlowState): void {
-    const frame = next.script ? this.frameFor(next) : null;
+  #set(next: SlowState): void {
+    const frame = next.script ? this.#frameFor(next) : null;
     const top = frame?.captions
       .filter((c) => !c.chip)
       .reduce<(typeof frame.captions)[number] | undefined>(
         (best, c) => (!best || c.priority > best.priority ? c : best),
         undefined,
       );
-    this.state = {
+    this.#state = {
       ...next,
       row: frame?.currentRow,
       activeRows: frame?.activeRows ?? [],
@@ -421,13 +425,13 @@ export class SlowMotion {
       caption: top?.text ?? "",
       done: !!frame?.done,
     };
-    for (const l of this.listeners) l();
+    for (const l of this.#listeners) l();
   }
 
-  private frameFor(s: SlowState): SlowFrame {
-    if (this.cached && this.cached.t === s.t && this.cached.script === s.script) return this.cached.frame;
-    const frame = this.code()!.frameAt(s.script!, s.t, this.controller.currentDiagram);
-    this.cached = { t: s.t, script: s.script!, frame };
+  #frameFor(s: SlowState): SlowFrame {
+    if (this.#cached && this.#cached.t === s.t && this.#cached.script === s.script) return this.#cached.frame;
+    const frame = this.#code()!.frameAt(s.script!, s.t, this.#controller.currentDiagram);
+    this.#cached = { t: s.t, script: s.script!, frame };
     return frame;
   }
 }

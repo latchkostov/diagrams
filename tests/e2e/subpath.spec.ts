@@ -122,6 +122,8 @@ test.describe("production build under a sub-path", () => {
     page.on("worker", (w) => workers.push(w.url()));
     await page.goto("./?view=canvas&example=kafka-order-pipeline&live=1");
     await expect(page.getByTestId("live-controls")).toBeVisible();
+    // These production counters must work without enabling the dev/E2E pixel-readback hook.
+    expect(await page.evaluate(() => window.__liveProbe)).toBeUndefined();
     const canvas = page.getByTestId("live-canvas");
     await expect(canvas).toHaveAttribute("data-renderer", "worker");
     // Below 60% the calm chip view stops painting on purpose (lowzoom-chips.spec.ts): watch the worker at 80%.

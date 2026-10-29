@@ -67,6 +67,10 @@ export interface SceneChanges {
 }
 
 export class LiveScene {
+  #root: HTMLElement;
+  #store: FlowStoreLike;
+  #onGeometryChange: (() => void) | undefined;
+
   /** Bumps whenever a sampled edge's path changes (the renderer redraws, and re-samples it). */
   pathsVersion = 0;
   readonly ink = new Map<string, EdgeInk>();
@@ -95,11 +99,11 @@ export class LiveScene {
   #styleCache = new Map<string, Omit<MarchEdge, "id" | "d">>();
   #zoom = NaN;
 
-  constructor(
-    private root: HTMLElement,
-    private store: FlowStoreLike,
-    private onGeometryChange?: () => void,
-  ) {
+  constructor(root: HTMLElement, store: FlowStoreLike, onGeometryChange?: () => void) {
+    this.#root = root;
+    this.#store = store;
+    this.#onGeometryChange = onGeometryChange;
+
     if (typeof MutationObserver === "function") {
       this.#observer = new MutationObserver((records) => this.#invalidate(records));
       // Detail and presentation attributes live above React Flow; theme changes live on <html>.
@@ -148,12 +152,12 @@ export class LiveScene {
         )
           this.#dirty = true;
       } else if (name === "data-detail-expanded" || name === "data-detail-wrapped") {
-        this.onGeometryChange?.();
+        this.#onGeometryChange?.();
       } else {
         if (edge) {
           if (name === "d" || name === "data-id") this.#dirty = true;
           else this.#styled?.add(edge);
-        } else if (el.contains(this.root)) this.#styled = null;
+        } else if (el.contains(this.#root)) this.#styled = null;
       }
     }
   }
@@ -164,11 +168,11 @@ export class LiveScene {
   }
 
   transform(): readonly [number, number, number] {
-    return this.store.getState().transform;
+    return this.#store.getState().transform;
   }
 
   size(): { width: number; height: number } {
-    const s = this.store.getState();
+    const s = this.#store.getState();
     return { width: s.width, height: s.height };
   }
 
@@ -256,7 +260,7 @@ export class LiveScene {
   readMarch(): void {
     if (this.#styled?.size === 0) return;
     if (!this.#styled) this.#styleCache.clear();
-    const spotlight = this.root.hasAttribute("data-live-spotlight");
+    const spotlight = this.#root.hasAttribute("data-live-spotlight");
     const out: MarchEdge[] = [];
     for (const [id, entry] of this.#paths) {
       const el = entry.group;
@@ -320,7 +324,7 @@ export class LiveScene {
     this.#dirty = false;
     const seen = new Set<string>();
     let version = false;
-    for (const g of this.root.querySelectorAll(".react-flow__edge[data-id]")) {
+    for (const g of this.#root.querySelectorAll(".react-flow__edge[data-id]")) {
       const id = g.getAttribute("data-id");
       if (!id || seen.has(id)) continue;
       const el = g.querySelector<SVGPathElement>("path.react-flow__edge-path");
@@ -357,7 +361,7 @@ export class LiveScene {
   }
 
   #refreshNodes(): void {
-    const s = this.store.getState();
+    const s = this.#store.getState();
     if (s.nodes === this.#nodesRef) return;
     this.#nodesRef = s.nodes;
     const next = new Map<string, Rect>();
@@ -377,7 +381,7 @@ export class LiveScene {
     this.#nodes = next;
     this.#nodesChanged = true;
     this.#obstacleCache = null;
-    this.onGeometryChange?.();
+    this.#onGeometryChange?.();
   }
 
   /** Every wanted path, node box and the march, as if all were new (a worker that just attached). */
@@ -433,11 +437,11 @@ export class LiveScene {
    */
   obstacles(): Obstacles {
     const now = performance.now();
-    const [vx, vy, vz] = this.store.getState().transform;
+    const [vx, vy, vz] = this.#store.getState().transform;
     const view = `${vx}|${vy}|${vz}`;
     const cached = this.#obstacleCache;
     if (cached && cached.view === view && now - cached.at < 200) return cached;
-    const root = this.root;
+    const root = this.#root;
     const base = root.getBoundingClientRect();
     const hard: Rect[] = [],
       soft: Rect[] = [];
