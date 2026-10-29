@@ -42,6 +42,18 @@ export async function openCheckFinding(page: Page, id: string) {
   await waitForChecks(page);
 }
 
+/** Navigation and a frozen measurement clock start after stencil search has published its choices. */
+export async function waitForQuickAddResults(page: Page) {
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("quick-add")
+        .getByTestId(/^context-menu-item-/)
+        .evaluateAll((rows) => rows.some((row) => row.getAttribute("data-active") === "true")),
+    )
+    .toBe(true);
+}
+
 /** Theme choices moved into the View menu. */
 export async function openViewMenu(page: Page) {
   const view = page.getByTestId("view-button");

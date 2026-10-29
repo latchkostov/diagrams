@@ -1,4 +1,4 @@
-import { openLibrary } from "./fixtures";
+import { openLibrary, waitForQuickAddResults } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, savedDiagram, STORAGE_KEYS } from "./fixtures";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
@@ -89,9 +89,11 @@ for (const editAfterArrow of [false, true])
         await page.keyboard.press("Alt+ArrowRight");
         await expect(page.getByTestId("quick-add-search")).toBeFocused();
         await page.keyboard.type(editAfterArrow ? "ca" : "cache");
+        await waitForQuickAddResults(page);
         await page.keyboard.press("ArrowDown");
         if (editAfterArrow) {
           await page.keyboard.type("che");
+          await waitForQuickAddResults(page);
           await page.keyboard.press("ArrowDown");
         }
         if (keyboardPick) await page.keyboard.press("Enter");
