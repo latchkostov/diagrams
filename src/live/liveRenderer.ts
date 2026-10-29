@@ -41,6 +41,9 @@ import {
 
 export type RendererKind = "worker" | "main";
 
+/** Pixel readback is a browser-test hook, never part of ordinary playback. */
+const TEST_HOOKS = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
+
 /** A layer's pixels (test hook): RGBA rows of `width`, pixel (i, j) at client (x + i / scale, y + j / scale). */
 export interface ProbeResult {
   data: Uint8ClampedArray;
@@ -199,25 +202,29 @@ function keepLast(el: HTMLCanvasElement | null, root: HTMLElement): void {
  * badges); this undoes the viewport transform so they cover exactly the visible pane.
  */
 export class CanvasPlacement {
-  private sizeKey = "";
-  private key = "";
-  constructor(private els: readonly (HTMLCanvasElement | null)[]) {}
+  #els: readonly (HTMLCanvasElement | null)[];
+
+  #sizeKey = "";
+  #key = "";
+  constructor(els: readonly (HTMLCanvasElement | null)[]) {
+    this.#els = els;
+  }
 
   place(v: ViewState): void {
     const sizeKey = `${v.width}|${v.height}`;
-    if (sizeKey !== this.sizeKey) {
-      this.sizeKey = sizeKey;
-      for (const el of this.els) {
+    if (sizeKey !== this.#sizeKey) {
+      this.#sizeKey = sizeKey;
+      for (const el of this.#els) {
         if (!el) continue;
         el.style.width = `${v.width}px`;
         el.style.height = `${v.height}px`;
       }
     }
     const key = `${v.x}|${v.y}|${v.zoom}`;
-    if (key !== this.key) {
-      this.key = key;
+    if (key !== this.#key) {
+      this.#key = key;
       const t = `translate(${-v.x / v.zoom}px, ${-v.y / v.zoom}px) scale(${1 / v.zoom})`;
-      for (const el of this.els) if (el) el.style.transform = t;
+      for (const el of this.#els) if (el) el.style.transform = t;
     }
   }
 }
@@ -262,33 +269,37 @@ export function createLiveRenderer(kind: RendererKind, setup: RendererSetup): Li
 // ------------------------------------------------------------------ main thread (fallback)
 
 class MainThreadRenderer implements LiveRenderer {
-  readonly kind = "main";
-  private scene: LiveScene;
-  private core: ParticleRenderer;
-  private placement: CanvasPlacement;
-  private slow: SlowOverlay | undefined;
-  private marchCanvas: HTMLCanvasElement | null;
-  private march: MarchRenderer | null = null;
-  private marchEdges: readonly MarchEdge[] | null = null;
-  private reduced: boolean;
+  #setup: RendererSetup;
 
-  constructor(private setup: RendererSetup) {
+  readonly kind = "main";
+  #scene: LiveScene;
+  #core: ParticleRenderer;
+  #placement: CanvasPlacement;
+  #slow: SlowOverlay | undefined;
+  #marchCanvas: HTMLCanvasElement | null;
+  #march: MarchRenderer | null = null;
+  #marchEdges: readonly MarchEdge[] | null = null;
+  #reduced: boolean;
+
+  constructor(setup: RendererSetup) {
+    this.#setup = setup;
+
     void loadCanvasFonts(document.fonts)
-      .then(() => this.core.invalidate())
+      .then(() => this.#core.invalidate())
       .catch(() => {});
-    this.scene = new LiveScene(setup.root, setup.store, () => {
+    this.#scene = new LiveScene(setup.root, setup.store, () => {
       setup.overlay.hidden = true;
       delete setup.canvas.dataset.traceLabels;
     });
-    const scene = this.scene;
-    this.reduced = setup.options.reducedMotion;
-    this.marchCanvas = mountMarchCanvas(setup.root);
-    if (this.marchCanvas) {
-      this.march = new MarchRenderer(this.marchCanvas);
+    const scene = this.#scene;
+    this.#reduced = setup.options.reducedMotion;
+    this.#marchCanvas = mountMarchCanvas(setup.root);
+    if (this.#marchCanvas) {
+      this.#march = new MarchRenderer(this.#marchCanvas);
       setup.root.setAttribute(MARCH_ATTR, "canvas");
     }
-    this.placement = new CanvasPlacement([setup.canvas, setup.overlay, this.marchCanvas]);
-    this.core = new ParticleRenderer(
+    this.#placement = new CanvasPlacement([setup.canvas, setup.overlay, this.#marchCanvas]);
+    this.#core = new ParticleRenderer(
       setup.canvas,
       {
         transform: () => scene.transform(),
@@ -307,55 +318,56 @@ class MainThreadRenderer implements LiveRenderer {
   }
 
   setOptions(opts: RenderOptions): void {
-    this.reduced = opts.reducedMotion;
-    this.core.setOptions(opts);
+    this.#reduced = opts.reducedMotion;
+    this.#core.setOptions(opts);
   }
   reset(): void {
-    this.core.reset();
+    this.#core.reset();
   }
   frame(f: FrameInput): void {
-    this.scene.refresh();
-    const view = viewOf(this.scene);
-    this.placement.place(view);
-    this.slow = f.slow;
-    this.core.draw(f.snap, f.now, f.focus, f.slow, f.speed);
-    this.setup.overlay.hidden = false;
-    if (this.march) {
-      if (this.scene.march !== this.marchEdges) this.march.setEdges((this.marchEdges = this.scene.march));
-      this.march.draw(view, f.march, this.reduced);
+    this.#scene.refresh();
+    const view = viewOf(this.#scene);
+    this.#placement.place(view);
+    this.#slow = f.slow;
+    this.#core.draw(f.snap, f.now, f.focus, f.slow, f.speed);
+    this.#setup.overlay.hidden = false;
+    if (this.#march) {
+      if (this.#scene.march !== this.#marchEdges) this.#march.setEdges((this.#marchEdges = this.#scene.march));
+      this.#march.draw(view, f.march, this.#reduced);
     }
   }
   tick(): void {
-    this.scene.refresh();
-    keepLast(this.marchCanvas, this.setup.root);
+    this.#scene.refresh();
+    keepLast(this.#marchCanvas, this.#setup.root);
   }
   hitTest(x: number, y: number, radius?: number): number | undefined {
-    return this.core.hitTest(x, y, radius);
+    return this.#core.hitTest(x, y, radius);
   }
   get drawn(): number {
-    return this.core.drawn;
+    return this.#core.drawn;
   }
   get frames(): number {
-    return this.core.frames;
+    return this.#core.frames;
   }
   get labels(): readonly PlacedLabel[] {
-    return this.setup.overlay.hidden ? [] : this.core.labels;
+    return this.#setup.overlay.hidden ? [] : this.#core.labels;
   }
   get slowLabels(): readonly PaintedLabel[] {
-    return this.setup.overlay.hidden ? [] : (this.slow?.labels ?? []);
+    return this.#setup.overlay.hidden ? [] : (this.#slow?.labels ?? []);
   }
   probe(layer: Layer, rect: { x: number; y: number; width: number; height: number }): Promise<ProbeResult> {
-    const el = layer === "over" ? this.setup.overlay : layer === "march" ? this.marchCanvas : this.setup.canvas;
+    if (!TEST_HOOKS) return Promise.resolve(NO_PIXELS);
+    const el = layer === "over" ? this.#setup.overlay : layer === "march" ? this.#marchCanvas : this.#setup.canvas;
     if (!el) return Promise.resolve(NO_PIXELS);
-    const r = deviceRect(el, this.scene.dpr(), rect);
+    const r = deviceRect(el, this.#scene.dpr(), rect);
     const data = el.getContext("2d")?.getImageData(r.x, r.y, r.w, r.h).data;
     return Promise.resolve(data ? probeResult(data, r) : NO_PIXELS);
   }
   dispose(): void {
-    this.scene.dispose();
-    this.setup.overlay.hidden = false;
-    this.marchCanvas?.remove();
-    this.setup.root.removeAttribute(MARCH_ATTR);
+    this.#scene.dispose();
+    this.#setup.overlay.hidden = false;
+    this.#marchCanvas?.remove();
+    this.#setup.root.removeAttribute(MARCH_ATTR);
   }
 }
 
@@ -464,6 +476,8 @@ const START_TIMEOUT_MS = 10_000;
 let epochs = 0;
 
 class WorkerRenderer implements LiveRenderer {
+  #setup: RendererSetup;
+
   readonly kind = "worker";
   #scene: LiveScene;
   /** Null when the worker couldn't start (the fallback is on its way). */
@@ -502,15 +516,17 @@ class WorkerRenderer implements LiveRenderer {
   #drawnLabels: readonly PlacedLabel[] = [];
   #drawnSlowLabels: readonly PaintedLabel[] = [];
   get labels(): readonly PlacedLabel[] {
-    return this.setup.overlay.hidden ? [] : this.#drawnLabels;
+    return this.#setup.overlay.hidden ? [] : this.#drawnLabels;
   }
   get slowLabels(): readonly PaintedLabel[] {
-    return this.setup.overlay.hidden ? [] : this.#drawnSlowLabels;
+    return this.#setup.overlay.hidden ? [] : this.#drawnSlowLabels;
   }
   #probes = new Map<number, (data: Uint8ClampedArray) => void>();
   #probeId = 0;
 
-  constructor(private setup: RendererSetup) {
+  constructor(setup: RendererSetup) {
+    this.#setup = setup;
+
     this.#scene = new LiveScene(setup.root, setup.store, () => {
       this.#geometryRevision++;
       setup.overlay.hidden = true;
@@ -535,9 +551,9 @@ class WorkerRenderer implements LiveRenderer {
     if (this.#failed || this.#disposed) return;
     this.#failed = true;
     clearTimeout(this.#startTimer);
-    this.setup.root.removeAttribute(MARCH_ATTR);
-    this.setup.root.removeAttribute(GLOW_ATTR);
-    this.setup.onFail?.(reason);
+    this.#setup.root.removeAttribute(MARCH_ATTR);
+    this.#setup.root.removeAttribute(GLOW_ATTR);
+    this.#setup.onFail?.(reason);
   }
 
   #onMessage(m: FromWorker): void {
@@ -559,13 +575,13 @@ class WorkerRenderer implements LiveRenderer {
         this.#started = true;
         clearTimeout(this.#startTimer);
         // The worker draws: the SVG's own march and the dot's CSS breath step aside for its canvases.
-        if (this.#host?.march) this.setup.root.setAttribute(MARCH_ATTR, "canvas");
-        if (this.#host?.glow) this.setup.root.setAttribute(GLOW_ATTR, "canvas");
+        if (this.#host?.march) this.#setup.root.setAttribute(MARCH_ATTR, "canvas");
+        if (this.#host?.glow) this.#setup.root.setAttribute(GLOW_ATTR, "canvas");
       }
       this.#inFlight = false;
       this.#workerAnimating = m.animating;
       if (this.#sentGeometryRevision === this.#geometryRevision) {
-        this.setup.overlay.hidden = false;
+        this.#setup.overlay.hidden = false;
       }
     }
     this.drawn = m.drawn;
@@ -586,7 +602,7 @@ class WorkerRenderer implements LiveRenderer {
 
   tick(): void {
     this.#scene.refresh();
-    keepLast(this.#host?.march ?? null, this.setup.root);
+    keepLast(this.#host?.march ?? null, this.#setup.root);
     this.#readGlow();
   }
 
@@ -612,7 +628,7 @@ class WorkerRenderer implements LiveRenderer {
     const viewKey = `${view.x}|${view.y}|${view.zoom}|${view.width}|${view.height}|${view.dpr}`;
     const needsObstacles = f.focus !== undefined || !!f.slow;
     const obstacles = needsObstacles ? this.#scene.obstacles() : null;
-    const labels = this.setup.labelRects();
+    const labels = this.#setup.labelRects();
     const slowRevision = f.slow?.revision ?? -1;
     const slowChanged = f.slow !== this.#sentSlow || slowRevision !== this.#sentSlowRevision;
     const sync = !this.#synced;
@@ -717,8 +733,9 @@ class WorkerRenderer implements LiveRenderer {
   }
 
   probe(layer: Layer, rect: { x: number; y: number; width: number; height: number }): Promise<ProbeResult> {
+    if (!TEST_HOOKS) return Promise.resolve(NO_PIXELS);
     const host = this.#host;
-    const el = layer === "over" ? this.setup.overlay : layer === "march" ? (host?.march ?? null) : this.setup.canvas;
+    const el = layer === "over" ? this.#setup.overlay : layer === "march" ? (host?.march ?? null) : this.#setup.canvas;
     if (!el || !host) return Promise.resolve(NO_PIXELS);
     const r = deviceRect(el, this.#scene.dpr(), rect);
     const id = ++this.#probeId;
@@ -733,11 +750,11 @@ class WorkerRenderer implements LiveRenderer {
     this.#disposed = true;
     clearTimeout(this.#startTimer);
     this.#scene.dispose();
-    this.setup.overlay.hidden = false;
+    this.#setup.overlay.hidden = false;
     for (const resolve of this.#probes.values()) resolve(new Uint8ClampedArray());
     this.#probes.clear();
-    this.setup.root.removeAttribute(MARCH_ATTR);
-    this.setup.root.removeAttribute(GLOW_ATTR);
-    if (this.#host) releaseHost(this.setup.canvas, this.#host);
+    this.#setup.root.removeAttribute(MARCH_ATTR);
+    this.#setup.root.removeAttribute(GLOW_ATTR);
+    if (this.#host) releaseHost(this.#setup.canvas, this.#host);
   }
 }

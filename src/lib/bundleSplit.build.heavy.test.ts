@@ -205,6 +205,26 @@ it("keeps checkpoint graph slot labels out of shipped property names", () => {
     expect(/\b(?:echoExpiries|echoByTime|drawnTrips|logicalIndices):/.test(chunk.code)).toBe(false);
 });
 
+it("minifies private Live controller and renderer member names", () => {
+  const code = chunks.map((chunk) => chunk.code).join("\n");
+  for (const member of [
+    "invalidateVerification",
+    "replayTarget",
+    "rememberProps",
+    "lastPulseAt",
+    "drawDimmed",
+    "focusHeads",
+    "freshStyles",
+    "overlayDrawn",
+  ])
+    expect(code, member).not.toContain(member);
+  const live = chunks.find((chunk) => chunk.name === "LiveSession");
+  expect(live).toBeDefined();
+  expect(live!.code).not.toContain(".getImageData(");
+  expect(live!.code).not.toContain(".dataset.particles");
+  expect(live!.code).not.toContain(".dataset.frames");
+});
+
 const chunkIn = (b: Build, fileName: string) => {
   const found = b.chunks.find((c) => c.fileName === fileName);
   if (!found) throw new Error(`No chunk ${fileName}`);

@@ -170,16 +170,16 @@ export function useFrameLoop({
       if (!lowZoom) renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });
       if (ui) {
         slowRef.current?.ui(canvas, snap, renderer.slowLabels);
-        if (++stats % 2 === 0) {
+        if (testHooks && ++stats % 2 === 0) {
           canvas.dataset.particles = String(lowZoom ? 0 : renderer.drawn);
           canvas.dataset.frames = String(renderer.frames);
         }
         // The traced message's labels, for tests (pane CSS px).
-        if (renderer.labels.length)
+        if (testHooks && renderer.labels.length)
           canvas.dataset.traceLabels = JSON.stringify(
             renderer.labels.map((l) => ({ text: l.text, x: l.x, y: l.y, w: l.w, h: l.h })),
           );
-        else delete canvas.dataset.traceLabels;
+        else if (testHooks) delete canvas.dataset.traceLabels;
       }
       raf = requestAnimationFrame(tick);
     };

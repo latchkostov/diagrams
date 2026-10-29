@@ -67,39 +67,42 @@ interface Entry {
  * Call `get` every frame: it re-reads `d` (cheap) and re-samples only when it changed.
  */
 export class PathCache {
-  private entries = new Map<string, Entry>();
-  private missing = new Map<string, number>();
-  constructor(
-    private resolve: (edgeId: string) => PathLike | null,
-    private spacing = SAMPLE_SPACING,
-  ) {}
+  #resolve: (edgeId: string) => PathLike | null;
+  #spacing: number;
+
+  #entries = new Map<string, Entry>();
+  #missing = new Map<string, number>();
+  constructor(resolve: (edgeId: string) => PathLike | null, spacing = SAMPLE_SPACING) {
+    this.#resolve = resolve;
+    this.#spacing = spacing;
+  }
 
   get(edgeId: string, frame = 0): PathSamples | null {
-    let entry = this.entries.get(edgeId);
+    let entry = this.#entries.get(edgeId);
     // Already checked this frame (frame 0 means "no frame", always check).
     if (entry && frame !== 0 && entry.frame === frame) return entry.samples;
     if (entry && !entry.el.isConnected) {
-      this.entries.delete(edgeId);
+      this.#entries.delete(edgeId);
       entry = undefined;
     }
     if (!entry) {
       // Don't query the DOM for a missing edge more than once per frame.
-      if (this.missing.get(edgeId) === frame) return null;
-      const el = this.resolve(edgeId);
+      if (this.#missing.get(edgeId) === frame) return null;
+      const el = this.#resolve(edgeId);
       if (!el) {
-        this.missing.set(edgeId, frame);
+        this.#missing.set(edgeId, frame);
         return null;
       }
-      this.missing.delete(edgeId);
+      this.#missing.delete(edgeId);
       entry = { el, d: "", samples: { length: 0, points: new Float32Array(4) }, frame: 0 };
-      this.entries.set(edgeId, entry);
+      this.#entries.set(edgeId, entry);
     }
     entry.frame = frame;
     const d = entry.el.getAttribute("d") ?? "";
     if (d !== entry.d) {
       entry.d = d;
       entry.samples = d
-        ? samplePath(entry.el.getTotalLength(), (l) => entry.el.getPointAtLength(l), this.spacing)
+        ? samplePath(entry.el.getTotalLength(), (l) => entry.el.getPointAtLength(l), this.#spacing)
         : { length: 0, points: new Float32Array(4) };
     }
     return entry.samples;
@@ -107,18 +110,18 @@ export class PathCache {
 
   /** True when a cached path was redrawn or remounted since it was last sampled (a node moved...). */
   stale(): boolean {
-    for (const entry of this.entries.values())
+    for (const entry of this.#entries.values())
       if (!entry.el.isConnected || (entry.el.getAttribute("d") ?? "") !== entry.d) return true;
     return false;
   }
 
   /** Forget everything (diagram reloaded, renderer detached). */
   clear(): void {
-    this.entries.clear();
-    this.missing.clear();
+    this.#entries.clear();
+    this.#missing.clear();
   }
 
   get size(): number {
-    return this.entries.size;
+    return this.#entries.size;
   }
 }
