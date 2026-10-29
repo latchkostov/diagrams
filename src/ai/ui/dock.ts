@@ -78,5 +78,7 @@ export function collapseDock(): void {
   const hadFocus = !!panel?.contains(document.activeElement);
   aiDock.set({ open: false });
   if (hadFocus)
-    requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-testid="ai-rail-open"]')?.focus());
+    requestAnimationFrame(() => {
+      if (!aiDock.get().open) document.querySelector<HTMLElement>('[data-testid="ai-rail-open"]')?.focus();
+    });
 }
