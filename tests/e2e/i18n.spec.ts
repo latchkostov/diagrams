@@ -21,6 +21,7 @@ import {
 import en from "../../src/i18n/en";
 import { parse, compile } from "../../src/i18n/icu";
 import { helpersFor } from "../../src/i18n/helpers";
+import { catalogRequest } from "../../scripts/e2e-catalog";
 import { pseudoLocalize } from "../../src/i18n/pseudo";
 import {
   callTool,
@@ -1175,10 +1176,6 @@ test.describe("choosing a language", () => {
     expectNoErrors(consoleErrors);
   });
 });
-
-/** A language's catalog: the build's chunk, or the dev server's virtual module. */
-const catalogRequest = (code: string) =>
-  new RegExp(String.raw`/(?:assets/${code}-[\w-]+\.js|@id/__x00__virtual:i18n/catalog/${code})(?:\?|$)`);
 
 test.describe("when a language can't be downloaded", () => {
   test("nothing changes, the dialog says so with Retry, and the retry switches", async ({ page }) => {

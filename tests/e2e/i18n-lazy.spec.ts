@@ -5,12 +5,8 @@ import { planningP3Fixture } from "../../src/lab/planningP3Fixture";
 import { test, expect, gotoCanvas, STORAGE_KEYS, waitForStableViewport } from "./fixtures";
 import { holdChunk } from "./chunk";
 import { openSurface } from "./lazy-surface-helpers";
+import { catalogRequest as catalog } from "../../scripts/e2e-catalog";
 
-/** A language's optional catalogs (`a|b`): the production chunk, or the dev server's virtual module. */
-const catalog = (code: string, buckets: string) =>
-  new RegExp(
-    String.raw`/(?:assets/${code}-(?:${buckets})-[\w-]+\.js|@id/__x00__virtual:i18n/catalog/${code}-(?:${buckets}))(?:\?|$)`,
-  );
 const translations = (code: string) =>
   JSON.parse(readFileSync(`src/i18n/locales/${code}.json`, "utf8")) as Record<string, string>;
 
