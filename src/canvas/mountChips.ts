@@ -45,14 +45,16 @@ export function mountChips(
     ready = false,
     previous = "",
     fits = 0;
+  root.dataset.chipsPending = "true";
   /** Back to natural cards (zone titles keep their own bands: FrameDetail's placeRegionTitles). */
   const natural = () => root.removeAttribute("data-low-zoom");
   const clear = () => {
     if (previous) {
       previous = "";
       natural();
-      setLowZoom(store, null);
+      flushSync(() => setLowZoom(store, null));
     }
+    root.dataset.chipsPending = "false";
   };
   const update = () => {
     frame = 0;
@@ -114,7 +116,10 @@ export function mountChips(
       [...members],
       [...routes].map(([id, r]) => [id, r.path]),
     ]);
-    if (key === previous) return;
+    if (key === previous) {
+      root.dataset.chipsPending = "false";
+      return;
+    }
     previous = key;
     root.dataset.lowZoom = zoom < 0.3 ? "far" : "mid";
     if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") root.dataset.chipFits = String(++fits);
@@ -129,18 +134,24 @@ export function mountChips(
         lane: lanes.get(id) ?? id,
         ...(live && shared.has(id) ? { shared: shared.get(id) } : {}),
       });
-    setLowZoom(store, {
-      Edge: chipEdge,
-      Node: ChipNode,
-      zones: members,
-      tier: zoom < 0.3 ? "far" : "mid",
-      zoom,
-      nodes: chips,
-      edges: share(edges, shown?.edges),
-    });
+    flushSync(() =>
+      setLowZoom(store, {
+        Edge: chipEdge,
+        Node: ChipNode,
+        zones: members,
+        tier: zoom < 0.3 ? "far" : "mid",
+        zoom,
+        nodes: chips,
+        edges: share(edges, shown?.edges),
+      }),
+    );
+    root.dataset.chipsPending = "false";
   };
   const schedule = () => {
-    if (!disposed && !frame) frame = requestAnimationFrame(update);
+    if (!disposed && !frame) {
+      root.dataset.chipsPending = "true";
+      frame = requestAnimationFrame(update);
+    }
   };
   void document.fonts.ready.then(() => {
     ready = true;
@@ -180,5 +191,6 @@ export function mountChips(
     uncap();
     natural();
     setLowZoom(store, null);
+    delete root.dataset.chipsPending;
   };
 }

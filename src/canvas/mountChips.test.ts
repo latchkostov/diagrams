@@ -84,15 +84,19 @@ afterEach(() => {
 it("publishes only settled layouts, reuses pan, and restores natural cards for capture", async () => {
   const { root, store, flush, dispose, state } = harness();
   try {
+    expect(root.dataset.chipsPending).toBe("true");
     await flush();
+    expect(root.dataset.chipsPending).toBe("false");
     expect(state().ldChips).toBeUndefined();
     root.setAttribute("data-viewport-moving", "");
     store.setState({ transform: [0, 0, 0.4] });
     await flush();
     expect(state().ldChips).toBeUndefined();
+    expect(root.dataset.chipsPending).toBe("true");
     root.removeAttribute("data-viewport-moving");
     await flush();
     const fitted = state().ldChips;
+    expect(root.dataset.chipsPending).toBe("false");
     expect(fitted?.nodes.get("worker")?.lines).toContain("Feature");
     store.setState({ transform: [120, 50, 0.4] });
     await flush();
