@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
-import { act, type ReactNode } from "react";
+import { act, StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { FrameDetail } from "./FrameDetail";
 import type { DiagramFlowEdge, FlowNode } from "./types";
+import { suspendFrameCapture } from "./camera/frameCapture";
 const fixture = vi.hoisted(() => ({
   state: {} as { nodes: FlowNode[]; edges: DiagramFlowEdge[]; nodeLookup: Map<string, unknown>; transform: number[] },
   camera: {
@@ -41,6 +42,47 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
+});
+
+it("keeps the declarative detail view through StrictMode replay while fonts are pending", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  fixture.camera.subscribe.mockReturnValue(() => {});
+  fixture.state = { nodes: [], edges: [], nodeLookup: new Map(), transform: [0, 0, 1] };
+  Object.defineProperty(document, "fonts", {
+    configurable: true,
+    value: { ready: new Promise<void>(() => {}) },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  vi.stubGlobal("requestAnimationFrame", () => 1);
+  vi.stubGlobal("cancelAnimationFrame", () => {});
+  const host = document.createElement("div");
+  host.dataset.detailView = "follow";
+  const viewport = document.createElement("div");
+  viewport.className = "react-flow__viewport";
+  host.append(viewport);
+  const mount = document.createElement("div");
+  document.body.append(host, mount);
+  const root = createRoot(mount);
+  try {
+    await act(() =>
+      root.render(
+        <StrictMode>
+          <FrameDetail
+            host={{ current: host }}
+            routing={{ style: "straight", direction: "LR", captions: false }}
+            decorate
+          />
+        </StrictMode>,
+      ),
+    );
+    expect(host.dataset.detailView).toBe("follow");
+    // Image capture still removes frame-only presentation from the authored drawing.
+    const resume = suspendFrameCapture(viewport);
+    expect(host.dataset.detailView).toBeUndefined();
+    resume();
+  } finally {
+    await act(() => root.unmount());
+  }
 });
 
 it.each([

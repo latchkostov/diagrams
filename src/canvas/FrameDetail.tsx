@@ -150,6 +150,9 @@ const FrameDecoration = memo(
     useEffect(() => {
       const root = host.current;
       if (!root || !camera) return;
+      // Cleanup/capture clears this attribute; StrictMode's replay must restore
+      // CanvasView's title-band styling before the asynchronous font wait.
+      root.dataset.detailView = camera.state.view;
       let frame = 0;
       let suspended = false;
       let disposed = false;
