@@ -352,3 +352,7 @@ immediately before the verification commit. The one full post-commit Linux gate 
 complete unit/heavy suite and every CI browser project on the synced revision; its exact
 SUMMARY (or an honest admission/setup failure) is reported in the PR and final handoff.
 No full clean-master suite is scheduled. A failed spec is investigated with only that spec.
+
+The completed full gate and focused master follow-up are recorded in
+[the local verification fragment](2026-10-28-nightly-local-verification.md). The full
+gate has eleven browser failures; it is not reported as passing.
