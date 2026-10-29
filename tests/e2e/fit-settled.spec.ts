@@ -355,6 +355,47 @@ test("a decorative node animation does not block fitting the chrome", async ({ p
   await expect(canvas).toHaveAttribute("data-fit-pending", "false");
 });
 
+test("bulk geometry preparation counts its passes and never discovers animations through the scene", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const native = Element.prototype.getAnimations;
+    let sceneScans = 0;
+    Element.prototype.getAnimations = function (options) {
+      if (this.getAttribute("data-testid") === "canvas-wrap") sceneScans++;
+      return native.call(this, options);
+    };
+    Object.assign(window, { sceneAnimationScans: () => sceneScans });
+  });
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
+  await settledCanvas(page);
+  const canvas = page.getByTestId("canvas-wrap");
+  const counts = async () => {
+    const value = await canvas.getAttribute("data-geometry-work");
+    if (!value) throw new Error("Missing geometry preparation counters");
+    return JSON.parse(value) as {
+      readiness: number;
+      frame: number;
+      identity: number;
+      reads: number;
+      animations: number;
+    };
+  };
+  const before = await counts();
+  await command(page, "Auto-layout", "canvas.auto-layout");
+  const laidOut = await settledCanvas(page);
+  const after = await counts();
+  expect(after.readiness).toBeGreaterThan(before.readiness);
+  expect(after.reads).toBeGreaterThan(before.reads);
+  expect(after.animations).toBeGreaterThan(before.animations);
+  expect(after.frame).toBeGreaterThan(before.frame);
+  expect(
+    await page.evaluate(() => (window as unknown as { sceneAnimationScans(): number }).sceneAnimationScans()),
+  ).toBe(0);
+  await page.getByTestId("fit-view-button").click();
+  expect(await settledCanvas(page)).toEqual(laidOut);
+});
+
 test("measurement transactions release all node observations while idle and register again on request", async ({
   page,
 }) => {

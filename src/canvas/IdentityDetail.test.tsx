@@ -142,6 +142,13 @@ it.each([
     await flush();
     expect(Number.parseFloat(target.style.height)).toBeCloseTo(14 / 0.24);
     expect(queries).toHaveBeenCalledTimes(traversals);
+    if (!held && !owned) {
+      const reads = computed.mock.calls.length;
+      const title = host.querySelector<HTMLElement>('[data-id="n100"] [data-testid="card-title"]')!;
+      title.replaceWith(title.cloneNode(true));
+      await flush();
+      expect(computed).toHaveBeenCalledTimes(reads);
+    }
     fixture.camera.interacting = false;
     fixture.camera.phase = "idle";
     fixture.camera.state.view = "custom";

@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { FrameDetail } from "./FrameDetail";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { ops } from "../test/opCounter";
+import { geometryPreparation } from "./geometryPreparation";
 
 const fixture = vi.hoisted(() => ({
   locale: "en",
@@ -12,7 +13,13 @@ const fixture = vi.hoisted(() => ({
   camera: {
     phase: "idle",
     interacting: false,
-    state: { view: "custom", mode: "edit", focus: undefined, zone: undefined, live: { focus: [] as string[] } },
+    state: {
+      view: "custom",
+      mode: "edit",
+      focus: undefined as string[] | undefined,
+      zone: undefined,
+      live: { focus: [] as string[] },
+    },
     subscribe: vi.fn(),
     dispatch: vi.fn(),
   },
@@ -53,10 +60,14 @@ afterEach(() => {
   document.body.replaceChildren();
   fixture.listeners.clear();
   fixture.locale = "en";
+  fixture.camera.state.focus = undefined;
 });
 
 it("spares off-screen cards layout reads in Custom while retaining selection and the full DOM", async () => {
-  fixture.camera.subscribe.mockReturnValue(() => {});
+  fixture.camera.subscribe.mockImplementation((run: () => void) => {
+    fixture.listeners.add(run);
+    return () => fixture.listeners.delete(run);
+  });
   fixture.camera.state.view = "custom";
   fixture.camera.state.mode = "edit";
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -114,6 +125,16 @@ it("spares off-screen cards layout reads in Custom while retaining selection and
     expect(measured.length).toBeLessThan(12);
     expect(host.querySelectorAll(".react-flow__node")).toHaveLength(256);
     expect(host.querySelector('[data-id="100"]')!.hasAttribute("data-detail-hidden")).toBe(false);
+    measured.length = 0;
+    fixture.camera.state.focus = ["0"];
+    await act(async () => {
+      for (const run of fixture.listeners) run();
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const run of pending) run(0);
+    });
+    expect(geometryPreparation(host).counts.frame).toBe(2);
+    expect(measured).toEqual([]);
   } finally {
     await act(() => root.unmount());
   }
@@ -184,7 +205,7 @@ it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mut
     },
   );
   const notify = (...records: Pick<MutationRecord, "type" | "target" | "attributeName">[]) =>
-    mutate(records as MutationRecord[]);
+    mutate(records.map((record) => ({ ...record, addedNodes: [], removedNodes: [] })) as unknown as MutationRecord[]);
   const frames = new Map<number, FrameRequestCallback>();
   let operations = 0;
   const work: number[] = [];
@@ -241,7 +262,8 @@ it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mut
       writes = 0,
       barriers = 0,
       written = false,
-      labelReads = 0;
+      labelReads = 0,
+      nodeReads = 0;
     const read = () => {
       reads++;
       if (written) barriers++;
@@ -257,6 +279,7 @@ it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mut
       read();
       if ((this as HTMLElement).dataset.testid?.startsWith("edge-label-")) labelReads++;
       const id = (this as HTMLElement).dataset.id;
+      if (id) nodeReads++;
       return new DOMRect(id ? Number(id) * 300 : 0, 0, this === host ? 1200 : 220, this === host ? 800 : 72);
     });
     const widthSpy = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(() => {
@@ -302,6 +325,7 @@ it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mut
       expect(writes / n).toBeLessThanOrEqual(12);
       expect(barriers).toBeLessThanOrEqual(12);
       expect(labelReads === 0).toBe(far);
+      if (far) expect(nodeReads).toBe(0);
       work.push(operations);
       // A camera notification with identical inputs must do no DOM work.
       reads = writes = 0;
@@ -341,6 +365,21 @@ it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mut
       );
       await flush();
       expect(query).toHaveBeenCalledTimes(traversals + 1);
+      const prepared = geometryPreparation(host).counts.frame;
+      const regionLayer = document.createElement("div");
+      regionLayer.className = "detail-group-chips";
+      // The portal's layout effect owns its titles; its mount must not prepare
+      // the whole scene again after the bulk transaction's frame pass.
+      mutate([
+        {
+          type: "childList",
+          target: host.querySelector('[data-testid="frame-test-viewport"]')!,
+          addedNodes: [regionLayer],
+          removedNodes: [],
+        } as unknown as MutationRecord,
+      ]);
+      await flush();
+      expect(geometryPreparation(host).counts.frame).toBe(prepared);
     } finally {
       await act(() => root.unmount());
       rectSpy.mockRestore();

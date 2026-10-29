@@ -10,6 +10,7 @@ import { mountChips } from "./mountChips";
 import { useRoutingOptions } from "./edges/useEdgeRoute";
 import "../styles/canvas/chips.css";
 import { viewportParts } from "./viewportParts";
+import { geometryPreparation } from "./geometryPreparation";
 
 /** Identity belongs to every canvas, including presentation, embeds and offline viewers. */
 export const IdentityDetail = memo(function IdentityDetail({
@@ -29,6 +30,7 @@ export const IdentityDetail = memo(function IdentityDetail({
   useEffect(() => {
     const root = host.current;
     if (!root) return;
+    const geometry = geometryPreparation(root);
     const unzoom = mountIdentityZoom(root, store, camera);
     const measure = document.createElement("canvas").getContext("2d");
     if (!measure) return unzoom;
@@ -82,6 +84,8 @@ export const IdentityDetail = memo(function IdentityDetail({
       fittedScale = scale;
       fittedFar = far;
       fittedTransform = transform;
+      geometry.sync(state);
+      geometry.count("identity");
       const visible =
         nodes.length > 128
           ? inViewport(state, [
@@ -113,35 +117,68 @@ export const IdentityDetail = memo(function IdentityDetail({
         if (old?.data === n.data && old.scale === scale && old.far === far && old.revision === revision) return [];
         fitted.set(title, { data: n.data, scale, far, revision });
         const icon = body.querySelector<HTMLElement>(".stencil-icon");
+        const wrapper = body.closest<HTMLElement>(".react-flow__node");
+        const metrics = geometry.measure(
+          n.id,
+          "identity",
+          [
+            n.data,
+            scale,
+            far,
+            body.style.width,
+            body.className,
+            title.className,
+            wrapper?.hasAttribute("data-detail-expanded"),
+            wrapper?.hasAttribute("data-detail-wrapped"),
+            root.dataset.detailView,
+            root.hasAttribute("data-detail-single-selection"),
+          ],
+          () => {
+            const cs = getComputedStyle(title);
+            return {
+              height: body.offsetHeight,
+              width: title.clientWidth,
+              font: `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`,
+              letterSpacing: cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing,
+            };
+          },
+        );
         const height = iconDetail(
           body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26,
-          body.offsetHeight,
+          metrics.height,
           Number(scale) || transform[2],
         );
-        const cs = getComputedStyle(title);
-        measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-        measure.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
+        measure.font = metrics.font;
+        measure.letterSpacing = metrics.letterSpacing;
         return [
           {
             body,
             title,
             icon,
             height,
-            label: titleText(n.data.label, title.clientWidth, (s) => measure.measureText(s).width),
+            label: titleText(n.data.label, metrics.width, (s) => measure.measureText(s).width),
           },
         ];
       });
       for (const { body, title, icon, height, label } of identity) {
         if (body.hasAttribute("data-identity-far") !== far) body.toggleAttribute("data-identity-far", far);
-        if (icon) icon.style.height = `${height}px`;
+        if (icon && icon.style.height !== `${height}px`) icon.style.height = `${height}px`;
         if (title.textContent !== label) title.textContent = label;
       }
       // This pass already saw the current DOM; its own title writes must not schedule another.
       observer.takeRecords();
+      geometry.report();
     };
     const schedule = () => {
       if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
     };
+    const fontsChanged = () => {
+      geometry.clear();
+      dirty = true;
+      schedule();
+    };
+    document.fonts.addEventListener?.("loadingdone", fontsChanged);
+    document.fonts.addEventListener?.("loadingerror", fontsChanged);
     void document.fonts.ready.then(() => {
       ready = true;
       schedule();
@@ -196,6 +233,10 @@ export const IdentityDetail = memo(function IdentityDetail({
             ),
         )
       ) {
+        for (const record of records) {
+          const node = record.target instanceof Element ? record.target.closest(".react-flow__node") : null;
+          if (node) for (const title of node.querySelectorAll('[data-testid="card-title"]')) geometry.forget(title);
+        }
         dirty = true;
         schedule();
       }
@@ -217,6 +258,7 @@ export const IdentityDetail = memo(function IdentityDetail({
     const unregister = viewport
       ? registerFrameCapture(viewport, () => {
           suspended = true;
+          geometry.clear();
           // suspendFrameCapture itself normalizes the identity scale to the capture's scale(1).
           reset();
           return () => {
@@ -234,6 +276,8 @@ export const IdentityDetail = memo(function IdentityDetail({
       unzoom();
       uncam?.();
       observer.disconnect();
+      document.fonts.removeEventListener?.("loadingdone", fontsChanged);
+      document.fonts.removeEventListener?.("loadingerror", fontsChanged);
       unregister();
       reset();
     };
