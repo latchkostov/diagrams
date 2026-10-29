@@ -170,7 +170,8 @@ export function useFrameLoop({
       if (!lowZoom) renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });
       if (ui) {
         slowRef.current?.ui(canvas, snap, renderer.slowLabels);
-        if (testHooks && ++stats % 2 === 0) {
+        // The sub-path smoke tests these two counters in the ordinary production build too.
+        if (++stats % 2 === 0) {
           canvas.dataset.particles = String(lowZoom ? 0 : renderer.drawn);
           canvas.dataset.frames = String(renderer.frames);
         }

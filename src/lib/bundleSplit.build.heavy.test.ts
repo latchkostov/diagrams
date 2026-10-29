@@ -221,8 +221,12 @@ it("minifies private Live controller and renderer member names", () => {
   const live = chunks.find((chunk) => chunk.name === "LiveSession");
   expect(live).toBeDefined();
   expect(live!.code).not.toContain(".getImageData(");
-  expect(live!.code).not.toContain(".dataset.particles");
-  expect(live!.code).not.toContain(".dataset.frames");
+  // The ordinary production sub-path smoke reads these counters, without VITE_E2E.
+  expect(live!.code).toContain(".dataset.particles");
+  expect(live!.code).toContain(".dataset.frames");
+  expect(live!.code).not.toContain("__liveProbe");
+  expect(live!.code).not.toContain("__liveBench");
+  expect(live!.code).not.toContain(".dataset.traceLabels=JSON.stringify(");
 });
 
 const chunkIn = (b: Build, fileName: string) => {
