@@ -6,6 +6,7 @@ import { SampledLedger } from "./ledger";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { resourceLesson } from "../model/autoscalingLessons";
 import type { PlanningModel } from "../model/types";
+import { waitingFixture } from "../lab/waitingFixture";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -108,6 +109,33 @@ it("refreshes revision capabilities on graph loads and preserves them through re
       engine.inject("source", 30);
       engine.step(2000);
       return engine.snapshot();
+    };
+    const cp = e.checkpoint();
+    const expected = suffix(reference);
+    expect(suffix(e)).toEqual(expected);
+    e.restore(cp);
+    expect(suffix(e)).toEqual(expected);
+    e.reset();
+    expect(suffix(e)).toEqual(expected);
+  }
+});
+
+it("reloads blocking callers across waiting and historical revisions on the same engine", () => {
+  const e = createEngine({ seed: 17, scale: 1 });
+  for (const revision of ["p3-w1", "p3-a1", "p3-w2", "p1", "p3-w1"] as const) {
+    const d = waitingFixture();
+    d.planning = { revision };
+    e.load(d);
+    const reference = createEngine({ seed: 17, scale: 1 });
+    reference.load(d);
+    const suffix = (engine: typeof e) => {
+      engine.inject("source", 8);
+      engine.step(30);
+      const held = engine.snapshot();
+      expect(held.nodes.caller.threads?.waiting ?? 0).toBe(revision === "p3-w1" || revision === "p3-w2" ? 4 : 0);
+      engine.step(2000);
+      expect(engine.snapshot().inSystem).toBe(0);
+      return { held, drained: engine.snapshot() };
     };
     const cp = e.checkpoint();
     const expected = suffix(reference);

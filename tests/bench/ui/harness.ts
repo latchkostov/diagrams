@@ -160,10 +160,14 @@ export class Bench {
    */
   async open(
     workload: { text: string; d: { nodes: { id: string }[] } },
-    o: { url?: string; query?: string; timeoutMs?: number } = {},
+    o: { url?: string; query?: string; timeoutMs?: number; reset?: boolean } = {},
   ) {
     await this.page.addInitScript(
-      ([text, ids]) => {
+      ([text, ids, reset]) => {
+        if (reset) {
+          localStorage.clear();
+          sessionStorage.removeItem("bench-seeded");
+        }
         if (!sessionStorage.getItem("bench-seeded")) {
           localStorage.setItem("diagrams.imported.v1", text);
           sessionStorage.setItem("bench-seeded", "1");
@@ -175,7 +179,7 @@ export class Bench {
         };
         apply();
       },
-      [workload.text, workload.d.nodes.map((n) => n.id)] as const,
+      [workload.text, workload.d.nodes.map((n) => n.id), o.reset] as const,
     );
     const started = Date.now();
     await this.page.goto(`${o.url ?? APP_URL}?view=canvas&example=imported${o.query ?? ""}`, { waitUntil: "commit" });

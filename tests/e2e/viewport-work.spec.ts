@@ -64,6 +64,12 @@ for (const live of [false, true])
     await pane.dispatchEvent("wheel", { deltaX: dx, deltaY: dy, bubbles: true });
     // Exactly one frame: no polling that advances the clock or a settle timeout can hide blank ink.
     await page.clock.runFor(16);
+    const entered = await page.getByTestId(`rf__node-${target.id}`).boundingBox();
+    if (!entered) throw new Error("Missing entrant");
+    expect(entered.x).toBeGreaterThanOrEqual(bounds.x);
+    expect(entered.y).toBeGreaterThanOrEqual(bounds.y);
+    expect(entered.x + entered.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+    expect(entered.y + entered.height).toBeLessThanOrEqual(bounds.y + bounds.height);
     const subject = diagram.nodes.find((n) => n.id === target.id);
     if (!subject) throw new Error("Missing subject");
     await expectFittedIdentity(page, target.id, subject.label);

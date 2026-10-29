@@ -408,6 +408,13 @@ export function viewerSwaps(root: string): Plugin {
       return panel ? panel.stub(root) : null;
     },
     transform(code, id) {
+      if (own(id, "/src/canvas/edges/FlowEdge.tsx")) {
+        // Files have no chip selection or keyboard edge navigation to reactivate a dismissed card.
+        const start = code.indexOf("  const chipSelected =");
+        const end = code.indexOf("  const card = tooltip.open;", start);
+        if (start < 0 || end < start) this.error("interactive viewer: edge tooltip activation changed");
+        return `${code.slice(0, start)}${code.slice(end)}`;
+      }
       if (own(id, "/src/live/NodeBadges.tsx")) {
         // Files keep all readouts current, just as the identity pass below keeps all cards.
         // Drop the editor's subscriptions and capture loader, not only the spatial query.

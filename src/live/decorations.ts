@@ -1,4 +1,3 @@
-import { mainRateThreshold } from "./overviewInk";
 // Live decorations on the real canvas DOM, applied imperatively at the UI clock (~8 Hz): status,
 // heat and dimming on node wrappers, active / idle on edges. Only `data-live-*` attributes are
 // written, which React Flow never touches, so a node or edge re-render doesn't wipe them. Styling
@@ -103,7 +102,8 @@ export class Decorator {
         this.#delivered.set(edge.id, edge.delivered);
       }
     }
-    const mainThreshold = mainRateThreshold([...this.#rates.values()]);
+    const positive = [...this.#rates.values()].filter((rate) => rate > 0).sort((a, b) => a - b);
+    const mainThreshold = positive[Math.floor(positive.length * 0.75)] ?? Infinity;
     this.#continuity = continuity;
     // Holds count publishes of a moving simulation: while it stands still, every edge keeps its state.
     if (!still && snapshot.time !== this.#lastTime) stats.publishes++;

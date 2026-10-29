@@ -780,6 +780,7 @@ describe("the downloadable skill", () => {
         ),
       ),
     ).toEqual([]);
+    expect(html).not.toContain(".reactivate(");
     expect((await zipSkill(withFresh(readSkill(), releasedFiles(root, html)))).length).toBeLessThan(835_000 - 6_144);
   }, 30_000);
   it("saves at least 6 KiB by excluding unreachable editor CSS, with every skill file retained", async () => {
