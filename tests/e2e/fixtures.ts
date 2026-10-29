@@ -305,9 +305,9 @@ const sharedTest = (slowmoDiagnosticEnabled() ? slowmoDiagnosticTest : base).ext
 });
 export const test = withSlowmoDiagnostic(sharedTest);
 
-/** DOM snapshots of the stress diagrams are test instrumentation, not application input work. */
+/** Capturing stress diagrams is instrumentation work: retain action traces and failure PNGs without per-frame capture. */
 export const performanceTest = test.extend({
-  trace: { mode: "retain-on-failure", snapshots: false },
+  trace: { mode: "retain-on-failure", snapshots: false, screenshots: false },
 });
 
 export { expect };
