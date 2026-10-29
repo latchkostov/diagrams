@@ -298,15 +298,45 @@ async function advanceTutorialClock(page: Page, ready: () => Promise<boolean>) {
 }
 
 async function skipAll(page: Page, clocked = false) {
+  const steps = await page.evaluate(() => window.__tutorial?.snapshot().state.stepIds ?? []);
   while ((await strip(page).getAttribute("data-phase")) === "step") {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
     await page.getByTestId("tutorial-skip").click();
     if (clocked)
-      await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== current);
+      await advanceTutorialClock(page, async () => {
+        if ((await strip(page).getAttribute("data-phase")) === "finished") return true;
+        const next = (await strip(page).getAttribute("data-step")) ?? "";
+        // A reference replay can temporarily return to an earlier milestone.
+        return steps.indexOf(next) > steps.indexOf(current);
+      });
     await expect(strip(page)).not.toHaveAttribute("data-step", current);
   }
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 }
+
+test("Skip-all keeps advancing the clock while a reference replay revisits an earlier step", async ({ page }) => {
+  await page.clock.install();
+  await pauseClock(page);
+  await page.setContent(
+    '<section data-testid="tutorial-step" data-phase="step" data-step="second"><button data-testid="tutorial-skip">Skip step</button></section>',
+  );
+  await page.getByTestId("tutorial-step").evaluate((strip) => {
+    Object.assign(window, { __tutorial: { snapshot: () => ({ state: { stepIds: ["first", "second"] } }) } });
+    let clicks = 0;
+    strip.querySelector('[data-testid="tutorial-skip"]')?.addEventListener("click", () => {
+      strip.setAttribute("data-clicks", String(++clicks));
+      // The replay first restores the predecessor; that is not progress past second.
+      strip.setAttribute("data-step", "first");
+      if (clicks > 1) strip.setAttribute("data-phase", "finished");
+      setTimeout(() => {
+        strip.setAttribute("data-step", "");
+        strip.setAttribute("data-phase", "finished");
+      }, 3000);
+    });
+  });
+  await skipAll(page, true);
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-clicks", "1");
+});
 
 /** Nothing a tutorial does is stored as a diagram: no library entry, no autosave for its sandbox. */
 async function expectNothingSaved(page: Page) {
