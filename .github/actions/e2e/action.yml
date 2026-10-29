@@ -77,6 +77,13 @@ runs:
       if: inputs.browser-setup == 'install' && inputs.builds-artifact != ''
       shell: bash
       run: pnpm exec playwright install-deps chromium
+    - name: Report Greek fallback fonts
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        fc-match 'system-ui:lang=el'
+        fc-match 'sans-serif:lang=el'
+        fc-list :lang=el family | sort -u
     - name: Verify served builds
       shell: bash
       env:

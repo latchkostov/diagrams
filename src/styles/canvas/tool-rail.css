@@ -22,6 +22,8 @@
   gap: 4px;
   width: 60px;
   padding: 4px;
+  /* Leave room for wider system-font fallbacks (Mona Sans has no Greek glyphs). */
+  padding-inline: 2px;
   min-height: 56px;
   flex: none;
   border: 0;
