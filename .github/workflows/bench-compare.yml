@@ -35,6 +35,8 @@ jobs:
       BENCH_GREP: ${{ inputs.grep }}
       BASE_REF: ${{ inputs.base }}
       HEAD_REF: ${{ inputs.head }}
+      SURVEY2: ${{ contains(inputs.grep, 'survey2') && '1' || '0' }}
+      BENCH_SIZES: ${{ contains(inputs.grep, 'survey2') && '500,1500' || '' }}
     steps:
       - name: Validate selection
         run: |
@@ -55,6 +57,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bench-compare/base"
           cp tests/.output/bench/results.json tests/.output/bench/summary.md "$RUNNER_TEMP/bench-compare/base/"
           git rev-parse HEAD > "$RUNNER_TEMP/bench-compare/base/sha.txt"
+          if [ -d tests/.output/bench/survey2 ]; then cp -R tests/.output/bench/survey2 "$RUNNER_TEMP/bench-compare/base/"; fi
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.head }}
@@ -71,11 +74,22 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bench-compare/head"
           cp tests/.output/bench/results.json tests/.output/bench/summary.md "$RUNNER_TEMP/bench-compare/head/"
           git rev-parse HEAD > "$RUNNER_TEMP/bench-compare/head/sha.txt"
+          if [ -d tests/.output/bench/survey2 ]; then cp -R tests/.output/bench/survey2 "$RUNNER_TEMP/bench-compare/head/"; fi
       - name: Compare in the same job
         id: comparison
         continue-on-error: true
         run: |
           out="$RUNNER_TEMP/bench-compare"
+          if [ "$SURVEY2" = "1" ]; then
+            node --test scripts/perf/survey2-compare.test.mjs
+            node scripts/perf/survey2-compare.mjs "$out/base/survey2/samples.jsonl" "$out/head/survey2/samples.jsonl" > "$out/compare.md"
+            {
+              echo "Base: $(cat "$out/base/sha.txt")"
+              echo "Head: $(cat "$out/head/sha.txt")"
+              cat "$out/compare.md"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           node --input-type=module - "$out" <<'NODE'
           import { readFileSync } from 'node:fs';
           import { join } from 'node:path';
