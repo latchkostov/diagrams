@@ -57,20 +57,24 @@ export interface DecorationStats {
 }
 
 export class Decorator {
-  private delivered = new Map<string, number>();
-  private rates = new Map<string, number>();
-  private applied = new Map<Element, string>();
+  #root: HTMLElement;
+
+  #delivered = new Map<string, number>();
+  #rates = new Map<string, number>();
+  #applied = new Map<Element, string>();
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
-  private lastActive = new Map<string, number>();
-  private lastTime = NaN;
-  private continuity: object | undefined;
+  #lastActive = new Map<string, number>();
+  #lastTime = NaN;
+  #continuity: object | undefined;
   readonly stats: DecorationStats = { applies: 0, publishes: 0, edgeFlips: 0, elements: 0, large: false };
 
-  constructor(private root: HTMLElement) {}
+  constructor(root: HTMLElement) {
+    this.#root = root;
+  }
 
   apply(input: DecorationInput): void {
     const { snapshot, health, spotlight, still } = input;
-    const root = this.root;
+    const root = this.#root;
     if (!chipInk) loadChipInk().catch(Boolean);
     // One membership read before any decoration writes; never three whole-canvas selector walks.
     const nodes: HTMLElement[] = [],
@@ -85,25 +89,25 @@ export class Decorator {
     stats.applies++;
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
     const continuity = snapshotContinuity.get(snapshot);
-    const reset = continuity !== this.continuity || snapshot.time < this.lastTime;
+    const reset = continuity !== this.#continuity || snapshot.time < this.#lastTime;
     if (reset) {
-      this.lastActive.clear();
-      this.delivered.clear();
-      this.rates.clear();
+      this.#lastActive.clear();
+      this.#delivered.clear();
+      this.#rates.clear();
     }
-    const interval = snapshot.time - (reset ? 0 : this.lastTime || 0);
+    const interval = snapshot.time - (reset ? 0 : this.#lastTime || 0);
     if (interval > 0) {
       for (const edge of Object.values(snapshot.edges)) {
-        this.rates.set(edge.id, (Math.max(0, edge.delivered - (this.delivered.get(edge.id) ?? 0)) * 1000) / interval);
-        this.delivered.set(edge.id, edge.delivered);
+        this.#rates.set(edge.id, (Math.max(0, edge.delivered - (this.#delivered.get(edge.id) ?? 0)) * 1000) / interval);
+        this.#delivered.set(edge.id, edge.delivered);
       }
     }
-    const positive = [...this.rates.values()].filter((rate) => rate > 0).sort((a, b) => a - b);
+    const positive = [...this.#rates.values()].filter((rate) => rate > 0).sort((a, b) => a - b);
     const mainThreshold = positive[Math.floor(positive.length * 0.75)] ?? Infinity;
-    this.continuity = continuity;
+    this.#continuity = continuity;
     // Holds count publishes of a moving simulation: while it stands still, every edge keeps its state.
-    if (!still && snapshot.time !== this.lastTime) stats.publishes++;
-    this.lastTime = snapshot.time;
+    if (!still && snapshot.time !== this.#lastTime) stats.publishes++;
+    this.#lastTime = snapshot.time;
     const publish = stats.publishes;
     setAttr(root, "data-live", "on");
     setAttr(root, "data-live-spotlight", spotlight?.kind ?? null);
@@ -123,31 +127,31 @@ export class Decorator {
       const dim = spotlight ? !spotlight.nodes.has(id) : false;
       const key = `${n.status}|${heat}|${rising}|${dim}`;
       seen.add(el);
-      if (this.applied.get(el) === key) continue;
-      this.applied.set(el, key);
+      if (this.#applied.get(el) === key) continue;
+      this.#applied.set(el, key);
       setAttr(el, "data-live-status", n.status);
       setAttr(el, "data-live-heat", heat ? String(heat) : null);
       setAttr(el, "data-live-rising", rising ? "1" : null);
       setAttr(el, "data-live-dim", dim ? "1" : null);
     }
 
-    chipInk?.decorate(nodes, root, edges, boundaries, input, this.rates);
+    chipInk?.decorate(nodes, root, edges, boundaries, input, this.#rates);
 
     for (const el of edges) {
       const id = el.dataset.id!;
       const e = snapshot.edges[id];
       elements++;
-      if (e && e.active > 0) this.lastActive.set(id, publish);
-      const since = this.lastActive.get(id);
+      if (e && e.active > 0) this.#lastActive.set(id, publish);
+      const since = this.#lastActive.get(id);
       const active = since !== undefined && publish - since <= EDGE_HOLD;
-      if (since !== undefined && !active) this.lastActive.delete(id);
+      if (since !== undefined && !active) this.#lastActive.delete(id);
       const dim = spotlight ? !spotlight.edges.has(id) : false;
       const lit = spotlight?.kind === "trace" && spotlight.edges.has(id);
-      const main = (this.rates.get(id) ?? 0) >= mainThreshold;
+      const main = (this.#rates.get(id) ?? 0) >= mainThreshold;
       const key = `${active}|${dim}|${lit}|${main}`;
       seen.add(el);
-      if (this.applied.get(el) === key) continue;
-      this.applied.set(el, key);
+      if (this.#applied.get(el) === key) continue;
+      this.#applied.set(el, key);
       const state = active ? "active" : "idle";
       const was = el.getAttribute("data-live-edge");
       if (was !== null && was !== state) stats.edgeFlips++;
@@ -162,12 +166,12 @@ export class Decorator {
     setAttr(root, "data-live-large", stats.large ? "1" : null);
 
     // Elements that went away (deleted, remounted) shouldn't keep a stale cache entry.
-    for (const el of this.applied.keys()) if (!seen.has(el)) this.applied.delete(el);
+    for (const el of this.#applied.keys()) if (!seen.has(el)) this.#applied.delete(el);
   }
 
   /** Remove every live attribute (leaving live mode). */
   clear(): void {
-    const root = this.root;
+    const root = this.#root;
     for (const a of ["data-live", "data-live-spotlight", "data-live-still", "data-live-large"]) root.removeAttribute(a);
     for (const el of root.querySelectorAll(DECORATED)) {
       for (const a of [
@@ -182,10 +186,10 @@ export class Decorator {
         el.removeAttribute(a);
     }
     chipInk?.clear(root);
-    this.applied.clear();
-    this.lastActive.clear();
-    this.lastTime = NaN;
-    this.continuity = undefined;
+    this.#applied.clear();
+    this.#lastActive.clear();
+    this.#lastTime = NaN;
+    this.#continuity = undefined;
   }
 }
 

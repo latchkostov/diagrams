@@ -761,6 +761,16 @@ describe("share-link.mjs", () => {
 });
 
 describe("the downloadable skill", () => {
+  it("excludes planning authoring and connection affordances from the read-only viewer", async () => {
+    const { modules } = await buildViewer(root);
+    expect(
+      modules.filter((id) =>
+        /\/src\/(?:planning\/(?:AdmissionFields|PlanningUpgrade)|canvas\/(?:nodes\/GrowChip|interaction\/useConnectPort|ConnectionLine))\.[jt]sx?$/.test(
+          id,
+        ),
+      ),
+    ).toEqual([]);
+  }, 30_000);
   it("excludes the editor's library shells, context menus and stencil search from the read-only viewer", async () => {
     const { html, modules } = await buildViewer(root);
     expect(

@@ -96,11 +96,18 @@ async function operation(b: Bench, name: string, act: () => Promise<unknown>) {
   await b.mark();
   return trace(b, name, async () => {
     const before = await b.metrics();
+    const preparation = async () =>
+      JSON.parse((await b.page.getByTestId("canvas-wrap").getAttribute("data-geometry-work")) ?? "{}") as Record<
+        string,
+        number
+      >;
+    const preparedBefore = await preparation();
     const start = await b.page.evaluate(() => performance.now());
     await act();
     await b.frames(2);
     const end = await b.page.evaluate(() => performance.now());
     const after = await b.metrics();
+    const preparedAfter = await preparation();
     record(name, {
       wall: end - start,
       task: after.TaskDuration - before.TaskDuration,
@@ -108,6 +115,9 @@ async function operation(b: Bench, name: string, act: () => Promise<unknown>) {
       style: after.RecalcStyleDuration - before.RecalcStyleDuration,
       layout: after.LayoutDuration - before.LayoutDuration,
       longest: Math.max(0, ...(await b.entries()).loaf.map((f) => f.duration)),
+      preparation: Object.fromEntries(
+        Object.entries(preparedAfter).map(([key, value]) => [key, value - (preparedBefore[key] ?? 0)]),
+      ),
     });
   });
 }
@@ -229,6 +239,24 @@ for (const example of ["kafka-order-pipeline", "black-friday-commerce"])
     });
 
 for (const n of [500, 1500]) {
+  test(`survey2 cold PNG pipeline@${n}`, async ({ browser }) => {
+    for (let sample = 0; sample < SAMPLES; sample++) {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      try {
+        const page = await context.newPage();
+        const { b } = await open(page, n);
+        await menu(b, "canvas.auto-layout");
+        await page.getByTestId("context-menu-item-canvas.auto-layout").click();
+        await b.canvasSettled();
+        await b.settle(1000, 300_000);
+        await page.getByTestId("file-button").click();
+        await operation(b, `cold-png-${n}`, () => saveDownload(page, () => page.getByTestId("export-png").click()));
+      } finally {
+        await context.close();
+      }
+    }
+  });
+
   test(`survey2 layout pipeline@${n}`, async ({ browser }) => {
     for (let sample = 0; sample < SAMPLES; sample++) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });

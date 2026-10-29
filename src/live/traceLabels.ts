@@ -85,38 +85,39 @@ export function traceLabelInk(background: string): string {
 
 /** Uniform grid for local rectangle queries. Very large obstacles live in a small overflow list. */
 class BoxIndex {
-  private cells = new Map<string, Box[]>();
-  private large: Box[] = [];
-  constructor(
-    private cell: number,
-    boxes: readonly Box[] = [],
-  ) {
+  #cell: number;
+
+  #cells = new Map<string, Box[]>();
+  #large: Box[] = [];
+  constructor(cell: number, boxes: readonly Box[] = []) {
+    this.#cell = cell;
+
     for (const box of boxes) this.add(box);
   }
-  private keys(box: Box): string[] {
-    const x0 = Math.floor((box.x - PAD) / this.cell),
-      y0 = Math.floor((box.y - PAD) / this.cell);
-    const x1 = Math.floor((box.x + box.w + PAD) / this.cell),
-      y1 = Math.floor((box.y + box.h + PAD) / this.cell);
+  #keys(box: Box): string[] {
+    const x0 = Math.floor((box.x - PAD) / this.#cell),
+      y0 = Math.floor((box.y - PAD) / this.#cell);
+    const x1 = Math.floor((box.x + box.w + PAD) / this.#cell),
+      y1 = Math.floor((box.y + box.h + PAD) / this.#cell);
     if ((x1 - x0 + 1) * (y1 - y0 + 1) > 128) return [];
     const keys: string[] = [];
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) keys.push(`${x}:${y}`);
     return keys;
   }
   add(box: Box): void {
-    const keys = this.keys(box);
-    if (!keys.length) this.large.push(box);
+    const keys = this.#keys(box);
+    if (!keys.length) this.#large.push(box);
     for (const key of keys) {
-      const bucket = this.cells.get(key);
+      const bucket = this.#cells.get(key);
       if (bucket) bucket.push(box);
-      else this.cells.set(key, [box]);
+      else this.#cells.set(key, [box]);
     }
   }
   hits(box: Box, pad: number): boolean {
-    if (this.large.some((other) => hit(box, other, pad))) return true;
-    const keys = this.keys(box);
-    if (!keys.length) return [...this.cells.values()].some((bucket) => bucket.some((other) => hit(box, other, pad)));
-    return keys.some((key) => this.cells.get(key)?.some((other) => hit(box, other, pad)));
+    if (this.#large.some((other) => hit(box, other, pad))) return true;
+    const keys = this.#keys(box);
+    if (!keys.length) return [...this.#cells.values()].some((bucket) => bucket.some((other) => hit(box, other, pad)));
+    return keys.some((key) => this.#cells.get(key)?.some((other) => hit(box, other, pad)));
   }
 }
 

@@ -77,6 +77,33 @@ const FORBIDDEN: [string, RegExp][] = [
  * ("missing export"), and the module itself coming back fails it too (FORBIDDEN, below).
  */
 export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
+  // The shared planning barrel also exports authoring controls. A file can inspect
+  // capacity, but cannot edit admission policies or upgrade the saved model.
+  {
+    name: "the admission editor",
+    path: "/src/planning/AdmissionFields.tsx",
+    stub: () => "export const AdmissionFields = () => null; export const BulkAdmissionFields = () => null;",
+  },
+  {
+    name: "the planning upgrade editor",
+    path: "/src/planning/PlanningUpgrade.tsx",
+    stub: () => "export const PlanningUpgrade = () => null;",
+  },
+  {
+    name: "the connected-node plus",
+    path: "/src/canvas/nodes/GrowChip.tsx",
+    stub: () => "export const GrowChip = () => null;",
+  },
+  {
+    name: "connection port feedback",
+    path: "/src/canvas/interaction/useConnectPort.ts",
+    stub: () => "export const useConnectPort = () => undefined;",
+  },
+  {
+    name: "the connection preview",
+    path: "/src/canvas/ConnectionLine.tsx",
+    stub: () => "export const ConnectionLine = () => null;",
+  },
   // Quick-add is guarded by readOnly; the connected menu can only be opened by those editing gestures.
   {
     name: "quick-add placement",
