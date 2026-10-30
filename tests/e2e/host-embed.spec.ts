@@ -15,6 +15,7 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Frame, Page, Request } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
+import type { DiagramFile } from "../../src/model/types";
 
 // Host-supplied embeds (docs/EMBEDDING.md): a page on another origin loads the <live-diagram> web component from
 // the app, fetches the diagram from its own server (with its own session cookie) and hands it to the viewer
@@ -42,9 +43,15 @@ parent.postMessage("sibling-posted", location.origin);
 
 /** The Kafka example as the host's own, confidential diagram. */
 function hostDiagram() {
-  const d = JSON.parse(readFileSync(join(process.cwd(), "src", "examples", "kafka-order-pipeline.json"), "utf8"));
+  const d = JSON.parse(
+    readFileSync(join(process.cwd(), "src", "examples", "kafka-order-pipeline.json"), "utf8"),
+  ) as DiagramFile;
   d.title = `Acme ledger ${SECRET}`;
   for (const n of d.nodes) if (n.id === "payments") n.label = `Payments vault ${SECRET}`;
+  // This host fixture exercises visible autoplay traffic. The public example's opening focus names
+  // unconnected nodes: after its small embed fits below 60%, all edges are background and hide dots.
+  const opening = d.simulations?.find((s) => s.id === "black-friday")?.timeline?.find((s) => s.action.do === "note");
+  if (opening?.action.do === "note") opening.action.focus = ["shopper", "gateway", "orders", "order-events"];
   return d as { title: string; nodes: { id: string; label: string }[]; simulations: { id: string }[] };
 }
 
@@ -276,17 +283,23 @@ test.describe("host-supplied embeds", () => {
 
     // Autoplay: the chosen simulation runs, and its particles move.
     await expect(view.getByTestId("live-controls")).toBeVisible();
+    await waitForCameraIdle(view);
+    await pauseClock(page);
     await expect(view.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     await expect.poll(() => lastEvent(page, "simulationchanged")).toEqual({ simulation: "black-friday" });
     await expect.poll(() => lastEvent(page, "playstate")).toEqual({ playing: true, speed: 1 });
     const canvas = view.getByTestId("live-canvas");
-    await expect.poll(async () => Number(await canvas.getAttribute("data-particles"))).toBeGreaterThan(0);
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(250);
+        return Number(await canvas.getAttribute("data-particles"));
+      })
+      .toBeGreaterThan(0);
     const clock = view.getByTestId("live-clock");
     const ms = async () => Number(await clock.getAttribute("data-ms"));
     const t0 = await ms();
+    await page.clock.runFor(250);
     await expect.poll(ms).toBeGreaterThan(t0);
-    await waitForCameraIdle(view);
-    await pauseClock(page);
 
     // pause, then play.
     await call(page, "pause");
