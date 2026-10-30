@@ -460,6 +460,7 @@ export function createCameraController(
     const decision = decide(policy, event);
     const claimed = decision.state.owner !== policy.owner || claims(event);
     policy = decision.state;
+    if (event.type === "menu.opened" && pendingPhase(policy) === "deferred") lastSample = null;
     // A move by hand or a command takes the view afresh: Live's deferred work checks its own claim. Fits
     // claim for themselves (their refinement runs only while that claim is current).
     if (
@@ -473,7 +474,9 @@ export function createCameraController(
 
   /** Waits for two rendered frames that agree on the pane and selection, with no pointer held (a drag). */
   function reschedule() {
-    if (pendingPhase(policy) === "pending") {
+    if (policy.pending) {
+      // Replacing work before the next frame doesn't invalidate the previous pane sample. Keep the scheduled
+      // frame through a deferral: if it actually renders deferred, tick discards the sample without running work.
       if (!settle) settle = scheduler.frame(tick);
     } else {
       settle?.();
@@ -484,7 +487,10 @@ export function createCameraController(
   }
   function tick() {
     settle = null;
-    if (pendingPhase(policy) !== "pending" || disposed) return publish();
+    if (pendingPhase(policy) !== "pending" || disposed) {
+      lastSample = null;
+      return publish();
+    }
     const sample = pointerHeld ? null : port.paneSample();
     if (sample !== null && sample === lastSample) {
       lastSample = null;
