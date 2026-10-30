@@ -18,6 +18,7 @@ import {
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
+import { tutorialKey } from "../../scripts/e2e-keys";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
 
@@ -204,7 +205,7 @@ async function play(page: Page, step: ResolvedUiStep) {
         )
         .toBe(true);
     }
-    await page.keyboard.press(step.press);
+    await page.keyboard.press(tutorialKey(step.press));
   }
 }
 
