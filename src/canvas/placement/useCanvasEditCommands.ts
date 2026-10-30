@@ -67,8 +67,8 @@ export function useCanvasNaming(
         (typed) => {
           // Commit the whole buffer and close history while capture still owns the keyboard.
           flushSync(() => {
-            // Preserve master's placement Escape semantics: a node keeps its stencil label.
-            if (typed.text !== null && (typed.done !== "escape" || annotation)) {
+            // Naming saves what was typed even when Escape arrives before the field can mount.
+            if (typed.text !== null) {
               if (annotation) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
               else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
             }

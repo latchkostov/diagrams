@@ -1,10 +1,32 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
-import { captureModalTypeAhead, captureTypeAhead, dismissPendingTypeAheadModal, typeAheadActive } from "./typeAhead";
+import {
+  captureModalTypeAhead,
+  captureTypeAhead,
+  dismissPendingTypeAheadModal,
+  handoffTypeAhead,
+  typeAheadActive,
+} from "./typeAhead";
 import { createDomPort } from "./interaction/domPort";
 import { createInteractionController } from "./interaction/controller";
 
 afterEach(() => document.body.replaceChildren());
+
+it("a deferred menu pick hands the name and its finish key to the new naming capture", () => {
+  const done = vi.fn();
+  const pending = captureTypeAhead();
+  for (const key of ["C", "a", "c", "h", "e", "Escape"])
+    window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+  const typed = pending.stop();
+  const name = captureTypeAhead(undefined, done);
+  try {
+    handoffTypeAhead(typed);
+    expect(name.read()).toEqual({ text: "Cache", done: "escape" });
+    expect(done).toHaveBeenCalledExactlyOnceWith({ text: "Cache", done: "escape" });
+  } finally {
+    name.stop();
+  }
+});
 
 it("placement hands its prefix to a cold field; pending keys commit once before capture releases", () => {
   const controller = createInteractionController(createDomPort({ root: () => null, hasEdge: () => true }), {

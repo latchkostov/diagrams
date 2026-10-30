@@ -38,6 +38,29 @@ async function hold(page: Page, name: string, source: string) {
   };
 }
 
+test("the stencil library keeps Enter typed while its contents are loading", async ({ page }) => {
+  await seed(page);
+  const library = await hold(page, "Palette", "src/canvas/Palette.tsx");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    const before = await savedDiagram(page);
+    await openLibrary(page);
+    await expect.poll(library.requested).toBe(true);
+    await expect(page.getByTestId("palette-loading")).toBeVisible();
+    await expect(page.getByTestId("palette-search")).toBeFocused();
+    await page.keyboard.type("kafka topic");
+    await page.keyboard.press("Enter");
+    library.release();
+    await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(before.nodes.length + 1);
+    const after = await savedDiagram(page);
+    const added = after.nodes.filter((node) => !before.nodes.some((old) => old.id === node.id));
+    expect(added).toHaveLength(1);
+    expect(added[0].stencil).toBe("kafka.topic");
+  } finally {
+    library.release();
+  }
+});
+
 for (const delayed of [false, true])
   test(`new boundary keeps immediate naming with ${delayed ? "delayed" : "loaded"} GroupPanel`, async ({ page }) => {
     await seed(page);
@@ -172,6 +195,44 @@ test("Live overflow keeps its trace fold across dismissal", async ({ page }) => 
   await page.getByTestId("live-more").click();
   await expect(page.getByTestId("live-trace-message")).toHaveAttribute("aria-expanded", "true");
 });
+
+for (const name of [undefined, "Cache audit"])
+  test(`held quick-add search hands ${name ? "typing" : "Escape"} to naming after Enter`, async ({ browser }) => {
+    const picks: string[] = [];
+    for (const delayed of [false, true]) {
+      const page = await browser.newPage();
+      const search = delayed ? await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts") : null;
+      try {
+        await seed(page);
+        await gotoCanvas(page, "blocking-call");
+        await waitForStableViewport(page);
+        await page.getByTestId("node-caller").click();
+        await page.getByTestId("canvas-wrap").focus();
+        const before = await savedDiagram(page);
+        await page.keyboard.press("Alt+ArrowRight");
+        await expect(page.getByTestId("quick-add-search")).toBeFocused();
+        await page.keyboard.type("cache");
+        if (search) await expect.poll(search.requested).toBe(true);
+        else await waitForQuickAddResults(page);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        if (name) await page.keyboard.type(name);
+        await page.keyboard.press("Escape");
+        search?.release();
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
+        const after = await savedDiagram(page);
+        const added = after.nodes.filter((node) => !before.nodes.some((old) => old.id === node.id));
+        expect(added).toHaveLength(1);
+        picks.push(added[0].stencil);
+        if (name) expect(added[0].label).toBe(name);
+      } finally {
+        search?.release();
+        await page.close();
+      }
+    }
+    expect(picks[1]).toBe(picks[0]);
+  });
 
 for (const name of [undefined, "Cache audit"])
   test(`quick-add navigation picks before ${name ? "typing hands over to naming" : "Escape finishes naming"}`, async ({

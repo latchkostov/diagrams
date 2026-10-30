@@ -6,7 +6,7 @@
 /** What was typed: `text` is null until a key changes the name (the stencil's name is kept). */
 export interface TypeAhead {
   text: string | null;
-  /** Enter (keep what's typed) or Esc (keep the stencil's name) before the editor opened. */
+  /** Enter or Esc finishes the name before the editor opened, keeping what was typed. */
   done?: "enter" | "escape";
 }
 
@@ -28,7 +28,12 @@ export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead
 }
 
 /** The captures running, newest last: only the newest takes keys (a menu's search inside the palette's). */
-const captures: { state: TypeAhead; closeModal?: () => void }[] = [];
+const captures: { state: TypeAhead; closeModal?: () => void; accept(typed: TypeAhead): void }[] = [];
+
+/** Pass keys held after a deferred menu pick to the name capture that its action just opened. */
+export function handoffTypeAhead(typed: TypeAhead): void {
+  captures.at(-1)?.accept(typed);
+}
 
 /** A modal owns Escape as soon as its input capture starts, including while its chunk is pending. */
 export function dismissPendingTypeAheadModal(): boolean {
@@ -67,6 +72,10 @@ export function captureTypeAhead(
 ): { stop: () => TypeAhead; read: () => TypeAhead } {
   const me = {
     state: { text } as TypeAhead,
+    accept(typed: TypeAhead) {
+      me.state = typed;
+      if (typed.done) onDone?.(typed);
+    },
     closeModal: closeModal
       ? () => {
           me.state = { ...me.state, done: "escape" };

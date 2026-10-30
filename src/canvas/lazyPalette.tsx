@@ -19,6 +19,8 @@ const Contents = defineLazySurface<Props>({
 export const Palette = memo(function Palette(props: Props) {
   useLocale();
   const [query, setQuery] = useState("");
+  const [pick, setPick] = useState<string>();
+  if (props.collapsed && pick !== undefined) setPick(undefined);
   // Gallery handoff belongs to the canvas even when its stencil library has never opened.
   const onAdd = useRef(props.onAdd);
   useLayoutEffect(() => {
@@ -35,7 +37,7 @@ export const Palette = memo(function Palette(props: Props) {
   const state = useSyncExternalStore(Contents.subscribe, Contents.getSnapshot);
   // Once downloaded, keep the instance across folding so its query and family survive.
   return !props.collapsed || state.value === "loaded" ? (
-    <Contents {...props} initialQuery={query} onInitialQuery={setQuery} />
+    <Contents {...props} initialQuery={query} onInitialQuery={setQuery} initialPick={pick} onInitialPick={setPick} />
   ) : null;
 });
 
@@ -73,12 +75,19 @@ function PaletteLoading(props: Props & { failed: boolean }) {
               aria-label={t("library.findAStencil")}
               placeholder={t("library.findAStencil")}
               value={props.initialQuery}
-              onChange={(event) => props.onInitialQuery?.(event.target.value)}
+              onChange={(event) => {
+                props.onInitialPick?.(undefined);
+                props.onInitialQuery?.(event.target.value);
+              }}
               onKeyDown={(event) => {
-                if (event.key === "Escape" && props.initialQuery) {
+                if (event.key === "Enter" && props.initialQuery?.trim()) {
+                  event.preventDefault();
+                  props.onInitialPick?.(props.initialQuery);
+                } else if (event.key === "Escape" && props.initialQuery) {
                   event.preventDefault();
                   event.stopPropagation();
                   props.onInitialQuery?.("");
+                  props.onInitialPick?.(undefined);
                 }
               }}
             />

@@ -20,7 +20,7 @@ import type * as StencilSearch from "../lib/stencilDisplaySearch";
 import { useSurfaceCatalogs, type CatalogStatus } from "../i18n/useSurfaceCatalogs";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
-import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
+import { captureTypeAhead, handoffTypeAhead, type TypeAhead } from "../canvas/typeAhead";
 
 // App context menu: keyboard navigable (arrows, Home/End, Enter, Esc, ←/→ for submenus),
 // optional search-as-you-type, edge-aware placement. Submenus render as siblings in a fixed
@@ -277,6 +277,9 @@ function MenuList(p: ListProps) {
   );
   // Enter typed before the menu could search: picks the best match once the metadata is in.
   const pickWhenReady = useRef(false);
+  const pendingNavigation = useRef(0);
+  const pendingName = useRef<ReturnType<typeof captureTypeAhead> | null>(null);
+  useEffect(() => () => void pendingName.current?.stop(), []);
   const [active, setActive] = useState(() => (p.activateFirst || q ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
@@ -340,6 +343,7 @@ function MenuList(p: ListProps) {
       const text = t.text;
       queueMicrotask(() => {
         pickWhenReady.current = true;
+        pendingName.current ??= captureTypeAhead();
         setQ(text);
       });
       return;
@@ -361,10 +365,16 @@ function MenuList(p: ListProps) {
   useEffect(() => {
     if (!pickWhenReady.current || waiting) return;
     pickWhenReady.current = false;
-    const best = shown.find(selectable);
+    const choices = shown.filter(selectable);
+    const index = ((pendingNavigation.current % choices.length) + choices.length) % choices.length;
+    const best = choices[index];
+    pendingNavigation.current = 0;
+    const typed = pendingName.current?.stop();
+    pendingName.current = null;
     if (best && !best.children) {
       p.onCloseAll("pick");
       best.run?.();
+      if (typed) handoffTypeAhead(typed);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the held Enter's results arrive
   }, [waiting]);
@@ -445,10 +455,12 @@ function MenuList(p: ListProps) {
     switch (key) {
       case "ArrowDown":
         e.preventDefault();
+        if (waiting) pendingNavigation.current++;
         move(1);
         break;
       case "ArrowUp":
         e.preventDefault();
+        if (waiting) pendingNavigation.current--;
         move(-1);
         break;
       case "Home":
@@ -475,8 +487,10 @@ function MenuList(p: ListProps) {
         e.preventDefault();
         // Before the search can rank: Enter retries a failed download, or picks the best match once it's in.
         if (waiting && metadata.failed) metadata.retry();
-        else if (waiting) pickWhenReady.current = true;
-        else if (active >= 0) activate(active, true);
+        else if (waiting) {
+          pickWhenReady.current = true;
+          pendingName.current ??= captureTypeAhead();
+        } else if (active >= 0) activate(active, true);
         break;
       case " ":
         if (inInput) return;
@@ -604,6 +618,7 @@ function MenuList(p: ListProps) {
               onChange={(e) => {
                 setQ(e.target.value);
                 pickWhenReady.current = false;
+                pendingNavigation.current = 0;
               }}
               placeholder={p.searchable}
               aria-label={p.searchable}
