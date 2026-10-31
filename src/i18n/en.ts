@@ -4432,7 +4432,8 @@ const en = {
   "tutorials.traceSlowmo.liveGoal": "Click Live, then pick Black Friday: 2,000 orders/s in the Simulations picker.",
   "tutorials.traceSlowmo.liveTitle": "Run the saved simulation",
   "tutorials.traceSlowmo.liveDone": "A saved simulation gives this run repeatable traffic and a seed.",
-  "tutorials.traceSlowmo.slowmoGoal":
+  "tutorials.traceSlowmo.slowmoGoal": "Right-click Storefront and pick Watch one message in slow motion.",
+  "tutorials.traceSlowmo.slowmoGoalV2":
     "Pause Live and restart the saved run. Right-click Storefront and pick Watch one message in slow motion; its look-ahead records the journey while Live stays held.",
   "tutorials.traceSlowmo.slowmoTitle": "Watch one message",
   "tutorials.traceSlowmo.slowmoDone": "Slow motion follows one message while it owns the camera.",

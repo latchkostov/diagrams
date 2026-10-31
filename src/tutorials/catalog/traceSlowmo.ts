@@ -28,13 +28,13 @@ export const traceSlowmo: Tutorial = {
     {
       id: "slowmo",
       title: msg("tutorials.traceSlowmo.slowmoTitle"),
-      goal: msg("tutorials.traceSlowmo.slowmoGoal"),
+      goal: msg("tutorials.traceSlowmo.slowmoGoalV2"),
       done: msg("tutorials.traceSlowmo.slowmoDoneV2"),
       check: { kind: "slowmo", ready: true },
       sticky: true,
       targets: [
-        { testId: "context-menu-item-sim.slowmo-from", tip: msg("tutorials.traceSlowmo.slowmoGoal"), dim: false },
-        { testId: "node-{client}", tip: msg("tutorials.traceSlowmo.slowmoGoal"), dim: false },
+        { testId: "context-menu-item-sim.slowmo-from", tip: msg("tutorials.traceSlowmo.slowmoGoalV2"), dim: false },
+        { testId: "node-{client}", tip: msg("tutorials.traceSlowmo.slowmoGoalV2"), dim: false },
       ],
       demo: [
         { kind: "runSimulation", id: "black-friday" },
