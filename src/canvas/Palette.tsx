@@ -460,7 +460,7 @@ function PaletteItem(p: ItemProps) {
       style={{ "--accent": s.accent } as CSSProperties}
     >
       <span className="palette-tile">
-        <StencilIcon stencil={s} size={20} />
+        <StencilIcon stencil={s} size={20} loading="lazy" />
       </span>
       <span className="palette-name">{stencilLabel(s)}</span>
       <span className="palette-add" aria-hidden>
@@ -481,7 +481,7 @@ function RecentTile(p: ItemProps) {
       data-testid={`palette-recent-item-${s.id}`}
       style={{ "--accent": s.accent } as CSSProperties}
     >
-      <StencilIcon stencil={s} size={20} />
+      <StencilIcon stencil={s} size={20} loading="lazy" />
     </button>
   );
 }

@@ -750,7 +750,7 @@ const MenuRow = memo(function MenuRow({
       <span className="cm-lead" data-testid={`context-menu-icon-${n.id}`}>
         {stencil ? (
           <span className="cm-tile" style={{ "--accent": stencil.accent } as CSSProperties}>
-            <StencilIcon stencil={stencil} size={14} />
+            <StencilIcon stencil={stencil} size={14} loading="lazy" />
           </span>
         ) : n.swatch ? (
           <span className="cm-swatch" style={{ background: n.swatch }} />
