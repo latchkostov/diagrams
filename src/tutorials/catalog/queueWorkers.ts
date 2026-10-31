@@ -5,12 +5,12 @@ import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
 
 export const queueWorkers: Tutorial = {
   id: "queue-workers",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 1,
   minutes: 3,
   title: msg("tutorials.queueWorkers.title"),
-  summary: msg("tutorials.queueWorkers.summary"),
+  summary: msg("tutorials.queueWorkers.summaryVerified"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.queueWorkers.title"),
@@ -39,6 +39,17 @@ export const queueWorkers: Tutorial = {
     second: { stencils: ["generic.service"] },
   },
   steps: [
+    {
+      id: "predict",
+      title: msg("tutorials.queueWorkers.predictTitle"),
+      goal: msg("tutorials.queueWorkers.predictGoal"),
+      done: msg("tutorials.queueWorkers.predictDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "node-{queue}", tip: msg("tutorials.queueWorkers.predictTitle") }],
+      demo: [],
+      solution: [{ click: "tutorial-skip" }],
+    },
     connectedStep({
       hint: msg("tutorials.queueWorkers.addHint"),
       id: "add-worker",
@@ -58,7 +69,7 @@ export const queueWorkers: Tutorial = {
     {
       id: "watch",
       title: msg("tutorials.queueWorkers.watchTitle"),
-      goal: msg("tutorials.queueWorkers.watchGoal"),
+      goal: () => t("tutorials.queueWorkers.watchGoalVerified", { queue: t("tutorials.queueWorkers.queueName") }),
       done: msg("tutorials.queueWorkers.watchDone"),
       check: {
         kind: "all",
@@ -81,10 +92,16 @@ export const queueWorkers: Tutorial = {
         ],
       },
       sticky: true,
-      targets: [{ testId: "node-{queue}", tip: msg("tutorials.queueWorkers.watchGoal"), dim: false }],
+      targets: [
+        {
+          testId: "node-{queue}",
+          tip: () => t("tutorials.queueWorkers.watchGoalVerified", { queue: t("tutorials.queueWorkers.queueName") }),
+          dim: false,
+        },
+      ],
       demo: [],
       solution: [{ hover: "node-{queue}" }],
     },
   ],
-  finish: { text: msg("tutorials.queueWorkers.finish") },
+  finish: { text: msg("tutorials.queueWorkers.finishVerified") },
 };

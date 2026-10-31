@@ -37,6 +37,8 @@ export interface ProductObservations {
   checks: ObservationSource & {
     status: "running" | "done" | "failed" | "cancelled" | "stale";
     result?: CheckResult | null;
+    /** Completed, current saved-run evidence; absent during static checks. */
+    simulations?: readonly { id: string; playedMs: number; capped: boolean }[];
   };
   exports: ObservationSource & { format: ExportFormat; bytes: number };
   imports: ObservationSource & { format: FormatId };

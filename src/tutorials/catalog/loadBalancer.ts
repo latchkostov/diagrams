@@ -10,7 +10,7 @@ export const loadBalancer: Tutorial = {
   level: 1,
   minutes: 3,
   title: msg("tutorials.loadBalancer.title"),
-  summary: msg("tutorials.loadBalancer.summary"),
+  summary: msg("tutorials.loadBalancer.summaryVerified"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.loadBalancer.title"),
@@ -78,7 +78,9 @@ export const loadBalancer: Tutorial = {
     {
       id: "fault",
       title: msg("tutorials.loadBalancer.faultTitle"),
-      goal: livePropertiesGoal(msg("tutorials.loadBalancer.faultGoal")),
+      goal: livePropertiesGoal(() =>
+        t("tutorials.loadBalancer.faultGoalVerified", { service: t("tutorials.loadBalancer.serviceName") }),
+      ),
       done: msg("tutorials.loadBalancer.faultDone"),
       check: {
         kind: "all",
@@ -91,11 +93,22 @@ export const loadBalancer: Tutorial = {
       targets: [
         {
           testId: "dock-edit-properties",
-          tip: livePropertiesGoal(msg("tutorials.loadBalancer.faultGoal")),
+          tip: livePropertiesGoal(() =>
+            t("tutorials.loadBalancer.faultGoalVerified", { service: t("tutorials.loadBalancer.serviceName") }),
+          ),
           selected: "service",
         },
-        { testId: "inspector-field-replicas", tip: msg("tutorials.loadBalancer.faultGoal"), selected: "service" },
-        { testId: "node-{service}", tip: msg("tutorials.loadBalancer.faultGoal") },
+        {
+          testId: "inspector-field-replicas",
+          tip: () =>
+            t("tutorials.loadBalancer.faultGoalVerified", { service: t("tutorials.loadBalancer.serviceName") }),
+          selected: "service",
+        },
+        {
+          testId: "node-{service}",
+          tip: () =>
+            t("tutorials.loadBalancer.faultGoalVerified", { service: t("tutorials.loadBalancer.serviceName") }),
+        },
       ],
       demo: [{ kind: "prop", subject: "service", props: { replicas: 2 } }],
       solution: [
@@ -117,5 +130,5 @@ export const loadBalancer: Tutorial = {
       solution: [{ hover: "node-{service}" }],
     },
   ],
-  finish: { text: msg("tutorials.loadBalancer.finish") },
+  finish: { text: msg("tutorials.loadBalancer.finishVerified") },
 };

@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { openDiagramProperties } from "./fixtures";
 import { openAnnotate, openLibrary } from "./fixtures";
 import { deflateRawSync } from "node:zlib";
@@ -526,7 +528,7 @@ test("outbox: happy-path waits for narration Continue", async ({ page }) => {
   await expect
     .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
     .toBeGreaterThanOrEqual(2500);
-  await expect(strip(page)).toHaveAttribute("data-step", "watch-compensation");
+  await expect(strip(page)).toHaveAttribute("data-step", "read-compensation");
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
@@ -951,9 +953,16 @@ for (const { id, quarantined } of tutorialEntries)
     test.fixme(!!quarantined, quarantineReason);
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
+    const capture = process.env.TUTORIAL_SCREENSHOTS;
+    if (capture && ["checks-and-fixes", "route-by-address", "network-policy"].includes(id)) {
+      mkdirSync(capture, { recursive: true });
+      await page.screenshot({ path: join(capture, `${id}-intro.png`) });
+    }
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
+    if (capture && ["checks-and-fixes", "route-by-address", "network-policy"].includes(id))
+      await page.screenshot({ path: join(capture, `${id}-completed.png`) });
     if (id === "rate-limit") expect(seen).toEqual(["quota-10", "run", "rejected"]);
     if (id === "backlog-lag") expect(seen).toEqual(["live", "backlog-50", "add-consumer", "consumer-progress"]);
     if (id === "shared-api-quotas")
@@ -967,7 +976,13 @@ for (const { id, quarantined } of tutorialEntries)
     if (id === "dead-letters") expect(seen).toContain("replay");
     if (id === "partitions") expect(seen).toEqual(["read-idle", "six-partitions", "rerun"]);
     if (id === "outbox")
-      expect(seen).toEqual(["trace-message", "run-happy-path", "read-happy-path", "watch-compensation"]);
+      expect(seen).toEqual([
+        "trace-message",
+        "run-happy-path",
+        "read-happy-path",
+        "watch-compensation",
+        "read-compensation",
+      ]);
     if (id === "command-palette") expect(seen).toEqual(["add", "goto"]);
     if (id === "share-present") expect(seen).toEqual(["present", "leave", "share"]);
     await expect(page.getByTestId("tutorial-progress")).toBeVisible();
@@ -1897,3 +1912,43 @@ test("shortcuts Tutorials navigation preserves the opened device file Save bindi
   const saved = await page.evaluate(() => window.__tutorialFiles.writes[0]);
   expect(JSON.parse(saved).nodes[0].label).toBe("Saved after tutorials");
 });
+
+for (const id of [
+  "api-gateway",
+  "route-by-address",
+  "kafka-topic",
+  "queue-workers",
+  "load-balancer",
+  "cache-aside",
+  "webhooks",
+  "fanout",
+  "partitions",
+  "outbox",
+  "dependencies-2",
+  "network-policy",
+  "checks-and-fixes",
+]) {
+  test(`${id}: Continue reconstructs the first completed step and Skip reaches the handoff`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.clock.install();
+    await openTutorial(page, id);
+    await page.getByTestId("tutorial-start").click();
+    await pauseClock(page);
+    const first = await strip(page).getAttribute("data-step");
+    await page.getByTestId("tutorial-skip").click();
+    await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== first);
+    await page.getByTestId("tutorial-exit").click();
+    await page.goto(`./?tutorial=${id}`);
+    await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+    await page.getByTestId("tutorial-start").click();
+    await pauseClock(page);
+    await advanceTutorialClock(page, async () =>
+      ["active", "hinting", "completing", "finished"].includes((await strip(page).getAttribute("data-state")) ?? ""),
+    );
+    await skipAll(page, true);
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
+}

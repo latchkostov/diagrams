@@ -1,3 +1,6 @@
+import { routeByAddress } from "./routeByAddress";
+import { networkPolicy } from "./networkPolicy";
+import { checksAndFixes } from "./checksAndFixes";
 import { whereTimeGoes } from "./whereTimeGoes";
 import { threadsBlock } from "./threadsBlock";
 import { timeoutsPools } from "./timeoutsPools";
@@ -66,6 +69,7 @@ export const allTutorials: readonly Tutorial[] = [
   commandPalette,
   sharePresent,
   apiGateway,
+  routeByAddress,
   kafkaTopic,
   queueWorkers,
   loadBalancer,
@@ -75,6 +79,8 @@ export const allTutorials: readonly Tutorial[] = [
   partitions,
   outbox,
   dependencies2,
+  networkPolicy,
+  checksAndFixes,
   whereTimeGoes,
   threadsBlock,
   timeoutsPools,

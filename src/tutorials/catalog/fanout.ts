@@ -11,7 +11,7 @@ export const fanout: Tutorial = {
   level: 2,
   minutes: 3,
   title: msg("tutorials.fanout.title"),
-  summary: msg("tutorials.fanout.summary"),
+  summary: msg("tutorials.fanout.summaryVerified"),
   start: { example: "notification-fanout" },
   subjects: {
     router: { stencils: ["azure.functions"] },
@@ -58,7 +58,7 @@ export const fanout: Tutorial = {
       id: "filter-sms",
       title: msg("tutorials.fanout.filterTitle"),
       goal: filterGoal,
-      done: msg("tutorials.fanout.filterDone"),
+      done: msg("tutorials.fanout.filterDoneVerified"),
       check: { kind: "prop", edge: ["router", "smsQueue"], prop: "filter", op: "=", value: [messageType] },
       targets: [
         { testId: "inspector-filter-option-0", tip: filterGoal },
@@ -76,5 +76,5 @@ export const fanout: Tutorial = {
       ],
     },
   ],
-  finish: { text: msg("tutorials.fanout.finish") },
+  finish: { text: msg("tutorials.fanout.finishVerified") },
 };

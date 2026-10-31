@@ -1,4 +1,4 @@
-import type { Tutorial, UiStep, Words } from "./types";
+import type { Check, Tutorial, UiStep, Words } from "./types";
 import type { RunnerSnapshot } from "./runner";
 import { fillTestId } from "./checks";
 import { inStep } from "./machine";
@@ -60,7 +60,12 @@ function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
 export function withKeyboardSolutions(tutorial: Tutorial): Tutorial {
   if (keyboardExceptions[tutorial.id]) return tutorial;
   for (const step of tutorial.steps) {
-    const readSection = step.solution.some((action) => "click" in action && action.click.startsWith("hover-section-"));
+    if (step.keyboardSolution) continue;
+    const needsReadout = (check: Check): boolean =>
+      check.kind === "readout" || (check.kind === "all" && check.checks.some(needsReadout));
+    const readSection =
+      needsReadout(step.check) ||
+      step.solution.some((action) => "click" in action && action.click.startsWith("hover-section-"));
     const solution: KeyboardUiStep[] = [];
     for (let i = 0; i < step.solution.length; i++) {
       const action = step.solution[i];

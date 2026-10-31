@@ -1,0 +1,136 @@
+import { stencilSearch } from "./searchValues";
+import { msg, t } from "../../i18n";
+import { checksPractice } from "../../lab/buildingBlockSeeds";
+import type { Tutorial } from "../types";
+export const checksAndFixes: Tutorial = {
+  id: "checks-and-fixes",
+  version: 1,
+  track: "blocks",
+  level: 2,
+  minutes: 4,
+  title: msg("tutorials.checksAndFixes.title"),
+  summary: msg("tutorials.checksAndFixes.summary"),
+  start: checksPractice,
+  subjects: {
+    api: { stencils: ["client.browser"] },
+    topic: { stencils: ["kafka.topic"] },
+    worker: { stencils: ["generic.service"] },
+  },
+  steps: [
+    {
+      id: "open",
+      title: msg("tutorials.checksAndFixes.openTitle"),
+      goal: msg("tutorials.checksAndFixes.openGoal"),
+      done: msg("tutorials.checksAndFixes.openDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "dock", tab: "checks" },
+          { kind: "checks", status: "done", rule: "no-reader" },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "checks-count", tip: msg("tutorials.checksAndFixes.openTitle") }],
+      demo: [],
+      solution: [{ click: "checks-count" }],
+    },
+    {
+      id: "read",
+      title: msg("tutorials.checksAndFixes.readTitle"),
+      goal: msg("tutorials.checksAndFixes.readGoal"),
+      done: msg("tutorials.checksAndFixes.readDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "check-select-no-reader:topic", tip: msg("tutorials.checksAndFixes.readTitle") }],
+      demo: [],
+      solution: [
+        { click: "check-select-no-reader:topic" },
+        { click: "check-why-toggle-no-reader:topic" },
+        { click: "tutorial-skip" },
+      ],
+    },
+    {
+      id: "fix",
+      title: msg("tutorials.checksAndFixes.fixTitle"),
+      goal: () => t("tutorials.checksAndFixes.fixGoal", { worker: t("tutorials.checksAndFixes.worker") }),
+      done: msg("tutorials.checksAndFixes.fixDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "edge", from: "topic", to: "worker" },
+          { kind: "label", subject: "worker", is: msg("tutorials.checksAndFixes.worker") },
+          { kind: "checks", status: "done", rule: "no-reader", absent: true },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "node-{topic}", tip: msg("tutorials.checksAndFixes.fixTitle") }],
+      demo: [
+        { kind: "add", subject: "worker", stencil: "generic.service", after: "topic" },
+        { kind: "rename", subject: "worker", label: msg("tutorials.checksAndFixes.worker") },
+      ],
+      solution: [
+        { click: "check-choose-no-reader:topic" },
+        { fill: "quick-add-search", text: stencilSearch("generic.service") },
+        { press: "Enter" },
+        { fill: "inspector-field-label", text: msg("tutorials.checksAndFixes.worker") },
+        { press: "Enter" },
+      ],
+      settle: "naming",
+    },
+    {
+      id: "undo",
+      title: msg("tutorials.checksAndFixes.undoTitle"),
+      goal: msg("tutorials.checksAndFixes.undoGoal"),
+      done: msg("tutorials.checksAndFixes.undoDone"),
+      check: { kind: "all", checks: [{ kind: "checks", status: "done", rule: "no-reader" }] },
+      sticky: true,
+      targets: [{ testId: "undo-button", tip: msg("tutorials.checksAndFixes.undoTitle") }],
+      demo: [],
+      solution: [{ click: "undo-button" }],
+    },
+    {
+      id: "reapply",
+      title: msg("tutorials.checksAndFixes.reapplyTitle"),
+      goal: () => t("tutorials.checksAndFixes.reapplyGoal", { worker: t("tutorials.checksAndFixes.worker") }),
+      done: msg("tutorials.checksAndFixes.reapplyDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "edge", from: "topic", to: "worker" },
+          { kind: "label", subject: "worker", is: msg("tutorials.checksAndFixes.worker") },
+          { kind: "checks", status: "done", rule: "no-reader", absent: true },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "node-{topic}", tip: msg("tutorials.checksAndFixes.reapplyTitle") }],
+      demo: [
+        { kind: "add", subject: "worker", stencil: "generic.service", after: "topic" },
+        { kind: "rename", subject: "worker", label: msg("tutorials.checksAndFixes.worker") },
+      ],
+      solution: [
+        { click: "checks-count" },
+        { click: "check-choose-no-reader:topic" },
+        { fill: "quick-add-search", text: stencilSearch("generic.service") },
+        { press: "Enter" },
+        { fill: "inspector-field-label", text: msg("tutorials.checksAndFixes.worker") },
+        { press: "Enter" },
+      ],
+      settle: "naming",
+    },
+    {
+      id: "evidence",
+      title: msg("tutorials.checksAndFixes.evidenceTitle"),
+      goal: () => t("tutorials.checksAndFixes.evidenceGoal", { burst: t("tutorials.checksAndFixes.burst") }),
+      done: msg("tutorials.checksAndFixes.evidenceDone"),
+      check: { kind: "all", checks: [{ kind: "checks", status: "done", simulation: "small-burst" }] },
+      sticky: true,
+      targets: [{ testId: "checks-count", tip: msg("tutorials.checksAndFixes.evidenceTitle") }],
+      demo: [],
+      solution: [{ click: "checks-count" }, { click: "checks-run-simulations" }],
+    },
+  ],
+  finish: {
+    text: msg("tutorials.checksAndFixes.finish"),
+    example: { slug: "kafka-order-pipeline", label: msg("tutorials.checksAndFixes.title") },
+  },
+};

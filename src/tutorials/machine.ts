@@ -115,7 +115,8 @@ export const firstOpen = (s: Facts): number => {
   const i = s.observed.findIndex((_, n) => !held(s, n));
   return i < 0 ? s.observed.length : i;
 };
-const latchSeen = (s: RunnerState, met: readonly boolean[]) => s.latched.map((on, i) => on || (s.sticky[i] && met[i]));
+const latchSeen = (s: RunnerState, met: readonly boolean[], settled: readonly boolean[]) =>
+  s.latched.map((on, i) => on || (s.sticky[i] && met[i] && settled[i]));
 
 /** Where the facts put the pointer, and in which step state. */
 function position(s: RunnerState, facts: Facts): RunnerState {
@@ -133,7 +134,9 @@ function position(s: RunnerState, facts: Facts): RunnerState {
   };
 }
 const observed = (s: RunnerState, e: RunnerEvent) =>
-  e.type === "observe" ? position(s, { observed: e.met, settled: e.settled, latched: latchSeen(s, e.met) }) : s;
+  e.type === "observe"
+    ? position(s, { observed: e.met, settled: e.settled, latched: latchSeen(s, e.met, e.settled) })
+    : s;
 const fits = (s: RunnerState, e: RunnerEvent) =>
   e.type === "observe" && e.met.length === s.observed.length && e.settled.length === s.observed.length;
 const progress = (n: RunnerState): RunnerCommand[] =>
@@ -281,7 +284,9 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
         target: "intro",
         guard: fits,
         reduce: (s, e) =>
-          e.type === "observe" ? { ...s, observed: e.met, settled: e.settled, latched: latchSeen(s, e.met) } : s,
+          e.type === "observe"
+            ? { ...s, observed: e.met, settled: e.settled, latched: latchSeen(s, e.met, e.settled) }
+            : s,
       },
       start: goTo(
         (s) => position({ ...s, resumeAt: 0 }, s),
@@ -314,7 +319,9 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
         target: "reconstructing",
         guard: fits,
         reduce: (s, e) =>
-          e.type === "observe" ? { ...s, observed: e.met, settled: e.settled, latched: latchSeen(s, e.met) } : s,
+          e.type === "observe"
+            ? { ...s, observed: e.met, settled: e.settled, latched: latchSeen(s, e.met, e.settled) }
+            : s,
       },
       reconstructed: goTo(
         (s) => position(s, s),

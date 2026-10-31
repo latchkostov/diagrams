@@ -6,18 +6,18 @@ import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
 const addOrdersGoalWords = () =>
   t("tutorials.apiGateway.addOrdersGoal", { name: msg("tutorials.apiGateway.ordersName")() });
 const addUsersGoalWords = () =>
-  t("tutorials.apiGateway.addUsersGoal", { name: msg("tutorials.apiGateway.usersName")() });
+  t("tutorials.apiGateway.addUsersGoalVerified", { name: msg("tutorials.apiGateway.usersName")() });
 
 const addAppGoalWords = () => t("tutorials.apiGateway.addAppGoal", { query: stencilSearch("client.mobile")() });
 
 export const apiGateway: Tutorial = {
   id: "api-gateway",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 1,
   minutes: 4,
   title: msg("tutorials.apiGateway.title"),
-  summary: msg("tutorials.apiGateway.summary"),
+  summary: msg("tutorials.apiGateway.summaryVerified"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.apiGateway.title"),
@@ -73,18 +73,30 @@ export const apiGateway: Tutorial = {
       goal: addOrdersGoalWords,
       done: msg("tutorials.apiGateway.addOrdersDone"),
     }),
-    connectedStep({
-      hint: msg("tutorials.apiGateway.addHint"),
-      id: "add-users",
-      from: "gw",
-      subject: "users",
-      stencil: "generic.service",
-      search: stencilSearch("generic.service"),
-      name: msg("tutorials.apiGateway.usersName"),
-      title: msg("tutorials.apiGateway.addUsersTitle"),
-      goal: addUsersGoalWords,
-      done: msg("tutorials.apiGateway.addUsersDone"),
-    }),
+    {
+      ...connectedStep({
+        hint: msg("tutorials.apiGateway.addHint"),
+        id: "add-users",
+        from: "gw",
+        subject: "users",
+        stencil: "generic.service",
+        search: stencilSearch("generic.service"),
+        name: msg("tutorials.apiGateway.usersName"),
+        title: msg("tutorials.apiGateway.addUsersTitle"),
+        goal: addUsersGoalWords,
+        done: msg("tutorials.apiGateway.addUsersDone"),
+      }),
+      guide: undefined,
+      solution: [
+        { click: "node-{gw}" },
+        { click: "fit-view-button" },
+        { click: "grow-chip-{gw}" },
+        { fill: "quick-add-search", text: stencilSearch("generic.service") },
+        { press: "Enter" },
+        { fill: "inspector-field-label", text: msg("tutorials.apiGateway.usersName") },
+        { press: "Enter" },
+      ],
+    },
     liveStep(
       msg("tutorials.apiGateway.liveTitle"),
       msg("tutorials.apiGateway.liveGoal"),
@@ -110,7 +122,7 @@ export const apiGateway: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.apiGateway.finish"),
+    text: msg("tutorials.apiGateway.finishVerified"),
     example: { slug: "api-route-table", label: msg("tutorials.apiGateway.example") },
   },
 };

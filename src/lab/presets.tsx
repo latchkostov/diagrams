@@ -1,3 +1,4 @@
+import { addressPractice, policyPractice, checksPractice } from "./buildingBlockSeeds";
 import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixture";
 import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
@@ -307,6 +308,14 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
+  ...[addressPractice, policyPractice, checksPractice].map((diagram, index): Preset => ({
+    kind: "diagram",
+    id: ["tutorial-address-practice", "tutorial-policy-practice", "tutorial-checks-practice"][index],
+    title: diagram().title,
+    group: "Diagrams",
+    description: diagram().title,
+    diagram,
+  })),
   {
     kind: "render",
     id: "message-readers",

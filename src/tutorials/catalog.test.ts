@@ -45,7 +45,10 @@ const source = (() => {
   walk("src");
   // Readout rows share a template with two literal prefixes (hover and docked inspector).
   // Expand those alternatives so each still needs the real template suffix and a known section key.
-  return out.join("\n").replace(/\$\{\w+ \? "([^"]+)" : "([^"]+)"\}([^`\n]*)/g, "$1$3\n$2$3");
+  return out
+    .join("\n")
+    .replaceAll('"dock-tab-" + tab', "`dock-tab-${tab}`")
+    .replace(/\$\{\w+ \? "([^"]+)" : "([^"]+)"\}([^`\n]*)/g, "$1$3\n$2$3");
 })();
 
 const stencilIds = new Set(stencils.map((s) => s.id));
@@ -55,6 +58,23 @@ const stencilIds = new Set(stencils.map((s) => s.id));
  */
 function knownTestId(id: string): boolean {
   if (!id) return true;
+  // These parameterized child IDs compose two actual render templates; verify both before accepting the data IDs.
+  const routeTarget = /^routes-(rule-([^-]+)-targets|default-targets)-(.+)$/.exec(id);
+  if (
+    routeTarget &&
+    source.includes("testId={`routes-rule-${rule.id}-targets`}") &&
+    source.includes('testId="routes-default-targets"') &&
+    source.includes("data-testid={`${testId}-${edge.id}`}")
+  )
+    return (!routeTarget[2] || knownTestId(routeTarget[2])) && knownTestId(routeTarget[3]);
+  const finding = /^check-(select|why-toggle|choose)-no-reader:(.+)$/.exec(id);
+  if (
+    finding &&
+    source.includes("`${testPrefix}-${part}-${f.id}`") &&
+    (source.includes('data-testid={t("' + finding[1] + '")}') ||
+      (finding[1] === "select" && source.includes('t(diagramScope ? "open" : "select")')))
+  )
+    return knownTestId(finding[2]);
   if (/^\{\w+(?:->\w+)?\}/.test(id)) return knownTestId(id.replace(/^\{\w+(?:->\w+)?\}/, ""));
   if (source.includes(`"${id}"`) || source.includes(`'${id}'`) || stencilIds.has(id)) return true;
   for (let i = id.length - 1; i > 0; i--) {

@@ -56,7 +56,8 @@ type PropComparison =
   | { op: Comparison; value: unknown; measure?: never }
   | { measure: "length"; op: Comparison; value: number }
   /** Whether an optional configuration is enabled, including customized objects. */
-  | { op: "truthy"; value?: never; measure?: never };
+  | { op: "truthy"; value?: never; measure?: never }
+  | { op: "falsy"; value?: never; measure?: never };
 
 /**
  * An edit-preserving prop edit for a demo: idempotent, and it writes only what's missing, so the learner's other values
@@ -131,7 +132,15 @@ export type LiveInput = "traffic" | "capacity" | "scale";
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
   | { kind: "dock"; tab: ProductObservations["dock"]["tab"]; snap?: ProductObservations["dock"]["snap"] }
-  | { kind: "checks"; status: ProductObservations["checks"]["status"]; rule?: string; findings?: number }
+  | {
+      kind: "checks";
+      status: ProductObservations["checks"]["status"];
+      rule?: string;
+      absent?: true;
+      findings?: number;
+      simulation?: string;
+    }
+  | { kind: "routeEvidence"; subject: string; route: string; rule?: string; to?: string; rejected?: true }
   | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
   | { kind: "export"; format: ProductObservations["exports"]["format"] }
   | { kind: "import"; format: ProductObservations["imports"]["format"] }

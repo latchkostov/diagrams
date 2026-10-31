@@ -178,7 +178,13 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       return (
         event?.status === check.status &&
         (check.findings === undefined || event.result?.findings.length === check.findings) &&
-        (check.rule === undefined || !!event.result?.findings.some((finding) => finding.rule === check.rule))
+        (check.rule === undefined ||
+          (!!event.result?.ran.some((rule) => rule === check.rule) &&
+            (check.absent
+              ? ![...event.result.findings, ...event.result.ignored].some((finding) => finding.rule === check.rule)
+              : event.result.findings.some((finding) => finding.rule === check.rule)))) &&
+        (check.simulation === undefined ||
+          !!event.simulations?.some((run) => run.id === check.simulation && run.playedMs > 0 && !run.capped))
       );
     }
     case "export":
@@ -235,6 +241,8 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
               typeof check.prop === "string" ? [check.prop] : check.prop,
             );
       if (check.measure === "length") return Array.isArray(actual) && compare(actual.length, check.op, check.value);
+      if (check.op === "falsy")
+        return !!target && !(check.effective && view.live && !checkProps(view, target, !!check.edge)) && !actual;
       if (check.op === "truthy") return !!actual;
       return compare(actual, check.op, check.value);
     }
@@ -339,6 +347,19 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       );
       const active = ((!check.fault || check.fault === "down") && down) || !!matches;
       return check.absent ? !active : active;
+    }
+    case "routeEvidence": {
+      if (!view.live || !view.session || view.session.needsRestart || view.trafficReady === false) return false;
+      if (check.rejected)
+        return (view.session.snapshot.nodes[subjects[check.subject] ?? ""]?.routeRejections?.[check.route] ?? 0) > 0;
+      return !!view.session.trace?.current?.steps.some(
+        (step) =>
+          step.kind === "send" &&
+          step.node === subjects[check.subject] &&
+          step.route === check.route &&
+          step.rule === check.rule &&
+          (!check.to || view.diagram.edges.some((edge) => edge.id === step.edge && edge.to === subjects[check.to!])),
+      );
     }
     case "trace":
       return view.live && !!view.session?.trace;

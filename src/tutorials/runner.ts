@@ -127,6 +127,7 @@ export function createTutorialRunner(
       "expectation",
       "fault",
       "trace",
+      "routeEvidence",
       "slowmo",
       "note",
       "mode",
@@ -140,7 +141,7 @@ export function createTutorialRunner(
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const moment = (check: Tutorial["steps"][number]["check"]): boolean =>
-    ["export", "import", "aiTurn", "collaboration"].includes(check.kind) ||
+    ["export", "import", "aiTurn", "collaboration", "checks"].includes(check.kind) ||
     (check.kind === "all" && check.checks.some(moment));
   const momentChecks = tutorial.steps.map((step) => moment(step.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
@@ -808,7 +809,7 @@ export function createTutorialRunner(
           }
           // The next step's demo may need this one's node: wait for the canvas to report it. Replaying a step that
           // counted since it began (Continue), what it counted is history: the rest of its check is what must hold.
-          const replayed = purpose === "reconstruct" && since[i].length > 0;
+          const replayed = purpose === "reconstruct" && (since[i].length > 0 || momentChecks[i]);
           const done = () => state.observed[i] || (replayed && !!editor() && holds(historical[i], view(), subjects));
           if (tutorial.steps[i].demo.length && !(await until(done, run))) return;
         }

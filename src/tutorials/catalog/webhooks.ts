@@ -8,7 +8,7 @@ export const webhooks: Tutorial = {
   level: 2,
   minutes: 3,
   title: msg("tutorials.webhooks.title"),
-  summary: msg("tutorials.webhooks.summary"),
+  summary: msg("tutorials.webhooks.summaryVerified"),
   start: { example: "webhook-ingestion" },
   subjects: { queue: { stencils: ["rabbitmq.queue"] } },
   steps: [
@@ -29,7 +29,7 @@ export const webhooks: Tutorial = {
     {
       id: "continue-note",
       title: msg("tutorials.webhooks.noteTitle"),
-      goal: msg("tutorials.webhooks.noteGoal"),
+      goal: msg("tutorials.webhooks.noteGoalVerified"),
       done: msg("tutorials.webhooks.noteDone"),
       check: {
         kind: "all",
@@ -40,8 +40,8 @@ export const webhooks: Tutorial = {
       },
       sticky: true,
       targets: [
-        { testId: "live-note-continue", tip: msg("tutorials.webhooks.noteGoal"), dim: false },
-        { testId: "live-note", tip: msg("tutorials.webhooks.noteGoal"), dim: false },
+        { testId: "live-note-continue", tip: msg("tutorials.webhooks.noteGoalVerified"), dim: false },
+        { testId: "live-note", tip: msg("tutorials.webhooks.noteGoalVerified"), dim: false },
       ],
       demo: [{ kind: "continueNote", simulation: "outage-replay", atLeastMs: 6500 }],
       solution: [{ click: "live-note-continue" }],
@@ -59,5 +59,5 @@ export const webhooks: Tutorial = {
       solution: [{ hover: "node-{queue}" }],
     },
   ],
-  finish: { text: msg("tutorials.webhooks.finish") },
+  finish: { text: msg("tutorials.webhooks.finishVerified") },
 };
