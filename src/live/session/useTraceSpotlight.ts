@@ -91,7 +91,7 @@ export function useTraceActions({
   const { controller, flash, state, panel, notice, getDiagram } = session;
   const { slowRef } = spotlight;
   const [sequenceChoice, chooseSequence] = useState<{ trace: MessageTrace; generation: number } | null>(null);
-  const sequence = sequenceChoice?.generation === state.generation ? sequenceChoice.trace : null;
+  const sequence = sequenceChoice && sequenceChoice.generation === state.generation ? sequenceChoice.trace : null;
   const setSequence = useCallback(
     (trace: MessageTrace | null) => chooseSequence(trace ? { trace, generation: state.generation } : null),
     [state.generation],
