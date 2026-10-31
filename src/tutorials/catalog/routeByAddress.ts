@@ -109,7 +109,7 @@ export const routeByAddress: Tutorial = {
         kind: "all",
         checks: [
           { kind: "simulation", id: "unknown-address" },
-          { kind: "routeEvidence", subject: "gw", route: "old-tracking", rejected: true },
+          { kind: "routeEvidence", subject: "gw", route: "old-tracking", rejected: true, reason: "route-not-found" },
         ],
       },
       sticky: true,

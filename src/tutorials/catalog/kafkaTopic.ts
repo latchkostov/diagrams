@@ -78,7 +78,7 @@ export const kafkaTopic: Tutorial = {
     {
       id: "group-billing",
       title: msg("tutorials.kafkaTopic.billingGroupTitle"),
-      goal: msg("tutorials.kafkaTopic.billingGroupGoal"),
+      goal: () => t("tutorials.kafkaTopic.billingGroupGoal", { group: "billing" }),
       done: msg("tutorials.kafkaTopic.groupDone"),
       check: { kind: "prop", edge: ["topic", "billing"], prop: "group", op: "=", value: "billing" },
       targets: [{ testId: "node-{billing}", tip: msg("tutorials.kafkaTopic.billingGroupTitle") }],
@@ -94,7 +94,7 @@ export const kafkaTopic: Tutorial = {
     {
       id: "group-email",
       title: msg("tutorials.kafkaTopic.emailGroupTitle"),
-      goal: msg("tutorials.kafkaTopic.emailGroupGoal"),
+      goal: () => t("tutorials.kafkaTopic.emailGroupGoal", { group: "email" }),
       done: msg("tutorials.kafkaTopic.groupDone"),
       check: { kind: "prop", edge: ["topic", "email"], prop: "group", op: "=", value: "email" },
       targets: [{ testId: "node-{email}", tip: msg("tutorials.kafkaTopic.emailGroupTitle") }],
@@ -115,7 +115,13 @@ export const kafkaTopic: Tutorial = {
     {
       id: "watch",
       title: msg("tutorials.kafkaTopic.watchTitle"),
-      goal: msg("tutorials.kafkaTopic.watchGoal"),
+      goal: () =>
+        t("tutorials.kafkaTopic.watchGroupsGoal", {
+          billing: t("tutorials.kafkaTopic.billingName"),
+          email: t("tutorials.kafkaTopic.emailName"),
+          billingGroup: "billing",
+          emailGroup: "email",
+        }),
       done: msg("tutorials.kafkaTopic.watchDone"),
       check: {
         kind: "all",
@@ -128,7 +134,7 @@ export const kafkaTopic: Tutorial = {
         ],
       },
       sticky: true,
-      targets: [{ testId: "node-{topic}", tip: msg("tutorials.kafkaTopic.watchGoal"), dim: false }],
+      targets: [{ testId: "node-{topic}", tip: msg("tutorials.kafkaTopic.watchTitle"), dim: false }],
       demo: [],
       solution: [{ hover: "node-{topic}" }],
     },

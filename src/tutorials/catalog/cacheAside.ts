@@ -52,11 +52,11 @@ export const cacheAside: Tutorial = {
     }),
     {
       id: "cache-share",
-      title: msg("tutorials.cacheAside.cache-shareTitle"),
-      goal: msg("tutorials.cacheAside.cache-shareGoal"),
+      title: msg("tutorials.cacheAside.cacheShareTitle"),
+      goal: msg("tutorials.cacheAside.cacheShareGoal"),
       done: msg("tutorials.cacheAside.cacheShareDone"),
       check: { kind: "prop", edge: ["api", "redis"], prop: "share", op: "=", value: 0.8 },
-      targets: [{ testId: "node-{redis}", tip: msg("tutorials.cacheAside.cache-shareTitle") }],
+      targets: [{ testId: "node-{redis}", tip: msg("tutorials.cacheAside.cacheShareTitle") }],
       demo: [{ kind: "prop", edge: ["api", "redis"], props: { share: 0.8 } }],
       solution: [
         { click: "node-{redis}" },
@@ -68,11 +68,11 @@ export const cacheAside: Tutorial = {
     },
     {
       id: "database-share",
-      title: msg("tutorials.cacheAside.database-shareTitle"),
-      goal: () => t("tutorials.cacheAside.database-shareGoal", { database: t("tutorials.cacheAside.dbName") }),
+      title: msg("tutorials.cacheAside.databaseShareTitle"),
+      goal: () => t("tutorials.cacheAside.databaseShareGoal", { database: t("tutorials.cacheAside.dbName") }),
       done: msg("tutorials.cacheAside.databaseShareDone"),
       check: { kind: "prop", edge: ["api", "db"], prop: "share", op: "=", value: 0.2 },
-      targets: [{ testId: "node-{db}", tip: msg("tutorials.cacheAside.database-shareTitle") }],
+      targets: [{ testId: "node-{db}", tip: msg("tutorials.cacheAside.databaseShareTitle") }],
       demo: [{ kind: "prop", edge: ["api", "db"], props: { share: 0.2 } }],
       solution: [
         { click: "node-{db}" },

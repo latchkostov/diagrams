@@ -350,8 +350,13 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     }
     case "routeEvidence": {
       if (!view.live || !view.session || view.session.needsRestart || view.trafficReady === false) return false;
-      if (check.rejected)
-        return (view.session.snapshot.nodes[subjects[check.subject] ?? ""]?.routeRejections?.[check.route] ?? 0) > 0;
+      if (check.rejected) {
+        const reading = view.session.snapshot.nodes[subjects[check.subject] ?? ""];
+        return (
+          (reading?.routeRejections?.[check.route] ?? 0) > 0 &&
+          (check.reason === undefined || (reading?.rejectionReasons?.[check.reason] ?? 0) > 0)
+        );
+      }
       return !!view.session.trace?.current?.steps.some(
         (step) =>
           step.kind === "send" &&

@@ -4816,10 +4816,10 @@ const en = {
     "Checks completed the saved burst on this document; simulated evidence is separate from static advice.",
   "tutorials.kafkaTopic.billingGroupTitle": "Name the Billing group",
   "tutorials.kafkaTopic.billingGroupGoal":
-    "Select Billing, select its incoming connection and set Consumer group to billing in Properties. This stable group identity owns one stream copy.",
+    "Select Billing, select its incoming connection and set Consumer group to {group} in Properties. This stable group identity owns one stream copy.",
   "tutorials.kafkaTopic.emailGroupTitle": "Name the Email group",
   "tutorials.kafkaTopic.emailGroupGoal":
-    "Select Email and its incoming connection, then set Consumer group to email. A different identity receives a separate stream copy.",
+    "Select Email and its incoming connection, then set Consumer group to {group}. A different identity receives a separate stream copy.",
   "tutorials.kafkaTopic.groupDone":
     "The connection now names its consumer group; readers sharing that name would compete for its copy.",
   "tutorials.queueWorkers.predictTitle": "Predict the second worker’s effect",
@@ -4827,11 +4827,11 @@ const en = {
     "Before adding worker two, predict: does each worker receive every message, or do they share one delivery per job? Press Done after your prediction.",
   "tutorials.queueWorkers.predictDone":
     "This records a prediction; the Live counters will test the shared-work explanation.",
-  "tutorials.cacheAside.cache-shareTitle": "Set the cache share",
-  "tutorials.cacheAside.cache-shareGoal":
+  "tutorials.cacheAside.cacheShareTitle": "Set the cache share",
+  "tutorials.cacheAside.cacheShareGoal":
     "Select Redis and its incoming connection. In Simulation, set Message share to 80%; observe that only this connection changed.",
-  "tutorials.cacheAside.database-shareTitle": "Set the database share",
-  "tutorials.cacheAside.database-shareGoal":
+  "tutorials.cacheAside.databaseShareTitle": "Set the database share",
+  "tutorials.cacheAside.databaseShareGoal":
     "Select {database} and its incoming connection. In Simulation, set Message share to 20%; both independent shares are now configured.",
   "tutorials.outbox.compensationTitle": "Read the compensation point",
   "tutorials.outbox.compensationGoal":
@@ -4902,5 +4902,7 @@ const en = {
     "The cache connection now has an 80% share; this is an independent traffic choice.",
   "tutorials.cacheAside.databaseShareDone":
     "The database connection now has a 20% share; comparing Live work tests this load assumption.",
+  "tutorials.kafkaTopic.watchGroupsGoal":
+    "Watch {billing} and {email} until each has processed ten messages. Their groups are {billingGroup} and {emailGroup}; each receives its own copy.",
 } as const;
 export default en;

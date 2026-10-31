@@ -313,3 +313,15 @@ it("an effective Allow check cannot accept a missing Live configuration", () => 
   const check: Check = { kind: "prop", edge: ["fw", "admin"], prop: "deny", op: "falsy", effective: true };
   expect(holds(check, { diagram: d, live: true, processed: () => 0 }, subjects)).toBe(false);
 });
+
+it("unknown-address evidence rejects quota and unusable-target refusals", () => {
+  const d = addressPractice();
+  const c = play(d, "unknown-address");
+  const view = { diagram: d, live: true, processed: () => 0, session: c.getState() };
+  const subjects = resolveSubjects(routeByAddress, d);
+  expect(holds(check(routeByAddress, "refuse"), view, subjects)).toBe(true);
+  for (const reason of ["quota: requests", "route-no-eligible-target"]) {
+    view.session.snapshot.nodes.gateway.rejectionReasons = { [reason]: 10 };
+    expect(holds(check(routeByAddress, "refuse"), view, subjects)).toBe(false);
+  }
+});

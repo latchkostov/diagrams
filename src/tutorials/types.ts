@@ -140,7 +140,15 @@ export type Check =
       findings?: number;
       simulation?: string;
     }
-  | { kind: "routeEvidence"; subject: string; route: string; rule?: string; to?: string; rejected?: true }
+  | {
+      kind: "routeEvidence";
+      subject: string;
+      route: string;
+      rule?: string;
+      to?: string;
+      rejected?: true;
+      reason?: string;
+    }
   | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
   | { kind: "export"; format: ProductObservations["exports"]["format"] }
   | { kind: "import"; format: ProductObservations["imports"]["format"] }
