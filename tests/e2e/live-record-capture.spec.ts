@@ -4,6 +4,7 @@ import { expect, expectNoErrors, gotoLive } from "./fixtures";
 import { captureTest as test } from "./capture-browser";
 import { installCaptureReady } from "./capture-ready";
 import { chromiumLaunchArgs } from "../../scripts/e2e-chromium";
+import { installParticleCounters } from "./particle-counters";
 
 // Record video captures the tab, so whatever the compositor shows is in the video, worker canvases
 // included. A real tab capture, accepted automatically (full Chromium's headless mode supports it).
@@ -294,6 +295,45 @@ function expectInVideo(layer: string, c: LayerCheck) {
   expect(c.lost / c.shown, `${layer}: of those, the share the video draws with the layer`).toBeGreaterThan(0.9);
 }
 
+async function pauseBeforeCaptionPaint(page: Page, paused?: () => void) {
+  await expect(canvas(page)).toHaveAttribute("data-slowmo", "playing");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  await page.getByTestId("live-play").click();
+  await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
+  paused?.();
+  // Painting may finish after the replay controls are ready. Hold the replay before waiting for it.
+  await expect
+    .poll(async () => JSON.parse((await canvas(page).getAttribute("data-slowmo-captions")) ?? "[]").length, {
+      timeout: 10_000,
+    })
+    .toBeGreaterThan(0);
+}
+
+test("caption preparation pauses before waiting for a delayed worker paint", async ({ page }) => {
+  await installParticleCounters(page);
+  await goLive(page, "worker");
+  await waitForCameraIdle(page);
+  await page.evaluate(() => window.__particleCounters?.holdReports());
+  await expect.poll(() => page.evaluate(() => window.__particleCounters?.held() ?? 0)).toBeGreaterThan(0);
+  await page.getByTestId("node-shopper").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+  const paused = Promise.withResolvers<undefined>();
+  let finished = false;
+  const preparing = pauseBeforeCaptionPaint(page, () => paused.resolve(undefined)).then(() => {
+    finished = true;
+  });
+  try {
+    await Promise.race([paused.promise, preparing]);
+    expect(finished, "pause preparation must not depend on a completed caption paint").toBe(false);
+    await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
+    await page.evaluate(() => window.__particleCounters?.releaseReports());
+    await preparing;
+  } finally {
+    await page.evaluate(() => window.__particleCounters?.releaseReports());
+    await preparing;
+  }
+});
+
 for (const renderer of ["worker", "main"] as const) {
   test.describe(`recording captures each live layer (${renderer} path)`, () => {
     test("the particles and the marching edges are each in the video", async ({ page, consoleErrors }) => {
@@ -325,14 +365,7 @@ for (const renderer of ["worker", "main"] as const) {
       await waitForCameraIdle(page);
       await page.getByTestId("node-shopper").click({ button: "right" });
       await page.getByTestId("context-menu-item-sim.slowmo-from").click();
-      await expect(canvas(page)).toHaveAttribute("data-slowmo", "playing");
-      await expect
-        .poll(async () => JSON.parse((await canvas(page).getAttribute("data-slowmo-captions")) ?? "[]").length, {
-          timeout: 10_000,
-        })
-        .toBeGreaterThan(0);
-      await page.getByTestId("live-play").click();
-      await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
+      await pauseBeforeCaptionPaint(page);
       await record(page);
       // The replay stayed paused for the take.
       await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
