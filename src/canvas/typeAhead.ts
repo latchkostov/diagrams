@@ -11,6 +11,10 @@ export interface TypeAhead {
 }
 
 type Key = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">;
+type HeldInput = { key: Key } | { paste: string };
+interface PendingTypeAhead {
+  inputs: readonly HeldInput[];
+}
 
 /** The next state for a key, or null when the key isn't for the name (it's left alone). */
 export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead | null {
@@ -28,15 +32,65 @@ export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead
 }
 
 /** The captures running, newest last: only the newest takes keys (a menu's search inside the palette's). */
-const captures: { state: TypeAhead; closeModal?: () => void; accept(typed: TypeAhead): void }[] = [];
+type Capture = { closeModal?: () => void; accept?(typed: TypeAhead | PendingTypeAhead): void };
+const captures: Capture[] = [];
+
+function inputFrom(event: Event): HeldInput | null {
+  if (event.type === "paste") {
+    const paste = (event as ClipboardEvent).clipboardData?.getData("text/plain");
+    return paste ? { paste } : null;
+  }
+  const { key, ctrlKey, metaKey, altKey, isComposing } = event as KeyboardEvent;
+  return isComposing ? null : { key: { key, ctrlKey, metaKey, altKey } };
+}
+
+function nextInput(state: TypeAhead, input: HeldInput, multiline: boolean): TypeAhead | null {
+  if (state.done) return null;
+  return "paste" in input
+    ? { text: (state.text ?? "") + (multiline ? input.paste : input.paste.replace(/[\r\n]+/g, " ")) }
+    : typeAheadKey(state, input.key, multiline);
+}
+
+function listen(capture: Capture, onInput: (event: Event) => void): () => void {
+  captures.push(capture);
+  const events = ["keydown", "paste"];
+  for (const type of events) window.addEventListener(type, onInput, true);
+  return () => {
+    const index = captures.indexOf(capture);
+    if (index < 0) return;
+    for (const type of events) window.removeEventListener(type, onInput, true);
+    captures.splice(index, 1);
+  };
+}
+
+/** A deferred pick does not know yet whether Enter finishes a name or adds an annotation newline. */
+export function capturePendingTypeAhead(): { stop: () => PendingTypeAhead } {
+  const capture: Capture = {};
+  const inputs: HeldInput[] = [];
+  const typed = { inputs };
+  const stop = listen(capture, (event) => {
+    if (captures.at(-1) !== capture) return;
+    const input = inputFrom(event);
+    if (!input || !nextInput({ text: null }, input, true)) return;
+    inputs.push(input);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  });
+  return {
+    stop() {
+      stop();
+      return typed;
+    },
+  };
+}
 
 /** Pass keys held after a deferred menu pick to the name capture that its action just opened. */
-export function handoffTypeAhead(typed: TypeAhead): void {
+export function handoffTypeAhead(typed: TypeAhead | PendingTypeAhead): void {
   const owner = captures.at(-1);
   // Metadata arrives in a React effect; naming may flush a document commit. Finish outside that
   // effect, and keep the destination's identity so cancellation cannot name a newer field instead.
   queueMicrotask(() => {
-    if (owner && captures.includes(owner)) owner.accept(typed);
+    if (owner && captures.includes(owner)) owner.accept?.(typed);
   });
 }
 
@@ -77,9 +131,20 @@ export function captureTypeAhead(
 ): { stop: () => TypeAhead; read: () => TypeAhead } {
   const me = {
     state: { text } as TypeAhead,
-    accept(typed: TypeAhead) {
-      me.state = typed;
-      if (typed.done) onDone?.(typed);
+    accept(typed: TypeAhead | PendingTypeAhead) {
+      if ("inputs" in typed) {
+        for (const input of typed.inputs) {
+          const next = nextInput(me.state, input, multiline());
+          if (next) me.state = next;
+          if (next?.done) {
+            onDone?.(next);
+            break;
+          }
+        }
+      } else {
+        me.state = typed;
+        if (typed.done) onDone?.(typed);
+      }
     },
     closeModal: closeModal
       ? () => {
@@ -89,7 +154,6 @@ export function captureTypeAhead(
         }
       : undefined,
   };
-  captures.push(me);
   const onInput = (event: Event) => {
     if (
       captures.at(-1) !== me ||
@@ -109,16 +173,9 @@ export function captureTypeAhead(
       event.target.closest('button, a[href], [role="button"]')
     )
       return;
-    let next: TypeAhead | null;
-    if (event.type === "paste") {
-      const text = (event as ClipboardEvent).clipboardData?.getData("text/plain");
-      if (!text) return;
-      next = { text: (me.state.text ?? "") + (multiline() ? text : text.replace(/[\r\n]+/g, " ")) };
-    } else {
-      const key = event as KeyboardEvent;
-      if (key.key === "Escape" && escape === "controller") return;
-      next = key.isComposing ? null : typeAheadKey(me.state, key, multiline());
-    }
+    const input = inputFrom(event);
+    if (!input || ("key" in input && input.key.key === "Escape" && escape === "controller")) return;
+    const next = nextInput(me.state, input, multiline());
     if (!next) return;
     me.state = next;
     event.preventDefault();
@@ -126,14 +183,9 @@ export function captureTypeAhead(
     if (next.done === "escape" && me.closeModal) me.closeModal();
     if (next.done) onDone?.(next);
   };
-  const events = ["keydown", "paste"];
-  for (const type of events) window.addEventListener(type, onInput, true);
+  const stopListening = listen(me, onInput);
   const stop = () => {
-    const index = captures.indexOf(me);
-    if (index >= 0) {
-      for (const type of events) window.removeEventListener(type, onInput, true);
-      captures.splice(index, 1);
-    }
+    stopListening();
     return me.state;
   };
   return { stop, read: () => me.state };

@@ -2,6 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import {
   captureModalTypeAhead,
+  capturePendingTypeAhead,
   captureTypeAhead,
   dismissPendingTypeAheadModal,
   handoffTypeAhead,
@@ -14,7 +15,7 @@ afterEach(() => document.body.replaceChildren());
 
 it("a deferred menu pick hands the name and its finish key to the new naming capture", async () => {
   const done = vi.fn();
-  const pending = captureTypeAhead();
+  const pending = capturePendingTypeAhead();
   for (const key of ["C", "a", "c", "h", "e", "Escape"])
     window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
   const typed = pending.stop();
@@ -28,6 +29,55 @@ it("a deferred menu pick hands the name and its finish key to the new naming cap
     name.stop();
   }
 });
+
+for (const multiline of [false, true])
+  it("deferred Enter uses the destination's " + (multiline ? "annotation" : "single-line") + " rules", async () => {
+    const pending = capturePendingTypeAhead();
+    for (const key of ["a", "Enter", "b", "Escape"])
+      window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+    const typed = pending.stop();
+    const done = vi.fn();
+    const name = captureTypeAhead(() => multiline, done);
+    try {
+      handoffTypeAhead(typed);
+      await Promise.resolve();
+      const expected = multiline ? { text: "a\nb", done: "escape" } : { text: "a", done: "enter" };
+      expect(name.read()).toEqual(expected);
+      expect(done).toHaveBeenCalledExactlyOnceWith(expected);
+    } finally {
+      name.stop();
+    }
+  });
+
+it("a deferred Enter without typing keeps the single-line field's default name", async () => {
+  const pending = capturePendingTypeAhead();
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", cancelable: true }));
+  const typed = pending.stop();
+  const name = captureTypeAhead();
+  try {
+    handoffTypeAhead(typed);
+    await Promise.resolve();
+    expect(name.read()).toEqual({ text: null, done: "enter" });
+  } finally {
+    name.stop();
+  }
+});
+
+for (const multiline of [false, true])
+  it("deferred paste uses the destination's " + (multiline ? "annotation" : "single-line") + " rules", async () => {
+    const pending = capturePendingTypeAhead();
+    paste("alpha\nbeta");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
+    const typed = pending.stop();
+    const name = captureTypeAhead(() => multiline);
+    try {
+      handoffTypeAhead(typed);
+      await Promise.resolve();
+      expect(name.read()).toEqual({ text: multiline ? "alpha\nbeta" : "alpha beta", done: "escape" });
+    } finally {
+      name.stop();
+    }
+  });
 
 it("a cancelled deferred name never hands its keys to a newer capture", async () => {
   const done = vi.fn();

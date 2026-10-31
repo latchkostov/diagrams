@@ -234,6 +234,32 @@ for (const name of [undefined, "Cache audit"])
     expect(picks[1]).toBe(picks[0]);
   });
 
+for (const finish of ["Escape", "ControlOrMeta+Enter"])
+  test(`held quick-add preserves annotation newlines before ${finish}`, async ({ page }) => {
+    const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");
+    try {
+      await seed(page);
+      await gotoCanvas(page, "blocking-call");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-caller").click();
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("Alt+ArrowRight");
+      await expect(page.getByTestId("quick-add-search")).toBeFocused();
+      await page.keyboard.type("hexagon");
+      await expect.poll(search.requested).toBe(true);
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("alpha");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("beta");
+      await page.keyboard.press(finish);
+      search.release();
+      await expect(page.getByTestId("annotation-text-shape-1")).toHaveText("alpha\nbeta");
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    } finally {
+      search.release();
+    }
+  });
+
 for (const name of [undefined, "Cache audit"])
   test(`quick-add navigation picks before ${name ? "typing hands over to naming" : "Escape finishes naming"}`, async ({
     page,

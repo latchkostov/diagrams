@@ -20,7 +20,7 @@ import type * as StencilSearch from "../lib/stencilDisplaySearch";
 import { useSurfaceCatalogs, type CatalogStatus } from "../i18n/useSurfaceCatalogs";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
-import { captureTypeAhead, handoffTypeAhead, type TypeAhead } from "../canvas/typeAhead";
+import { capturePendingTypeAhead, captureTypeAhead, handoffTypeAhead, type TypeAhead } from "../canvas/typeAhead";
 
 // App context menu: keyboard navigable (arrows, Home/End, Enter, Esc, ←/→ for submenus),
 // optional search-as-you-type, edge-aware placement. Submenus render as siblings in a fixed
@@ -278,7 +278,7 @@ function MenuList(p: ListProps) {
   // Enter typed before the menu could search: picks the best match once the metadata is in.
   const pickWhenReady = useRef(false);
   const pendingNavigation = useRef(0);
-  const pendingName = useRef<ReturnType<typeof captureTypeAhead> | null>(null);
+  const pendingName = useRef<ReturnType<typeof capturePendingTypeAhead> | null>(null);
   useEffect(() => () => void pendingName.current?.stop(), []);
   const [active, setActive] = useState(() => (p.activateFirst || q ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
@@ -343,7 +343,7 @@ function MenuList(p: ListProps) {
       const text = t.text;
       queueMicrotask(() => {
         pickWhenReady.current = true;
-        pendingName.current ??= captureTypeAhead();
+        pendingName.current ??= capturePendingTypeAhead();
         setQ(text);
       });
       return;
@@ -489,7 +489,7 @@ function MenuList(p: ListProps) {
         if (waiting && metadata.failed) metadata.retry();
         else if (waiting) {
           pickWhenReady.current = true;
-          pendingName.current ??= captureTypeAhead();
+          pendingName.current ??= capturePendingTypeAhead();
         } else if (active >= 0) activate(active, true);
         break;
       case " ":
