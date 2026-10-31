@@ -335,6 +335,9 @@ jobs:
           retries: "0"
           repeat-each: ${{ matrix.repeat }}
           blob-name: report-${{ matrix.suite }}-${{ matrix.shard }}.zip
+      - name: Collect final or interrupted results
+        if: always()
+        run: node scripts/ci/e2e-report.mjs collect tests/.output
       - name: Durations
         if: always()
         run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"

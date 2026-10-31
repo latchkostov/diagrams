@@ -154,6 +154,7 @@ export default defineConfig({
         ["html", { outputFolder: "./tests/.output/report", open: "never" }],
         ["blob", { outputDir: "./tests/.output/blob" }],
         ["json", { outputFile: "./tests/.output/results.json" }],
+        ...(process.env.GATE_CHECKPOINT ? [["./scripts/gate/reporter.mjs"] as [string]] : []),
       ]
     : [["list"], ["html", { outputFolder: "./tests/.output/report", open: "never" }]],
   use: {
