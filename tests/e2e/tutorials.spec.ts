@@ -1,6 +1,7 @@
-import { mkdirSync } from "node:fs";
+import { readFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { openDiagramProperties } from "./fixtures";
+import { openDiagramProperties, openShareChooser } from "./fixtures";
+import { chunk, holdChunk } from "./chunk";
 import { openAnnotate, openLibrary } from "./fixtures";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
@@ -2171,3 +2172,169 @@ for (const id of [
     expectNoErrors(consoleErrors);
   });
 }
+
+test("tutorial sandbox privacy: private native imports block sharing and AI and keep the export marker", async ({
+  page,
+}) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "private-practice.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ ...importedDiagram, private: true })),
+  });
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toBeVisible();
+  for (const id of ["share-public-toggle", "share-option-link", "share-option-password"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.aiAllowed())).toBe(false);
+  const download = page.waitForEvent("download");
+  await page.keyboard.press("ControlOrMeta+s");
+  const file = await download;
+  const path = await file.path();
+  if (!path) throw new Error("Expected a downloaded private diagram");
+  expect(JSON.parse(readFileSync(path, "utf8"))).toMatchObject({ private: true, title: importedDiagram.title });
+  await expect(page.getByTestId("tutorial-app")).toBeVisible();
+  await expectNothingSaved(page);
+});
+
+test("tutorial policy: report Make it private changes only sandbox privacy", async ({ page }) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  await play(page, { importFixture: true });
+  await expect(strip(page)).toHaveAttribute("data-step", "report");
+  await page.getByTestId("toast-import-details").click();
+  await page.getByTestId("import-report-make-private").click();
+  await expect(page.getByTestId("import-report-make-private")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-app")).toBeVisible();
+  await expect(page).toHaveURL(/tutorial=import-and-review/);
+  await expectNothingSaved(page);
+  await page.getByTestId("import-report-close").click();
+  await expect(page.getByTestId("import-report")).toHaveCount(0);
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toBeVisible();
+});
+
+test("import-and-review: imports its downloaded practice file", async ({ page }, testInfo) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  const pending = page.waitForEvent("download");
+  await page.getByTestId("tutorial-fixture").click();
+  const download = await pending;
+  expect(await download.failure()).toBeNull();
+  expect(download.suggestedFilename()).toBe("tutorial-status-compose.yaml");
+  const path = testInfo.outputPath(download.suggestedFilename());
+  await download.saveAs(path);
+  const chooser = page.waitForEvent("filechooser");
+  await page.keyboard.press("ControlOrMeta+o");
+  await (await chooser).setFiles(path);
+  await expect(strip(page)).toHaveAttribute("data-step", "report");
+  expect(
+    await page.evaluate(() =>
+      window.__tutorial
+        ?.diagram()
+        ?.nodes.map((node) => node.label)
+        .sort(),
+    ),
+  ).toEqual(["api", "redis", "worker"]);
+  await page.getByTestId("toast-import-details").click();
+  await expect(page.getByTestId("import-report")).toContainText("tutorial-status-compose.yaml");
+  await expectNothingSaved(page);
+});
+
+for (const entry of ["Skip", "Continue"] as const) {
+  test(`tutorial import lifecycle: ${entry} fixture cannot overwrite a manual import and edit`, async ({ page }) => {
+    if (entry === "Continue")
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({ progress: { "import-and-review": { version: 1, step: 1, completed: false } } }),
+        ),
+      );
+    const fixture = /\/tutorial-status-compose\.yaml$/;
+    const held = await holdChunk(page, fixture);
+    await openTutorial(page, "import-and-review");
+    await page.getByTestId("tutorial-start").click();
+    if (entry === "Skip") await page.getByTestId("tutorial-skip").click();
+    await expect.poll(held.requested).toBe(true);
+    await play(page, { importFixture: true });
+    await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().subjects.worker)).toBeTruthy();
+    const worker = await page.evaluate(() => window.__tutorial?.snapshot().subjects.worker);
+    expect(worker).toBeTruthy();
+    await page.getByTestId(`node-${worker}`).dblclick();
+    await page.getByTestId("inspector-field-label").fill("My corrected worker");
+    await page.keyboard.press("Enter");
+    const before = await page.evaluate(() => window.__tutorial?.diagram());
+    held.release();
+    await page.unrouteAll({ behavior: "wait" });
+    // Flush the request and any already loaded parser before comparing content.
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    });
+    expect(await page.evaluate(() => window.__tutorial?.diagram())).toEqual(before);
+    await expect(page.getByTestId(`node-${worker}`)).toContainText("My corrected worker");
+    await expectNothingSaved(page);
+  });
+
+  test(`tutorial parser chunk: ${entry} failure reaches Retry through the real import bridge`, async ({ page }) => {
+    if (entry === "Continue")
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({ progress: { "import-and-review": { version: 1, step: 1, completed: false } } }),
+        ),
+      );
+    const parser = chunk("pipeline", "src/interop/infra/pipeline.ts");
+    const held = await holdChunk(page, parser);
+    await openTutorial(page, "import-and-review");
+    await page.getByTestId("tutorial-start").click();
+    if (entry === "Skip") await page.getByTestId("tutorial-skip").click();
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("tutorial-retry")).toHaveCount(0);
+    held.fail = true;
+    held.release();
+    await expect(page.getByTestId("tutorial-retry")).toBeVisible();
+    await expectNothingSaved(page);
+  });
+}
+
+test("library-reuse: Continue at Redo restores a real redo stack", async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "diagrams.tutorials.v1",
+      JSON.stringify({ progress: { "library-reuse": { version: 1, step: 4, completed: false } } }),
+    ),
+  );
+  await openTutorial(page, "library-reuse");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "redo");
+  expect(await page.evaluate(() => window.__tutorial?.diagram()?.nodes.map((node) => node.label))).not.toContain(
+    "Status notifier",
+  );
+  await expect(page.getByTestId("redo-button")).toBeEnabled();
+  await play(page, { history: "redo" });
+  await expect(strip(page)).toHaveAttribute("data-step", "keep");
+  expect(await page.evaluate(() => window.__tutorial?.diagram()?.nodes.map((node) => node.label))).toContain(
+    "Status notifier",
+  );
+  await expectNothingSaved(page);
+});
+
+test("library-reuse: closing Your diagrams focuses the completion heading", async ({ page }) => {
+  await openTutorial(page, "library-reuse");
+  await page.getByTestId("tutorial-start").click();
+  while ((await strip(page).getAttribute("data-step")) !== "keep") {
+    const current = await strip(page).getAttribute("data-step");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).not.toHaveAttribute("data-step", current ?? "");
+  }
+  await page.getByTestId("tutorial-save-copy").click();
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-library").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+});

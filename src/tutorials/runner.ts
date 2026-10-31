@@ -481,6 +481,26 @@ export function createTutorialRunner(
       liveOn: !!h.canvas?.live,
     });
     switch (demo.kind) {
+      case "history": {
+        const run = generation;
+        return (async () => {
+          const done = () => {
+            view();
+            return demo.absent
+              ? !subjects[demo.absent]
+              : demo.present
+                ? holds({ kind: "label", subject: demo.present.subject, is: demo.present.label }, view(), subjects)
+                : false;
+          };
+          do {
+            if (done()) return;
+            if (!(demo.action === "undo" ? ed.canUndo() : ed.canRedo())) throw new Error("History unavailable");
+            const before = ed.getDocumentVersion().revision;
+            ed[demo.action]();
+            if (!(await until(() => ed.getDocumentVersion().revision !== before, run))) return false;
+          } while (demo.absent || demo.present);
+        })();
+      }
       case "importFixture":
         if (!ports.importPractice) throw new Error("Import unavailable");
         return ports.importPractice(operation.signal);
@@ -822,7 +842,11 @@ export function createTutorialRunner(
       for (const i of steps) {
         if (run !== generation) return;
         if (!state.observed[i]) {
-          for (const d of tutorial.steps[i].demo) {
+          const actions =
+            purpose === "reconstruct"
+              ? (tutorial.steps[i].reconstruct ?? tutorial.steps[i].demo)
+              : tutorial.steps[i].demo;
+          for (const d of actions) {
             // Present once per demo, rather than again on each session acknowledgement.
             // Re-selecting during a pending repair can publish another canvas commit.
             if (d.kind === "patch" && !d.edge && host.get().canvas?.live) {
@@ -853,6 +877,14 @@ export function createTutorialRunner(
               if (run !== generation) return;
               if (result === false) throw new Error("Demo refused");
             }
+            // A following history operation must see the committed name, not the preceding render.
+            if (
+              purpose === "reconstruct" &&
+              tutorial.steps.some((step) => step.reconstruct) &&
+              d.kind === "rename" &&
+              !(await until(() => holds({ kind: "label", subject: d.subject, is: d.label }, view(), subjects), run))
+            )
+              return;
             // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
             // waits for that run, so it's pressed in the run the check reads.
             if (
@@ -869,7 +901,7 @@ export function createTutorialRunner(
           // counted since it began (Continue), what it counted is history: the rest of its check is what must hold.
           const replayed = purpose === "reconstruct" && (since[i].length > 0 || momentChecks[i]);
           const done = () => state.observed[i] || (replayed && !!editor() && holds(historical[i], view(), subjects));
-          if (tutorial.steps[i].demo.length && !(await until(done, run))) return;
+          if (actions.length && !(await until(done, run))) return;
         }
         if (!(await settle(i, run))) return;
       }

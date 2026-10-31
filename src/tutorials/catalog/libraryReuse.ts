@@ -105,6 +105,7 @@ export const libraryReuse: Tutorial = {
       sticky: true,
       targets: [{ testId: "undo-button", tip: msg("tutorials.libraryReuse.undoTitle") }],
       demo: [],
+      reconstruct: [{ kind: "history", action: "undo", absent: "copy" }],
       solution: [{ history: "undo" }],
     },
     {
@@ -122,6 +123,13 @@ export const libraryReuse: Tutorial = {
       sticky: true,
       targets: [{ testId: "redo-button", tip: msg("tutorials.libraryReuse.redoTitle") }],
       demo: [],
+      reconstruct: [
+        {
+          kind: "history",
+          action: "redo",
+          present: { subject: "copy", label: msg("tutorials.libraryReuse.copyName") },
+        },
+      ],
       solution: [{ history: "redo" }],
     },
     {

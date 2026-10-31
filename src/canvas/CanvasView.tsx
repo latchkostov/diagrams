@@ -77,7 +77,7 @@ import {
   setOnDeviceAllowed,
   TUTORIAL_SLUG,
 } from "../lib/diagramIO";
-import { privacyOf } from "../lib/localOnly";
+import { privacyOf, type CanvasPrivacyState } from "../lib/localOnly";
 import { usePrivacyFlags } from "../lib/usePrivacy";
 import type { DiagramFile } from "../model/types";
 
@@ -202,6 +202,8 @@ const CRAMPED = 1280;
 export type { CanvasHandle } from "./document/useCanvasDocument";
 
 interface Props {
+  /** In-memory provenance for a temporary canvas. All privacy gates use these flags. */
+  temporaryPrivacy?: CanvasPrivacyState;
   transport?: HTMLElement | null;
   bezel?: boolean;
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
@@ -273,6 +275,7 @@ function CanvasInner({
   focusRequest,
   viewer,
   room,
+  temporaryPrivacy,
 }: Props) {
   const locale = useLocale();
   const settings = useSettings();
@@ -432,8 +435,12 @@ function CanvasInner({
   const libraryPrivacy = usePrivacyFlags(slug);
   const [roomPrivate, setRoomPrivate] = useState(false);
   const privacyFlags = useMemo(
-    () => ({ ...libraryPrivacy, private: libraryPrivacy.private || roomPrivate }),
-    [libraryPrivacy, roomPrivate],
+    () => ({
+      ...libraryPrivacy,
+      ...temporaryPrivacy,
+      private: libraryPrivacy.private || temporaryPrivacy?.private || roomPrivate,
+    }),
+    [libraryPrivacy, temporaryPrivacy, roomPrivate],
   );
   /** A peer's change arrived: the camera hears of it (set up with the camera, below). */
   const onRemote = useRef(() => {});

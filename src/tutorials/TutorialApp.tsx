@@ -9,6 +9,7 @@ import {
   renameLibraryDiagram,
   getDiagramIdentity,
   TUTORIAL_SLUG,
+  withPrivacyField,
 } from "../lib/diagramIO";
 import { diagramOpenActions } from "../lib/openDiagram";
 import { showDiagram } from "../lib/urlState";
@@ -42,8 +43,9 @@ import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
 import { solutionNow, type ResolvedUiStep } from "./solution";
 import { keyboardSolutionNow, type ResolvedKeyboardStep } from "./keyboard";
-import { createPracticeImport, tutorialFilePolicy } from "./filePolicy";
-import { cancelObservedWork, observationPorts } from "../lib/observations";
+import { createPracticeImport, createPracticePrivacy, tutorialFilePolicy } from "./filePolicy";
+import { beginObservedWork, cancelObservedWork, observationPorts } from "../lib/observations";
+import { canUseAiTools } from "../lib/localOnly";
 import { currentObservationSource } from "../palette/observationSource";
 import "./tutorials.css";
 
@@ -131,6 +133,8 @@ function Running({
   const raw = useSyncExternalStore(subscribeTutorials, tutorialsSnapshot);
   const progress = readTutorials(raw);
   const [presenting, setPresenting] = useState(false);
+  const [temporaryPrivacy] = useState(createPracticePrivacy);
+  const practicePrivacy = useSyncExternalStore(temporaryPrivacy.subscribe, temporaryPrivacy.get);
   const [practiceImport] = useState(createPracticeImport);
   useEffect(() => {
     if (!presenting) return;
@@ -180,7 +184,7 @@ function Running({
     const diagram = paletteHost.get().canvas?.editor.getDiagram();
     if (!diagram) return;
     try {
-      const slug = filePolicy.saveCopy(diagram);
+      const slug = filePolicy.saveCopy(withPrivacyField(diagram, temporaryPrivacy.get().private));
       if (!slug) return;
       const source = currentObservationSource();
       if (source) observationPorts.copied.publish({ ...source, slug });
@@ -196,6 +200,7 @@ function Running({
       replace: (diagram) => {
         const editor = paletteHost.get().canvas?.editor;
         if (!editor) throw new Error(t("common.tryAgain"));
+        temporaryPrivacy.setPrivate(!!diagram.private);
         editor.applyDiagram(diagram);
       },
       copy: createLibraryDiagram,
@@ -212,17 +217,28 @@ function Running({
     openDiagram,
     openShared,
     isPublicExample: () => false,
+    temporaryPrivacy,
     importDestination: tutorial.id === "import-and-review" ? filePolicy.import : undefined,
   });
   const sharing = "dialogKind" in interop && interop.dialogKind === "chooser";
   const importFiles = interop.importFiles;
   useEffect(() => {
-    return practiceImport.connect(async (signal) => {
-      const response = await fetch(`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`, { signal });
-      if (!response.ok) throw new Error("Fixture unavailable");
-      const text = await response.text();
-      signal.throwIfAborted();
-      await importFiles([new File([text], "tutorial-status-compose.yaml", { type: "text/yaml" })]);
+    return practiceImport.connect(async (runnerSignal) => {
+      const work = beginObservedWork(currentObservationSource());
+      const signal = AbortSignal.any([runnerSignal, work.signal]);
+      try {
+        const response = await fetch(`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`, { signal });
+        if (!response.ok) throw new Error("Fixture unavailable");
+        const text = await response.text();
+        signal.throwIfAborted();
+        return await importFiles(
+          [new File([text], "tutorial-status-compose.yaml", { type: "text/yaml" })],
+          undefined,
+          signal,
+        );
+      } finally {
+        work.finish();
+      }
     });
   }, [importFiles, practiceImport]);
   useEffect(() => runner.appChanged({ presenting, sharing }), [runner, presenting, sharing]);
@@ -259,6 +275,7 @@ function Running({
       solution: () => solutionNow(tutorial, runner.getSnapshot()),
       keyboardSolution: () => keyboardSolutionNow(tutorial, runner.getSnapshot()),
       diagram: () => paletteHost.get().canvas?.editor.getDiagram(),
+      aiAllowed: () => canUseAiTools(paletteHost.get().canvas),
     };
     return () => void delete window.__tutorial;
   }, [runner, tutorial]);
@@ -325,6 +342,7 @@ function Running({
                 setBefore(readTutorials());
                 runner.send({ type: "restart" });
                 interop.resetImports();
+                temporaryPrivacy.setPrivate(false);
               }}
               data-testid="tutorial-restart"
             >
@@ -348,12 +366,13 @@ function Running({
       <div className="app-body">
         {!presenting && <ToolRail view="canvas" onView={tutorialRoute.openView} />}
         <div className="app-main tutorial-practice">
-          {state.value === "finished" && !presenting && (
+          {state.value === "finished" && !presenting && !libraryOpen && (
             <FinishHandoff tutorial={tutorial} catalog={catalog} before={before} progress={progress} />
           )}
           <Suspense fallback={<div className="view-loading" data-testid="view-loading" />}>
             <CanvasView
               bezel
+              temporaryPrivacy={practicePrivacy}
               onTitleChange={setDiagramTitle}
               ref={canvasRef}
               slug={TUTORIAL_SLUG}
@@ -725,6 +744,8 @@ declare global {
       solution(): ResolvedUiStep[];
       keyboardSolution(): ResolvedKeyboardStep[];
       diagram(): DiagramFile | undefined;
+      /** The real AI boundary over the canvas host, including temporary provenance. */
+      aiAllowed(): boolean;
     };
   }
 }

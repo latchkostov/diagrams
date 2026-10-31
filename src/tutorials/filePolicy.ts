@@ -1,11 +1,12 @@
 import type { DiagramFile } from "../model/types";
+import type { ImportResult } from "../interop/importResult";
 import type { SaveTarget } from "../lib/diagramIO";
 
 /** The mounted file controller supplies the real parser pipeline; an unavailable demo fails into Retry. */
 export function createPracticeImport() {
-  let current: ((signal: AbortSignal) => Promise<void>) | undefined;
+  let current: ((signal: AbortSignal) => Promise<ImportResult>) | undefined;
   return {
-    connect(run: (signal: AbortSignal) => Promise<void>) {
+    connect(run: (signal: AbortSignal) => Promise<ImportResult>) {
       current = run;
       return () => {
         if (current === run) current = undefined;
@@ -14,8 +15,28 @@ export function createPracticeImport() {
     async run(signal: AbortSignal) {
       signal.throwIfAborted();
       if (!current) throw new Error("Practice import unavailable");
-      await current(signal);
+      const result = await current(signal);
       signal.throwIfAborted();
+      if (result.status === "failure") throw new Error("Practice import failed");
+      if (result.status === "cancelled") throw new DOMException("Practice import cancelled", "AbortError");
+    },
+  };
+}
+
+/** Privacy belongs to the mounted practice session, never a library entry or browser storage. */
+export function createPracticePrivacy() {
+  let flags: Readonly<{ private: boolean }> = { private: false };
+  const listeners = new Set<() => void>();
+  return {
+    get: () => flags,
+    setPrivate(on: boolean) {
+      if (flags.private === on) return;
+      flags = { private: on };
+      for (const listener of listeners) listener();
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
     },
   };
 }

@@ -1,3 +1,5 @@
+import { HistoryController } from "../editor/historyController";
+import { toFlow, fromFlow } from "../canvas/convert";
 import { runChecks } from "../checks/run";
 import { importFiles } from "../interop/formats";
 import { importCompose } from "../interop/infra/pipeline";
@@ -173,9 +175,13 @@ function sandbox(
     if (mode !== previous) modes.forEach((f) => f(mode, previous));
   };
   const select = (ids: readonly string[]) => toMode({ type: "selection", ids });
+  const history = tutorial.steps.some((step) => step.reconstruct)
+    ? new HistoryController(toFlow(diagram), 0)
+    : undefined;
   /** A document write, and the canvas republishing it. */
   const write = (next: DiagramFile) => {
     const simulationsBefore = diagram.simulations;
+    history?.commit(toFlow(next), undefined, version + 1);
     diagram = next;
     version++;
     notify();
@@ -458,7 +464,20 @@ function sandbox(
   });
   const patchEdge = (id: string, patch: Partial<DiagramEdge>) =>
     write({ ...diagram, edges: diagram.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
+  const historyStep = (action: "undo" | "redo") => {
+    if (!history) throw new Error("History is not enabled for this fixture");
+    const snapshot = history.step(action, { nodes: [], edges: [] });
+    if (!snapshot) return;
+    diagram = fromFlow(snapshot.meta, snapshot.nodes, snapshot.edges);
+    version++;
+    observationPorts.history.publish({ ...source, action });
+    notify();
+  };
   const editor = {
+    canUndo: () => !!history && history.history.index > 0,
+    canRedo: () => !!history && history.history.index < history.history.entries.length - 1,
+    undo: () => historyStep("undo"),
+    redo: () => historyStep("redo"),
     getDiagram: () => diagram,
     // Live demos reveal Properties before changing a setting; this headless host models the editor API.
     openInspector: vi.fn(),

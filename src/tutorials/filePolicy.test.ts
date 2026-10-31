@@ -1,6 +1,6 @@
 /* eslint-disable local/no-literal-ui-text -- Invented fixture labels are test input. */
 import { expect, it, vi } from "vitest";
-import { createPracticeImport, tutorialFilePolicy } from "./filePolicy";
+import { createPracticeImport, createPracticePrivacy, tutorialFilePolicy } from "./filePolicy";
 import type { DiagramFile } from "../model/types";
 import { beginObservedWork, cancelObservedWork } from "../lib/observations";
 
@@ -41,6 +41,7 @@ it("unavailable and disconnected import controllers reject into Retry, and abort
     await held;
     signal.throwIfAborted();
     apply();
+    return { status: "success" };
   });
   const pending = practice.run(operation.signal);
   operation.abort();
@@ -72,4 +73,35 @@ it("an accepted replacement cancels delayed work from the previous practice cont
   expect(otherWork.signal.aborted).toBe(false);
   oldWork.finish();
   otherWork.finish();
+});
+
+it("the practice bridge propagates failed and cancelled interop outcomes into recovery", async () => {
+  const practice = createPracticeImport();
+  for (const status of ["failure", "cancelled"] as const) {
+    const off = practice.connect(async () => ({ status }));
+    await expect(practice.run(new AbortController().signal)).rejects.toThrow(
+      status === "failure" ? "Practice import failed" : "Practice import cancelled",
+    );
+    off();
+  }
+  practice.connect(async () => ({ status: "success" }));
+  await expect(practice.run(new AbortController().signal)).resolves.toBeUndefined();
+});
+
+it("practice privacy publishes stable in-memory flags and dies with its session", () => {
+  const privacy = createPracticePrivacy();
+  const listener = vi.fn();
+  const off = privacy.subscribe(listener);
+  const before = privacy.get();
+  expect(before).toEqual({ private: false });
+  privacy.setPrivate(true);
+  expect(privacy.get()).toEqual({ private: true });
+  expect(privacy.get()).not.toBe(before);
+  expect(privacy.get()).toBe(privacy.get());
+  privacy.setPrivate(true);
+  expect(listener).toHaveBeenCalledOnce();
+  off();
+  privacy.setPrivate(false);
+  expect(listener).toHaveBeenCalledOnce();
+  expect(createPracticePrivacy().get()).toEqual({ private: false });
 });

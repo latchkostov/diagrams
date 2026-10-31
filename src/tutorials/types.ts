@@ -233,6 +233,7 @@ export type Check =
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
   | { kind: "importFixture" }
+  | { kind: "history"; action: "undo" | "redo"; absent?: string; present?: { subject: string; label: Words } }
   | { kind: "stencil"; subject: string; stencil: string }
   | { kind: "add"; subject: string; stencil: string; after?: string }
   /** Restore an absent subject, independent of the editor's undo history. */
@@ -368,6 +369,8 @@ export interface TutorialStep {
   guide?: { quickAdd?: Words };
   targets: readonly Target[];
   demo: readonly Demo[];
+  /** Completed gestures whose history must be reconstructed when continuing later. */
+  reconstruct?: readonly Demo[];
   solution: readonly UiStep[];
   /** Done is allowed only for explicit acknowledgment checks. */
   keyboardSolution?: readonly KeyboardUiStep[];
