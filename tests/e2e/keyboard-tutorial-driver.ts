@@ -353,12 +353,24 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
       action.choose === "sim-panel-add-step" || /^sim-panel-step-\d+-focus$/.test(action.choose) ? "" : action.value,
     );
   } else if ("connect" in action) {
+    const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
     const from = action.connect.slice(5),
       to = action.to.slice(5);
     await node(page, from);
     await page.keyboard.press("Shift+F10");
     await menuItem(page, "node.connect");
     await menuItem(page, `connect:${to}`);
+    // Creating the edge can complete the step before its optional port choices. The next step
+    // owns the canvas now, and may deliberately disable those editing shortcuts.
+    if (
+      await page.evaluate((step) => {
+        const state = window.__tutorial?.snapshot().state;
+        return (
+          !!state && (state.value === "completing" || state.value === "finished" || state.stepIds[state.index] !== step)
+        );
+      }, step)
+    )
+      throw new CompletedStep();
     if (action.side || action.fromSide) {
       const id = await page.evaluate(
         ({ from, to }) => window.__tutorial?.diagram().edges.find((edge) => edge.from === from && edge.to === to)?.id,

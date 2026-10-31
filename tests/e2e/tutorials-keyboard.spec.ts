@@ -26,6 +26,23 @@ for (const id of keyboardTutorialGroups[0]) {
   });
 }
 
+test("keyboard connection hands off when creation completes the step before optional port edits", async ({ page }) => {
+  await page.goto("./?tutorial=request-vs-message");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "connect");
+  await expect(
+    play(page, { connect: "node-api", to: "node-topic", fromSide: "right", side: "left" }),
+  ).rejects.toBeInstanceOf(CompletedStep);
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "live");
+  expect(
+    await page.evaluate(
+      () => window.__tutorial?.diagram().edges.filter((edge) => edge.from === "api" && edge.to === "topic").length,
+    ),
+  ).toBe(1);
+});
+
 test("native keyboard controls use their focus observation without extra animation frames", async ({ page }) => {
   await page.setContent(
     '<button data-testid="first">First</button><button data-testid="target">Target</button><button data-testid="last">Last</button>',
