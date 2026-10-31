@@ -22,44 +22,53 @@ async function openVerifiedChecks(page: Page) {
   await page.keyboard.press("Enter");
 }
 
-test("verified keyboard setup waits for the real background result before opening Checks", async ({ page }) => {
-  await page.addInitScript(installChecksMeasurement);
-  await page.addInitScript(
-    ({ key, d }) => {
-      window.__checkResults.held = true;
-      localStorage.setItem(key, JSON.stringify(d));
-    },
-    { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy },
-  );
-  await gotoCanvas(page, "scale-on-busy-threads");
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        const queued = () => {
-          if (window.__checkResults.queued.length) resolve();
-          else requestAnimationFrame(queued);
-        };
-        queued();
-      }),
-  );
-  let opened = false;
-  const opening = openVerifiedChecks(page).then(() => {
-    opened = true;
+async function openReplicaAlternative(page: Page) {
+  await openVerifiedChecks(page);
+  return page.getByTestId("check-fix-option-1-blocked-threads:caller");
+}
+
+for (const [kind, open] of [
+  ["verified", openVerifiedChecks],
+  ["replica", openReplicaAlternative],
+] as const)
+  test(`${kind} keyboard setup waits for the real background result before opening Checks`, async ({ page }) => {
+    await page.addInitScript(installChecksMeasurement);
+    await page.addInitScript(
+      ({ key, d }) => {
+        window.__checkResults.held = true;
+        localStorage.setItem(key, JSON.stringify(d));
+      },
+      { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy },
+    );
+    await gotoCanvas(page, "scale-on-busy-threads");
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const queued = () => {
+            if (window.__checkResults.queued.length) resolve();
+            else requestAnimationFrame(queued);
+          };
+          queued();
+        }),
+    );
+    let opened = false;
+    const opening = open(page).then(() => {
+      opened = true;
+    });
+    try {
+      // The canvas remains keyboard-usable while the genuine worker response is held.
+      await page.getByTestId("canvas-wrap").focus();
+      await animationFrames(page);
+      expect(opened).toBe(false);
+      await expect(page.getByTestId("checks-card")).toHaveCount(0);
+      await page.evaluate(() => window.__checkResults.release());
+      await opening;
+      await expect(page.getByTestId("check-fix-blocked-threads:caller")).toBeEnabled();
+    } finally {
+      await page.evaluate(() => window.__checkResults.release());
+      await opening;
+    }
   });
-  try {
-    // The canvas remains keyboard-usable while the genuine worker response is held.
-    await page.getByTestId("canvas-wrap").focus();
-    await animationFrames(page);
-    expect(opened).toBe(false);
-    await expect(page.getByTestId("checks-card")).toHaveCount(0);
-    await page.evaluate(() => window.__checkResults.release());
-    await opening;
-    await expect(page.getByTestId("check-fix-blocked-threads:caller")).toBeEnabled();
-  } finally {
-    await page.evaluate(() => window.__checkResults.release());
-    await opening;
-  }
-});
 
 test("worker fallback keeps the displayed timeout actionable", async ({ page }) => {
   await page.addInitScript(
@@ -168,9 +177,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
       { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy, locale },
     );
     await gotoCanvas(page, "scale-on-busy-threads");
-    await page.getByTestId("checks-count").focus();
-    await page.keyboard.press("Enter");
-    const replicas = page.getByTestId("check-fix-option-1-blocked-threads:caller");
+    const replicas = await openReplicaAlternative(page);
     await expect(replicas).toBeEnabled();
     if (locale === "en") await expect(replicas).toHaveText("Add replicas (12; fixed fleet)");
     await replicas.focus();
