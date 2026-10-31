@@ -21,6 +21,8 @@ const boxOf = (n: DiagramNode): Box => ({ x: n.x, y: n.y, ...sizeOf(n) });
 const PACK_OVER = 6;
 /** Room between two units in a column, as the layered layout leaves between cards. */
 const ROW_GAP = 48;
+/** Packed supporting resources share one gutter, including their dependency targets. */
+const GRID_GAP = 40;
 
 type Unit = Box & { id: string; label?: string; sublabel?: string };
 
@@ -76,16 +78,16 @@ function laneLayout(
   const median = widths[Math.floor(widths.length / 2)];
   const cellW = Math.max(...widths.filter((w) => w <= median * 2)) + 48;
   // Rows about as wide as the grid is tall, a little landscape (a screen), and never narrower than the lane above.
-  const area = isolated.reduce((sum, u) => sum + Math.ceil((u.width + 48) / cellW) * cellW * (u.height + 40), 0);
+  const area = isolated.reduce((sum, u) => sum + Math.ceil((u.width + 48) / cellW) * cellW * (u.height + GRID_GAP), 0);
   const laneWidth = placed.length ? Math.max(...placed.map((b) => b.x + b.width)) - left : 0;
-  const columns = Math.max(1, Math.floor(Math.max(laneWidth, Math.sqrt(area * 1.6)) / cellW));
+  const columns = Math.max(1, Math.ceil(Math.max(laneWidth, Math.sqrt(area * 1.6)) / cellW));
   let col = 0;
   let y = top;
   let rowH = 0;
   for (const u of isolated) {
     const span = Math.ceil((u.width + 48) / cellW);
     if (col > 0 && col + span > columns) {
-      y += rowH + 40;
+      y += rowH + GRID_GAP;
       col = 0;
       rowH = 0;
     }
@@ -149,6 +151,7 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
     return g && blocks.has(g) ? `\u0001${g}` : id;
   };
   const loose = nodes.filter((n) => !(n.group && blocks.has(n.group)) && !target(n));
+  const packedLoose = loose.filter((n) => !inFlow.has(n.id)).length > PACK_OVER;
   // Where messages start (the import's traffic) reads first: with request and reply loops between apps and
   // brokers, the layered layout breaks cycles from the leftmost unit it's given.
   const entries = new Set(diagram.simulations?.flatMap((s) => s.traffic.map((t) => t.node)));
@@ -199,7 +202,7 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
       .map((u) => out.groups?.find((g) => g.id === u.group && blocks.has(g.id)) ?? boxOf(u));
     const from = boundsOf(near) ?? boundsOf(obstacles) ?? { x: 40, y: 40, width: 0, height: 0 };
     const below = { x: from.x + from.width / 2 - size.width / 2, y: from.y + from.height - size.height, ...size };
-    let c = placeToward(below, size, obstacles, "down", MARGIN, 80);
+    let c = placeToward(below, size, obstacles, "down", MARGIN, 80, packedLoose ? GRID_GAP : 80);
     if (!isClear({ x: c.x - size.width / 2, y: c.y - size.height / 2, ...size }, obstacles, MARGIN))
       c = findFree(c, size, obstacles, { margin: MARGIN, maxRings: 40 }) ?? {
         x: c.x,
