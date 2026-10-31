@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { downloadSkill } from "./skill-download";
+import { openHtmlExport } from "./html-export-dialog";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -60,9 +61,7 @@ test.describe("The agent skill's Interactive HTML export", () => {
   test("carries the diagram and options the app's file does", async ({ page }) => {
     test.setTimeout(60_000);
     await gotoCanvas(page, KAFKA);
-    await page.getByTestId("file-button").click();
-    await page.getByTestId("file-more-formats").click();
-    await page.getByTestId("export-html").click();
+    await openHtmlExport(page);
     await page.getByTestId("html-export-options-toggle").click();
     await page.getByTestId("html-export-banner").fill(BANNER);
     await page.getByTestId("html-export-theme-dark").click();

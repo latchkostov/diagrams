@@ -1,0 +1,5 @@
+## Native Default-row click geometry
+
+Two branch macOS Nightlies lose the Default-row click after editing a route weight. The trace has inspector scroll positions 488 before the click, 823 after CDP brings the row into view, and 779 after pointer-down. The row moves 44 pixels beneath a click aimed at its old center, leaving the rule open and the Reject control absent.
+
+The scoped routing driver now transfers focus out of the edited input and waits for the row's stable box before the same pointer click. It keeps the exact reject, persistence, Undo and Redo assertions. A regression introduces a real scroll correction at pointer-down only while the edited input still owns focus; it leaves normal button events intact. Temporarily restoring the old driver misses the row and fails the visibility assertion. Both Windows cases pass; Linux repeats them twice. Native macOS confirmation belongs to the final branch Nightly. No application behavior, geometry tolerance, timeout, budget or golden changes.

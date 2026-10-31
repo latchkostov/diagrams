@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import process from "node:process";
 import type { Page } from "@playwright/test";
 import {
   test,
@@ -172,7 +173,7 @@ test("a straight line gains a jog and lining its middle up removes all bends", a
   await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-route", "custom");
 });
 
-for (const modifier of ["Control", "Meta"])
+for (const modifier of ["ControlOrMeta", "Meta"])
   test(`${modifier} drag preserves an off-grid position while an unmodified drag snaps`, async ({ page }) => {
     await open(page);
     const geometry = await page.getByTestId("edge-api-db").evaluate((el) => {
@@ -202,6 +203,18 @@ for (const modifier of ["Control", "Meta"])
     await page.keyboard.up(modifier);
     expect((await custom(page))[0].x).toBeCloseTo(expected, 5);
   });
+
+test("the platform's secondary click opens the edge menu without reshaping", async ({ page }) => {
+  await open(page);
+  const before = await path(page);
+  const mac = process.platform === "darwin";
+  if (mac) await page.keyboard.down("Control");
+  await page.getByTestId("route-segment-api-db-1").click({ button: mac ? "left" : "right" });
+  if (mac) await page.keyboard.up("Control");
+  await expect(page.getByTestId("context-menu-item-edge.route")).toBeVisible();
+  await expect(page.getByTestId("route-preview")).toHaveCount(0);
+  expect(await path(page)).toBe(before);
+});
 
 test("Escape and blur cancel the preview without freezing the line", async ({ page }) => {
   await open(page);

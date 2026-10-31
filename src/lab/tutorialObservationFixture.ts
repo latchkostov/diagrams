@@ -55,6 +55,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") {
     });
   for (const port of Object.keys(observationPorts) as (keyof ProductObservations)[]) watch(port);
   window.__observationLab = {
+    ready: () => currentObservationSource() !== undefined,
     latest: () => latest,
     clear: () => {
       latest = {};
@@ -71,6 +72,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") {
 declare global {
   interface Window {
     __observationLab?: {
+      ready(): boolean;
       latest(): Partial<ProductObservations>;
       clear(): void;
       publish(port: keyof ProductObservations, payload: Record<string, unknown>): void;

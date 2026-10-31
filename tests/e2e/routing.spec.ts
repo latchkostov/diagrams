@@ -9,6 +9,7 @@ import {
   gotoLive,
   pauseClock,
   waitForStableViewport,
+  waitForStableBox,
   waitForSelectionSettled,
   expectNoErrors,
   STORAGE_KEYS,
@@ -47,6 +48,44 @@ async function seed(page: Page, d: DiagramFile, { dark = false } = {}) {
 
 const table = async (page: Page) =>
   props(await savedDiagram(page), "kong").routeTable as typeof ROUTING_TABLE | undefined;
+
+async function openDefault(page: Page) {
+  const row = page.getByTestId("routes-default");
+  // Finish native input/caret focus scrolling before measuring the click target.
+  await row.focus();
+  await waitForStableBox(row);
+  await row.click();
+}
+
+test("Default clicks settle input focus before a native scroll correction", async ({ page }) => {
+  await seed(page, unrouted());
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-kong").click();
+  await page.getByTestId("routes-add").click();
+  await page.getByTestId("routes-add-rule").click();
+  await page.getByTestId("routes-add-rule").click();
+  await page.getByTestId("routes-rule-rule-2-targets-kong-orders-weight").fill("9");
+  await page.getByTestId("routes-default").evaluate((row) => {
+    const input = document.activeElement;
+    if (!(input instanceof HTMLInputElement)) throw new Error("Expected the edited weight to own focus");
+    let scroller = row.parentElement;
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement;
+    if (!scroller) throw new Error("Expected a scrolling inspector");
+    const pane = scroller;
+    row.addEventListener(
+      "mousedown",
+      () => {
+        // Model the native caret correction seen in the macOS trace, without
+        // suppressing events or changing the button's normal activation.
+        if (document.activeElement === input) pane.scrollTop = 0;
+      },
+      { capture: true, once: true },
+    );
+  });
+  await openDefault(page);
+  await expect(page.getByTestId("routes-default-reject")).toBeVisible();
+});
 
 test("adds a route table that keeps today's connections, edits a rule, reorders by keyboard and undoes", async ({
   page,
@@ -97,7 +136,7 @@ test("adds a route table that keeps today's connections, edits a rule, reorders 
   await expect(page.getByTestId("routes-rule-rule-2")).toContainText("90 / 10");
 
   // Default: Reject 404 is an explicit choice.
-  await page.getByTestId("routes-default").click();
+  await openDefault(page);
   await page.getByTestId("routes-default-reject").check();
   await expect(page.getByTestId("routes-default")).toContainText("Reject 404");
   await expect.poll(async () => (await table(page))?.default).toBeUndefined();

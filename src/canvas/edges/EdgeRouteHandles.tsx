@@ -7,6 +7,7 @@ import { roundedPath } from "../geometry/path";
 import type { EdgeRoute } from "../geometry/router";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { t, useLocale } from "../../i18n";
+import { formatCombo } from "../../editor/shortcuts";
 import { EdgeEnds } from "./EdgeEnds";
 import { useRoutingOptions } from "./useEdgeRoute";
 import { hasSingleEdgeSelection } from "./singleEdgeSelection";
@@ -189,7 +190,7 @@ export function EdgeRouteHandles({
                 transform: `translate(${x}px, ${y}px) scale(calc(1 / var(--rf-zoom-exact, 1)))`,
                 transformOrigin: "0 0",
               }}
-              title={t("edge.shape.drag")}
+              title={t("edge.shape.drag", { modifier: formatCombo("Mod") })}
               data-testid={`route-segment-${id}-${s.k}`}
               data-keyboard-only={keyboardOnly || undefined}
               data-coarse-keyboard-only={clearance < 44 || undefined}

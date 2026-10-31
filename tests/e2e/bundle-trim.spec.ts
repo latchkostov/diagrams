@@ -1,6 +1,18 @@
 import { openLibrary, waitForQuickAddResults } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, savedDiagram, STORAGE_KEYS } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  waitForStableViewport,
+  waitForSelectionSettled,
+  waitForAutosave,
+  pauseClock,
+  savedDiagram,
+  savedCurrentDiagram as savedQuickAdd,
+  STORAGE_KEYS,
+} from "./fixtures";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
 import { chunk } from "./chunk";
 import { messageTypesFixture } from "../../src/lab/messageTypesFixture";
@@ -221,7 +233,7 @@ for (const name of [undefined, "Cache audit"])
         search?.release();
         await expect(page.getByTestId("quick-add")).toHaveCount(0);
         await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
-        const after = await savedDiagram(page);
+        const after = await savedQuickAdd(page);
         const added = after.nodes.filter((node) => !before.nodes.some((old) => old.id === node.id));
         expect(added).toHaveLength(1);
         picks.push(added[0].stencil);
@@ -233,6 +245,54 @@ for (const name of [undefined, "Cache audit"])
     }
     expect(picks[1]).toBe(picks[0]);
   });
+
+test("quick-add assertions wait for the named document instead of its first creation save", async ({ page }) => {
+  await page.clock.install();
+  await seed(page);
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("node-caller").click();
+  await page.getByTestId("canvas-wrap").focus();
+  const before = await savedDiagram(page);
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.getByTestId("quick-add-search")).toBeFocused();
+  await page.keyboard.type("cache");
+  await waitForQuickAddResults(page);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  await waitForSelectionSettled(page);
+  await waitForAutosave(page);
+  const created = (await savedDiagram(page)).nodes.find((node) => !before.nodes.some((old) => old.id === node.id));
+  if (!created) throw new Error("Missing quick-added node");
+  await pauseClock(page);
+  // Leave naming open: Enter would synchronously flush it instead of exercising a pending save.
+  await page.getByTestId("inspector-field-label").fill("Cache audit");
+  await expect(page.getByTestId(`node-${created.id}`).getByTestId("card-title")).toHaveText("Cache audit");
+  expect(await page.evaluate(() => window.__documentProbe?.().saved)).toBe(false);
+  // Acknowledge the first real read before advancing the clock. Otherwise the clock command can
+  // overtake expect.poll's first callback and accidentally save before the stale reader runs.
+  await page.evaluate((prefix) => {
+    const probe = window.__documentProbe;
+    if (!probe) throw new Error("Missing current-document probe");
+    window.__documentProbe = () => {
+      const result = probe();
+      console.debug("quick-add-read-started");
+      return result;
+    };
+    const getItem = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (this: Storage, key: string) {
+      const value = getItem.call(this, key);
+      if (key.startsWith(prefix) || key.startsWith("diagrams.doc.v1:")) console.debug("quick-add-read-started");
+      return value;
+    };
+  }, STORAGE_KEYS.autosavePrefix);
+  const started = page.waitForEvent("console", { predicate: (message) => message.text() === "quick-add-read-started" });
+  const reading = savedQuickAdd(page);
+  await started;
+  await page.clock.runFor(1000);
+  expect((await reading).nodes.find((node) => node.id === created.id)?.label).toBe("Cache audit");
+});
 
 for (const recovery of ["Escape", "Retry"] as const)
   test(`failed queued quick-add releases the keyboard for ${recovery}`, async ({ page }) => {

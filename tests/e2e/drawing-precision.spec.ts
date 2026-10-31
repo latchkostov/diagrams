@@ -96,11 +96,43 @@ async function dragBy(page: Page, testId: string, dx: number, dy: number, free =
   const { zoom } = await view(page);
   const press = centre(await box(page.getByTestId(testId)));
   await page.mouse.move(press.x, press.y);
-  await page.mouse.down();
-  // A first small move starts the drag (React Flow counts the offset from where the drag starts).
+  // React Flow can activate at mouse-down or at the first move. Observe the actual guide-session
+  // boundary rather than adding the activation move to every requested flow-space offset.
+  const started = await guides(page).evaluateHandle((layer) => {
+    const state = { origin: null as { x: number; y: number } | null };
+    let point: typeof state.origin = null;
+    const read = () => {
+      if (!state.origin && point && layer.hasAttribute("data-on")) state.origin = point;
+    };
+    const remember = (event: MouseEvent) => {
+      read();
+      point = { x: event.clientX, y: event.clientY };
+    };
+    const events = ["pointerdown", "pointermove", "mousedown", "mousemove"] as const;
+    for (const event of events) window.addEventListener(event, remember, true);
+    const observer = new MutationObserver(read);
+    observer.observe(layer, { attributes: true, attributeFilter: ["data-on"] });
+    return {
+      state,
+      stop() {
+        observer.disconnect();
+        for (const event of events) window.removeEventListener(event, remember, true);
+      },
+    };
+  });
   const from = { x: press.x + 3, y: press.y };
-  await page.mouse.move(from.x, from.y);
-  const to = { x: from.x + dx * zoom, y: from.y + dy * zoom };
+  let origin: { x: number; y: number } | null;
+  try {
+    await page.mouse.down();
+    await page.mouse.move(from.x, from.y);
+    await expect.poll(() => started.evaluate(({ state }) => state.origin)).not.toBeNull();
+    origin = await started.evaluate(({ state }) => state.origin);
+  } finally {
+    await started.evaluate(({ stop }) => stop());
+    await started.dispose();
+  }
+  if (!origin) throw new Error("Missing drag activation point");
+  const to = { x: origin.x + dx * zoom, y: origin.y + dy * zoom };
   const at = (t: number) => ({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
   const near = at(0.85);
   await page.mouse.move(near.x, near.y, { steps: 8 });

@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
+import process from "node:process";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, waitForCameraIdle, goToNode, setTheme, expectTheme } from "./fixtures";
 import { installFakeSpeech, speech, speechState, openAdvanced, installFakeLanguageModel } from "./ai-helpers";
+import { chooseNativeSelect } from "./native-select";
 
 for (const onDevice of [false, true])
   for (const pending of [false, true])
@@ -84,7 +86,8 @@ test("R-caf692ac78 phone Speed retains native navigation keys", async ({ page })
     ).toBe(true);
     await expect(speed).toBeFocused();
   }
-  await speed.press("End");
+  if (process.platform === "darwin") await chooseNativeSelect(page, "live-speed", "8");
+  else await speed.press("End");
   await speed.press("Tab");
   await expect(speed).toHaveValue("8");
 });

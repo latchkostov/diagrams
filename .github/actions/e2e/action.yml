@@ -31,6 +31,9 @@ runs:
   using: composite
   steps:
     - uses: ./.github/actions/toolchain
+    - name: Seed interruption report
+      shell: bash
+      run: node scripts/ci/e2e-report.mjs seed tests/.output
     - name: Select shard and self-hosting variants
       shell: bash
       env:
@@ -100,6 +103,7 @@ runs:
         E2E_TARGET: ${{ inputs.target }}
         E2E_PREBUILT: "1"
         E2E_GATE: "1"
+        GATE_CHECKPOINT: tests/.output/checkpoint.json
         E2E_PORT: "6400"
         E2E_DEV_PORT: "6401"
         E2E_PREVIEW_PORT: "6402"

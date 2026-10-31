@@ -1,9 +1,10 @@
 import { openDiagramProperties } from "./fixtures";
+import { openHtmlExport } from "./html-export-dialog";
 import { expectFittedIdentity, zoomIdentity } from "./node-identity";
 import { chunk, holdChunk } from "./chunk";
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import type { Download, FrameLocator, Page } from "@playwright/test";
+import type { Download, FrameLocator, Page, Route } from "@playwright/test";
 import {
   test,
   expect,
@@ -27,29 +28,77 @@ import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 const BANNER = "Confidential: internal use only";
 const ANYONE = "Anyone who has this file can open it.";
 
-async function openHtmlExport(page: Page) {
-  const template = waitForHtmlTemplate(page);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("file-more-formats").click();
-  await expect(page.getByTestId("file-more-formats-menu")).toBeVisible();
-  await page.getByTestId("export-html").click();
-  await expect(page.getByTestId("html-export-dialog")).toBeVisible();
-  await template;
-}
-
 async function download(
   page: Page,
   beforeSave?: () => Promise<void>,
+  activate: () => Promise<unknown> = () => page.getByTestId("html-export-download").click(),
 ): Promise<{ download: Download; path: string; html: string }> {
   await waitForHtmlTemplate(page);
-  const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
-  await beforeSave?.();
+  const received = page.waitForEvent("download").then(async (file) => {
+    await beforeSave?.();
+    return file;
+  });
+  const [file] = await Promise.all([received, activate()]);
   const path = test.info().outputPath(file.suggestedFilename());
   await file.saveAs(path);
   return { download: file, path, html: readFileSync(path, "utf8") };
 }
 
 test.describe("Interactive HTML export", () => {
+  test("download observations precede a delayed click acknowledgement", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    await openHtmlExport(page);
+    const acknowledge = Promise.withResolvers<undefined>();
+    let observed = false;
+    let finished = false;
+    const downloading = download(
+      page,
+      () => {
+        observed = true;
+        return Promise.resolve();
+      },
+      async () => {
+        await page.getByTestId("html-export-download").click();
+        await acknowledge.promise;
+      },
+    ).then((result) => {
+      finished = true;
+      return result;
+    });
+    try {
+      await expect.poll(() => observed).toBe(true);
+      expect(finished, "saving still waits for the click acknowledgement").toBe(false);
+      await expect(page.getByTestId("toast").last()).toContainText("Anyone who has it can open it");
+    } finally {
+      acknowledge.resolve(undefined);
+      await downloading;
+    }
+    expect((await downloading).html).toContain("<title>Kafka order pipeline</title>");
+  });
+
+  test("opening export waits for a held viewer template after the dialog is visible", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    const held = Promise.withResolvers<Route>();
+    await page.route(/\/export\/interactive-viewer(?:-[a-f0-9]+)?\.html/, (route) => held.resolve(route));
+    const visible = Promise.withResolvers<undefined>();
+    let ready = false;
+    const opening = openHtmlExport(page, () => visible.resolve(undefined)).then(() => {
+      ready = true;
+    });
+    const route = await held.promise;
+    try {
+      await visible.promise;
+      await Promise.resolve();
+      expect(ready, "a visible dialog has not acknowledged its viewer template").toBe(false);
+    } finally {
+      await route.continue();
+      await opening;
+    }
+    expect(ready).toBe(true);
+    const { html } = await download(page);
+    expect(html).toContain("<title>Kafka order pipeline</title>");
+  });
+
   test("read-only HTML fits imported titles at 24%", async ({ page, context }) => {
     await gotoCanvas(page, KAFKA);
     await page.getByTestId("import-input").setInputFiles({

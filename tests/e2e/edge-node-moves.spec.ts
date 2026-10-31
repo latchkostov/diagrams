@@ -9,6 +9,7 @@ import {
   waitForStableViewport,
   waitForSelectionSettled,
   waitForHistoryIdle,
+  waitForAutosave,
   waitForCameraIdle,
   fitDiagram,
   pauseClock,
@@ -93,6 +94,7 @@ async function startDrag(page: Page, id: string) {
 }
 async function saved(page: Page) {
   await waitForHistoryIdle(page);
+  await waitForAutosave(page);
   return savedDiagram(page);
 }
 
