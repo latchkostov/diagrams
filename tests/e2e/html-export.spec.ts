@@ -31,16 +31,51 @@ const ANYONE = "Anyone who has this file can open it.";
 async function download(
   page: Page,
   beforeSave?: () => Promise<void>,
+  activate: () => Promise<unknown> = () => page.getByTestId("html-export-download").click(),
 ): Promise<{ download: Download; path: string; html: string }> {
   await waitForHtmlTemplate(page);
-  const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
-  await beforeSave?.();
+  const received = page.waitForEvent("download").then(async (file) => {
+    await beforeSave?.();
+    return file;
+  });
+  const [file] = await Promise.all([received, activate()]);
   const path = test.info().outputPath(file.suggestedFilename());
   await file.saveAs(path);
   return { download: file, path, html: readFileSync(path, "utf8") };
 }
 
 test.describe("Interactive HTML export", () => {
+  test("download observations precede a delayed click acknowledgement", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    await openHtmlExport(page);
+    const acknowledge = Promise.withResolvers<undefined>();
+    let observed = false;
+    let finished = false;
+    const downloading = download(
+      page,
+      () => {
+        observed = true;
+        return Promise.resolve();
+      },
+      async () => {
+        await page.getByTestId("html-export-download").click();
+        await acknowledge.promise;
+      },
+    ).then((result) => {
+      finished = true;
+      return result;
+    });
+    try {
+      await expect.poll(() => observed).toBe(true);
+      expect(finished, "saving still waits for the click acknowledgement").toBe(false);
+      await expect(page.getByTestId("toast").last()).toContainText("Anyone who has it can open it");
+    } finally {
+      acknowledge.resolve(undefined);
+      await downloading;
+    }
+    expect((await downloading).html).toContain("<title>Kafka order pipeline</title>");
+  });
+
   test("opening export waits for a held viewer template after the dialog is visible", async ({ page }) => {
     await gotoCanvas(page, KAFKA);
     const held = Promise.withResolvers<Route>();
