@@ -1,9 +1,11 @@
 import type { Page } from "@playwright/test";
+import type { ThreadFixRequest } from "../../src/live/threadFixPlan";
 
 declare global {
   interface Window {
     __threadVerification?: {
       requested: number;
+      requests: ThreadFixRequest[];
       pending(): number;
       whenSettled(): Promise<void>;
       release?: () => void;
@@ -36,6 +38,7 @@ export function installThreadVerificationInPage({ holdFirst = false }: { holdFir
   };
   const state = (window.__threadVerification = {
     requested: 0,
+    requests: [] as ThreadFixRequest[],
     pending: () => [...pending.values()].reduce((sum, ids) => sum + ids.size, 0),
     whenSettled: () =>
       new Promise<void>((resolve) => {
@@ -61,6 +64,7 @@ export function installThreadVerificationInPage({ holdFirst = false }: { holdFir
     ids.add(id);
     pending.set(this, ids);
     state.requested++;
+    state.requests.push(request.threadFix as ThreadFixRequest);
     if (!observed.has(this)) {
       observed.add(this);
       this.addEventListener("message", (event: MessageEvent<{ id?: number }>) => {

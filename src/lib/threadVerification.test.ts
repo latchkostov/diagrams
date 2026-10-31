@@ -65,6 +65,7 @@ it("preserves both transfer overloads and ignores non-verification traffic and u
   ]);
   expect(h.state.requested).toBe(0);
   worker.postMessage({ id: 3, threadFix: {} });
+  expect(h.state.requests).toEqual([{}]);
   worker.reply(99);
   expect(h.state.pending()).toBe(1);
   const waiting = h.state.whenSettled();
