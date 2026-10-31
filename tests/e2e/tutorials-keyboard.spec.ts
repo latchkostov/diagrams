@@ -55,6 +55,8 @@ async function node(page: Page, id: string) {
     .toBe(true);
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
   await waitForCameraIdle(page);
+  // Finishing during the camera reveal moves focus to the handoff, so navigation is done.
+  if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")) throw new CompletedStep();
 }
 
 async function edge(page: Page, id: string) {
@@ -203,6 +205,18 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
   if ("focus" in action) return focus(page, action.focus);
   if ("read" in action) {
     const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
+    // Esc on an earlier pinned card restores focus to that card's owner. Close it
+    // before navigating, or clearing the new selection can send Enter to the old node.
+    const pinned = await page.getByTestId(/^(node|edge)-detail-/).evaluateAll((cards) =>
+      cards
+        .filter((card) => card.getAttribute("data-pinned") === "true")
+        .map((card) => card.getAttribute("data-testid"))
+        .filter((id) => id !== null),
+    );
+    for (const id of pinned) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId(id)).toHaveCount(0);
+    }
     await focus(page, action.read);
     if ((await page.getByTestId("tutorial-step").getAttribute("data-step")) !== step) return;
     const card = page.getByTestId(action.read.replace(/^(node|edge)-/, "$1-detail-"));
@@ -251,16 +265,23 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
       .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
     const index = values.indexOf(action.value);
     expect(index).toBeGreaterThanOrEqual(0);
-    await page.keyboard.press("Alt+ArrowDown");
-    await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(true);
-    await page.keyboard.press("Home");
-    await animationFrames(page);
-    for (let i = 0; i < index; i++) {
-      await page.keyboard.press("ArrowDown");
+    if (index === 0 || index === values.length - 1) {
+      // Native popup highlight updates run outside the page's animation frames.
+      // An endpoint needs one absolute key on the closed select, with a DOM value
+      // change to acknowledge it, rather than a counted sequence in that popup.
+      await page.keyboard.press(index === 0 ? "Home" : "End");
+    } else {
+      await page.keyboard.press("Alt+ArrowDown");
+      await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(true);
+      await page.keyboard.press("Home");
       await animationFrames(page);
+      for (let i = 0; i < index; i++) {
+        await page.keyboard.press("ArrowDown");
+        await animationFrames(page);
+      }
+      await page.keyboard.press("Enter");
+      await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
     }
-    await page.keyboard.press("Enter");
-    await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
     await expect(page.getByTestId(action.choose)).toHaveValue(
       action.choose === "sim-panel-add-step" ? "" : action.value,
     );
@@ -348,6 +369,37 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
     expectNoErrors(consoleErrors);
   });
 }
+
+test("keyboard readout navigation leaves an earlier pinned card before selecting its next owner", async ({ page }) => {
+  await page.goto("./?tutorial=shared-api-quotas");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused({ timeout: pageLoadTimeout() });
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await command(page, "live:toggle", ">");
+  await waitForLiveSession(page);
+  await play(page, { read: "node-answer" });
+  await expect(page.getByTestId("node-detail-answer")).toHaveAttribute("data-pinned", "true");
+  await play(page, { read: "node-payments" });
+  await expect(page.getByTestId("node-detail-payments")).toHaveAttribute("data-pinned", "true");
+  await expect(page.getByTestId("node-detail-answer")).toHaveCount(0);
+});
+
+test("keyboard canvas navigation exits when the lesson has already finished", async ({ page }) => {
+  await page.goto("./?tutorial=property-sheet");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  for (let skipped = 0; skipped < 4 && !(await page.getByTestId("tutorial-finished").isVisible()); skipped++) {
+    const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
+    if (!step) throw new Error("Missing property-sheet step");
+    await activate(page, "tutorial-skip");
+    await expect(page.getByTestId("tutorial-step")).not.toHaveAttribute("data-step", step);
+  }
+  await expect(page.getByTestId("tutorial-finished")).toBeVisible();
+  await expect(node(page, "api")).rejects.toBeInstanceOf(CompletedStep);
+});
 
 test("keyboard control traversal reads a bounded amount of browser state per key", async ({ page }) => {
   await page.setContent(
