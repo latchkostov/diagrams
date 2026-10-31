@@ -37,13 +37,18 @@ function harness(holdFirst = false) {
 
 it("waits for the cold verifier's first real request and reply", async () => {
   const h = harness();
+  let requested = false;
+  const requesting = h.state.whenRequested().then(() => (requested = true));
   let ready = false;
   const waiting = h.state.whenSettled().then(() => (ready = true));
   h.flush();
   await Promise.resolve();
   expect(ready).toBe(false);
+  expect(requested).toBe(false);
   const worker = h.worker();
   worker.postMessage({ id: 1, threadFix: {} });
+  await requesting;
+  expect(requested).toBe(true);
   h.flush();
   await Promise.resolve();
   expect(ready).toBe(false);
@@ -133,6 +138,46 @@ it("can hold the first request for the browser regression and releases it only o
   expect(worker.sent).toHaveLength(1);
   const waiting = h.state.whenSettled();
   worker.reply(1);
+  h.flush();
+  await waiting;
+});
+
+it("keeps scenario sizing distinct from fix verification on the shared checks worker", async () => {
+  const h = harness();
+  installThreadVerificationInPage({ kind: "plan" });
+  const plan = window.__scenarioPlan;
+  if (!plan) throw new Error("Expected the scenario probe");
+  const worker = h.worker();
+  worker.postMessage({ id: 1, threadFix: {} });
+  worker.postMessage({ id: 2, plan: true });
+  expect(h.state.pending()).toBe(1);
+  expect(plan.pending()).toBe(1);
+  let planned = false;
+  const verification = h.state.whenSettled();
+  const sizing = plan.whenSettled().then(() => (planned = true));
+  worker.reply(1);
+  h.flush();
+  await verification;
+  expect(planned).toBe(false);
+  worker.reply(2);
+  h.flush();
+  await sizing;
+  expect(planned).toBe(true);
+});
+
+it("holds scenario sizing without holding unrelated worker traffic", async () => {
+  const h = harness();
+  installThreadVerificationInPage({ kind: "plan", holdFirst: true });
+  const worker = h.worker();
+  worker.postMessage({ id: 1, requests: true });
+  worker.postMessage({ id: 2, plan: true });
+  expect(worker.sent).toEqual([[{ id: 1, requests: true }, undefined]]);
+  const plan = window.__scenarioPlan;
+  if (!plan) throw new Error("Expected the scenario probe");
+  const waiting = plan.whenSettled();
+  plan.release?.();
+  expect(worker.sent.at(-1)?.[0]).toEqual({ id: 2, plan: true });
+  worker.reply(2);
   h.flush();
   await waiting;
 });

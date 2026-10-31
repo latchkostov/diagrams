@@ -7,17 +7,23 @@ declare global {
       requested: number;
       requests: ThreadFixRequest[];
       pending(): number;
+      whenRequested(): Promise<void>;
       whenSettled(): Promise<void>;
       release?: () => void;
     };
+    __scenarioPlan?: Window["__threadVerification"];
   }
 }
 
 /** Installed before navigation: worker execution uses the real clock even when the page clock is paused. */
-export function installThreadVerificationInPage({ holdFirst = false }: { holdFirst?: boolean } = {}) {
+export function installThreadVerificationInPage({
+  holdFirst = false,
+  kind = "threadFix",
+}: { holdFirst?: boolean; kind?: "threadFix" | "plan" } = {}) {
   const pending = new Map<Worker, Set<number>>();
   const observed = new WeakSet<Worker>();
   const waiters = new Set<() => void>();
+  const requestedWaiters = new Set<() => void>();
   let scheduled = false;
   const notify = () => {
     if (scheduled || !waiters.size) return;
@@ -36,10 +42,12 @@ export function installThreadVerificationInPage({ holdFirst = false }: { holdFir
     };
     channel.port2.postMessage(null);
   };
-  const state = (window.__threadVerification = {
+  const state = (window[kind === "plan" ? "__scenarioPlan" : "__threadVerification"] = {
     requested: 0,
     requests: [] as ThreadFixRequest[],
     pending: () => [...pending.values()].reduce((sum, ids) => sum + ids.size, 0),
+    whenRequested: (): Promise<void> =>
+      state.requested ? Promise.resolve() : new Promise<void>((resolve) => requestedWaiters.add(resolve)),
     whenSettled: () =>
       new Promise<void>((resolve) => {
         waiters.add(resolve);
@@ -57,14 +65,16 @@ export function installThreadVerificationInPage({ holdFirst = false }: { holdFir
     message: unknown,
     transferOrOptions?: Transferable[] | StructuredSerializeOptions,
   ) {
-    const request = message as { id?: number; threadFix?: unknown } | null;
-    if (!request?.threadFix || typeof request.id !== "number") return post.call(this, message, transferOrOptions);
+    const request = message as { id?: number; threadFix?: ThreadFixRequest; plan?: boolean } | null;
+    if (!request?.[kind] || typeof request.id !== "number") return post.call(this, message, transferOrOptions);
     const id = request.id;
     const ids = pending.get(this) ?? new Set<number>();
     ids.add(id);
     pending.set(this, ids);
     state.requested++;
-    state.requests.push(request.threadFix as ThreadFixRequest);
+    for (const resolve of requestedWaiters) resolve();
+    requestedWaiters.clear();
+    if (request.threadFix) state.requests.push(request.threadFix);
     if (!observed.has(this)) {
       observed.add(this);
       this.addEventListener("message", (event: MessageEvent<{ id?: number }>) => {
@@ -112,5 +122,16 @@ export async function waitForThreadVerification(page: Page) {
   await page.evaluate(() => {
     if (!window.__threadVerification) throw new Error("Thread-verification probe was not installed before navigation");
     return window.__threadVerification.whenSettled();
+  });
+}
+
+export async function installScenarioPlan(page: Page, holdFirst = false) {
+  await page.addInitScript(installThreadVerificationInPage, { holdFirst, kind: "plan" as const });
+}
+
+export async function waitForScenarioPlan(page: Page) {
+  await page.evaluate(() => {
+    if (!window.__scenarioPlan) throw new Error("Scenario-plan probe was not installed before navigation");
+    return window.__scenarioPlan.whenSettled();
   });
 }

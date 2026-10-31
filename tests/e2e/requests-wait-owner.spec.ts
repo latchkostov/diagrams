@@ -1,14 +1,19 @@
 import { openInspectorLiveDetails } from "./fixtures";
+import type { Page } from "@playwright/test";
 import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoLive, pauseClock, savedDiagram, fitDiagram, STORAGE_KEYS } from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
-import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
+import {
+  installThreadVerification,
+  waitForThreadVerification,
+  installScenarioPlan,
+  waitForScenarioPlan,
+} from "./thread-verification";
 
-test("the callout and planner offer the same verified fix; keyboard apply names its simulation and Undo restores it", async ({
-  page,
-}) => {
+async function openVerifiedCallout(page: Page, holdPlan = false, inspectorRequested?: () => void) {
   await installThreadVerification(page);
+  await installScenarioPlan(page, holdPlan);
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads",
     d: busy,
@@ -17,12 +22,51 @@ test("the callout and planner offer the same verified fix; keyboard apply names 
   await gotoLive(page, "./?view=canvas&example=scale-on-busy-threads&live=1&paused=1&sim=blocking");
   await pauseClock(page);
   await page.getByTestId("live-play").click();
-  await page.clock.runFor(15000);
+  const simulation = busy.simulations.find((simulation) => simulation.id === "blocking");
+  if (!simulation) throw new Error("Fixture needs the blocking simulation");
+  // Preserve the trouble watcher's ten-second trend without coupling this agreement check to 900 paints.
+  for (let second = 1; second <= 15; second += 2) {
+    await page.getByTestId("live-timeline-input").fill(String((second * 1_000_000) / simulation.durationMs));
+    await page.getByTestId("live-play").focus();
+  }
+  await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "15000");
   await page.getByTestId("live-play").click();
   const action = page.getByTestId("trouble-action");
   await waitForThreadVerification(page);
   await expect(action).toHaveAttribute("data-action", "scale-threads");
   await page.getByTestId("node-caller").dblclick();
+  inspectorRequested?.();
+  await waitForScenarioPlan(page);
+  return action;
+}
+
+test("agreement setup waits for real scenario sizing while the page clock is paused", async ({ page }) => {
+  let inspectorRequested!: () => void;
+  const inspector = new Promise<void>((resolve) => (inspectorRequested = resolve));
+  let finished = false;
+  const opening = openVerifiedCallout(page, true, inspectorRequested).then((action) => {
+    finished = true;
+    return action;
+  });
+  try {
+    await Promise.race([inspector, opening]);
+    await page.evaluate(() => window.__scenarioPlan?.whenRequested());
+    await expect(page.getByTestId("inspector-live-section-resources")).toBeVisible();
+    expect(finished, "fix verification does not establish that scenario sizing has replied").toBe(false);
+    await page.evaluate(() => window.__scenarioPlan?.release?.());
+    const action = await opening;
+    await openInspectorLiveDetails(page, "scaling");
+    await expect(page.getByTestId("autoscaling-plan-text")).toContainText((await action.innerText()).trim());
+  } finally {
+    await page.evaluate(() => window.__scenarioPlan?.release?.());
+    await opening;
+  }
+});
+
+test("the callout and planner offer the same verified fix; keyboard apply names its simulation and Undo restores it", async ({
+  page,
+}) => {
+  const action = await openVerifiedCallout(page);
   await openInspectorLiveDetails(page, "resources");
   await openInspectorLiveDetails(page, "scaling");
   await expect(page.getByTestId("autoscaling-plan-text")).toContainText((await action.innerText()).trim());
