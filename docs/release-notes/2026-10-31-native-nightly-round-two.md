@@ -8,6 +8,8 @@ Accessibility scans wait for the real view entrance to finish before measuring c
 
 Bend-carry fixtures also wait for the fit controller before reading drag coordinates, so a briefly stable animation frame cannot place the pointer beneath the editor rail.
 
+Entry-point Undo checks wait for the complete restored topology after React Flow measures its nodes. The exact node and edge equality checks remain intact.
+
 macOS peer tests also compare mDNS and direct host candidates in a server-free diagnostic; this is test-runner evidence, not a change to the application's network services. The original peer admission assertions remain enabled. An isolated select diagnostic records the native popup input boundary; unsuccessful popup-key experiments are removed. The select-driver decision, Control-drag/context-menu conflict and remaining native failures are explicitly tracked for the orchestrator in the PR and dated backlog fragments.
 
 ## Output parity

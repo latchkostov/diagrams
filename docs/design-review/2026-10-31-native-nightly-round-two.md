@@ -12,6 +12,8 @@ Accessibility scans observe completion of the actual view entrance before measur
 
 The bend-carry fixture similarly waits for the camera controller after Fit before measuring the next drag. A paused animation can have an unchanged transform while still pending; the fixture must not interpret that as settled geometry. The shared helper remains available to tests that intentionally interrupt a fit.
 
+Entry-point Undo checks also distinguish document mutation from the renderer's restored topology. Holding real node measurements reproduces the missing-edge intermediate state; releasing them must produce the exact original topology, including all original edges.
+
 ## Decisions still requiring evidence
 
 macOS Control+click is a native secondary click; the retained modified-drag test conflicts with that convention. The orchestrator must choose the modifier contract before changing the gesture or its test. The native-select boundary also needs an input-driver or coverage decision, documented separately. The same-run peer diagnostic confirms mDNS fails while direct candidates deliver on macOS; branch Nightly 41183332686 has none of the 31 persistent peer-admission failures. No new network service, quarantine, tolerance increase or additional chrome is introduced here.
