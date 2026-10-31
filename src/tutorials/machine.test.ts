@@ -273,7 +273,7 @@ describe("tutorial step runner", () => {
       : runnerMachine;
     const paths = machinePaths(definition, { maxDepth: 4 });
     expect(new Set(paths.map((p) => p.state.value))).toEqual(
-      new Set(["intro", "active", "hinting", "completing", "finished", "closed"]),
+      new Set(["intro", "active", "hinting", "completing", "failed", "finished", "closed"]),
     );
     for (const { state } of paths) {
       expect(state.index).toBeGreaterThanOrEqual(0);
@@ -285,7 +285,7 @@ describe("tutorial step runner", () => {
       }
       if (state.value === "finished") expect(firstOpen(state)).toBe(state.observed.length);
       // A baseline belongs to the current step: none in the intro, during reconstruction, once finished or closed.
-      if (!inStep(state)) expect(state.baseline).toEqual({});
+      if (!inStep(state) && state.value !== "failed") expect(state.baseline).toEqual({});
       state.latched.forEach((on, i) => on && expect(state.sticky[i]).toBe(true));
       if (state.value === "closed")
         for (const event of runnerMachine.events) expect(machineStep(runnerMachine, state, event).accepted).toBe(false);
@@ -311,4 +311,19 @@ describe("where the coach mark points", () => {
     expect(targetsShown(at("hinting", false), true)).toBe(true);
     expect(targetsShown(at("completing"), true)).toBe(false);
   });
+});
+
+it("retries failed Continue reconstruction without dropping retained latches or accepting late completion after Exit", () => {
+  const m = createMachine(def(2));
+  m.send({ type: "resume" });
+  const latched = m.state.latched;
+  m.send({ type: "demoFailed", steps: [0, 1], purpose: "reconstruct" });
+  expect(m.state.value).toBe("failed");
+  expect(m.send({ type: "retry" }).commands).toEqual([{ type: "reconstruct", steps: [0, 1] }]);
+  expect(m.state.value).toBe("reconstructing");
+  expect(m.state.latched).toEqual(latched);
+  m.send({ type: "exit" });
+  m.send({ type: "reconstructed" });
+  m.send({ type: "demoFailed", steps: [0], purpose: "interactive" });
+  expect(m.state.value).toBe("closed");
 });

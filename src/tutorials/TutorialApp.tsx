@@ -35,6 +35,7 @@ import { toast } from "../interop/ui/toast";
 import { useLibrary } from "../lib/useLibrary";
 import { tutorialMetadata } from "./metadata";
 import { Coachmark } from "./Coachmark";
+import { useTutorialLayout } from "./useTutorialLayout";
 import { inStep, targetsShown, type RunnerEvent } from "./machine";
 import { createTutorialRunner, type RunnerSnapshot } from "./runner";
 import { tutorialRoute } from "./route";
@@ -63,7 +64,7 @@ export function TutorialApp({ id }: { id: string }) {
   useLocale();
   const catalog =
     (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && id.startsWith("lab-tutorial-")
-      ? use(loadRuntimeFixtures())
+      ? use(loadRuntimeFixtures())(id)
       : tutorials;
   const tutorial = catalog.find((x) => x.id === id && !x.quarantined);
   if (!tutorial) return <Unknown id={id} />;
@@ -85,7 +86,7 @@ const LibraryDialog = lazyComponent(
   loadingDialog(() => t("topbar.yourDiagrams")),
 );
 const loadRuntimeFixtures = loadOnce(() =>
-  import("../lab/tutorialRuntimeFixture").then((m) => m.tutorialRuntimeFixtures),
+  import("../lab/tutorialRuntimeFixture").then((m) => m.tutorialRuntimeCatalog),
 );
 function Prepared({ tutorial, catalog }: { tutorial: Tutorial; catalog: readonly Tutorial[] }) {
   const [loader] = useState(() => createTutorialStart(tutorial, undefined, cancelLessonStart));
@@ -117,6 +118,7 @@ function Running({
   initial: DiagramFile;
   catalog: readonly Tutorial[];
 }) {
+  useTutorialLayout();
   const [before, setBefore] = useState(readTutorials);
   const raw = useSyncExternalStore(subscribeTutorials, tutorialsSnapshot);
   const progress = readTutorials(raw);
@@ -485,7 +487,13 @@ function Strip({
 }) {
   const { state } = snap;
   const phase = state.value;
-  const step = inStep(state) ? tutorial.steps[state.index] : undefined;
+  const retry = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (phase !== "failed") return;
+    const frame = requestAnimationFrame(() => retry.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [phase]);
+  const step = inStep(state) || phase === "failed" ? tutorial.steps[state.index] : undefined;
   const last = state.last !== null ? tutorial.steps[state.last] : undefined;
   return (
     <section
@@ -505,7 +513,12 @@ function Strip({
                 {step.title()}. {step.goal()}
               </strong>
             </p>
-            {snap.nearMiss && phase !== "completing" ? (
+            <span className="tutorial-target-hint" data-testid="tutorial-target-hint" />
+            {phase === "failed" ? (
+              <p className="tutorial-near-miss" role="status" data-testid="tutorial-recovery">
+                {t("tutorials.demoFailed")}
+              </p>
+            ) : snap.nearMiss && phase !== "completing" ? (
               <p className="tutorial-near-miss" data-testid="tutorial-near-miss" role="status">
                 {tRich("tutorials.nearMiss", {
                   b: (chunks) => <strong>{chunks}</strong>,
@@ -519,7 +532,11 @@ function Strip({
             ) : phase === "completing" ? (
               <p className="tutorial-done" data-testid="tutorial-completing">
                 <Icon name="check" size={13} /> {step.done?.() ?? ""}{" "}
-                {typeof step.settle === "object" ? step.settle.tip() : t("tutorials.finishUp")}
+                {typeof step.settle === "object"
+                  ? step.settle.tip()
+                  : step.settle === "annotation"
+                    ? t("tutorials.finishAnnotation")
+                    : t("tutorials.finishUp")}
               </p>
             ) : phase === "hinting" && step.hint ? (
               <p className="tutorial-aside" id="tutorial-hint" data-testid="tutorial-hint">
@@ -545,16 +562,22 @@ function Strip({
                 {t("tutorials.showMe")}
               </button>
             )}
-            <button
-              className="btn btn-ghost"
-              onClick={(e) => {
-                if (e.detail < 2) send({ type: "skip", stepId: step.id });
-              }}
-              title={step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skipTitle")}
-              data-testid="tutorial-skip"
-            >
-              {step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skip")}
-            </button>
+            {phase === "failed" ? (
+              <button className="btn" ref={retry} data-testid="tutorial-retry" onClick={() => send({ type: "retry" })}>
+                {t("common.retry")}
+              </button>
+            ) : (
+              <button
+                className="btn btn-ghost"
+                onClick={(e) => {
+                  if (e.detail < 2) send({ type: "skip", stepId: step.id });
+                }}
+                title={step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skipTitle")}
+                data-testid="tutorial-skip"
+              >
+                {step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skip")}
+              </button>
+            )}
           </div>
         </>
       )}
@@ -562,7 +585,7 @@ function Strip({
         <>
           <div className="tutorial-words">
             <p className="tutorial-goal" data-testid="tutorial-finished">
-              <strong>{t("tutorials.finished")}.</strong> {tutorial.finish.text()}
+              <strong>{t("tutorials.finished")}.</strong>
             </p>
           </div>
           <div className="tutorial-actions">

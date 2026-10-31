@@ -1604,8 +1604,9 @@ export function createEditor(
       deps().setNodes((cur) => cur.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n)));
       return { adopted: r.adopted, released: r.released };
     },
-    moveIntoBoundary: async (ids, groupId) => {
+    moveIntoBoundary: async (ids, groupId, options) => {
       const { placeBoundaryMembers } = await import("./boundaryPlacement");
+      if (options?.signal?.aborted) return false;
       return placeBoundaryMembers(currentNodes(), ids, groupId, {
         groups: groupRects,
         members: memberBoxes,

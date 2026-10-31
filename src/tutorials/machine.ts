@@ -15,7 +15,8 @@ import { defineMachine, type Transition } from "../lib/machine";
  * connects) is passed over, and leaving Live while watching traffic goes back to "Go live". `completing` is the
  * moment between: the check holds, the strip says so, and the step waits for the learner to finish, never for a timer.
  */
-export type RunnerPhase = "intro" | "reconstructing" | "active" | "hinting" | "completing" | "finished" | "closed";
+export type RunnerPhase =
+  "intro" | "reconstructing" | "active" | "hinting" | "completing" | "failed" | "finished" | "closed";
 /**
  * The current step's `sinceStep` readings, by expression (checks.ts, baselineKey): the value, the Live run's
  * generation and the Live session it was read in (a remounted session numbers its runs from 1 again). Read once the
@@ -47,10 +48,14 @@ export interface RunnerState {
    * state rather than beside it, so the runner reconnecting or rebuilding its subjects never loses or re-reads it.
    */
   baseline: Baseline;
+  recovery: { steps: readonly number[]; purpose: "interactive" | "reconstruct" } | null;
 }
 export type RunnerEvent =
   /** fix: a near miss's one-click fix ("Use Orders API"): the step's own demo, as Skip does it. */
-  | { type: "start" | "resume" | "reconstructed" | "showMe" | "fix" | "restart" | "exit" }
+  | {
+      type: "start" | "resume" | "reconstructed" | "showMe" | "fix" | "retry" | "restart" | "exit" | "documentReplaced";
+    }
+  | { type: "demoFailed"; steps: readonly number[]; purpose: "interactive" | "reconstruct" }
   | { type: "skip"; stepId: string }
   | { type: "observe"; met: readonly boolean[]; settled: readonly boolean[] }
   /** Readings for the current step's baseline; only those it doesn't have yet are kept. */
@@ -99,6 +104,7 @@ export function runnerInitial(
     highlights: opts.highlights,
     resumeAt: Math.max(0, Math.min(opts.resumeAt, sticky.length - 1)),
     baseline: {},
+    recovery: null,
   };
 }
 
@@ -194,10 +200,21 @@ const restart: Row = {
   // The sandbox goes back to its start: nothing is known to hold until the next observation says so.
   reduce: (s) => {
     const none = s.sticky.map(() => false);
-    return { ...s, index: 0, observed: none, settled: none, latched: none, last: null, resumeAt: 0, baseline: {} };
+    return {
+      ...s,
+      index: 0,
+      observed: none,
+      settled: none,
+      latched: none,
+      last: null,
+      resumeAt: 0,
+      baseline: {},
+      recovery: null,
+    };
   },
   effects: () => [{ type: "reset" }, { type: "announce", step: 0 }, { type: "save", step: 0, completed: false }],
 };
+const documentReplaced: Row = { target: "closed", reduce: unbase };
 const exit: Row = { target: "closed", reduce: unbase, effects: () => [{ type: "close" }] };
 const highlights = (target: RunnerPhase): Row =>
   ({
@@ -205,8 +222,15 @@ const highlights = (target: RunnerPhase): Row =>
     reduce: (s: RunnerState, e: RunnerEvent) => ({ ...s, highlights: e.type === "highlights" ? e.on : s.highlights }),
     effects: (_s: RunnerState, _e: RunnerEvent, n: RunnerState) => [{ type: "prefs", highlights: n.highlights }],
   }) as Row;
+const demoFailed: Row = {
+  target: "failed",
+  guard: (s, e) =>
+    e.type === "demoFailed" && e.purpose === (s.value === "reconstructing" ? "reconstruct" : "interactive"),
+  reduce: (s, e) => (e.type === "demoFailed" ? { ...s, recovery: { steps: e.steps, purpose: e.purpose } } : s),
+};
 const stepRows = (state: "active" | "hinting" | "completing") => ({
   observe,
+  demoFailed,
   skip: skip.map((row) => ({
     ...row,
     guard: (s: RunnerState, e: RunnerEvent) =>
@@ -221,13 +245,14 @@ const stepRows = (state: "active" | "hinting" | "completing") => ({
       e.type === "baseline" ? { ...s, baseline: { ...e.values, ...s.baseline } } : s,
   },
   restart,
+  documentReplaced,
   highlights: highlights(state),
   exit,
 });
 
 export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerCommand>({
   initial: runnerInitial([false, true], { highlights: true, resumeAt: 0 }),
-  states: ["intro", "reconstructing", "active", "hinting", "completing", "finished", "closed"],
+  states: ["intro", "reconstructing", "active", "hinting", "completing", "failed", "finished", "closed"],
   events: [
     { type: "start" },
     { type: "resume" },
@@ -239,11 +264,15 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
     { type: "baseline", step: 0, values: { reading: [3, 1, 1] } },
     { type: "baseline", step: 1, values: { reading: [5, 1, 1] } },
     { type: "showMe" },
+    { type: "demoFailed", steps: [0], purpose: "interactive" },
+    { type: "demoFailed", steps: [0], purpose: "reconstruct" },
+    { type: "retry" },
     { type: "skip", stepId: "0" },
     { type: "fix" },
     { type: "restart" },
     { type: "highlights", on: false },
     { type: "exit" },
+    { type: "documentReplaced" },
   ],
   on: {
     intro: {
@@ -274,10 +303,12 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
           { type: "announce", step: s.resumeAt },
         ],
       },
+      documentReplaced,
       highlights: highlights("intro"),
       exit,
     },
     reconstructing: {
+      demoFailed,
       // Keep observations current without persisting temporary replay positions.
       observe: {
         target: "reconstructing",
@@ -291,6 +322,7 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
         () => true,
       ),
       restart,
+      documentReplaced,
       highlights: highlights("reconstructing"),
       exit,
     },
@@ -300,6 +332,33 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
     },
     hinting: stepRows("hinting"),
     completing: stepRows("completing"),
-    finished: { restart, highlights: highlights("finished"), exit },
+    failed: {
+      observe: {
+        target: "failed",
+        guard: fits,
+        reduce: (s, e) => (e.type === "observe" ? { ...s, observed: e.met, settled: e.settled } : s),
+      },
+      retry: [
+        {
+          target: "reconstructing",
+          guard: (s) => s.recovery?.purpose === "reconstruct",
+          effects: (s) => [{ type: "reconstruct", steps: s.recovery!.steps }],
+          reduce: (s) => ({ ...s, recovery: null, baseline: {} }),
+        },
+        ...goTo(
+          (s) => position({ ...s, recovery: null }, s),
+          (s) => s.recovery?.purpose === "interactive",
+          () => true,
+        ).map((row): Row => ({
+          ...row,
+          effects: (s, _e, n) => [...progress(n), { type: "demo", steps: s.recovery!.steps }],
+        })),
+      ],
+      restart,
+      exit,
+      documentReplaced,
+      highlights: highlights("failed"),
+    },
+    finished: { restart, documentReplaced, highlights: highlights("finished"), exit },
   },
 });

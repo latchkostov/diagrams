@@ -130,10 +130,12 @@ function sandbox(
       return () => changes.delete(f);
     },
   };
-  const runner = createTutorialRunner(tutorial, { close: vi.fn(), host, initial });
+  const close = vi.fn();
+  const runner = createTutorialRunner(tutorial, { close, host, initial });
   cleanup.push(runner.connect());
   return {
     runner,
+    close,
     editor,
     getDiagram,
     hostState,
@@ -848,7 +850,7 @@ it("adds a member through the editor and sends Present demos to the app owner", 
   s.runner.send({ type: "start" });
   s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
   await Promise.resolve();
-  expect(moveIntoBoundary).toHaveBeenCalledExactlyOnceWith(["api"], "box");
+  expect(moveIntoBoundary).toHaveBeenCalledExactlyOnceWith(["api"], "box", { signal: expect.any(AbortSignal) });
   const present = vi.fn();
   const runner = createTutorialRunner(
     {
@@ -1214,4 +1216,136 @@ it("ends active slow motion and waits for simulation switching before Restart", 
   await Promise.resolve();
   expect(runSimulation).toHaveBeenCalledExactlyOnceWith("demo");
   expect(runSimulation).toHaveReturnedWith(true);
+});
+
+for (const outcome of ["false", "reject"] as const) {
+  it(`recovers an async boundary ${outcome} in place and retries without discarding edits`, async () => {
+    const tutorial: Tutorial = {
+      ...mobileApi,
+      subjects: { ...mobileApi.subjects, box: { boundary: true } },
+      steps: [
+        {
+          ...mobileApi.steps[0],
+          check: { kind: "member", subject: "api", boundary: "box" },
+          demo: [{ kind: "member", subject: "api", boundary: "box" }],
+        },
+      ],
+    };
+    const s = sandbox(tutorial, {
+      ...named(),
+      groups: [{ id: "box", label: "Checkout", x: 0, y: 0, width: 400, height: 200 }],
+    });
+    const move = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        outcome === "false" ? Promise.resolve(false) : Promise.reject(new Error("download")),
+      )
+      .mockImplementation(() => {
+        s.edit({
+          ...s.editor.getDiagram(),
+          nodes: s.editor.getDiagram().nodes.map((n) => (n.id === "api" ? { ...n, group: "box" } : n)),
+        });
+        return Promise.resolve(true);
+      });
+    s.hostState.canvas.editor = { ...s.hostState.canvas.editor, moveIntoBoundary: move };
+    s.publish();
+    s.runner.send({ type: "start" });
+    s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+    await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("failed"));
+    s.editor.updateNode("api", { description: "My draft" });
+    s.runner.send({ type: "retry" });
+    await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+    expect(move).toHaveBeenCalledTimes(2);
+    expect(s.editor.getDiagram().nodes.find((n) => n.id === "api")?.description).toBe("My draft");
+  });
+}
+
+for (const cancel of ["restart", "exit", "replace"] as const) {
+  it(`cancels delayed demo work on ${cancel}`, async () => {
+    const tutorial: Tutorial = {
+      ...mobileApi,
+      subjects: { ...mobileApi.subjects, box: { boundary: true } },
+      steps: [
+        {
+          ...mobileApi.steps[0],
+          check: { kind: "member", subject: "api", boundary: "box" },
+          demo: [
+            { kind: "member", subject: "api", boundary: "box" },
+            { kind: "rename", subject: "api", label: () => "Late overwrite" },
+          ],
+        },
+      ],
+    };
+    const s = sandbox(tutorial, {
+      ...named(),
+      groups: [{ id: "box", label: "Checkout", x: 0, y: 0, width: 400, height: 200 }],
+    });
+    let resolve!: (ok: boolean) => void;
+    let signal: AbortSignal | undefined;
+    s.hostState.canvas.editor.moveIntoBoundary = vi.fn((_ids, _group, options) => {
+      signal = options?.signal;
+      return new Promise<boolean>((done) => {
+        resolve = done;
+      });
+    });
+    s.runner.send({ type: "start" });
+    s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    if (cancel === "replace") {
+      s.hostState.canvas.documentId = "replacement";
+      s.publish();
+    } else s.runner.send({ type: cancel });
+    expect(signal!.aborted).toBe(true);
+    expect(s.close).toHaveBeenCalledTimes(cancel === "exit" ? 1 : 0);
+    resolve(false);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(s.runner.getSnapshot().state.value).toBe(cancel === "restart" ? "active" : "closed");
+    expect(s.editor.getDiagram().nodes.some((n) => n.label === "Late overwrite")).toBe(false);
+  });
+}
+
+it("reports an unavailable simulation launch before waiting for its check", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "simulation", id: "missing" },
+        demo: [{ kind: "runSimulation", id: "missing" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.host.runSimulation = vi.fn(() => false);
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("failed"));
+  expect(s.host.runSimulation).toHaveBeenCalledOnce();
+});
+
+it("Skip settles a boundary selection using its editor flow ID", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    subjects: { box: { boundary: true } },
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "label", subject: "box", is: () => "Checkout" },
+        settle: { kind: "selection", subjects: ["box"], tip: () => "Select the boundary" },
+        demo: [{ kind: "rename", subject: "box", label: () => "Checkout" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, {
+    ...named(),
+    groups: [{ id: "box", label: "Checkout", x: 0, y: 0, width: 400, height: 200 }],
+  });
+  const select = vi.fn(() => s.mode({ selection: ["group:box"] }));
+  s.hostState.canvas.editor.select = select;
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("completing");
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(select).toHaveBeenCalledWith({ nodeIds: [], groupIds: ["box"], edgeIds: [] });
 });

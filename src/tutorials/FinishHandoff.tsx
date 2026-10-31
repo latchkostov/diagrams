@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import { formatDate } from "../i18n/format";
-import { tracks } from "./catalog";
+import { chapters } from "./chapters";
 import { justEarnedSeals, leaveLesson, lessonNumber, startNextLesson } from "./handoff";
 import { nextTutorial, type StoredTutorials } from "./progress";
-import { chapterSeals, lessonProgress, seals } from "./seals";
+import { lessonProgress, seals } from "./seals";
 import { Seal } from "./Seal";
 import type { Tutorial } from "./types";
 
@@ -22,7 +22,7 @@ export function FinishHandoff({
   const [dismissed, setDismissed] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const next = nextTutorial(tutorial, catalog, progress);
-  const chapter = chapterSeals.find((seal) => seal.track === tutorial.track)!;
+  const chapter = chapters[tutorial.track];
   const list = catalog.filter((lesson) => lesson.track === tutorial.track);
   const done = list.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
   const whole = catalog.every((lesson) => lessonProgress(progress, lesson)?.completed);
@@ -66,9 +66,7 @@ export function FinishHandoff({
               : t("tutorials.handoff.chapterProgress", { chapter: chapter.numeral, done, total: list.length })}
         </h2>
         {shown.map((seal) => {
-          const name = seal.track
-            ? tracks.find((track) => track.id === seal.track)!.label()
-            : t("tutorials.syllabus.whole");
+          const name = seal.track ? chapters[seal.track].label() : t("tutorials.syllabus.whole");
           return (
             <p className="tutorial-handoff-seal" key={seal.id} data-testid={`tutorial-handoff-seal-${seal.id}`}>
               <Seal numeral={seal.numeral} earned label={name} size={36} />
@@ -77,6 +75,9 @@ export function FinishHandoff({
           );
         })}
       </header>
+      <p className="tutorial-handoff-recap" data-testid="tutorial-handoff-recap">
+        {tutorial.finish.text()}
+      </p>
       {next && (
         <div className="tutorial-handoff-next" data-testid="tutorial-handoff-next">
           <p className="tutorials-eyebrow">
