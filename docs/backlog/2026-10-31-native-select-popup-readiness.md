@@ -2,8 +2,8 @@
 
 Nightly 41183332686 still fails the three macOS metric-picker locale cases with the original value, despite explicit Space and Enter. The initial repair opened and committed the popup but continued using `Locator.press` for each key, which focuses the DOM owner again. The exact expected values and translated labels remain correct; no assertion is removed.
 
-The harness now requires the select to have focus, opens it with the page keyboard, waits for the native `:open` signal, then sends navigation, Enter and Tab through the page keyboard. It does not refocus the DOM element between popup keys. The unchanged Speed test still checks uncancelled navigation-key defaults and requires 8×; the three metric tests still require threads waiting and their actual translated text.
+The follow-up experiment required focus and `:open`, then sent navigation through the page keyboard without refocusing the owner. This was not evidence that CDP could operate Cocoa's menu loop. The experiment is now removed and both original specs restored, with every keyboard and exact-value assertion enabled.
 
-Native Windows passes all four cases twice (**8 passed**), including the new explicit popup-open assertion. The two-repeat Linux result and macOS before/after rate are reported in the PR. This remains subject to native macOS verification: an unautomatable operating-system popup must be reported for a product/testing decision, never silently replaced with programmatic selection or quarantined.
+Windows and Linux each passed eight executions with the experiment. Those results do not establish macOS support. See `2026-10-31-native-select-platform-decision.md` for the primary Chromium explanation and isolated native diagnostic.
 
 Reference: [Playwright documents that Locator.press focuses the matching element](https://playwright.dev/docs/api/class-locator#locator-press). The macOS failure trace motivates avoiding that extra operation; its causal effect must agree with the final native result.

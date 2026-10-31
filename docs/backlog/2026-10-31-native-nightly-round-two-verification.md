@@ -5,7 +5,7 @@ Node 24.22.0, native Windows Chromium; Linux Playwright's pinned image. Producti
 | Cause                      | Windows evidence                                                                                                             | Linux verification                                                                       |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Interrupted reporting      | Killed-process regression fails without inventory; final lifecycle coverage passes                                           | 23 reporter units pass                                                                   |
-| Native select lifecycle    | Four affected cases, two repetitions: 8 pass                                                                                 | 8 pass, two repetitions                                                                  |
+| Native select experiment   | Four affected cases, two repetitions: 8 pass; experiment subsequently rejected                                               | 8 pass, two repetitions; original tests restored                                         |
 | Requested Live tutorial    | Held-session regression fails without readiness; affected cohort: 10 pass                                                    | Complete tutorial and peer cohort: 468 pass, two repetitions                             |
 | macOS candidate experiment | Both isolated candidate modes deliver a real message on Windows; five launch units pass                                      | Peer/tutorial cohort above; macOS evidence comes from branch Nightly                     |
 | Capture launch inheritance | Actual browser-command regression fails without inherited flags; corrected regression passes twice; 62 other executions pass | Four complete specs: 64 pass, two repetitions                                            |
@@ -31,4 +31,19 @@ Two tutorial gate invocations selected stale line numbers and found no tests; th
 
 ## Native runner authority
 
-Ready PR [#403](https://github.com/latchkostov/diagrams/pull/403). The first branch Nightly [41182626886](https://github.com/latchkostov/diagrams/actions/runs/41182626886) tests code commit `c5b57e6bc`, before the final verification-transfer repair. The final branch dispatch, tested SHA, per-OS shard table and remaining failure groups are reported in the PR and task handoff. The baseline inventory and persistence comparison are in `2026-10-31-native-nightly-inventory.md`; the missing 16 macOS results were unfinished after the unchanged step deadline, not intentional skips.
+Ready PR [#403](https://github.com/latchkostov/diagrams/pull/403). The first branch Nightly [41182626886](https://github.com/latchkostov/diagrams/actions/runs/41182626886) tests code commit `c5b57e6bc`, before the final verification-transfer repair. It was cancelled after newer code was pushed; its partial reports and diagnostic are evidence, not a completed green run. The final branch dispatch, tested SHA, per-OS shard table and remaining failure groups are reported in the PR and task handoff. The baseline inventory and persistence comparison are in `2026-10-31-native-nightly-inventory.md`; the missing 16 macOS results were unfinished after the unchanged step deadline, not intentional skips.
+
+## Completed intermediate branch run
+
+[41183332686](https://github.com/latchkostov/diagrams/actions/runs/41183332686) tests `0187ee291`, after required synchronization brought in master #402's new keyboard tutorials, but before the requested-Live, planner and fixture follow-ups. It is red, not a successful final verification.
+
+| OS      | Green shards | Red shards | Passed | Failed | Existing skips | Named unfinished |
+| ------- | -----------: | ---------: | -----: | -----: | -------------: | ---------------: |
+| Windows |            2 |          6 |   3025 |     21 |             15 |               44 |
+| macOS   |            4 |          8 |   3029 |     49 |             11 |               16 |
+
+All 60 unfinished identities are preserved, including started/not-started state, in the uploaded native reports. The macOS peer group has no remaining failures. The native select and Control-drag decisions remain open and assertions remain enabled. Of the 39 new macOS keyboard failures, 34 stop at the native-popup close boundary; the remaining five require separate investigation.
+
+Additional remaining groups in that run are Windows capacity/inspector readiness, documentation-tooltip and firewall selection, worker frame/particle observations, live/replay controls and tutorial predicates; macOS has bend-carry cancellation, entry-point Undo, copy-notice geometry and syllabus contrast. These are unresolved observations, not declared platform impossibilities or proven pre-existing failures. Detailed titles are retained in the run's native reports. The planner fixture and held-Live regression were repaired in later commits; their native evidence is in the corresponding fragments and final dispatch.
+
+The attempted clean-master keyboard comparison ran only that spec with two repeats in this same worktree. The shared gate returned **busy (75)**, so no master pass/fail claim is made and no live lock was removed. The branch was restored and remains pushed. Per the verification-budget rule, this does not block pushing; native CI remains the authority.

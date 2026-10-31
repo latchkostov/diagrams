@@ -226,6 +226,10 @@ jobs:
         if: always() && matrix.shard == 1
         timeout-minutes: 1
         run: node scripts/ci/native-rtc.mjs tests/.output/g/native-rtc.json
+      - name: Isolate native select keyboard delivery
+        if: always() && matrix.shard == 1
+        timeout-minutes: 1
+        run: node scripts/ci/native-select.mjs tests/.output/g/native-select.json
       - name: Collect native counts or interruption marker
         if: always()
         run: node scripts/e2e-failures.mjs --collect-native tests/.output/g tests/.output/native-results.json

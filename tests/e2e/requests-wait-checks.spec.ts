@@ -8,7 +8,6 @@ import {
   pauseClock,
   openCheckFinding,
 } from "./fixtures";
-import { openNativeSelect } from "./native-select";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
@@ -261,11 +260,8 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await expect(field).toHaveValue("threadsBusy");
     await field.focus();
     await expect(field).toBeFocused();
-    // macOS opens the popup on ArrowDown; a later Tab cancels that choice. Explicitly open and commit it.
-    await openNativeSelect(page, field);
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Tab");
+    await field.press("ArrowDown");
+    await field.press("Tab");
     await expect(field).toHaveValue("threadsWaiting");
     const words = await field.evaluate((el: HTMLSelectElement) => el.selectedOptions[0].textContent);
     if (locale === "en") expect(words).toBe("threads waiting");

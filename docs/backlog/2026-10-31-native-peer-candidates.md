@@ -6,7 +6,9 @@ The working hypothesis is mDNS host-candidate resolution on headless macOS. The 
 
 To verify the mechanism, shard 1 on each native OS records a same-run comparison after the unchanged browser gate: two isolated contexts, no signaling service, no STUN, real SDP exchange and a real data-channel message. The artifact includes mDNS and direct-candidate outcomes, ICE/connection state journals, candidates and candidate-pair stats. It writes each mode synchronously, closes each browser, and is included in the existing native report upload even if the gate fails. These are diagnostic observations, separate from test pass/fail counts. The original peer/admission assertions still run unchanged in every shard.
 
-Windows delivers the probe message in both modes. Unit regressions fail against the original launch helper (**2 failed, 3 passed**) and require the macOS feature addition, opt-out comparison, unchanged Linux flags and preservation of Windows's existing flags. macOS confirmation is pending branch Nightly; the flag is an experiment until its same-run comparison and the original admission tests agree.
+Windows delivers the probe message in both modes. Unit regressions fail against the original launch helper (**2 failed, 3 passed**) and require the macOS feature addition, opt-out comparison, unchanged Linux flags and preservation of Windows's existing flags.
+
+Native macOS confirmation: run 41182626886 shard 1 records mDNS **delivered=false**, both peers new/new with `.local` candidates; direct **delivered=true**, both connected/connected with private host candidates. Completed branch run 41183332686 reports **zero peer/admission failures**, including the 31 persistent cases above. This establishes the harness repair without changing the product or admission assertions. The final SHA's dispatch is linked in PR #403.
 
 ## Product decision for the orchestrator
 

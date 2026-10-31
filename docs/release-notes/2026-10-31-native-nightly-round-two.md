@@ -1,10 +1,10 @@
 ## Native browser verification
 
-Native Nightly now retains every discovered test identity when a deadline interrupts a shard, reporting unfinished tests separately from failures and existing skips. Keyboard checks open and commit native select popups. Live tutorial, timeline, inspector and verified-fix checks wait for their actual readiness signals. Tab-capture suites preserve the shared native Chromium launch configuration.
+Native Nightly now retains every discovered test identity when a deadline interrupts a shard, reporting unfinished tests separately from failures and existing skips. Live tutorial, timeline, inspector and verified-fix checks wait for their actual readiness signals. Tab-capture suites preserve the shared native Chromium launch configuration.
 
 Verification observers also preserve worker transfer lists, so observing a checks request cannot accidentally force canvas rendering onto the main thread.
 
-macOS peer tests also compare mDNS and direct host candidates in a server-free diagnostic; this is test-runner evidence, not a change to the application's network services. The original peer admission assertions remain enabled. The Control-drag/context-menu conflict and any remaining native failures are explicitly tracked for the orchestrator in the PR and dated backlog fragments.
+macOS peer tests also compare mDNS and direct host candidates in a server-free diagnostic; this is test-runner evidence, not a change to the application's network services. The original peer admission assertions remain enabled. An isolated select diagnostic records the native popup input boundary; unsuccessful popup-key experiments are removed. The select-driver decision, Control-drag/context-menu conflict and remaining native failures are explicitly tracked for the orchestrator in the PR and dated backlog fragments.
 
 ## Output parity
 

@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { openNativeSelect } from "./native-select";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, waitForCameraIdle, goToNode, setTheme, expectTheme } from "./fixtures";
 import { installFakeSpeech, speech, speechState, openAdvanced, installFakeLanguageModel } from "./ai-helpers";
@@ -85,12 +84,8 @@ test("R-caf692ac78 phone Speed retains native navigation keys", async ({ page })
     ).toBe(true);
     await expect(speed).toBeFocused();
   }
-  // Open the native popup, navigate, then commit. macOS leaves a closed select unchanged on End;
-  // Tab dismisses its popup without accepting the highlighted choice.
-  await openNativeSelect(page, speed);
-  await page.keyboard.press("End");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Tab");
+  await speed.press("End");
+  await speed.press("Tab");
   await expect(speed).toHaveValue("8");
 });
 
