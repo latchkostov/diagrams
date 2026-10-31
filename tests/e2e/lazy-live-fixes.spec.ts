@@ -370,12 +370,13 @@ test("pending script download freezes live controls and says so; Esc gives them 
   await gotoLive(page, `${KAFKA}&sim=payments-outage&speed=8`);
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
   await waitForCameraIdle(page);
-  await pauseClock(page);
-  const heldClock = await page.evaluate(() => performance.now());
   const at = (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) ?? "";
   // The note frames Payments: slow motion from there.
   await slowMotionFromStorefront(page, "payments");
   await expect.poll(script.requested).toBe(true);
+  // Opening the menu waits for any late camera refinement; freeze only once that work has completed.
+  await pauseClock(page);
+  const heldClock = await page.evaluate(() => performance.now());
   const loading = page.getByTestId("slowmo-loading");
   await expect(loading).toHaveAttribute("role", "status");
   await expect(loading).toContainText("Loading slow motion");
