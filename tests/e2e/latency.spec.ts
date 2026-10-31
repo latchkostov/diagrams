@@ -1,8 +1,45 @@
 import { fitDiagram, openInspectorLiveDetails } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { pseudoText } from "../../src/i18n/pseudo";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoLive, waitForCameraIdle, waitForStableViewport, expectNoErrors } from "./fixtures";
+
+/** Reaching a position can precede the compositor's final scroll; don't overlap native gestures. */
+async function scrollGesture(detail: Locator, direction: "start" | "end", action: () => Promise<unknown>) {
+  const pending = await detail.evaluateHandle((el, direction) => {
+    let finish!: () => void;
+    const finished = new Promise<void>((resolve) => (finish = resolve));
+    const cancel = () => el.removeEventListener("scrollend", done);
+    const done = () => {
+      cancel();
+      finish();
+    };
+    if (direction === "start" ? el.scrollTop === 0 : el.scrollTop + el.clientHeight >= el.scrollHeight - 1) finish();
+    else el.addEventListener("scrollend", done);
+    return { finished, cancel };
+  }, direction);
+  try {
+    await action();
+    await pending.evaluate(({ finished }) => finished);
+  } finally {
+    await pending.evaluate(({ cancel }) => cancel());
+    await pending.dispose();
+  }
+}
+
+test("a scroll gesture finishes before the driver hands off the next input", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="scroll" tabindex="0" style="height:100px;overflow:auto"><div style="height:1000px">Native scroll</div></div>',
+  );
+  const scroller = page.getByTestId("scroll");
+  await scroller.evaluate((el) => {
+    el.addEventListener("wheel", () => (el.dataset.scrolling = "true"));
+    el.addEventListener("scrollend", () => (el.dataset.scrolling = "false"));
+  });
+  await scroller.hover();
+  await scrollGesture(scroller, "end", () => page.mouse.wheel(0, 300));
+  expect(await scroller.getAttribute("data-scrolling")).toBe("false");
+});
 
 async function editableLatencyDetails(page: Page) {
   await page.setViewportSize({ width: 1280, height: 400 });
@@ -270,22 +307,23 @@ for (const surface of ["embed", "presentation"]) {
     await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
     await detail.hover();
     await expect(detail).toBeVisible();
-    await page.mouse.wheel(0, 300);
+    await scrollGesture(detail, "end", () => page.mouse.wheel(0, 300));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-    await page.mouse.wheel(0, await detail.evaluate((el) => el.scrollHeight));
+    const height = await detail.evaluate((el) => el.scrollHeight);
+    await scrollGesture(detail, "end", () => page.mouse.wheel(0, height));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
     await detail.focus();
     await expect(detail).toBeFocused();
-    await page.keyboard.press("Home");
+    await scrollGesture(detail, "start", () => page.keyboard.press("Home"));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
-    await page.keyboard.press("End");
+    await scrollGesture(detail, "end", () => page.keyboard.press("End"));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
-    await page.keyboard.press("Home");
+    await scrollGesture(detail, "start", () => page.keyboard.press("Home"));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
     const pages = await detail.evaluate((el) => Math.ceil(el.scrollHeight / (el.clientHeight * 0.875)));
-    for (let i = 0; i < pages; i++) await page.keyboard.press("PageDown");
+    for (let i = 0; i < pages; i++) await scrollGesture(detail, "end", () => page.keyboard.press("PageDown"));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
-    for (let i = 0; i < pages; i++) await page.keyboard.press("PageUp");
+    for (let i = 0; i < pages; i++) await scrollGesture(detail, "start", () => page.keyboard.press("PageUp"));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
     await page.keyboard.press("Shift+Tab");
     if (surface === "embed")
