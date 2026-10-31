@@ -1,10 +1,5 @@
 import { t } from "../i18n";
-import {
-  beginObservedWork,
-  observationPorts,
-  sameObservationSource,
-  type ObservationSource,
-} from "../lib/observations";
+import { beginObservedWork, observationPorts, type ObservationSource } from "../lib/observations";
 import { currentObservationSource } from "../palette/observationSource";
 // Local files: the File System Access API where available (Chrome / Edge: real "Save" back to the
 // same file, which also works inside a Google Drive for desktop or OneDrive synced folder), with
@@ -38,15 +33,12 @@ type FsWindow = Window & {
 
 export type FileHandle = FsHandle;
 
-/** Capture before awaiting a writer. Cancellation or document replacement prevents its late download. */
+/** Capture before awaiting a writer. Only explicit sandbox cancellation prevents its late download. */
 export function createFileWriter() {
   const source = currentObservationSource();
   const work = beginObservedWork(source);
   const check = () => {
     work.signal.throwIfAborted();
-    const now = currentObservationSource();
-    if (source && (!now || !sameObservationSource(source, now)))
-      throw new DOMException(t("common.tryAgain"), "AbortError");
   };
   return {
     ...work,

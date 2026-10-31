@@ -340,7 +340,7 @@ export function useInterop({
         void messages.then(show).catch(() => {});
       }, writer);
     } catch (err) {
-      if (writer.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
+      if (writer.signal.aborted) return;
       if (err instanceof StorageError && err.standalone) toast.error(err.message);
       else
         void messages.then(

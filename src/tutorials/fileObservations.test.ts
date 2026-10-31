@@ -72,22 +72,62 @@ it("Restart/Exit during a native write aborts before commit and publishes nothin
   written.resolve(undefined);
   await rejected;
   expect(stream.close).not.toHaveBeenCalled();
+  expect(stream.abort).toHaveBeenCalledOnce();
   expect(listener).not.toHaveBeenCalled();
 });
 
-it("a picker captures ownership before waiting; replacement cannot write A's content as B", async () => {
+it("explicit tutorial replacement during the picker cannot write the old sandbox's content", async () => {
   const picked = deferred<FileHandle>();
   const { file } = handle();
   vi.stubGlobal("window", { showSaveFilePicker: () => picked.promise });
   const listener = listen();
   const pending = saveWithPicker("A's public content", "public.diagram.json");
   const rejected = expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  cancelObservedWork(context.source);
   context.current = { documentId: "other", identity: {} };
   picked.resolve(file);
   await rejected;
   expect(file.createWritable).not.toHaveBeenCalled();
   expect(listener).not.toHaveBeenCalled();
 });
+
+it("a picker retains its initiating source after navigating to another document", async () => {
+  const picked = deferred<FileHandle>();
+  const { file, stream } = handle();
+  vi.stubGlobal("window", { showSaveFilePicker: () => picked.promise });
+  const listener = listen();
+  const pending = saveWithPicker("A's public content", "public.diagram.json");
+  context.current = { documentId: "other", identity: {} };
+  picked.resolve(file);
+  expect(await pending).toBe(file);
+  expect(stream.close).toHaveBeenCalledOnce();
+  expect(listener).toHaveBeenCalledWith({ ...context.source, format: "native", bytes: 18 });
+});
+
+for (const stage of ["createWritable", "write"] as const)
+  for (const change of ["navigation", "promotion"] as const)
+    it(`native Save survives ${change} during ${stage}`, async () => {
+      const held = deferred<undefined>();
+      const { file, stream } = handle();
+      if (stage === "createWritable")
+        vi.mocked(file.createWritable).mockImplementation(async () => {
+          await held.promise;
+          return stream;
+        });
+      else stream.write.mockImplementation(() => held.promise);
+      const listener = listen();
+      const pending = writeHandle(file, "captured content");
+      await vi.waitFor(() => expect(stage === "write" ? stream.write : file.createWritable).toHaveBeenCalledOnce());
+      context.current = {
+        documentId: change === "promotion" ? "my-copy" : "other",
+        identity: change === "promotion" ? context.source.identity : {},
+      };
+      held.resolve(undefined);
+      await pending;
+      expect(stream.close).toHaveBeenCalledOnce();
+      expect(stream.abort).not.toHaveBeenCalled();
+      expect(listener).toHaveBeenCalledWith({ ...context.source, format: "native", bytes: 16 });
+    });
 
 it("cancelling a system picker or a delayed download never publishes success", async () => {
   vi.stubGlobal("window", {

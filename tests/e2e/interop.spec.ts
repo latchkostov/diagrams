@@ -74,8 +74,10 @@ interface FsState {
   writes: { name: string; text: string }[];
   cancel: boolean;
   rejectWrite: boolean;
+  abortWrite: boolean;
   denyPermission: boolean;
   defer: boolean;
+  holdWrite?: "createWritable" | "write";
   release?: () => void;
 }
 declare global {
@@ -91,23 +93,39 @@ async function fakeFileSystem(page: Page) {
       writes: [],
       cancel: false,
       rejectWrite: false,
+      abortWrite: false,
       denyPermission: false,
       defer: false,
     };
     window.__fs = state;
+    const hold = async (stage: "createWritable" | "write") => {
+      if (state.holdWrite === stage)
+        await new Promise<void>((resolve) => {
+          state.release = resolve;
+        });
+    };
     const handle = (name: string) => ({
       kind: "file",
       name,
       getFile: async () => new File([JSON.stringify(diagram)], name, { type: "application/json" }),
       queryPermission: async () => (state.denyPermission ? "denied" : "granted"),
       requestPermission: async () => (state.denyPermission ? "denied" : "granted"),
-      createWritable: async () => ({
-        write: async (text: string) => {
-          if (state.rejectWrite) throw new Error("write failed");
-          state.writes.push({ name, text });
-        },
-        close: async () => {},
-      }),
+      createWritable: async () => {
+        await hold("createWritable");
+        let pending = "";
+        return {
+          write: async (text: string) => {
+            await hold("write");
+            if (state.rejectWrite) throw new Error("write failed");
+            if (state.abortWrite) throw new DOMException("device write aborted", "AbortError");
+            pending = text;
+          },
+          close: async () => {
+            state.writes.push({ name, text: pending });
+          },
+          abort: async () => {},
+        };
+      },
     });
     Object.defineProperty(window, "showOpenFilePicker", {
       configurable: true,
@@ -505,6 +523,13 @@ test.describe("interop review regressions", () => {
     await expect(page.getByTestId("toast")).toContainText("write failed");
     await page.evaluate(() => {
       window.__fs.rejectWrite = false;
+      window.__fs.abortWrite = true;
+    });
+    await page.keyboard.press("ControlOrMeta+s");
+    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+    await expect(page.getByTestId("toast")).toContainText("device write aborted");
+    await page.evaluate(() => {
+      window.__fs.abortWrite = false;
       window.__fs.denyPermission = true;
     });
     await page.keyboard.press("ControlOrMeta+s");
@@ -634,6 +659,32 @@ test.describe("interop review regressions", () => {
   });
 });
 
+for (const stage of ["createWritable", "write"] as const)
+  test(`pending bound device Save survives switching diagrams during ${stage}`, async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importNative(page);
+    await saveFile(page);
+    await page.evaluate((stage) => {
+      window.__fs.holdWrite = stage;
+    }, stage);
+    await page.keyboard.press("ControlOrMeta+s");
+    await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
+    await importNative(page, "Replacement B");
+    await page.evaluate(() => {
+      window.__fs.holdWrite = undefined;
+      window.__fs.release?.();
+    });
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+    expect(await page.evaluate(() => window.__fs.writes[1])).toEqual({
+      name: "saved-1.json",
+      text: await page.evaluate(() => window.__fs.writes[0].text),
+    });
+    await expect(page.getByTestId("diagram-title")).toHaveText("Replacement B");
+    await saveFile(page);
+    expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+  });
+
 test("image export wraps an unbroken title and URL within the measured one-node bounds @dev", async ({ page }) => {
   test.slow();
   await gotoLab(page, "header-overflow");
@@ -670,33 +721,36 @@ test("image export wraps an unbroken title and URL within the measured one-node 
   await expect(page.getByTestId("export-header")).toHaveCount(0);
 });
 
-test("pending Save follows the first promoted copy (device)", async ({ page }) => {
-  await fakeFileSystem(page);
-  await gotoCanvas(page, "kafka-order-pipeline");
-  await page.evaluate(() => {
-    window.__fs.defer = true;
+for (const stage of ["picker", "createWritable", "write"] as const)
+  test(`pending Save follows the first promoted copy (device, ${stage})`, async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await page.evaluate((stage) => {
+      window.__fs.defer = stage === "picker";
+      window.__fs.holdWrite = stage === "picker" ? undefined : stage;
+    }, stage);
+    await openFile(page);
+    await page.getByTestId("file-save").click();
+    await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Promoted storefront");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await page.evaluate(() => {
+      window.__fs.defer = false;
+      window.__fs.holdWrite = undefined;
+      window.__fs.release?.();
+    });
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
+    await expect(page.getByTestId("save-status")).toBeVisible();
+    await page.keyboard.press("ControlOrMeta+s");
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+    expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(1);
+    expect(
+      await page.evaluate(
+        () => JSON.parse(window.__fs.writes[1].text).nodes.find((n: { id: string }) => n.id === "shopper").label,
+      ),
+    ).toBe("Promoted storefront");
   });
-  await openFile(page);
-  await page.getByTestId("file-save").click();
-  await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
-  await page.getByTestId("node-shopper").click();
-  await page.getByTestId("inspector-field-label").fill("Promoted storefront");
-  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
-  await page.evaluate(() => {
-    window.__fs.defer = false;
-    window.__fs.release?.();
-  });
-  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
-  await expect(page.getByTestId("save-status")).toBeVisible();
-  await page.keyboard.press("ControlOrMeta+s");
-  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
-  expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(1);
-  expect(
-    await page.evaluate(
-      () => JSON.parse(window.__fs.writes[1].text).nodes.find((n: { id: string }) => n.id === "shopper").label,
-    ),
-  ).toBe("Promoted storefront");
-});
 
 test("reopening an example never overwrites its Private copy's destination", async ({ page }) => {
   await fakeFileSystem(page);
