@@ -43,7 +43,10 @@ export const commandPalette: Tutorial = {
       goal: addGoalWords,
       done: msg("tutorials.commandPalette.addDone"),
       check: { kind: "node", subject: "topic" },
-      targets: [{ testId: "canvas-pane", tip: addTipWords }],
+      targets: [
+        { testId: "command-input", tip: addTipWords },
+        { testId: "canvas-pane", tip: addTipWords },
+      ],
       demo: [{ kind: "add", subject: "topic", stencil: "kafka.topic" }],
       solution: [
         { press: "ControlOrMeta+k" },

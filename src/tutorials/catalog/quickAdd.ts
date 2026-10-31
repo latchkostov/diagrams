@@ -54,6 +54,28 @@ export const quickAdd: Tutorial = {
       demo: [{ kind: "add", subject: "api", stencil: "generic.service", after: "app" }],
       solution: [{ click: "node-{app}" }, { press: "Alt+ArrowRight" }, { press: "Enter" }],
       guide: { quickAdd: stencilSearch("generic.service") },
+      coach: {
+        routes: [
+          {
+            kind: "pointer",
+            summary: msg("tutorials.quickAdd.coach.pointerSummary"),
+            targets: [
+              { testId: "quick-add-search", tip: msg("tutorials.quickAdd.coach.pickService") },
+              { testId: "grow-chip-{app}", selected: "app", tip: msg("tutorials.quickAdd.coach.growChip") },
+              { testId: "node-{app}", tip: msg("tutorials.quickAdd.coach.selectApp") },
+            ],
+          },
+          {
+            kind: "keyboard",
+            summary: msg("tutorials.quickAdd.coach.keyboardSummary"),
+            targets: [
+              { testId: "quick-add-search", tip: msg("tutorials.quickAdd.coach.pickService") },
+              { testId: "node-{app}", selected: "app", tip: msg("tutorials.quickAdd.coach.altArrow") },
+              { testId: "node-{app}", tip: msg("tutorials.quickAdd.coach.focusApp") },
+            ],
+          },
+        ],
+      },
     },
     {
       id: "name-api",
@@ -62,7 +84,7 @@ export const quickAdd: Tutorial = {
       done: msg("tutorials.quickAdd.nameApiDone"),
       check: { kind: "label", subject: "api", is: msg("tutorials.quickAdd.apiName") },
       targets: [
-        { testId: "inspector-field-label", tip: nameApiGoalWords },
+        { testId: "inspector-field-label", tip: nameApiGoalWords, selected: "api" },
         { testId: "node-{api}", tip: nameApiGoalWords },
       ],
       demo: [{ kind: "rename", subject: "api", label: msg("tutorials.quickAdd.apiName") }],
@@ -86,6 +108,28 @@ export const quickAdd: Tutorial = {
         { testId: "node-{api}", tip: growDbGoalWords },
       ],
       demo: [{ kind: "add", subject: "db", stencil: "postgres", after: "api" }],
+      coach: {
+        routes: [
+          {
+            kind: "pointer",
+            summary: msg("tutorials.quickAdd.coach.dbPointerSummary"),
+            targets: [
+              { testId: "quick-add-search", tip: msg("tutorials.quickAdd.coach.pickPostgres") },
+              { testId: "grow-chip-{api}", selected: "api", tip: msg("tutorials.quickAdd.coach.growChipApi") },
+              { testId: "node-{api}", tip: msg("tutorials.quickAdd.coach.selectApi") },
+            ],
+          },
+          {
+            kind: "keyboard",
+            summary: msg("tutorials.quickAdd.coach.dbKeyboardSummary"),
+            targets: [
+              { testId: "quick-add-search", tip: msg("tutorials.quickAdd.coach.pickPostgres") },
+              { testId: "node-{api}", selected: "api", tip: msg("tutorials.quickAdd.coach.altArrow") },
+              { testId: "node-{api}", tip: msg("tutorials.quickAdd.coach.focusApi") },
+            ],
+          },
+        ],
+      },
       solution: [
         { click: "node-{api}" },
         { press: "Alt+ArrowRight" },

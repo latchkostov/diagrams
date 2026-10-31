@@ -1,0 +1,415 @@
+/* Instructions beside the target; quiet decoration never intercepts input. */
+
+.coach-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--layer-coach);
+}
+
+/* A quiet ring; it follows measurements without sweeping across other controls. */
+.coach-ring {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 6px var(--accent-soft);
+}
+
+.coach-leader {
+  position: fixed;
+  inset: 0;
+  overflow: visible;
+}
+
+.coach-leader line {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.coach-leader circle {
+  fill: var(--accent);
+}
+
+/* ---------- the card ---------- */
+
+.coach-card {
+  position: fixed;
+  z-index: var(--layer-coach-tip);
+  box-sizing: border-box;
+  inline-size: 340px;
+  max-inline-size: calc(100vw - 24px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: var(--shadow-2);
+}
+
+@media (min-width: 1800px) {
+  .coach-card.is-card {
+    inline-size: 364px;
+  }
+}
+
+.coach-card .tutorial-strip.coach-strip {
+  display: block;
+  min-height: 0;
+  max-height: none;
+  padding: 10px 12px 12px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+
+.coach-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 24px;
+}
+
+.coach-count {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.coach-title {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+
+.coach-card .coach-fold {
+  flex: none;
+  inline-size: 26px;
+  block-size: 26px;
+  margin-inline-end: -4px;
+  padding: 0;
+  color: var(--text-3);
+}
+
+.coach-fold svg {
+  rotate: 180deg;
+  transition: rotate var(--dur-2) var(--ease-out);
+}
+
+.coach-fold[aria-expanded="false"] svg {
+  rotate: 0deg;
+}
+
+.coach-card .tutorial-words {
+  display: grid;
+  gap: 6px;
+  margin-block-start: 6px;
+  max-block-size: 40vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.coach-card .tutorial-goal {
+  max-inline-size: none;
+  font-size: 13.5px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.coach-card .tutorial-aside,
+.coach-card .tutorial-done,
+.coach-card .tutorial-near-miss,
+.coach-card .tutorial-fallback {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.coach-card .tutorial-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-block-start: 10px;
+  max-inline-size: none;
+}
+
+.coach-card .tutorial-actions .btn {
+  block-size: 28px;
+  padding-inline: 10px;
+  font-size: 12.5px;
+}
+
+/* Folded: the head only (the learner's choice). Compact: head and actions (a phone sheet keeping off the target). */
+.coach-card.is-collapsed .tutorial-words,
+.coach-card.is-collapsed .tutorial-actions,
+.coach-card.is-compact .tutorial-words {
+  max-block-size: 0;
+  margin: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* The pointer: a square turned to face the target, bordered on its two outer sides only. */
+.coach-nub {
+  position: absolute;
+  box-sizing: border-box;
+  inline-size: 11px;
+  block-size: 11px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+  rotate: 45deg;
+  pointer-events: none;
+}
+
+.coach-card.is-right .coach-nub {
+  left: -6px;
+  margin-top: -5.5px;
+  border-top: 0;
+  border-right: 0;
+}
+
+.coach-card.is-left .coach-nub {
+  right: -6px;
+  margin-top: -5.5px;
+  border-bottom: 0;
+  border-left: 0;
+}
+
+.coach-card.is-below .coach-nub {
+  top: -6px;
+  margin-left: -5.5px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.coach-card.is-above .coach-nub {
+  bottom: -6px;
+  margin-left: -5.5px;
+  border-top: 0;
+  border-left: 0;
+}
+
+/* ---------- phones: a sheet on the edge away from the target ---------- */
+
+.coach-card.is-sheet {
+  left: 8px;
+  right: 8px;
+  inline-size: auto;
+  max-inline-size: none;
+}
+
+.coach-card.is-sheet .tutorial-words {
+  max-block-size: 28dvh;
+}
+
+.coach-card.is-sheet .tutorial-goal {
+  font-size: 14px;
+}
+
+.coach-card.is-sheet .tutorial-actions .btn {
+  block-size: 36px;
+  min-inline-size: 0;
+  white-space: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-ring,
+  .coach-fold svg,
+  .coach-card {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---------- keys, routes and help (lesson 1.3 feedback) ---------- */
+
+.coach-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline: 1px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.coach-key {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* The node's own "+": an accent disc, as the grow chip looks on the canvas. */
+.coach-key.is-plus {
+  min-inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.coach-plus {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.coach-card .tutorial-goal {
+  display: grid;
+  gap: 6px;
+}
+
+.coach-routes {
+  display: inline-flex;
+  justify-self: start;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+
+.coach-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  block-size: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.coach-route[aria-pressed="true"] {
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.1);
+}
+
+.coach-route:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The next move, at the target the card points to. */
+.coach-now {
+  font-weight: 550;
+}
+
+.coach-summary {
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+/* The help ladder: under a hairline, tied to the card. */
+.coach-card .tutorial-actions.coach-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-block-start: 10px;
+  padding-block-start: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.coach-stuck {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.coach-rungs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+
+.coach-card .coach-help .btn {
+  gap: 3px;
+}
+
+.coach-card .coach-help .btn-ghost[aria-pressed="true"],
+.coach-card .coach-help .btn-ghost[aria-expanded="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.coach-help.is-nudged .coach-stuck {
+  color: var(--text);
+  font-weight: 550;
+}
+
+.coach-help.is-nudged [data-testid="tutorial-skip"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.coach-summary {
+  display: block;
+}
+@media (pointer: coarse) {
+  .coach-card .tutorial-actions .btn,
+  .coach-route,
+  .coach-card .coach-fold {
+    min-block-size: 36px;
+  }
+}
+
+.coach-card.is-sheet:is(.is-compact, .is-collapsed) .tutorial-words {
+  max-block-size: 0;
+  margin-block-start: 0;
+}
+.coach-card .coach-highlights {
+  display: inline-flex;
+  align-items: center;
+}
+.coach-card .coach-highlights input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.coach-completion {
+  padding: 8px 20px;
+  border-block-start: 1px solid var(--line);
+}
+.coach-completion .tutorial-actions {
+  max-inline-size: none;
+}
+.coach-completion .tutorial-words {
+  margin-block-start: 6px;
+}
+
+.coach-strip > .coach-routes {
+  margin-block-start: 6px;
+}
+.coach-card.is-collapsed .coach-routes {
+  display: none;
+}

@@ -99,6 +99,7 @@ export function FinishHandoff({
           </ol>
         </div>
       )}
+      <div data-testid="tutorial-completion-mount" />
       <footer>
         {next && (
           <button

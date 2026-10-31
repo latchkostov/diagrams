@@ -76,7 +76,10 @@ export const workbenchTour: Tutorial = {
         ],
       },
       sticky: true,
-      targets: [{ testId: "rail-add", tip: msg("tutorials.workbenchTour.toolsTitle") }],
+      targets: [
+        { testId: "palette-search", tip: msg("tutorials.workbenchTour.toolsGoal") },
+        { testId: "rail-add", tip: msg("tutorials.workbenchTour.toolsTitle") },
+      ],
       demo: [],
       solution: [
         { click: "rail-add" },
@@ -101,7 +104,10 @@ export const workbenchTour: Tutorial = {
         ],
       },
       sticky: true,
-      targets: [{ testId: "live-toggle", tip: msg("tutorials.workbenchTour.readTitle") }],
+      targets: [
+        { testId: "node-{api}", live: true, tip: msg("tutorials.workbenchTour.readGoal") },
+        { testId: "live-toggle", tip: msg("tutorials.workbenchTour.readTitle") },
+      ],
       demo: [],
       solution: [{ click: "live-toggle" }, { hover: "node-{api}" }],
     },

@@ -87,7 +87,7 @@ test("Restart cancels a boundary move while its chunk is delayed", async ({ page
   }
 });
 
-test("RTL tips choose a visible field, then its disclosure, and stay within the pane", async ({ page }) => {
+test("RTL coach chooses a visible field, then its disclosure, and stays beside the dock", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("diagrams.locale", "ar"));
   await begin(page);
   await page.getByTestId("node-c").click({ position: { x: 20, y: 35 } });
@@ -98,14 +98,17 @@ test("RTL tips choose a visible field, then its disclosure, and stay within the 
   await page.getByTestId("inspector-section-node-simulation").click();
   await page.getByTestId("inspector-field-replicas").scrollIntoViewIfNeeded();
   await expect(coach).toHaveAttribute("data-target", "inspector-field-replicas");
-  const tip = page.getByTestId("tutorial-tip");
+  const tip = page.getByTestId("coach-card");
   await expect(tip).toBeVisible();
   const r = await box(tip),
-    pane = await box(page.getByTestId("inspector-body"));
-  expect(r.x).toBeGreaterThanOrEqual(pane.x);
-  expect(r.x + r.width).toBeLessThanOrEqual(pane.x + pane.width);
-  expect(r.y).toBeGreaterThanOrEqual(pane.y);
-  expect(r.y + r.height).toBeLessThanOrEqual(pane.y + pane.height);
+    pane = await box(page.getByTestId("inspector"));
+  expect(r.x + r.width <= pane.x || r.x >= pane.x + pane.width).toBe(true);
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("Missing viewport");
+  expect(r.x).toBeGreaterThanOrEqual(0);
+  expect(r.x + r.width).toBeLessThanOrEqual(viewport.width);
+  expect(r.y).toBeGreaterThanOrEqual(0);
+  expect(r.y + r.height).toBeLessThanOrEqual(viewport.height);
 });
 
 for (const viewport of [
@@ -126,7 +129,9 @@ for (const viewport of [
       await page.getByTestId(`dock-snap-${snap}`).click();
       await reachable(page.getByTestId("tutorial-exit"));
       await reachable(page.getByTestId("tutorial-skip"));
-      await expect(page.getByTestId("tutorial-goal")).toBeInViewport();
+      if ((await page.getByTestId("coach-card").getAttribute("data-compact")) === "true")
+        await expect(page.getByTestId("coach-title")).toBeInViewport();
+      else await expect(page.getByTestId("tutorial-goal")).toBeInViewport();
     }
     await page.getByTestId("dock-snap-peek").click();
     await page.evaluate(() => {
@@ -158,7 +163,9 @@ for (const viewport of [
     await expect(page.getByTestId("live-note")).toHaveAttribute("data-expanded", "1");
     await reachable(page.getByTestId("tutorial-exit"));
     await reachable(page.getByTestId("tutorial-skip"));
-    await expect(page.getByTestId("tutorial-goal")).toBeInViewport();
+    if ((await page.getByTestId("coach-card").getAttribute("data-compact")) === "true")
+      await expect(page.getByTestId("coach-title")).toBeInViewport();
+    else await expect(page.getByTestId("tutorial-goal")).toBeInViewport();
     await page.getByTestId("live-note-close").click();
     await page.getByTestId("tutorial-exit").click();
     await expect(page.getByTestId("tutorials-view")).toBeVisible();
