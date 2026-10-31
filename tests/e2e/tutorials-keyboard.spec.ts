@@ -13,6 +13,13 @@ import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutoria
 
 class CompletedStep extends Error {}
 
+async function activeControl(page: Page) {
+  return page.evaluate(() => {
+    const el = document.activeElement;
+    return el?.getAttribute("data-testid") ?? `${el?.tagName ?? "none"}:${document.hasFocus()}`;
+  });
+}
+
 /** Every operation below sends real keys. Locator reads choose a route; none moves focus or invokes an action. */
 async function write(page: Page, text: string) {
   await page.keyboard.press("ControlOrMeta+a");
@@ -107,6 +114,8 @@ async function focus(page: Page, id: string) {
     return backward < forward;
   });
   const seen = new Set<string>();
+  const limit = await page.getByTestId(/./).count();
+  let moves = 0;
   while (
     !(await target.evaluate(
       (el) =>
@@ -132,12 +141,12 @@ async function focus(page: Page, id: string) {
       seen.clear();
       continue;
     }
-    const active = await page.evaluate(() => {
-      const el = document.activeElement;
-      return el?.getAttribute("data-testid") ?? el?.outerHTML ?? "none";
-    });
-    if (seen.has(active)) throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
-    seen.add(active);
+    const active = await activeControl(page);
+    const body = active.startsWith("BODY:");
+    if (++moves > limit || (!body && seen.has(active)))
+      throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
+    // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
+    if (!body) seen.add(active);
     const roving = await target.evaluate((el) => {
       let parent = el.parentElement;
       while (parent) {
@@ -151,14 +160,9 @@ async function focus(page: Page, id: string) {
       return false;
     });
     await page.keyboard.press(roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const el = document.activeElement;
-          return el?.getAttribute("data-testid") ?? el?.outerHTML ?? "none";
-        }),
-      )
-      .not.toBe(active);
+    // Roving focus and portal teardown can cross body before the destination lands on the next frame.
+    await animationFrames(page);
+    if (!body) await expect.poll(() => activeControl(page)).not.toBe(active);
   }
 }
 
