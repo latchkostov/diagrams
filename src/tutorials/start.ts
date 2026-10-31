@@ -44,11 +44,13 @@ export const tutorialStartMachine = defineMachine<StartState, StartEvent, { type
 });
 
 /** Cancellation and Retry belong to the loader machine; a late download can never open a departed tutorial. */
-export function createTutorialStart(tutorial: Tutorial, load = loadTutorialStart) {
+export function createTutorialStart(tutorial: Tutorial, load = loadTutorialStart, onFailure = () => {}) {
   const machine = createMachine(tutorialStartMachine);
   const listeners = new Set<() => void>();
   const send = (event: StartEvent) => {
+    const before = machine.state;
     const { commands } = machine.send(event);
+    if (event.type === "reject" && before !== machine.state) onFailure();
     listeners.forEach((f) => f());
     for (const command of commands)
       void load(tutorial).then(

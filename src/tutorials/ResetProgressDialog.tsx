@@ -71,6 +71,7 @@ export function ResetProgressDialog({
                     type="radio"
                     name="tutorial-reset-scope"
                     checked={kind === option}
+                    tabIndex={kind === option ? 0 : -1}
                     onChange={() => setKind(option)}
                     data-testid={`tutorials-reset-scope-${option}`}
                   />

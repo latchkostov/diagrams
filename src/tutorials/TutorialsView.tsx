@@ -22,15 +22,12 @@ import { chapterSeals, lessonProgress } from "./seals";
 import { Seal } from "./Seal";
 import { SealsPage } from "./SealsPage";
 import { ResetProgressDialog } from "./ResetProgressDialog";
+import { lessonReturn, lessonNumber as numberedLesson } from "./handoff";
 import { tutorialRoute } from "./route";
 import type { TrackId, Tutorial } from "./types";
 import "./tutorials.css";
 
-// Retain the lesson's chapter across the existing history-based Exit/Done handoff.
-let lastChapter: TrackId | undefined;
-const chapterNumber = (track: TrackId) => tracks.findIndex((x) => x.id === track) + 1;
-const lessonNumber = (lesson: Tutorial) =>
-  `${chapterNumber(lesson.track)}.${tutorials.filter((x) => x.track === lesson.track).indexOf(lesson) + 1}`;
+const lessonNumber = (lesson: Tutorial) => numberedLesson(lesson, tutorials);
 
 export function TutorialsView() {
   useLocale();
@@ -42,7 +39,7 @@ export function TutorialsView() {
       const p = lessonProgress(progress, lesson);
       return p && !p.completed;
     }) ?? ordered.find((lesson) => !lessonProgress(progress, lesson)?.completed);
-  const [open, setOpen] = useState<TrackId | null>(() => lastChapter ?? current?.track ?? tracks[0].id);
+  const [open, setOpen] = useState<TrackId | null>(() => lessonReturn.lesson?.track ?? current?.track ?? tracks[0].id);
   const [page, setPage] = useState<"hub" | "seals">("hub");
   const [reset, setReset] = useState<ResetScope | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -52,10 +49,12 @@ export function TutorialsView() {
   const done = tutorials.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
   const awards = earnedSeals(progress, tutorials);
   useEffect(() => {
+    const id = lessonReturn.lesson?.id;
+    if (id) document.querySelector(`[data-testid="tutorial-open-${id}"]`)?.scrollIntoView({ block: "nearest" });
     writeTutorials((s) => recordSeals(s, tutorials));
   }, []);
   const launch = (lesson: Tutorial) => {
-    lastChapter = lesson.track;
+    lessonReturn.lesson = lesson;
     tutorialRoute.open(lesson.id);
   };
   const changePage = (next: "hub" | "seals") => {
@@ -77,11 +76,7 @@ export function TutorialsView() {
       },
     });
   };
-  const savedStep = current ? lessonProgress(progress, current)?.step : undefined;
-  const resumeStep =
-    current && typeof savedStep === "number" && Number.isInteger(savedStep) && savedStep >= 0
-      ? Math.min(savedStep, current.steps.length - 1)
-      : 0;
+  const resumeStep = current ? Math.min(lessonProgress(progress, current)?.step ?? 0, current.steps.length - 1) : 0;
   return (
     <div className="tutorials-view" data-testid="tutorials-view">
       <div className="tutorials-wrap">
