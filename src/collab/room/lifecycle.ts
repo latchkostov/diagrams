@@ -388,11 +388,28 @@ export class RoomLifecycle {
       if (this.attempt === attempt) void this.leave();
     };
     work.signal.addEventListener("abort", cancel, { once: true });
-    try {
-      return await this.openRoom(o);
-    } finally {
+    const finish = () => {
       work.signal.removeEventListener("abort", cancel);
       work.finish();
+    };
+    try {
+      const opened = await this.openRoom(o);
+      if (opened && !opened.ready) {
+        // accept() returns a waiting room before a peer supplies its document. That join is still pending work.
+        const changed = () => {
+          const current = this.snap.open;
+          if (this.attempt !== attempt || !current || current.mount !== opened.mount || current.ready) {
+            stop();
+            finish();
+          }
+        };
+        const stop = this.subscribe(changed);
+        changed();
+      } else finish();
+      return opened;
+    } catch (error) {
+      finish();
+      throw error;
     }
   }
 
