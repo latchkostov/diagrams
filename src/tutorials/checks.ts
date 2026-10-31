@@ -17,7 +17,7 @@ import type {
   SubjectSpec,
   Tutorial,
 } from "./types";
-import { matchesSimulation } from "./simulations";
+import { matchesExpectation, matchesSimulation } from "./simulations";
 import type { Baseline } from "./machine";
 import { equal, readPath } from "./paths";
 import { checkProps } from "./configuration";
@@ -441,7 +441,11 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.session?.running?.id === check.simulation &&
         !!view.session.run?.expectations.some(
           (e) =>
-            (e.id === label || e.label === label) &&
+            (check.match
+              ? view.session?.running?.expectations?.some(
+                  (definition) => definition.id === e.id && matchesExpectation(definition, check.match),
+                )
+              : e.id === label || e.label === label) &&
             (outcome === "either" ? e.status !== "pending" : e.status === outcome),
         )
       );

@@ -143,8 +143,7 @@ export const authorASimulation: Tutorial = {
         kind: "all",
         checks: [
           { kind: "simulation", saved: match(true, true) },
-          // eslint-disable-next-line local/no-literal-ui-text -- Stable expectation identity.
-          { kind: "expectation", simulation: "simulation", label: "check", outcome: "pass" },
+          { kind: "expectation", simulation: "simulation", match: expectation(), outcome: "pass" },
         ],
       },
       sticky: true,
@@ -164,8 +163,7 @@ export const authorASimulation: Tutorial = {
           { kind: "simulation", saved: match(true, true) },
           { kind: "note", waiting: false, currentOnly: true },
           { kind: "savedSimulation", match: match(true, true) },
-          // eslint-disable-next-line local/no-literal-ui-text -- Stable expectation identity.
-          { kind: "expectation", simulation: "simulation", label: "check", outcome: "pass" },
+          { kind: "expectation", simulation: "simulation", match: expectation(), outcome: "pass" },
         ],
       },
       sticky: true,
@@ -180,7 +178,7 @@ export const authorASimulation: Tutorial = {
   finish: { text: msg("tutorials.authorASimulation.finish") },
 };
 
-function match(note = false, expectation = false): SimulationMatch {
+function match(note = false, withExpectation = false): SimulationMatch {
   return {
     id: "simulation",
     traffic: experimentDefinition().traffic,
@@ -189,8 +187,10 @@ function match(note = false, expectation = false): SimulationMatch {
     durationMs: 4000,
     multipliers: { traffic: 1, capacity: 1 },
     ...(note ? { note: { focus: "worker", pause: true, atMs: 500 } } : {}),
-    ...(expectation
-      ? { expectation: { metric: { node: "worker", field: "processed" }, op: ">=", value: 10, when: "end" } }
-      : {}),
+    ...(withExpectation ? { expectation: expectation() } : {}),
   };
+}
+
+function expectation(): NonNullable<SimulationMatch["expectation"]> {
+  return { metric: { node: "worker", field: "processed" }, op: ">=", value: 10, when: "end" };
 }

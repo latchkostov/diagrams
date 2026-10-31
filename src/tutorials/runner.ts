@@ -360,8 +360,15 @@ export function createTutorialRunner(
     )
       return;
     const values: Record<string, readonly [number, number, number]> = {};
-    if (hasSlowStep(tutorial.steps[state.index].check) && !state.baseline.slowStep && v.slowmo?.status === "on")
+    if (hasSlowStep(tutorial.steps[state.index].check) && !state.baseline.slowStep && v.slowmo?.status === "on") {
+      // Reading Pause can outlast the journey. Rewind before measuring the learner's next hop.
+      if (v.slowmo.script && (v.slowmo.t ?? 0) >= v.slowmo.script.duration && v.slowmo.script.duration > 0) {
+        host.get().session?.slowmo?.seek(0);
+        capture(view());
+        return;
+      }
       values.slowStep = [v.slowmo.t ?? 0, 0, 0];
+    }
     if (hasNewRun(tutorial.steps[state.index].check) && !state.baseline.newRun)
       values.newRun = [0, v.session.generation, v.sessionId];
     for (const expr of since[state.index]) {

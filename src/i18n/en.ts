@@ -5241,7 +5241,7 @@ const en = {
   "tutorials.readANode.summaryV2":
     "Read selected-node vitals and distinguish waiting from work, then find a completion event. First try Rates and Inputs; about three minutes.",
   "tutorials.readANode.readoutGoalV2":
-    "Select Order service and open Properties (double-click or F2). Its Live vitals stay in the dock; observe at least one completion. Hover is an alternative when its dock is closed.",
+    "Select Order service and open Properties (double-click or F2). Its Live vitals stay in the dock; observe at least one completion.",
   "tutorials.readANode.readoutDoneV2": "The selected-node dock keeps Live readings visible without relying on hover.",
   "tutorials.readANode.eventsGoalV2":
     "Open More → Event log. Filter it to Order service and find a completion event. Events describe individual sampled messages, while vitals aggregate the run.",

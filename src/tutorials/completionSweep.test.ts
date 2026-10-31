@@ -69,6 +69,7 @@ import { studyFanout } from "./catalog/studyFanout";
 import { studyRag } from "./catalog/studyRag";
 import { studyCells } from "./catalog/studyCells";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { traceSlowmo } from "./catalog/traceSlowmo";
 import { authorADrill } from "./catalog/authorADrill";
 import { faults } from "./catalog/faults";
 import { stencils } from "../stencils/registry";
@@ -328,6 +329,7 @@ function sandbox(
       return () => void slowListeners.delete(f);
     },
     pause: () => setSlow({ ...slowState, playing: false }),
+    seek: (t: number) => setSlow({ ...slowState, t: Math.max(0, Math.min(SLOW_SCRIPT.duration, t)) }),
     step: (_dir: 1 | -1) =>
       setSlow({
         ...slowState,
@@ -3253,4 +3255,67 @@ it("authoring: the first unpaused draft cannot pre-complete the later Continue s
   expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(500);
   expect(state(s).latched[continuation]).toBe(false);
   expect(state(s).observed[continuation]).toBe(false);
+});
+
+it.each(["target", "time"] as const)(
+  "author-a-drill: Skip repairs a wrong %s in place and keeps unrelated entries",
+  async (wrong) => {
+    const s = sandbox(authorADrill);
+    const save = authorADrill.steps.findIndex((step) => step.id === "save");
+    expect(await reach(s, authorADrill, save)).toBe(true);
+    const note = { atMs: 100, action: { do: "note" as const, text: "My observation" } };
+    const unrelated = {
+      atMs: 200,
+      action: {
+        do: "fault" as const,
+        drill: "error-spike" as const,
+        fault: { kind: "fail" as const, node: "service", rate: 0.1 as const },
+      },
+    };
+    const own: Simulation = {
+      id: "simulation",
+      title: "My drill",
+      seed: 9,
+      traffic: [],
+      durationMs: 600_000,
+      timeline: [
+        note,
+        {
+          atMs: wrong === "time" ? 1000 : 0,
+          action: {
+            do: "fault",
+            drill: "slow-dependency",
+            fault: { kind: "slow", node: wrong === "target" ? "service" : "db", factor: 5 },
+          },
+        },
+        unrelated,
+      ],
+    };
+    s.editor.updateMeta({ simulations: [...s.diagram.simulations!, own] });
+    expect(state(s)).toMatchObject({ index: save, value: "active" });
+    await skip(s, authorADrill);
+    expect(state(s).index).toBe(save + 1);
+    const repaired = s.diagram.simulations!.find((sim) => sim.id === own.id)!;
+    expect(repaired).toMatchObject({ title: own.title, seed: own.seed });
+    expect(repaired.timeline).toEqual([
+      note,
+      { atMs: 0, action: { do: "fault", drill: "slow-dependency", fault: { kind: "slow", node: "db", factor: 5 } } },
+      unrelated,
+    ]);
+    const demo = authorADrill.steps[save].demo[0];
+    if (demo.kind !== "saveSimulation") throw new Error("Expected save");
+    expect(withSavedSimulation(s.diagram, demo)).toBeNull();
+  },
+);
+
+it.each(["Right arrow", "Skip"])("trace-slowmo: %s completes a hop after playback finishes at Pause", async (route) => {
+  const s = sandbox(traceSlowmo);
+  const pause = traceSlowmo.steps.findIndex((step) => step.id === "pause");
+  expect(await reach(s, traceSlowmo, pause)).toBe(true);
+  s.slow.play(s.slow.getState().script!.duration);
+  expect(state(s)).toMatchObject({ index: pause + 1, value: "active", baseline: { slowStep: [0, 0, 0] } });
+  expect(s.slow.getState()).toMatchObject({ t: 0, playing: false });
+  if (route === "Skip") await skip(s, traceSlowmo);
+  else s.slow.step(1);
+  expect(state(s).index).toBe(pause + 2);
 });

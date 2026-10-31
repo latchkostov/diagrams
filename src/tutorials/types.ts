@@ -234,10 +234,12 @@ export type Check =
   /** The diagram has a saved simulation like this (authored in Simulations…), running or not. */
   | { kind: "savedSimulation"; match: SimulationMatch }
   /**
-   * A saved expectation id is stable across languages; Words also matches a chip's displayed label. outcome: what the
+   * Match an authored expectation by definition, or a saved chip by id/displayed label. outcome: what the
    * chip must say, "pass" by default; "either" once it's decided, met or failed.
    */
-  | { kind: "expectation"; simulation: string; label: string | Words; outcome?: "pass" | "fail" | "either" }
+  | ({ kind: "expectation"; simulation: string; outcome?: "pass" | "fail" | "either" } & (
+      { label: string | Words; match?: never } | { match: NonNullable<SimulationMatch["expectation"]>; label?: never }
+    ))
   /** A Fault is active on the subject; absent: none is (Restore cleared it), while Live runs. */
   | ({ kind: "fault"; fault?: FaultKind; absent?: true } & PropertyTarget)
   | { kind: "trace"; complete?: true; origin?: string }

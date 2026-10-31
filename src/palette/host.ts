@@ -53,7 +53,7 @@ export interface LiveHost {
 
 export interface SessionHost {
   /** Published slow-motion machine state; observers never infer it from DOM or extra flags. */
-  slowmo?: Pick<import("../live/slowmo/session").SlowMotion, "getState" | "subscribe" | "end">;
+  slowmo?: Pick<import("../live/slowmo/session").SlowMotion, "getState" | "subscribe" | "end" | "seek">;
   /** Replays a saved simulation in the running session. */
   run(simulationId: string): void;
   disabledHint?: string;

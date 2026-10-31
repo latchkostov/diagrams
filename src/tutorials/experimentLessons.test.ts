@@ -6,6 +6,7 @@ import { configuredPlanning } from "../planning/cache";
 import { holds, resolveSubjects, type SandboxView } from "./checks";
 import { matchesSimulation } from "./simulations";
 import { authorASimulation } from "./catalog/authorASimulation";
+import { readANode } from "./catalog/readANode";
 import { resourceHeadroom } from "./catalog/resourceHeadroom";
 import type { Check, SimulationMatch } from "./types";
 
@@ -82,53 +83,59 @@ describe("experiment definition evidence", () => {
     if (ownWords.timeline![0].action.do === "note") ownWords.timeline![0].action.text = "My prediction";
     expect(matchesSimulation(ownWords, matchAt("save"))).toBe(true);
   });
-  it("holds end expectations at the focused pause and repeats the end result only in a new generation", () => {
-    const diagram = experimentPractice();
-    const sim = experimentDefinition(true, true);
-    diagram.simulations = [sim];
-    const c = new LiveController(diagram);
-    const subjects = resolveSubjects(authorASimulation, diagram);
-    const view = (): SandboxView => ({
-      diagram,
-      live: true,
-      session: c.getState(),
-      sessionId: 1,
-      processed: (id) => c.getState().snapshot.nodes[id]?.processed ?? 0,
-    });
-    try {
-      c.selectSimulation(sim);
-      advance(c);
-      expect(c.getState().run?.waiting).toBe(true);
-      expect(c.getState().run?.expectations[0].status).toBe("pending");
-      const pause = authorASimulation.steps.find((s) => s.id === "pause")!.check;
-      const paused = {
-        ...view(),
-        baseline: { newRun: [0, c.getState().generation - 1, 1] as const },
-      };
-      expect(holds(pause, { ...paused, views: { simulations: true } }, subjects)).toBe(false);
-      expect(holds(pause, { ...paused, views: { simulations: false } }, subjects)).toBe(true);
-      c.resume();
-      advance(c);
-      expect(c.getState().snapshot.nodes.worker.processed).toBe(10);
-      const result = authorASimulation.steps.find((s) => s.id === "result")!.check;
-      expect(holds(result, view(), subjects)).toBe(true);
-      const changedDemand = () => ({ ...c.getState(), running: { ...sim, multipliers: { traffic: 2 } } });
-      expect(holds(result, { ...view(), session: changedDemand() }, subjects)).toBe(false);
-      const base = [0, c.getState().generation, 1] as const;
-      expect(holds({ kind: "newRun" }, { ...view(), baseline: { newRun: base } }, subjects)).toBe(false);
-      c.selectSimulation(sim);
-      advance(c);
-      c.resume();
-      advance(c);
-      expect(holds(result, view(), subjects)).toBe(true);
-      expect(holds({ kind: "newRun" }, { ...view(), baseline: { newRun: base } }, subjects)).toBe(true);
-      const replay = authorASimulation.steps.find((s) => s.id === "replay")!.check;
-      expect(holds(replay, { ...view(), baseline: { newRun: base } }, subjects)).toBe(true);
-      expect(holds(replay, { ...view(), session: changedDemand(), baseline: { newRun: base } }, subjects)).toBe(false);
-    } finally {
-      c.dispose();
-    }
-  });
+  it.each(["check", "check-2"])(
+    "holds the authored %s end expectation and repeats its result only in a new generation",
+    (id) => {
+      const diagram = experimentPractice();
+      const sim = experimentDefinition(true, true);
+      sim.expectations![0] = { ...sim.expectations![0], id, label: "My expected completions" };
+      diagram.simulations = [sim];
+      const c = new LiveController(diagram);
+      const subjects = resolveSubjects(authorASimulation, diagram);
+      const view = (): SandboxView => ({
+        diagram,
+        live: true,
+        session: c.getState(),
+        sessionId: 1,
+        processed: (id) => c.getState().snapshot.nodes[id]?.processed ?? 0,
+      });
+      try {
+        c.selectSimulation(sim);
+        advance(c);
+        expect(c.getState().run?.waiting).toBe(true);
+        expect(c.getState().run?.expectations[0].status).toBe("pending");
+        const pause = authorASimulation.steps.find((s) => s.id === "pause")!.check;
+        const paused = {
+          ...view(),
+          baseline: { newRun: [0, c.getState().generation - 1, 1] as const },
+        };
+        expect(holds(pause, { ...paused, views: { simulations: true } }, subjects)).toBe(false);
+        expect(holds(pause, { ...paused, views: { simulations: false } }, subjects)).toBe(true);
+        c.resume();
+        advance(c);
+        expect(c.getState().snapshot.nodes.worker.processed).toBe(10);
+        const result = authorASimulation.steps.find((s) => s.id === "result")!.check;
+        expect(holds(result, view(), subjects)).toBe(true);
+        const changedDemand = () => ({ ...c.getState(), running: { ...sim, multipliers: { traffic: 2 } } });
+        expect(holds(result, { ...view(), session: changedDemand() }, subjects)).toBe(false);
+        const base = [0, c.getState().generation, 1] as const;
+        expect(holds({ kind: "newRun" }, { ...view(), baseline: { newRun: base } }, subjects)).toBe(false);
+        c.selectSimulation(sim);
+        advance(c);
+        c.resume();
+        advance(c);
+        expect(holds(result, view(), subjects)).toBe(true);
+        expect(holds({ kind: "newRun" }, { ...view(), baseline: { newRun: base } }, subjects)).toBe(true);
+        const replay = authorASimulation.steps.find((s) => s.id === "replay")!.check;
+        expect(holds(replay, { ...view(), baseline: { newRun: base } }, subjects)).toBe(true);
+        expect(holds(replay, { ...view(), session: changedDemand(), baseline: { newRun: base } }, subjects)).toBe(
+          false,
+        );
+      } finally {
+        c.dispose();
+      }
+    },
+  );
 });
 describe("capacity evidence", () => {
   it("keeps CPU binding while replicas double capacity, and higher traffic changes offered demand", () => {
@@ -324,3 +331,41 @@ it("the same-burst replay rejects changes to effective Traffic, capacity or samp
     c.dispose();
   }
 });
+
+it("read-a-node advertises the Properties route its readout check requires", () => {
+  const step = readANode.steps.find((s) => s.id === "readout")!;
+  expect(step.goal()).toContain("open Properties (double-click or F2)");
+  expect(step.goal()).not.toMatch(/hover/i);
+});
+
+it.each(["result", "replay"])(
+  "%s checks the outcome of the matching definition rather than another passing chip",
+  (stepId) => {
+    const diagram = experimentPractice();
+    const sim = experimentDefinition(false, true);
+    const required = { ...sim.expectations![0], id: "check-2", label: "My prediction" };
+    sim.expectations = [{ ...required, id: "check", label: "check", value: 0 }, required];
+    diagram.simulations = [sim];
+    const c = new LiveController(diagram);
+    try {
+      c.selectSimulation(sim);
+      advance(c);
+      const all = authorASimulation.steps.find((s) => s.id === stepId)!.check;
+      if (all.kind !== "all") throw new Error("Expected result checks");
+      const check = all.checks.find((check) => check.kind === "expectation")!;
+      const session = c.getState();
+      const view: SandboxView = { diagram, live: true, session, processed: () => 0 };
+      expect(session.run!.expectations.map((e) => e.status)).toEqual(["pass", "pass"]);
+      expect(holds(check, view, {})).toBe(true);
+      for (const status of ["pending", "fail"] as const) {
+        const run = {
+          ...session.run!,
+          expectations: session.run!.expectations.map((e) => (e.id === required.id ? { ...e, status } : e)),
+        };
+        expect(holds(check, { ...view, session: { ...session, run } }, {})).toBe(false);
+      }
+    } finally {
+      c.dispose();
+    }
+  },
+);

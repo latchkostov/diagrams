@@ -2801,3 +2801,84 @@ for (const outcome of ["Retry", "Close"] as const)
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });
+
+for (const wrong of ["target", "time"] as const)
+  test(`author-a-drill: Skip repairs a saved wrong-${wrong} near miss`, async ({ page, consoleErrors }) => {
+    await openTutorial(page, "author-a-drill");
+    await page.getByTestId("tutorial-start").click();
+    for (const current of ["live", "open"]) {
+      await expect(strip(page)).toHaveAttribute("data-step", current);
+      for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+      await expect(strip(page)).not.toHaveAttribute("data-step", current);
+    }
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) {
+      if ("select" in action && action.select === "sim-panel-step-0-fault-target" && wrong === "target") continue;
+      if ("click" in action && action.click === "sim-panel-section-details" && wrong === "time")
+        await page.getByTestId("sim-panel-step-0-time").fill("1");
+      await play(page, action);
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "save");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "run");
+    const sim = await page.evaluate(() =>
+      window.__tutorial?.diagram()?.simulations?.find((sim) => sim.id === "simulation"),
+    );
+    expect(sim?.timeline).toEqual([
+      { atMs: 0, action: { do: "fault", drill: "slow-dependency", fault: { kind: "slow", node: "db", factor: 5 } } },
+    ]);
+    await finishSolution(page);
+    expectNoErrors(consoleErrors);
+  });
+
+test("author-a-simulation: a second expectation survives removing the first and completes result and replay", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await openTutorial(page, "author-a-simulation");
+  await page.getByTestId("tutorial-start").click();
+  await skipToCheckpoint(page, "save");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) {
+    if ("click" in action && action.click === "sim-panel-save") break;
+    if ("click" in action && action.click === "sim-panel-add-expectation") {
+      await play(page, action);
+      await play(page, action);
+      await page.getByTestId("sim-panel-expectation-0-remove").click();
+    } else await play(page, action);
+  }
+  await page.getByTestId("sim-panel-save").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "pause");
+  const saved = await page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "simulation"));
+  expect(saved?.expectations).toHaveLength(1);
+  expect(saved?.expectations?.[0].id).toBe("check-2");
+  await finishSolution(page);
+  expectNoErrors(consoleErrors);
+});
+
+for (const route of ["Right arrow", "Skip"] as const)
+  test(`trace-slowmo: ${route} completes the hop when playback finished during Pause`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await openTutorial(page, "trace-slowmo");
+    await page.getByTestId("tutorial-start").click();
+    await skipToCheckpoint(page, "pause");
+    // Seek to the end while still playing, just as the playback clock reaching the end does.
+    await page.getByTestId("slowmo-timeline-input").focus();
+    await page.keyboard.press("End");
+    await expect(strip(page)).toHaveAttribute("data-step", "hop");
+    await expect(page.getByTestId("slowmo-timeline-input")).toHaveValue("0");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-playing", "0");
+    // Finish the seek's camera work before testing a hop; the following checkpoint teaches manual pan.
+    await page.getByTestId("live-view-menu").click();
+    await page.getByTestId("view-follow").click();
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("live-view-menu")).toContainText("Following");
+    if (route === "Skip") await page.getByTestId("tutorial-skip").click();
+    else {
+      await page.getByTestId("live-play").focus();
+      await page.keyboard.press("ArrowRight");
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "camera");
+    expectNoErrors(consoleErrors);
+  });
