@@ -39,10 +39,11 @@ function harness(names: string[]) {
   return { page, finish, cancel };
 }
 
-it("does not start an accessibility scan while the actual entrance is held", async () => {
-  const h = harness(["view-in"]);
+it.each(["view-in", "ix-fade", "ix-rise"])("does not start an accessibility scan while %s is held", async (name) => {
+  const h = harness([name]);
   const scan = expectNoViolations(h.page, "tutorials-view");
-  await Promise.resolve();
+  // Drain the awaited promise chain before checking that the held entrance still blocks the scan.
+  await new Promise<void>((resolve) => setImmediate(resolve));
   expect(analyze).not.toHaveBeenCalled();
   h.finish();
   await scan;

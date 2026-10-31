@@ -3,7 +3,10 @@ export async function waitForViewEntranceInPage() {
   await Promise.allSettled(
     document
       .getAnimations()
-      .filter((animation) => animation instanceof CSSAnimation && animation.animationName === "view-in")
+      .filter(
+        (animation) =>
+          animation instanceof CSSAnimation && ["view-in", "ix-fade", "ix-rise"].includes(animation.animationName),
+      )
       .map((animation) => animation.finished),
   );
 }
