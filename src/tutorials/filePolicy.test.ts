@@ -102,6 +102,23 @@ it("practice privacy publishes stable in-memory flags and dies with its session"
   expect(listener).toHaveBeenCalledOnce();
   off();
   privacy.setPrivate(false);
+  expect(privacy.get()).toEqual({ private: true });
   expect(listener).toHaveBeenCalledOnce();
   expect(createPracticePrivacy().get()).toEqual({ private: false });
+});
+
+it("practice consent is local to the private session and reset clears privacy and permission", () => {
+  const privacy = createPracticePrivacy();
+  privacy.setOnDevice(true);
+  expect(privacy.get()).toEqual({ private: false });
+  privacy.setPrivate(true);
+  privacy.setOnDevice(true);
+  expect(privacy.get()).toEqual({ private: true, onDevice: true });
+  privacy.setOnDevice(false);
+  expect(privacy.get()).toEqual({ private: true, onDevice: false });
+  privacy.setOnDevice(true);
+  privacy.setPrivate(false);
+  expect(privacy.get()).toEqual({ private: true, onDevice: true });
+  privacy.reset();
+  expect(privacy.get()).toEqual({ private: false });
 });

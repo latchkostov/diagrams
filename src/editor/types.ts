@@ -86,8 +86,8 @@ export interface EditorApi {
   selectSimilar(target: { nodeId?: string; edgeId?: string }): number;
 
   // ---- create / update ----
-  /** One replacement and one immediate undo step, isolated from user edits. */
-  applyDiagram(next: DiagramFile, opts?: EditOptions): DiagramDiff;
+  /** One immediate undo step, or a fresh baseline (discarding Undo/Redo) when resetHistory is set. */
+  applyDiagram(next: DiagramFile, opts?: EditOptions & { resetHistory?: boolean }): DiagramDiff;
   /**
    * The `merge` tag of the step Undo would reverse next (e.g. an applyDiagram's), or undefined when
    * it's untagged, there's nothing to undo, or an edit is still pending.

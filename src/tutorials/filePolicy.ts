@@ -25,13 +25,23 @@ export function createPracticeImport() {
 
 /** Privacy belongs to the mounted practice session, never a library entry or browser storage. */
 export function createPracticePrivacy() {
-  let flags: Readonly<{ private: boolean }> = { private: false };
+  let flags: Readonly<{ private: boolean; onDevice?: boolean }> = { private: false };
   const listeners = new Set<() => void>();
   return {
     get: () => flags,
     setPrivate(on: boolean) {
-      if (flags.private === on) return;
+      // Private content can still be recovered through Undo after a public import.
+      if (!on || flags.private) return;
       flags = { private: on };
+      for (const listener of listeners) listener();
+    },
+    setOnDevice(on: boolean) {
+      if (!flags.private || !!flags.onDevice === on) return;
+      flags = { ...flags, onDevice: on };
+      for (const listener of listeners) listener();
+    },
+    reset() {
+      flags = { private: false };
       for (const listener of listeners) listener();
     },
     subscribe(listener: () => void) {

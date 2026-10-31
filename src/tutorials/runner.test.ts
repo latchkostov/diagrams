@@ -1560,3 +1560,11 @@ it("Skip settles a boundary selection using its editor flow ID", async () => {
   await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
   expect(select).toHaveBeenCalledWith({ nodeIds: [], groupIds: ["box"], edgeIds: [] });
 });
+
+it("Restart requests a fresh history rather than an undoable document replacement", () => {
+  const s = sandbox();
+  s.runner.send({ type: "start" });
+  const apply = vi.spyOn(s.editor, "applyDiagram");
+  s.runner.send({ type: "restart" });
+  expect(apply).toHaveBeenCalledExactlyOnceWith(mobileApi.start(), { resetHistory: true });
+});

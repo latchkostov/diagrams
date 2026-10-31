@@ -2201,6 +2201,38 @@ test("tutorial sandbox privacy: private native imports block sharing and AI and 
   await expectNothingSaved(page);
 });
 
+test("tutorial sandbox privacy: private then public import and Undo keep sharing, AI and exports private", async ({
+  page,
+}) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "private-practice.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ ...importedDiagram, private: true })),
+  });
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await page.getByTestId("import-input").setInputFiles("public/tutorial-status-compose.yaml");
+  await expect(page.getByTestId("node-imported-api")).toHaveCount(0);
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toBeVisible();
+  for (const id of ["share-public-toggle", "share-option-link", "share-option-password"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.aiAllowed())).toBe(false);
+  const download = page.waitForEvent("download");
+  await page.keyboard.press("ControlOrMeta+s");
+  const file = await download;
+  const path = await file.path();
+  if (!path) throw new Error("Expected a downloaded private diagram");
+  expect(JSON.parse(readFileSync(path, "utf8"))).toMatchObject({ private: true, title: importedDiagram.title });
+  await expect(page.getByTestId("tutorial-app")).toBeVisible();
+  await expectNothingSaved(page);
+});
+
 test("tutorial policy: report Make it private changes only sandbox privacy", async ({ page }) => {
   await openTutorial(page, "import-and-review");
   await page.getByTestId("tutorial-start").click();
@@ -2337,4 +2369,78 @@ test("library-reuse: closing Your diagrams focuses the completion heading", asyn
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+});
+
+test("tutorial sandbox privacy: Restart discards Undo and Redo and begins public", async ({ page }) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "private-practice.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ ...importedDiagram, private: true })),
+  });
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await page.getByTestId("tutorial-restart").click();
+  await expect(page.getByTestId("node-imported-api")).toHaveCount(0);
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+  await expect(page.getByTestId("redo-button")).toBeDisabled();
+  await page.getByTestId("canvas-view").focus();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.getByTestId("node-imported-api")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.aiAllowed())).toBe(true);
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toHaveCount(0);
+  await page.getByTestId("share-public-toggle").click();
+  await expect(page.getByTestId("share-option-link")).toBeVisible();
+  await expectNothingSaved(page);
+});
+
+test("tutorial sandbox privacy: on-device permission stays in memory and resets with practice", async ({ page }) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "private-practice.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ ...importedDiagram, private: true })),
+  });
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  // Tutorials do not mount AiMount. Exercise the actual canvas callback used by its checkbox.
+  await page.evaluate(() => window.__tutorial?.allowOnDevice(true));
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.onDeviceAllowed())).toBe(true);
+  await page.evaluate(() => window.__tutorial?.allowOnDevice(false));
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.onDeviceAllowed())).toBe(false);
+  await page.evaluate(() => window.__tutorial?.allowOnDevice(true));
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.onDeviceAllowed())).toBe(true);
+  await page.getByTestId("tutorial-restart").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "private-practice.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ ...importedDiagram, private: true })),
+  });
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.onDeviceAllowed())).toBe(false);
+  await expectNothingSaved(page);
+});
+
+test("tutorial sandbox privacy: a public-only lesson keeps sharing and exports public", async ({ page }) => {
+  await openTutorial(page, "import-and-review");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "public-practice.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(importedDiagram)),
+  });
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.aiAllowed())).toBe(true);
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toHaveCount(0);
+  await page.getByTestId("share-public-toggle").click();
+  await expect(page.getByTestId("share-option-link")).toBeVisible();
+  await page.keyboard.press("Escape");
+  const pending = page.waitForEvent("download");
+  await page.keyboard.press("ControlOrMeta+s");
+  const path = await (await pending).path();
+  if (!path) throw new Error("Expected a public diagram export");
+  expect(JSON.parse(readFileSync(path, "utf8"))).not.toHaveProperty("private");
+  await expectNothingSaved(page);
 });

@@ -955,7 +955,7 @@ export function createTutorialRunner(
         h.session?.slowmo?.end();
         if (!simulation && h.canvas?.live) h.live?.toggle();
         host.cancelRun?.();
-        if (initial) ed.applyDiagram(structuredClone(initial));
+        if (initial) ed.applyDiagram(structuredClone(initial), { resetHistory: true });
         if (simulation) {
           const run = generation;
           const ready = () => !host.get().session?.disabledHint;

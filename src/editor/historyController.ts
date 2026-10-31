@@ -156,8 +156,13 @@ export class HistoryController {
     mergeKey: string | undefined,
     selection: FlowSelection,
     at: number,
+    resetHistory = false,
   ) {
     this.transaction = undefined;
+    if (resetHistory) {
+      this.receive(next, at);
+      return;
+    }
     if (this.room) {
       this.commit(current, pendingMergeKey, at);
       this.roomCoalescingBroken = true;

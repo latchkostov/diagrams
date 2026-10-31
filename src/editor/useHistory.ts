@@ -32,8 +32,8 @@ export interface HistoryApi {
   end(tag: string): void;
   /** The open creation transaction's tag, if any (an editor opened on that node joins it). */
   open(): string | undefined;
-  /** Flush the actual current snapshot, commit a replacement, then apply it once. */
-  replace(next: CanvasSnapshot, mergeKey?: string, before?: CanvasSnapshot): void;
+  /** Commit and apply a replacement; resetHistory instead discards all earlier Undo/Redo entries. */
+  replace(next: CanvasSnapshot, mergeKey?: string, before?: CanvasSnapshot, resetHistory?: boolean): void;
   /**
    * The tag of the step Undo would reverse next, or undefined when that step is untagged, nothing
    * can be undone, or an edit is still pending (it would be undone first).
@@ -276,7 +276,7 @@ export function useHistory(
   }, [ctl, flush]);
 
   const replace = useCallback(
-    (snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot) => {
+    (snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot, resetHistory = false) => {
       window.clearTimeout(timer.current);
       timer.current = undefined;
       const next = clean(snapshot);
@@ -288,6 +288,7 @@ export function useHistory(
         key,
         selectionOf(latest.current),
         Date.now(),
+        resetHistory,
       );
       mergeKey.current = undefined;
       latest.current = next;

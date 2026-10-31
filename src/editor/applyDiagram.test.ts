@@ -154,3 +154,13 @@ describe("immediate AI document replacement", () => {
     expect(present(undo(second)).value).toBe("one");
   });
 });
+
+it("a fresh sandbox resets history even when its document already equals the initial diagram", () => {
+  const flow = toFlow(original());
+  const replace = vi.fn();
+  const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
+  const editor = createEditor(rf, { meta: flow.meta, history: { replace } } as unknown as EditorDeps);
+  const before = editor.api.getDiagram();
+  expect(editor.api.applyDiagram(before, { resetHistory: true }).hasChanges).toBe(false);
+  expect(replace).toHaveBeenCalledExactlyOnceWith(toFlow(before), undefined, toFlow(before), true);
+});

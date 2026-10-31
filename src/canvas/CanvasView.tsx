@@ -204,6 +204,7 @@ export type { CanvasHandle } from "./document/useCanvasDocument";
 interface Props {
   /** In-memory provenance for a temporary canvas. All privacy gates use these flags. */
   temporaryPrivacy?: CanvasPrivacyState;
+  onAllowOnDevice?: (on: boolean) => void;
   transport?: HTMLElement | null;
   bezel?: boolean;
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
@@ -276,6 +277,7 @@ function CanvasInner({
   viewer,
   room,
   temporaryPrivacy,
+  onAllowOnDevice,
 }: Props) {
   const locale = useLocale();
   const settings = useSettings();
@@ -695,7 +697,13 @@ function CanvasInner({
   useEffect(() => {
     stopSimulations.current = checks.stopSimulations;
   }, [checks]);
-  const allowOnDevice = useCallback((on: boolean) => void setOnDeviceAllowed(slug, on), [slug]);
+  const allowOnDevice = useCallback(
+    (on: boolean) => {
+      if (onAllowOnDevice) onAllowOnDevice(on);
+      else void setOnDeviceAllowed(slug, on);
+    },
+    [slug, onAllowOnDevice],
+  );
   // Only development builds read content for privacy (privacyOf); production reads provenance alone.
   const privacy = privacyOf({
     ...privacyFlags,

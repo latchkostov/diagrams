@@ -45,7 +45,7 @@ import { solutionNow, type ResolvedUiStep } from "./solution";
 import { keyboardSolutionNow, type ResolvedKeyboardStep } from "./keyboard";
 import { createPracticeImport, createPracticePrivacy, tutorialFilePolicy } from "./filePolicy";
 import { beginObservedWork, cancelObservedWork, observationPorts } from "../lib/observations";
-import { canUseAiTools } from "../lib/localOnly";
+import { canUseAiTools, canUseOnDevice } from "../lib/localOnly";
 import { currentObservationSource } from "../palette/observationSource";
 import "./tutorials.css";
 
@@ -276,6 +276,8 @@ function Running({
       keyboardSolution: () => keyboardSolutionNow(tutorial, runner.getSnapshot()),
       diagram: () => paletteHost.get().canvas?.editor.getDiagram(),
       aiAllowed: () => canUseAiTools(paletteHost.get().canvas),
+      onDeviceAllowed: () => canUseOnDevice(paletteHost.get().canvas),
+      allowOnDevice: (on) => paletteHost.get().canvas?.allowOnDevice?.(on),
     };
     return () => void delete window.__tutorial;
   }, [runner, tutorial]);
@@ -342,7 +344,7 @@ function Running({
                 setBefore(readTutorials());
                 runner.send({ type: "restart" });
                 interop.resetImports();
-                temporaryPrivacy.setPrivate(false);
+                temporaryPrivacy.reset();
               }}
               data-testid="tutorial-restart"
             >
@@ -373,6 +375,7 @@ function Running({
             <CanvasView
               bezel
               temporaryPrivacy={practicePrivacy}
+              onAllowOnDevice={temporaryPrivacy.setOnDevice}
               onTitleChange={setDiagramTitle}
               ref={canvasRef}
               slug={TUTORIAL_SLUG}
@@ -746,6 +749,8 @@ declare global {
       diagram(): DiagramFile | undefined;
       /** The real AI boundary over the canvas host, including temporary provenance. */
       aiAllowed(): boolean;
+      onDeviceAllowed(): boolean;
+      allowOnDevice(on: boolean): void;
     };
   }
 }
