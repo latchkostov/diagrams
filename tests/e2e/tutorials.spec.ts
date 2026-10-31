@@ -37,7 +37,7 @@ async function openTutorial(page: Page, id: string) {
   }
 }
 
-test("example Tutorial chip opens its lesson and Exit returns to the diagram", async ({ page, consoleErrors }) => {
+test("example Tutorial chip opens its lesson and Exit returns to its chapter", async ({ page, consoleErrors }) => {
   await page.addInitScript(() => localStorage.setItem("diagrams.locale", "cs"));
   await gotoCanvas(page, "retry-storm");
   await page.getByTestId("example-picker").click();
@@ -49,6 +49,9 @@ test("example Tutorial chip opens its lesson and Exit returns to the diagram", a
   await expect(page).toHaveURL(/tutorial=retry-storm/);
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("tutorial-exit").click();
+  await expect(page.getByTestId("tutorials-chapter-resilience")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("tutorial-open-retry-storm")).toBeInViewport();
+  await page.getByTestId("view-canvas").click();
   await expect(page.getByTestId("node-checkout")).toBeVisible();
   expectNoErrors(consoleErrors);
 });
@@ -57,7 +60,7 @@ for (const [control, lesson] of [
   ["waiting", "threads-block"],
   ["retries", "retry-storm"],
 ] as const) {
-  test(`inspector ${control} teaches in place and Exit restores the diagram`, async ({ page, consoleErrors }) => {
+  test(`inspector ${control} teaches in place and Exit returns to its chapter`, async ({ page, consoleErrors }) => {
     await gotoCanvas(page, "retry-storm");
     await play(page, { click: "edge-pay" });
     await page.keyboard.press("Enter");
@@ -81,6 +84,8 @@ for (const [control, lesson] of [
     await page.getByTestId(`inspector-tutorial-${control}`).click();
     await page.getByTestId("tutorial-exit").click();
     await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
+    await expect(page.getByTestId(`tutorial-open-${lesson}`)).toBeInViewport();
+    await page.getByTestId("view-canvas").click();
     await expect(page.getByTestId("node-checkout")).toBeVisible();
     await expect(page).not.toHaveURL(/tutorial=/);
     expectNoErrors(consoleErrors);
@@ -1314,7 +1319,8 @@ test("Lab runtime preview loads an example and its simulation, keeps app chrome 
   await expect(page.getByTestId("tutorial-title")).toHaveText("Try the next practice diagram");
   await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
   await skipAll(page);
-  await expect(page.getByTestId("tutorial-next")).toHaveCount(0);
+  // The handoff wraps to the unfinished Building blocks fixture after this chapter is complete.
+  await expect(page.getByTestId("tutorial-next")).toHaveText("Start 2.1");
   await page.getByTestId("tutorial-done-exit").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await expect(page.getByTestId("tutorial-app")).toHaveCount(0);

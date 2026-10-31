@@ -73,26 +73,35 @@ it("opens app views under the current sub-path without reloading or retaining tu
   }
 });
 
-it("returns to the hub through the existing history entry when a lesson requests it", () => {
-  const listeners: (() => void)[] = [];
-  const back = vi.fn();
-  const replaceState = vi.fn();
-  vi.stubGlobal("window", {
-    location: new URL("https://example.test/tools/?tutorial=lesson"),
-    history: { state: { "livediagrams-tutorial": true }, back, replaceState },
-    addEventListener: (name: string, listener: () => void, options: unknown) => {
-      expect(name).toBe("popstate");
-      expect(options).toEqual({ once: true });
-      listeners.push(listener);
-    },
+it("redirects the restored history entry before notifying the app, retaining its diagram", () => {
+  const pop: (() => void)[] = [];
+  let url = new URL("https://example.test/tools/?tutorial=lesson");
+  const state = { "livediagrams-tutorial": true };
+  const back = vi.fn(() => {
+    url = new URL("https://example.test/tools/?view=canvas&example=original");
   });
+  const replaceState = vi.fn((_state: unknown, _title: string, next: string) => {
+    url = new URL(next, url);
+  });
+  vi.stubGlobal("window", {
+    get location() {
+      return url;
+    },
+    history: { state, back, replaceState },
+    addEventListener: (_name: string, listener: () => void) => pop.push(listener),
+    removeEventListener: vi.fn(),
+  });
+  const observed: string[] = [];
+  const off = tutorialRoute.subscribe(() => observed.push(window.location.search));
   try {
     tutorialRoute.close("tutorials");
     expect(back).toHaveBeenCalledOnce();
     expect(replaceState).not.toHaveBeenCalled();
-    listeners[0]();
-    expect(replaceState).toHaveBeenCalledWith(window.history.state, "", "/tools/?view=tutorials");
+    for (const listener of pop) listener();
+    expect(observed).toEqual(["?view=tutorials&example=original"]);
+    expect(replaceState).toHaveBeenCalledWith(state, "", "/tools/?view=tutorials&example=original");
   } finally {
+    off();
     vi.unstubAllGlobals();
   }
 });

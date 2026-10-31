@@ -308,7 +308,9 @@ function Running({
           </Suspense>
         </div>
       </div>
-      {state.value === "intro" && <Intro tutorial={tutorial} snap={snap} send={runner.send} />}
+      {state.value === "intro" && (
+        <Intro tutorial={tutorial} snap={snap} send={runner.send} onCancel={() => tutorialRoute.close()} />
+      )}
       {spot && !presenting && (
         <Coachmark targets={step.targets} subjects={snap.subjects} edges={snap.edges} selected={snap.selected} />
       )}
@@ -380,18 +382,28 @@ function Running({
  * The intro: one focused card with one primary action. It's a dialog, so its Start takes the keyboard as a dialog's
  * first action does (Enter starts) and Esc or "Not now" leaves the tutorial.
  */
-function Intro({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnapshot; send: (e: RunnerEvent) => void }) {
+function Intro({
+  tutorial,
+  snap,
+  send,
+  onCancel,
+}: {
+  tutorial: Tutorial;
+  snap: RunnerSnapshot;
+  send: (e: RunnerEvent) => void;
+  onCancel(): void;
+}) {
   const { resumeAt } = snap.state;
   return (
     <Dialog
       title={tutorial.title()}
       subtitle={`${t("tutorials.meta", { track: trackLabel(tutorial.track), minutes: tutorial.minutes })} · ${t("tutorials.sandbox")}`}
-      onClose={() => send({ type: "exit" })}
+      onClose={onCancel}
       testId="tutorial-intro"
       width={520}
       footer={
         <>
-          <button className="btn btn-ghost" onClick={() => send({ type: "exit" })} data-testid="tutorial-not-now">
+          <button className="btn btn-ghost" onClick={onCancel} data-testid="tutorial-not-now">
             {t("tutorials.notNow")}
           </button>
           {resumeAt > 0 && (

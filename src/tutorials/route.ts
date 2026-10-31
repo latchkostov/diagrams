@@ -11,15 +11,29 @@ const KEY = "tutorial";
 const OPENED = "livediagrams-tutorial";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
+let returnView: View | undefined;
+const onPop = () => {
+  if (returnView) {
+    const query = new URLSearchParams(window.location.search);
+    query.set("view", returnView);
+    returnView = undefined;
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}?${query}${window.location.hash}`,
+    );
+  }
+  emit();
+};
 
 export const tutorialRoute = {
   get: (): string | null => new URLSearchParams(window.location.search).get(KEY),
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
-    window.addEventListener("popstate", listener);
+    window.addEventListener("popstate", onPop);
     return () => {
       listeners.delete(listener);
-      window.removeEventListener("popstate", listener);
+      if (!listeners.size) window.removeEventListener("popstate", onPop);
     };
   },
   open(id: string, replace = false): void {
@@ -47,15 +61,7 @@ export const tutorialRoute = {
   /** Pop the lesson entry when present; an explicit destination replaces the restored view, keeping Back intact. */
   close(view?: View): void {
     if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) {
-      if (view)
-        window.addEventListener(
-          "popstate",
-          () => {
-            window.history.replaceState(window.history.state, "", `${window.location.pathname}?view=${view}`);
-            emit();
-          },
-          { once: true },
-        );
+      returnView = view;
       return window.history.back();
     }
     window.history.replaceState(
