@@ -8,6 +8,8 @@ Live controls, a requested Live session, timeline markers, settled inspector sel
 
 The inspector regression preserves the exact 16-pixel inset and reproduces the original mixed-state -355-pixel measurement. Affected geometry and focus cases plus annotation, drawing, viewport, platform and inspector neighbours passed 45 Linux executions at eight workers on four CPUs.
 
+Accessibility scans observe completion of the actual view entrance before measuring contrast. The product animation, colour tokens and WCAG rules stay unchanged. A held-entrance regression proves scanning cannot begin early, while a settled violation still fails.
+
 ## Decisions still requiring evidence
 
 macOS Control+click is a native secondary click; the retained modified-drag test conflicts with that convention. The orchestrator must choose the modifier contract before changing the gesture or its test. The native-select boundary also needs an input-driver or coverage decision, documented separately. The same-run peer diagnostic confirms mDNS fails while direct candidates deliver on macOS; branch Nightly 41183332686 has none of the 31 persistent peer-admission failures. No new network service, quarantine, tolerance increase or additional chrome is introduced here.

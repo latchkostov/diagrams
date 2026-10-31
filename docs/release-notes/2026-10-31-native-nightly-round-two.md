@@ -4,6 +4,8 @@ Native Nightly now retains every discovered test identity when a deadline interr
 
 Verification observers also preserve worker transfer lists, so observing a checks request cannot accidentally force canvas rendering onto the main thread.
 
+Accessibility scans wait for the real view entrance to finish before measuring contrast. Real settled violations still fail the scan; unrelated perpetual animations do not block it.
+
 macOS peer tests also compare mDNS and direct host candidates in a server-free diagnostic; this is test-runner evidence, not a change to the application's network services. The original peer admission assertions remain enabled. An isolated select diagnostic records the native popup input boundary; unsuccessful popup-key experiments are removed. The select-driver decision, Control-drag/context-menu conflict and remaining native failures are explicitly tracked for the orchestrator in the PR and dated backlog fragments.
 
 ## Output parity
