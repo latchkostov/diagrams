@@ -16,6 +16,7 @@ export function pendingReport() {
     stats: { expected: 0, unexpected: 0, flaky: 0, skipped: 0 },
     errors: [],
     suites: [],
+    unfinished: [],
   };
 }
 
@@ -32,7 +33,13 @@ export function readTestReport(directory) {
   const checkpoint = read("checkpoint.json");
   if (final) {
     if (checkpoint?.interrupted && checkpoint.expectedTests > 0)
-      return { ...final, interrupted: true, completed: checkpoint.completed, expectedTests: checkpoint.expectedTests };
+      return {
+        ...final,
+        interrupted: true,
+        completed: checkpoint.completed,
+        expectedTests: checkpoint.expectedTests,
+        unfinished: checkpoint.unfinished,
+      };
     return final;
   }
   if (checkpoint) return checkpoint;
@@ -44,20 +51,36 @@ export default class CheckpointReporter {
     this.file = process.env.GATE_CHECKPOINT;
     this.report = pendingReport();
     this.tests = new Map();
+    this.inventory = new Map();
+    this.started = new Set();
   }
 
   onBegin(config, suite) {
     this.root = config.rootDir;
-    this.report.expectedTests = suite.allTests().length;
+    for (const test of suite.allTests()) this.inventory.set(test.id, this.identity(test));
+    this.report.expectedTests = this.inventory.size;
+    this.save();
+  }
+
+  identity(test) {
+    return {
+      title: test.titlePath().slice(3).join(" › ") || test.title,
+      file: relative(this.root, test.location.file).replaceAll("\\", "/"),
+      line: test.location.line,
+      projectName: test.parent.project().name,
+    };
+  }
+
+  onTestBegin(test) {
+    this.started.add(test.id);
     this.save();
   }
 
   onTestEnd(test, result) {
+    const { projectName, ...identity } = this.identity(test);
     const entry = this.tests.get(test.id) ?? {
-      title: test.titlePath().slice(3).join(" › ") || test.title,
-      file: relative(this.root, test.location.file).replaceAll("\\", "/"),
-      line: test.location.line,
-      tests: [{ projectName: test.parent.project().name, status: "expected", results: [] }],
+      ...identity,
+      tests: [{ projectName, status: "expected", results: [] }],
     };
     entry.tests[0].status = test.outcome();
     entry.tests[0].results.push({ status: result.status, duration: result.duration, error: result.error });
@@ -71,7 +94,8 @@ export default class CheckpointReporter {
   }
 
   onEnd(result) {
-    this.report.interrupted = ["interrupted", "timedout"].includes(result.status);
+    this.report.interrupted =
+      ["interrupted", "timedout"].includes(result.status) || this.tests.size < this.inventory.size;
     this.save();
   }
 
@@ -79,6 +103,9 @@ export default class CheckpointReporter {
     const specs = [...this.tests.values()];
     this.report.completed = specs.length;
     this.report.suites = [{ specs }];
+    this.report.unfinished = [...this.inventory]
+      .filter(([id]) => !this.tests.has(id))
+      .map(([id, test]) => ({ ...test, state: this.started.has(id) ? "running" : "not started" }));
     for (const status of Object.keys(this.report.stats))
       this.report.stats[status] = specs.filter((spec) => spec.tests[0].status === status).length;
     writeCheckpoint(this.file, this.report);

@@ -13,7 +13,8 @@ import { runSteps } from "../../scripts/gate/run.mjs";
 import { planShards, shardFiles } from "../../scripts/e2e-shard.mjs";
 import { selfHostProfiles } from "../../scripts/e2e-profiles.mjs";
 import { collectNative, failureSummary } from "../../scripts/e2e-failures.mjs";
-import { pendingReport, writeCheckpoint } from "../../scripts/gate/reporter.mjs";
+import CheckpointReporter, { pendingReport, writeCheckpoint, readTestReport } from "../../scripts/gate/reporter.mjs";
+import type { FullConfig, Suite, TestCase, TestResult } from "@playwright/test/reporter";
 
 const directories: string[] = [];
 function fixture() {
@@ -113,12 +114,14 @@ it("persists completed test counts and errors before a reporter process is kille
       `
     import Reporter from ${JSON.stringify(module)};
     const reporter = new Reporter();
-    reporter.onBegin({ rootDir: process.cwd() }, { allTests: () => [1, 2, 3] });
     const test = (id, outcome) => ({ id, title: id, titlePath: () => ['', 'chromium', 'smoke.spec.ts', 'suite', id],
       location: { file: process.cwd() + '/smoke.spec.ts', line: 7 },
       parent: { project: () => ({ name: 'chromium' }) }, outcome: () => outcome });
+    reporter.onBegin({ rootDir: process.cwd() }, { allTests: () =>
+      ['passes', 'fails', 'running', 'queued'].map(id => test(id, 'expected')) });
     reporter.onTestEnd(test('passes', 'expected'), { status: 'passed', duration: 1 });
     reporter.onTestEnd(test('fails', 'unexpected'), { status: 'failed', duration: 1, error: { message: 'test error' } });
+    reporter.onTestBegin?.(test('running', 'expected'));
     reporter.onError({ message: 'runner error' });
     process.send('checkpoint');
     setInterval(() => {}, 1000);
@@ -134,15 +137,18 @@ it("persists completed test counts and errors before a reporter process is kille
     const report = JSON.parse(readFileSync(file, "utf8"));
     expect(report).toMatchObject({
       interrupted: true,
-      expectedTests: 3,
+      expectedTests: 4,
       completed: 2,
       stats: { expected: 1, unexpected: 1, flaky: 0, skipped: 0 },
     });
     const summary = failureSummary([{ label: "native-e2e-windows-latest-1", report }]);
-    expect(summary).toContain("2 of 3 tests completed");
+    expect(summary).toContain("2 of 4 tests completed");
     expect(summary).toContain("1 passed, 1 failed");
     expect(summary).toContain("failed 1 of 1: test error");
     expect(summary).toContain("Runner error: runner error");
+    expect(summary).toContain("smoke.spec.ts:7 › suite › running [chromium]: unfinished (running)");
+    expect(summary).toContain("smoke.spec.ts:7 › suite › queued [chromium]: unfinished (not started)");
+    expect(summary).not.toContain("running [chromium]`: failed");
   } finally {
     child.kill();
   }
@@ -179,6 +185,32 @@ it("retains partial counts in the gate summary when the final JSON is absent", a
   );
   expect(result.failures).toBe(1);
   expect(result.reports[0]).toMatchObject({ passed: 1, failed: 0 });
+});
+
+it("retains unfinished identities beside a final partial JSON and clears them when every case completes", () => {
+  const root = fixture();
+  const file = join(root, "checkpoint.json");
+  vi.stubEnv("GATE_CHECKPOINT", file);
+  const reporter = new CheckpointReporter();
+  const test = {
+    id: "case-1",
+    title: "remaining case",
+    titlePath: () => ["", "chromium", "smoke.spec.ts", "remaining case"],
+    location: { file: join(root, "smoke.spec.ts"), line: 7 },
+    parent: { project: () => ({ name: "chromium" }) },
+    outcome: () => "expected",
+  } as unknown as TestCase;
+  reporter.onBegin({ rootDir: root } as FullConfig, { allTests: () => [test] } as Suite);
+  writeFileSync(join(root, "results.json"), JSON.stringify({ stats: pendingReport().stats }));
+  const summary = () => failureSummary([{ label: "native", report: readTestReport(root) }]);
+  expect(summary()).toContain("remaining case [chromium]: unfinished (not started)");
+  reporter.onTestBegin(test);
+  reporter.onEnd({ status: "failed" } as Parameters<CheckpointReporter["onEnd"]>[0]);
+  expect(summary()).toContain("remaining case [chromium]: unfinished (running)");
+  reporter.onTestEnd(test, { status: "passed", duration: 1 } as TestResult);
+  reporter.onEnd({ status: "passed" } as Parameters<CheckpointReporter["onEnd"]>[0]);
+  expect(summary()).not.toContain("unfinished");
+  expect(summary()).not.toContain("Interrupted");
 });
 
 it("collects final native shard counts once, falls back on truncated JSON, and reports unit failures", () => {
