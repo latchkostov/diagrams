@@ -9,6 +9,7 @@ import {
   waitForThreadVerification,
   installScenarioPlan,
   waitForScenarioPlan,
+  releaseVerificationOnce,
 } from "./thread-verification";
 
 async function openVerifiedCallout(page: Page, holdPlan = false, inspectorRequested?: () => void) {
@@ -42,6 +43,9 @@ async function openVerifiedCallout(page: Page, holdPlan = false, inspectorReques
 }
 
 test("agreement setup waits for real scenario sizing while the page clock is paused", async ({ page }) => {
+  const releasePlan = releaseVerificationOnce(async () => {
+    await page.evaluate(() => window.__scenarioPlan?.release?.());
+  });
   let inspectorRequested!: () => void;
   const inspector = new Promise<void>((resolve) => (inspectorRequested = resolve));
   let finished = false;
@@ -55,12 +59,12 @@ test("agreement setup waits for real scenario sizing while the page clock is pau
     await expect(page.getByTestId("inspector-live-section-resources")).toBeVisible();
     expect(await page.evaluate(() => window.__threadVerification?.requests.map(({ time }) => time))).toEqual([15000]);
     expect(finished, "fix verification does not establish that scenario sizing has replied").toBe(false);
-    await page.evaluate(() => window.__scenarioPlan?.release?.());
+    await releasePlan();
     const action = await opening;
     await openInspectorLiveDetails(page, "scaling");
     await expect(page.getByTestId("autoscaling-plan-text")).toContainText((await action.innerText()).trim());
   } finally {
-    await page.evaluate(() => window.__scenarioPlan?.release?.());
+    await releasePlan();
     await opening;
   }
 });

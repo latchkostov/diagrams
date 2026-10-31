@@ -1,7 +1,33 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { installThreadVerificationInPage } from "../../tests/e2e/thread-verification";
+import { installThreadVerificationInPage, releaseVerificationOnce } from "../../tests/e2e/thread-verification";
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("normal completion and cleanup share one held-request release, including while it is in flight", async () => {
+  let finish!: () => void;
+  const operation = new Promise<void>((resolve) => (finish = resolve));
+  const send = vi.fn(() => operation);
+  const release = releaseVerificationOnce(send);
+  const first = release();
+  const cleanup = release();
+  expect(cleanup).toBe(first);
+  expect(send).toHaveBeenCalledTimes(1);
+  finish();
+  await first;
+  await release();
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it("cleanup retains a failed release instead of sending a second browser operation", async () => {
+  const failure = new Error("the page closed");
+  const send = vi.fn(async () => {
+    throw failure;
+  });
+  const release = releaseVerificationOnce(send);
+  await expect(release()).rejects.toBe(failure);
+  await expect(release()).rejects.toBe(failure);
+  expect(send).toHaveBeenCalledTimes(1);
+});
 
 function harness(holdFirst = false) {
   const turns: (() => void)[] = [];

@@ -135,3 +135,9 @@ export async function waitForScenarioPlan(page: Page) {
     return window.__scenarioPlan.whenSettled();
   });
 }
+
+/** A held request has one release, including when finally drains an already completed setup. */
+export function releaseVerificationOnce(release: () => Promise<void>) {
+  let released: Promise<void> | undefined;
+  return () => (released ??= release());
+}
