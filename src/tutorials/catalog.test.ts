@@ -165,7 +165,7 @@ const demoSubjects = (d: Demo): string[] =>
                     ? [...d.edge, d.subject]
                     : d.kind === "reconnect"
                       ? [...d.edge, d.to]
-                      : d.kind === "field" || d.kind === "name" || d.kind === "rename"
+                      : d.kind === "field" || d.kind === "name" || d.kind === "rename" || d.kind === "remove"
                         ? [d.subject]
                         : [];
 const testIdsOf = (s: UiStep): string[] =>

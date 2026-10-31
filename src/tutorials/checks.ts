@@ -175,14 +175,17 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       );
     case "checks": {
       const event = view.observations?.checks;
+      const matches = (finding: { rule: string; target: string }) =>
+        finding.rule === check.rule && (check.subject === undefined || finding.target === subjects[check.subject]);
       return (
         event?.status === check.status &&
+        (check.subject === undefined || !!subjects[check.subject]) &&
         (check.findings === undefined || event.result?.findings.length === check.findings) &&
         (check.rule === undefined ||
           (!!event.result?.ran.some((rule) => rule === check.rule) &&
             (check.absent
-              ? ![...event.result.findings, ...event.result.ignored].some((finding) => finding.rule === check.rule)
-              : event.result.findings.some((finding) => finding.rule === check.rule)))) &&
+              ? ![...event.result.findings, ...event.result.ignored].some(matches)
+              : event.result.findings.some(matches)))) &&
         (check.simulation === undefined ||
           !!event.simulations?.some((run) => run.id === check.simulation && run.playedMs > 0 && !run.capped))
       );

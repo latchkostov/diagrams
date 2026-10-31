@@ -1913,6 +1913,41 @@ test("shortcuts Tutorials navigation preserves the opened device file Save bindi
   expect(JSON.parse(saved).nodes[0].label).toBe("Saved after tutorials");
 });
 
+test("checks-and-fixes: Continue after a real Undo restores Reapply and its finding before learner input", async ({
+  page,
+  consoleErrors,
+}) => {
+  await openTutorial(page, "checks-and-fixes");
+  await page.getByTestId("tutorial-start").click();
+  for (const current of ["open", "read", "fix", "undo"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", current);
+    for (const action of await page.evaluate(() => {
+      const tutorial = window.__tutorial;
+      if (!tutorial) throw new Error("The tutorial runner is missing");
+      return tutorial.solution();
+    }))
+      await play(page, action);
+    await expect(strip(page)).not.toHaveAttribute("data-step", current);
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "reapply");
+  const absentConsumer = async () =>
+    expect(
+      await page.evaluate(() => window.__tutorial?.diagram()?.nodes.some((node) => node.stencil === "generic.service")),
+    ).toBe(false);
+  await absentConsumer();
+  await page.getByTestId("tutorial-exit").click();
+  await page.goto("./?tutorial=checks-and-fixes");
+  await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-state", "active");
+  await expect(strip(page)).toHaveAttribute("data-step", "reapply");
+  await absentConsumer();
+  await page.getByTestId("checks-count").click();
+  await expect(page.getByTestId("check-choose-no-reader:topic")).toBeEnabled();
+  await skipAll(page);
+  expectNoErrors(consoleErrors);
+});
+
 for (const id of [
   "api-gateway",
   "route-by-address",
@@ -1939,14 +1974,45 @@ for (const id of [
     const first = await strip(page).getAttribute("data-step");
     await page.getByTestId("tutorial-skip").click();
     await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== first);
+    const milestone = await strip(page).getAttribute("data-step");
+    if (!milestone) throw new Error("The saved tutorial milestone is missing");
+    const predecessor = await page.evaluate(() => {
+      const diagram = window.__tutorial?.diagram();
+      if (!diagram) throw new Error("The tutorial diagram is missing");
+      return {
+        nodes: diagram.nodes.map(({ stencil, label, props }) => ({ stencil, label, props })),
+        edges: diagram.edges.map(({ from, to, kind, props }) => ({
+          from: diagram.nodes.findIndex((node) => node.id === from),
+          to: diagram.nodes.findIndex((node) => node.id === to),
+          kind,
+          props,
+        })),
+      };
+    });
     await page.getByTestId("tutorial-exit").click();
     await page.goto(`./?tutorial=${id}`);
     await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
     await page.getByTestId("tutorial-start").click();
     await pauseClock(page);
     await advanceTutorialClock(page, async () =>
-      ["active", "hinting", "completing", "finished"].includes((await strip(page).getAttribute("data-state")) ?? ""),
+      ["active", "hinting", "completing"].includes((await strip(page).getAttribute("data-state")) ?? ""),
     );
+    await expect(strip(page)).toHaveAttribute("data-step", milestone);
+    expect(
+      await page.evaluate(() => {
+        const diagram = window.__tutorial?.diagram();
+        if (!diagram) throw new Error("The tutorial diagram is missing");
+        return {
+          nodes: diagram.nodes.map(({ stencil, label, props }) => ({ stencil, label, props })),
+          edges: diagram.edges.map(({ from, to, kind, props }) => ({
+            from: diagram.nodes.findIndex((node) => node.id === from),
+            to: diagram.nodes.findIndex((node) => node.id === to),
+            kind,
+            props,
+          })),
+        };
+      }),
+    ).toEqual(predecessor);
     await skipAll(page, true);
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);

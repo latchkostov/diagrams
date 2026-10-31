@@ -223,6 +223,40 @@ it("Checks absence rejects ignored or disabled advice and completed static jobs 
   ).toBe(false);
 });
 
+it("Checks repair and Undo evidence belongs to the practice topic, even with another unread topic", () => {
+  const d = checksPractice();
+  d.nodes.push({ id: "other-topic", stencil: "kafka.topic", label: "", x: 0, y: 300 });
+  d.edges.push({ id: "other-publish", from: "api", to: "other-topic", kind: "async" });
+  const worker = { id: "worker", stencil: "generic.service", label: checksAndFixes.steps[2].goal(), x: 560, y: 0 };
+  const rename = checksAndFixes.steps[2].demo.find((demo) => demo.kind === "rename")!;
+  worker.label = rename.label();
+  d.nodes.push(worker);
+  d.edges.push({ id: "reader", from: "topic", to: "worker", kind: "async" });
+  const met = (id: string) =>
+    holds(
+      check(checksAndFixes, id),
+      {
+        diagram: d,
+        live: false,
+        processed: () => 0,
+        observations: { checks: { documentId: "practice", identity: {}, status: "done", result: runChecks(d) } },
+      },
+      resolveSubjects(checksAndFixes, d),
+    );
+  expect(
+    runChecks(d)
+      .findings.filter((f) => f.rule === "no-reader")
+      .map((f) => f.target),
+  ).toEqual(["other-topic"]);
+  expect(met("fix")).toBe(true);
+  expect(met("reapply")).toBe(true);
+  expect(met("undo")).toBe(false);
+  d.nodes = d.nodes.filter((n) => n.id !== "worker");
+  d.edges = d.edges.filter((e) => e.id !== "reader");
+  expect(met("undo")).toBe(true);
+  expect(met("fix")).toBe(false);
+});
+
 it("the eight-partition comparison deliberately overrides six, while its effective check rejects a saved six", () => {
   const d = JSON.parse(readFileSync("src/examples/partitions-vs-subscriptions.json", "utf8")) as DiagramFile;
   d.nodes.find((n) => n.id === "log")!.props!.partitions = 6;
@@ -237,7 +271,23 @@ it("repairs only the route setting overridden by a saved run, preserving the tra
   const d = addressPractice();
   const run = d.simulations![0];
   run.setup = { props: { gateway: { routeTable: { rules: [] }, latencyMs: 17 } } };
-  const fixed = repairedRun(d, run, { node: "gateway" }, [{ op: "set", path: ["routeTable"], value: { rules: [] } }]);
+  const before = structuredClone(run);
+  const routeTable = {
+    rules: [
+      {
+        id: "parcels",
+        match: { methods: ["GET"], path: { kind: "template", value: "/v1/orders/{id}" } },
+        targets: [{ edgeId: "to-tracking", weight: 1 }],
+      },
+    ],
+  };
+  const fixed = repairedRun(d, run, { node: "gateway" }, [{ op: "set", path: ["routeTable"], value: routeTable }]);
+  expect(fixed).not.toBe(run);
+  expect(fixed.setup!.props!.gateway.routeTable).toEqual(routeTable);
+  expect(
+    (fixed.setup!.props!.gateway.routeTable as typeof routeTable).rules.find((rule) => rule.id === "parcels")!.targets,
+  ).toEqual([{ edgeId: "to-tracking", weight: 1 }]);
+  expect(run).toEqual(before);
   expect(fixed.traffic).toEqual(run.traffic);
   expect(fixed.setup!.props!.gateway.latencyMs).toBe(17);
 });

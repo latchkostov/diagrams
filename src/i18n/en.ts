@@ -4813,12 +4813,12 @@ const en = {
     "In Checks, choose Run simulations and inspect the completed {burst}. This adds evidence; it does not apply another repair.",
   "tutorials.checksAndFixes.evidenceDone":
     "Checks completed the saved burst on this document; simulated evidence is separate from static advice.",
-  "tutorials.kafkaTopic.billingGroupTitle": "Name the Billing group",
+  "tutorials.kafkaTopic.billingGroupTitle": "Name the {name} group",
   "tutorials.kafkaTopic.billingGroupGoal":
-    "Select Billing, select its incoming connection and set Consumer group to {group} in Properties. This stable group identity owns one stream copy.",
-  "tutorials.kafkaTopic.emailGroupTitle": "Name the Email group",
+    "Select {name}, select its incoming connection and set Consumer group to {group} in Properties. This stable group identity owns one stream copy.",
+  "tutorials.kafkaTopic.emailGroupTitle": "Name the {name} group",
   "tutorials.kafkaTopic.emailGroupGoal":
-    "Select Email and its incoming connection, then set Consumer group to {group}. A different identity receives a separate stream copy.",
+    "Select {name} and its incoming connection, then set Consumer group to {group}. A different identity receives a separate stream copy.",
   "tutorials.kafkaTopic.groupDone":
     "The connection now names its consumer group; readers sharing that name would compete for its copy.",
   "tutorials.queueWorkers.predictTitle": "Predict the second worker’s effect",

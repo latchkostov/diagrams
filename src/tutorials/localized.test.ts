@@ -152,6 +152,24 @@ function replay(editor: ReturnType<typeof lessonEditor>, tutorial: Tutorial, ste
   }
 }
 
+it("German consumer-group instructions name the consumers created by the lesson", async () => {
+  await language("de");
+  const tutorial = allTutorials.find((tutorial) => tutorial.id === "kafka-topic")!;
+  const editor = lessonEditor(tutorial);
+  for (const step of tutorial.steps) {
+    if (step.id === "group-billing" || step.id === "group-email") {
+      const subject = step.id.slice("group-".length);
+      const id = resolveSubjects(tutorial, editor.getDiagram())[subject];
+      const name = editor.getDiagram().nodes.find((node) => node.id === id)!.label;
+      expect(step.title()).toContain(name);
+      expect(step.goal()).toContain(name);
+      expect(step.goal()).toContain(subject);
+      expect(step.targets[0].tip()).toContain(name);
+    }
+    replay(editor, tutorial, step);
+  }
+});
+
 it.each(locales)("localized tutorial searches find their intended target (%s)", async (code) => {
   await language(code);
   for (const tutorial of allTutorials) {

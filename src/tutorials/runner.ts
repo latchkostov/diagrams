@@ -441,6 +441,13 @@ export function createTutorialRunner(
       liveOn: !!h.canvas?.live,
     });
     switch (demo.kind) {
+      case "remove": {
+        const id = subjects[demo.subject];
+        // The editor may reuse this id on reapply; its next add must await a fresh canvas publication.
+        demoBindings.delete(demo.subject);
+        if (id) ed.deleteElements({ nodeIds: [id] });
+        return;
+      }
       case "member": {
         const id = subjects[demo.subject],
           boundary = subjects[demo.boundary];

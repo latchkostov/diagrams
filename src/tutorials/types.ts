@@ -136,6 +136,8 @@ export type Check =
       kind: "checks";
       status: ProductObservations["checks"]["status"];
       rule?: string;
+      /** Restrict rule evidence to this bound finding target. */
+      subject?: string;
       absent?: true;
       findings?: number;
       simulation?: string;
@@ -221,6 +223,8 @@ export type Check =
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
   | { kind: "add"; subject: string; stencil: string; after?: string }
+  /** Restore an absent subject, independent of the editor's undo history. */
+  | { kind: "remove"; subject: string }
   | { kind: "connect"; from: string; to: string; sourceSide?: Side; targetSide?: Side }
   | { kind: "reconnect"; edge: readonly [string, string]; to: string }
   | { kind: "insert"; edge: readonly [string, string]; subject: string; stencil: string }

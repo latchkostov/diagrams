@@ -479,8 +479,14 @@ function sandbox(
       edgeIds?: string[];
     }) => select([...nodeIds, ...groupIds.map((g) => GROUP_PREFIX + g), ...edgeIds]),
     applyDiagram: (next: DiagramFile) => write(structuredClone(next)),
-    deleteElements: ({ edgeIds = [] }: { edgeIds?: string[] }) =>
-      write({ ...diagram, edges: diagram.edges.filter((e) => !edgeIds.includes(e.id)) }),
+    deleteElements: ({ edgeIds = [], nodeIds = [] }: { edgeIds?: string[]; nodeIds?: string[] }) =>
+      write({
+        ...diagram,
+        nodes: diagram.nodes.filter((n) => !nodeIds.includes(n.id)),
+        edges: diagram.edges.filter(
+          (e) => !edgeIds.includes(e.id) && !nodeIds.includes(e.from) && !nodeIds.includes(e.to),
+        ),
+      }),
     addStencil(stencil: string) {
       const node = newNode(stencil);
       commit(() => ({ ...diagram, nodes: [...diagram.nodes, node] }));
@@ -756,6 +762,8 @@ function sandbox(
       const edge = (pair: readonly [string, string]) =>
         diagram.edges.find((e) => e.from === id(pair[0]) && e.to === id(pair[1]))!;
       switch (demo.kind) {
+        case "remove":
+          return editor.deleteElements({ nodeIds: [id(demo.subject)] });
         case "add":
           return demo.after
             ? editor.createConnected({ from: id(demo.after), stencil: demo.stencil })
@@ -1600,6 +1608,9 @@ describe("every tutorial's completion contract", () => {
                 (d.kind === "add" || d.kind === "insert") && !bindings[d.subject] ? [d.subject] : [],
               ),
             );
+            const removed = new Set(
+              step.demo.flatMap((d) => (d.kind === "remove" && bindings[d.subject] ? [bindings[d.subject]!] : [])),
+            );
             if (!beyond(s, i)) await skip(s, tutorial);
             expect(beyond(s, i)).toBe(true);
             if (perturbation === "learner has an unsaved draft of the target simulation") {
@@ -1621,9 +1632,12 @@ describe("every tutorial's completion contract", () => {
                 s.diagram.simulations!.find((sim) => sim.id === run)!,
                 run,
               );
-            expect(s.diagram.nodes).toHaveLength(before + missing.size);
+            expect(s.diagram.nodes).toHaveLength(before + missing.size - removed.size);
             for (const [name, id] of Object.entries(bindings))
-              if (id && !tutorial.subjects[name].edge) expect(s.subject(name)).toBe(id);
+              if (id && !tutorial.subjects[name].edge) {
+                if (removed.has(id)) expect(s.diagram.nodes.some((node) => node.id === id)).toBe(false);
+                else expect(s.subject(name)).toBe(id);
+              }
             const bound = Object.values(s.runner.getSnapshot().subjects).filter(Boolean);
             expect(new Set(bound).size).toBe(bound.length);
           });

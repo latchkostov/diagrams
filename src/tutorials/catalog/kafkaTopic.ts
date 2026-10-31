@@ -77,11 +77,17 @@ export const kafkaTopic: Tutorial = {
     }),
     {
       id: "group-billing",
-      title: msg("tutorials.kafkaTopic.billingGroupTitle"),
-      goal: () => t("tutorials.kafkaTopic.billingGroupGoal", { group: "billing" }),
+      title: () => t("tutorials.kafkaTopic.billingGroupTitle", { name: t("tutorials.kafkaTopic.billingName") }),
+      goal: () =>
+        t("tutorials.kafkaTopic.billingGroupGoal", { name: t("tutorials.kafkaTopic.billingName"), group: "billing" }),
       done: msg("tutorials.kafkaTopic.groupDone"),
       check: { kind: "prop", edge: ["topic", "billing"], prop: "group", op: "=", value: "billing" },
-      targets: [{ testId: "node-{billing}", tip: msg("tutorials.kafkaTopic.billingGroupTitle") }],
+      targets: [
+        {
+          testId: "node-{billing}",
+          tip: () => t("tutorials.kafkaTopic.billingGroupTitle", { name: t("tutorials.kafkaTopic.billingName") }),
+        },
+      ],
       demo: [{ kind: "prop", edge: ["topic", "billing"], props: { group: "billing" } }],
       solution: [
         { click: "node-{billing}" },
@@ -93,11 +99,17 @@ export const kafkaTopic: Tutorial = {
     },
     {
       id: "group-email",
-      title: msg("tutorials.kafkaTopic.emailGroupTitle"),
-      goal: () => t("tutorials.kafkaTopic.emailGroupGoal", { group: "email" }),
+      title: () => t("tutorials.kafkaTopic.emailGroupTitle", { name: t("tutorials.kafkaTopic.emailName") }),
+      goal: () =>
+        t("tutorials.kafkaTopic.emailGroupGoal", { name: t("tutorials.kafkaTopic.emailName"), group: "email" }),
       done: msg("tutorials.kafkaTopic.groupDone"),
       check: { kind: "prop", edge: ["topic", "email"], prop: "group", op: "=", value: "email" },
-      targets: [{ testId: "node-{email}", tip: msg("tutorials.kafkaTopic.emailGroupTitle") }],
+      targets: [
+        {
+          testId: "node-{email}",
+          tip: () => t("tutorials.kafkaTopic.emailGroupTitle", { name: t("tutorials.kafkaTopic.emailName") }),
+        },
+      ],
       demo: [{ kind: "prop", edge: ["topic", "email"], props: { group: "email" } }],
       solution: [
         { click: "node-{email}" },

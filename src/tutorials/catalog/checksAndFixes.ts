@@ -26,7 +26,7 @@ export const checksAndFixes: Tutorial = {
         kind: "all",
         checks: [
           { kind: "dock", tab: "checks" },
-          { kind: "checks", status: "done", rule: "no-reader" },
+          { kind: "checks", status: "done", rule: "no-reader", subject: "topic" },
         ],
       },
       sticky: true,
@@ -59,7 +59,7 @@ export const checksAndFixes: Tutorial = {
         checks: [
           { kind: "edge", from: "topic", to: "worker" },
           { kind: "label", subject: "worker", is: msg("tutorials.checksAndFixes.worker") },
-          { kind: "checks", status: "done", rule: "no-reader", absent: true },
+          { kind: "checks", status: "done", rule: "no-reader", subject: "topic", absent: true },
         ],
       },
       sticky: true,
@@ -82,10 +82,10 @@ export const checksAndFixes: Tutorial = {
       title: msg("tutorials.checksAndFixes.undoTitle"),
       goal: msg("tutorials.checksAndFixes.undoGoal"),
       done: msg("tutorials.checksAndFixes.undoDone"),
-      check: { kind: "all", checks: [{ kind: "checks", status: "done", rule: "no-reader" }] },
+      check: { kind: "all", checks: [{ kind: "checks", status: "done", rule: "no-reader", subject: "topic" }] },
       sticky: true,
       targets: [{ testId: "undo-button", tip: msg("tutorials.checksAndFixes.undoTitle") }],
-      demo: [],
+      demo: [{ kind: "remove", subject: "worker" }],
       solution: [{ click: "undo-button" }],
     },
     {
@@ -98,7 +98,7 @@ export const checksAndFixes: Tutorial = {
         checks: [
           { kind: "edge", from: "topic", to: "worker" },
           { kind: "label", subject: "worker", is: msg("tutorials.checksAndFixes.worker") },
-          { kind: "checks", status: "done", rule: "no-reader", absent: true },
+          { kind: "checks", status: "done", rule: "no-reader", subject: "topic", absent: true },
         ],
       },
       sticky: true,
