@@ -222,6 +222,10 @@ jobs:
       - name: Native production E2E shard, auto workers, no retries
         timeout-minutes: 25
         run: pnpm gate full --no-docker --only e2e --shard ${{ matrix.shard }}/${{ matrix.total }}
+      - name: Compare native host candidates on the same runner
+        if: always() && matrix.shard == 1
+        timeout-minutes: 1
+        run: node scripts/ci/native-rtc.mjs tests/.output/g/native-rtc.json
       - name: Collect native counts or interruption marker
         if: always()
         run: node scripts/e2e-failures.mjs --collect-native tests/.output/g tests/.output/native-results.json

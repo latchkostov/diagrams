@@ -290,6 +290,12 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
         .every((step: { if: string }) => step.if === "always()"),
     ).toBe(true);
   }
+  const diagnostic = native.steps.find((step: { run?: string }) => step.run?.includes("ci/native-rtc.mjs"));
+  expect(diagnostic.if).toBe("always() && matrix.shard == 1");
+  expect(diagnostic.run).toContain("tests/.output/g/native-rtc.json");
+  expect(native.steps.indexOf(diagnostic)).toBeGreaterThan(
+    native.steps.findIndex((step: { run?: string }) => step.run?.startsWith("pnpm gate")),
+  );
   expect(jobs.report.needs).toEqual([
     "e2e-build",
     "e2e",
