@@ -142,15 +142,17 @@ for (const [id, , , policy] of lazySurfaces) {
       const focus = page.getByTestId(
         id === "examples.discovery"
           ? "examples-search"
-          : id === "live.inject"
-            ? "inject-loading-close"
-            : id === "live.simulations"
-              ? "sim-panel-close"
-              : tutorial
-                ? "tutorial-exit"
-                : id === "tutorial.list"
-                  ? "view-button"
-                  : "example-picker",
+          : id === "live.sequence"
+            ? "lazy-dialog-close"
+            : id === "live.inject"
+              ? "inject-loading-close"
+              : id === "live.simulations"
+                ? "sim-panel-close"
+                : tutorial
+                  ? "tutorial-exit"
+                  : id === "tutorial.list"
+                    ? "view-button"
+                    : "example-picker",
       );
       await focus.focus();
       await expect(focus).toBeFocused();
@@ -187,7 +189,7 @@ for (const [id, , , policy] of lazySurfaces) {
       if (id === "live.simulations") await expect(page.getByTestId("sim-panel-load-retry")).toBeFocused();
       else await expect(focus).toBeFocused();
       mode = "pass";
-      await page.getByTestId("lazy-load-retry").focus();
+      await page.getByTestId(id === "live.sequence" ? "lazy-dialog-retry" : "lazy-load-retry").focus();
       await page.keyboard.press("Enter");
       await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("loaded");
       if (before) expect(await savedDiagram(page)).toEqual(before);

@@ -33,12 +33,13 @@ describe("2026-10-25 tutorial owner decisions", () => {
   it("capacity keeps its View control and folds the automatic callout into Apply fix", () => {
     expect(capacity.chrome).toBe("app");
     expect(capacity.steps.map((step) => step.id)).toEqual(["live", "overlay", "backlog", "fix", "drain"]);
-    expect(capacity.steps.find((step) => step.id === "fix")!.goal()).toContain("automatically");
+    expect(capacity.steps.find((step) => step.id === "fix")!.goal()).toContain("saved run’s setup");
     expect(capacity.steps.find((step) => step.id === "overlay")!.solution).toContainEqual({ click: "view-button" });
   });
 
   it("slow motion ends with the completed journey", () => {
-    expect(traceSlowmo.steps.at(-1)!.check).toEqual({ kind: "slowmo", finished: true });
+    expect(traceSlowmo.steps.find((step) => step.id === "finished")!.check).toEqual({ kind: "slowmo", finished: true });
+    expect(traceSlowmo.steps.at(-1)!.check).toEqual({ kind: "slowControl", action: "off" });
     expect(traceSlowmo.steps.flatMap((step) => step.solution)).not.toContainEqual({ click: "trace-sequence" });
   });
 

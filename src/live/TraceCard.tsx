@@ -26,6 +26,7 @@ export interface TraceCardProps {
   now: number;
   onClose(): void;
   onSequence(): void;
+  sequenceOpen?: boolean;
   /** Waiting at a node: inject one message there. Absent where injecting isn't offered. */
   onSendOne?(nodeId: string): void;
   /** How tall it may grow before it reaches the diagram, in px (see `roomUnderCard`); 0 = no limit. */
@@ -87,6 +88,7 @@ export function TraceCard({
   now,
   onClose,
   onSequence,
+  sequenceOpen = false,
   onSendOne,
   room = 0,
   onSlowMotion,
@@ -322,7 +324,12 @@ export function TraceCard({
       )}
 
       <footer className="tr-foot">
-        <button className="btn btn-primary" onClick={onSequence} data-testid="trace-sequence">
+        <button
+          className="btn btn-primary"
+          onClick={onSequence}
+          aria-expanded={sequenceOpen}
+          data-testid="trace-sequence"
+        >
           <LiveIcon name="sequence" size={14} /> Sequence diagram
         </button>
         {slowmo ? (

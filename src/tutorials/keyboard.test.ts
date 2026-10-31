@@ -60,8 +60,8 @@ it("resolves keyboard subjects and connection identities without executing a dem
 it("lets the final slow-motion replay finish without navigating away from it", () => {
   const lesson = allTutorials.find((lesson) => lesson.id === "trace-slowmo")!;
   const step = lesson.steps.find((step) => step.check.kind === "slowmo" && step.check.finished)!;
-  expect(step.solution.some((action) => "hover" in action)).toBe(true);
-  expect(step.keyboardSolution).toEqual([]);
+  expect(step.solution).toEqual([{ select: "live-speed", value: "8" }, { playing: true }]);
+  expect(step.keyboardSolution).toEqual([{ choose: "live-speed", value: "8" }, { playing: true }]);
 });
 
 it("a semantic readout step has a keyboard read action, not just canvas focus", () => {

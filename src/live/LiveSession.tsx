@@ -5,7 +5,7 @@ import { activateDock } from "../canvas/inspector/dockActions";
 import { workbenchDock } from "../canvas/inspector/dockState";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useCameraController } from "../canvas/camera";
 import { InteractionContext, useInteractionOrLocal } from "../canvas/interaction";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
@@ -81,8 +81,16 @@ import { useLiveKeyboard } from "./session/useLiveKeyboard";
 import { useLivePanelLayout, useLiveSessionBridge, useLiveSessionState } from "./session/useLiveSessionState";
 import { useSlowTraceCard, useTraceActions, useTraceSlowMotion, useTraceSpotlight } from "./session/useTraceSpotlight";
 import { SlowCaption } from "./slowmo/SlowBar";
-// Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
-const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
+import { SequenceLoading } from "./SequenceLoading";
+// The modal frame owns focus, Escape and Retry while the sequence writer loads.
+const SequenceDialog = defineLazySurface({
+  id: "live.sequence",
+  load: () => import("./SequenceDialog").then((m) => m.SequenceDialog),
+  placeholder: { render: (props, status) => <SequenceLoading {...props} status={status} /> },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 // Record video's code (its dialogs, capture and WebM fix-up) loads just after the session is up, not with it.
 type RecorderView = typeof import("./record/Recorder").Recorder;
 
@@ -297,6 +305,10 @@ export function LiveSession({
 
   const ui = useMemo<LiveUi>(
     () => ({
+      openSequence: () => {
+        const trace = controller.getState().trace?.current;
+        if (trace) setSequence(trace);
+      },
       openNodeDetails,
       applyCapacityFix: applyFix,
       addReader,
@@ -318,6 +330,7 @@ export function LiveSession({
         setPanel({ open: true, kind: "sims", sim: restore ? kept.sim : (sim ?? null) });
       },
       panelOpen: panel.open,
+      closePanel: () => setPanel({ open: false, kind: "sims", sim: null }),
       capacityOpen,
       openCapacity,
       events,
@@ -362,6 +375,7 @@ export function LiveSession({
       openRecord,
       alwaysOn,
       startTrace,
+      setSequence,
     ],
   );
 
@@ -441,6 +455,7 @@ export function LiveSession({
         )}
         {slowCard && !capturing ? (
           <TraceCard
+            sequenceOpen={!!sequence}
             trace={slowCard.trace}
             diagram={controller.currentDiagram}
             now={slowCard.trace.current?.endedAt ?? state.snapshot.time}
@@ -453,6 +468,7 @@ export function LiveSession({
           state.trace &&
           !capturing && (
             <TraceCard
+              sequenceOpen={!!sequence}
               trace={state.trace}
               diagram={controller.currentDiagram}
               now={state.snapshot.time}
@@ -520,7 +536,7 @@ export function LiveSession({
             onDraftChange={takePanelDraft}
             onEditCommand={takePanelEdit}
             state={state}
-            onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
+            onClose={ui.closePanel}
             onRun={runDraft}
             onSave={saveSimulation}
             onDelete={deleteSimulation}
@@ -530,14 +546,12 @@ export function LiveSession({
       )}
       {inject && <InjectDialog request={inject} onClose={() => setInject(null)} />}
       {sequence && (
-        <Suspense fallback={null}>
-          <SequenceDialog
-            trace={sequence}
-            diagram={controller.currentDiagram}
-            theme={theme}
-            onClose={() => setSequence(null)}
-          />
-        </Suspense>
+        <SequenceDialog
+          trace={sequence}
+          diagram={controller.currentDiagram}
+          theme={theme}
+          onClose={() => setSequence(null)}
+        />
       )}
       {Recorder && (
         <Recorder

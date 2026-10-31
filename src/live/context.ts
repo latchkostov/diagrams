@@ -7,6 +7,7 @@ import type { CapacityFix } from "./capacityModel";
 
 /** What the live view's components share: the controller plus the session's UI commands. */
 export interface LiveUi {
+  openSequence?(): void;
   openNodeDetails?(id: string): void;
   applyCapacityFix?(fix: CapacityFix): void;
   addReader?(id: string): void;
@@ -32,6 +33,7 @@ export interface LiveUi {
    */
   editPanelCopy?(id: string, edit: (sim: Simulation) => Simulation): void;
   openPanel(sim?: Simulation): void;
+  closePanel(): void;
   panelOpen: boolean;
   /** The Inputs & capacity panel. */
   capacityOpen: boolean;

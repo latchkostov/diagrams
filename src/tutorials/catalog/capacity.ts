@@ -3,12 +3,12 @@ import type { Tutorial } from "../types";
 
 export const capacity: Tutorial = {
   id: "capacity",
-  version: 1,
+  version: 2,
   track: "simulation",
   level: 1,
   minutes: 3,
   title: msg("tutorials.capacity.title"),
-  summary: msg("tutorials.capacity.summary"),
+  summary: msg("tutorials.capacity.summaryV2"),
   chrome: "app",
   start: { example: "measured-order-capacity", simulation: "triple" },
   subjects: { worker: { stencils: ["service.java"] }, queue: { stencils: ["generic.queue"] } },
@@ -30,7 +30,7 @@ export const capacity: Tutorial = {
       id: "overlay",
       title: msg("tutorials.capacity.overlayTitle"),
       goal: msg("tutorials.capacity.overlayGoal"),
-      done: msg("tutorials.capacity.overlayDone"),
+      done: msg("tutorials.capacity.overlayDoneV2"),
       check: { kind: "liveView", view: "capacity", open: true },
       targets: [
         { testId: "capacity-overlay-toggle", tip: msg("tutorials.capacity.overlayGoal") },
@@ -53,10 +53,10 @@ export const capacity: Tutorial = {
     {
       id: "fix",
       title: msg("tutorials.capacity.fixTitle"),
-      goal: msg("tutorials.capacity.fixGoal"),
-      done: msg("tutorials.capacity.fixDone"),
+      goal: msg("tutorials.capacity.fixGoalV2"),
+      done: msg("tutorials.capacity.fixDoneV2"),
       check: { kind: "metric", subject: "worker", field: "replicas", op: ">=", value: 3 },
-      targets: [{ testId: "bottleneck-apply", tip: msg("tutorials.capacity.fixGoal") }],
+      targets: [{ testId: "bottleneck-apply", tip: msg("tutorials.capacity.fixGoalV2") }],
       demo: [{ kind: "applyFix" }],
       solution: [{ click: "bottleneck-apply" }],
     },
@@ -78,5 +78,5 @@ export const capacity: Tutorial = {
       solution: [{ hover: "node-{queue}" }],
     },
   ],
-  finish: { text: msg("tutorials.capacity.finish") },
+  finish: { text: msg("tutorials.capacity.finishV2") },
 };

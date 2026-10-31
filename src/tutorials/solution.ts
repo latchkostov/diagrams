@@ -26,6 +26,8 @@ export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedU
     if ("importFixture" in s) return s;
     if ("pan" in s) return s;
     if ("click" in s) return { click: at(s.click) };
+    if ("close" in s) return { close: at(s.close) };
+    if ("playing" in s) return s;
     if ("open" in s) return { open: at(s.open) };
     if ("modClick" in s) return { modClick: at(s.modClick), modifiers: s.modifiers };
     if ("rightclick" in s) return { rightclick: at(s.rightclick) };

@@ -1,3 +1,6 @@
+import { authorASimulation } from "./authorASimulation";
+import { sequenceEvidence } from "./sequenceEvidence";
+import { resourceHeadroom } from "./resourceHeadroom";
 import { importAndReview } from "./importAndReview";
 import { libraryReuse } from "./libraryReuse";
 import { workbenchTour } from "./workbenchTour";
@@ -96,8 +99,11 @@ export const allTutorials: readonly Tutorial[] = [
   ratesAndInputs,
   readANode,
   capacity,
+  resourceHeadroom,
   traceSlowmo,
+  sequenceEvidence,
   savedSimulations,
+  authorASimulation,
   faults,
   authorADrill,
   retryStorm,

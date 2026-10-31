@@ -4432,7 +4432,8 @@ const en = {
   "tutorials.traceSlowmo.liveGoal": "Click Live, then pick Black Friday: 2,000 orders/s in the Simulations picker.",
   "tutorials.traceSlowmo.liveTitle": "Run the saved simulation",
   "tutorials.traceSlowmo.liveDone": "A saved simulation gives this run repeatable traffic and a seed.",
-  "tutorials.traceSlowmo.slowmoGoal": "Right-click Storefront and pick Watch one message in slow motion.",
+  "tutorials.traceSlowmo.slowmoGoal":
+    "Pause Live and restart the saved run. Right-click Storefront and pick Watch one message in slow motion; its look-ahead records the journey while Live stays held.",
   "tutorials.traceSlowmo.slowmoTitle": "Watch one message",
   "tutorials.traceSlowmo.slowmoDone": "Slow motion follows one message while it owns the camera.",
   "tutorials.traceSlowmo.finishedGoal": "Watch until the slow-motion journey finishes.",
@@ -5093,5 +5094,224 @@ const en = {
     "The database connection now has a 20% share; comparing Live work tests this load assumption.",
   "tutorials.kafkaTopic.watchGroupsGoal":
     "Watch {billing} and {email} until each has processed ten messages. Their groups are {billingGroup} and {emailGroup}; each receives its own copy.",
+  "planning.sequence.title": "Sequence diagram",
+  "planning.sequence.subtitle": "The whole journey of {title}, every copy included, in the order things happened.",
+  "planning.sequence.travelling": " It is still travelling: this is the journey so far.",
+  "planning.sequence.copy": "Copy as Mermaid",
+  "planning.sequence.copied": "Copied the sequence diagram as Mermaid.",
+  "planning.sequence.exportFailed": "Could not export the sequence. Retry, or choose another format.",
+  "planning.sequence.details": "Sequence details",
+  "planning.sequence.participants": "Participants",
+  "planning.sequence.timing": "Messages and timing",
+  "planning.sequence.arrow": "{from} → {to}: {label} ({style}), arrives {until}{detail}",
+  "tutorials.resourceHeadroom.title": "Explain a capacity ceiling",
+  "tutorials.resourceHeadroom.summary":
+    "Explain why a CPU-limited image worker queues work, then replay with more capacity. This separates assumptions from observations; first try Capacity. About four minutes.",
+  "tutorials.resourceHeadroom.worker": "Image worker",
+  "tutorials.resourceHeadroom.runName": "Twenty images",
+  "tutorials.resourceHeadroom.assumptionsTitle": "Read the assumptions",
+  "tutorials.resourceHeadroom.assumptionsGoal":
+    "Open {worker} in Properties. Read Simulation: eight concurrent jobs, 100 ms latency, 200 CPU-ms per job and a 1,000m CPU limit. These are supplied assumptions.",
+  "tutorials.resourceHeadroom.assumptionsDone": "Thread slots and CPU work are separate inputs to the model.",
+  "tutorials.resourceHeadroom.ceilingTitle": "Find the binding ceiling",
+  "tutorials.resourceHeadroom.ceilingGoal":
+    "Read the capacity explanation in Properties. CPU allows 1,000 ÷ 200 = 5 jobs/s; eight slots alone would allow 80/s. Which constraint binds?",
+  "tutorials.resourceHeadroom.ceilingDone":
+    "CPU binds at five jobs/s per replica. This is configured arithmetic, not a production measurement.",
+  "tutorials.resourceHeadroom.predictTitle": "Predict the burst",
+  "tutorials.resourceHeadroom.predictGoal":
+    "{run} arrive over one second. Predict whether one replica can keep up, then choose Done. Look for waiting jobs, not just failures.",
+  "tutorials.resourceHeadroom.predictDone": "The incoming burst exceeds the five jobs/s ceiling, so work must wait.",
+  "tutorials.resourceHeadroom.backlogTitle": "Observe waiting work",
+  "tutorials.resourceHeadroom.backlogGoal":
+    "Go Live and pick {run}. Watch {queue} build a backlog with the one-replica worker.",
+  "tutorials.resourceHeadroom.backlogDone":
+    "Waiting jobs are observed in this run; they are distinct from the steady-state capacity estimate.",
+  "tutorials.resourceHeadroom.replicasTitle": "Double the replicas",
+  "tutorials.resourceHeadroom.replicasGoal":
+    "Open {worker} → Edit properties → Simulation. Set Replicas to 2 and press Enter. The saved burst has no replica override, so it inherits this setting.",
+  "tutorials.resourceHeadroom.replicasDone": "Two replicas double the assumed CPU capacity to ten jobs/s.",
+  "tutorials.resourceHeadroom.replayTitle": "Replay the same twenty",
+  "tutorials.resourceHeadroom.replayGoal":
+    "Pick Free play, then {run} again to start a fresh replay. Keep seed 7, scale one and the same twenty images. Observe all twenty complete and the queue empty in the new run.",
+  "tutorials.resourceHeadroom.replayDone":
+    "The new run completes all twenty images; an old cumulative count cannot prove this comparison.",
+  "tutorials.resourceHeadroom.demandTitle": "Revisit higher demand",
+  "tutorials.resourceHeadroom.demandGoal": "Open Inputs and set Traffic × to 2. The same burst shape is now doubled.",
+  "tutorials.resourceHeadroom.demandDone":
+    "Higher offered demand consumes headroom without changing per-replica CPU capacity.",
+  "tutorials.resourceHeadroom.finish":
+    "You doubled the worker replicas; a fresh replay completed the same twenty images and emptied the queue. Static headroom depends on supplied work and resource assumptions: startup delays, transient queues and unknown managed-service budgets need separate evidence.",
+  "tutorials.sequenceEvidence.title": "Explain one request’s journey",
+  "tutorials.sequenceEvidence.summary":
+    "Trace one order and download its Sequence SVG as evidence. This makes a journey explainable; first try Read a node. About four minutes.",
+  "tutorials.sequenceEvidence.liveTitle": "Run the pipeline",
+  "tutorials.sequenceEvidence.liveGoal":
+    "Go Live and pick Black Friday: 2,000 orders/s. This saved run supplies the traffic and seed.",
+  "tutorials.sequenceEvidence.liveDone": "A repeatable run gives the trace a clear context.",
+  "tutorials.sequenceEvidence.traceTitle": "Trace from Storefront",
+  "tutorials.sequenceEvidence.traceGoal":
+    "Pause Live and restart the saved run, then right-click Storefront → Trace next message. Keyboard: select Storefront with Ctrl+K, then Shift+F10. Press Play, choose 8× and read a request or wait hop when the journey finishes.",
+  "tutorials.sequenceEvidence.traceDone":
+    "The card follows one root message and its copies, rather than summarizing every request.",
+  "tutorials.sequenceEvidence.sequenceTitle": "Open the same journey",
+  "tutorials.sequenceEvidence.sequenceGoal":
+    "Choose Sequence diagram on the trace card. Compare an arrow and its timing with the hop you just read.",
+  "tutorials.sequenceEvidence.sequenceDone":
+    "Sequence is built from this trace’s events, including its copies and replies.",
+  "tutorials.sequenceEvidence.exportTitle": "Download the evidence",
+  "tutorials.sequenceEvidence.exportGoal":
+    "Choose SVG or Copy as Mermaid in Sequence diagram. Either completed export counts for this same trace. A failed operation offers Retry; no clipboard read is needed.",
+  "tutorials.sequenceEvidence.exportDone":
+    "The export completed for this trace. Its identity and successful bytes matter, rather than just clicking a button.",
+  "tutorials.sequenceEvidence.limitsTitle": "Explain its limits",
+  "tutorials.sequenceEvidence.limitsGoal":
+    "Press Escape to return to the trace. What does this journey show? It cannot establish a p95 distribution or every branch taken by every request. Choose Done after reading.",
+  "tutorials.sequenceEvidence.limitsDone":
+    "One trace is evidence of one journey, with the model’s sampling and truncation limits.",
+  "tutorials.sequenceEvidence.finish":
+    "You traced an order and exported that same journey from Sequence. One journey explains individual calls and waits; use aggregate readouts and more traces to reason about the whole workload.",
+  "tutorials.authorASimulation.title": "Make a repeatable experiment",
+  "tutorials.authorASimulation.summary":
+    "Author a burst, a paused note and an end expectation, then save and replay. A repeatable experiment makes a comparison defensible; first try Saved simulations. About five minutes.",
+  "tutorials.authorASimulation.client": "Client",
+  "tutorials.authorASimulation.queue": "Jobs queue",
+  "tutorials.authorASimulation.worker": "Worker",
+  "tutorials.authorASimulation.runName": "Ten jobs",
+  "tutorials.authorASimulation.noteText": "Watch Worker complete this burst before judging the result.",
+  "tutorials.authorASimulation.expectationText": "Worker completes 10",
+  "tutorials.authorASimulation.burstTitle": "Run a ten-job draft",
+  "tutorials.authorASimulation.burstGoal":
+    "Go Live → More → Simulations… → New simulation. Name it {run}. Add traffic: ten jobs from {client}, spread over 1 s. In Details set length to 4 s; keep seed 7 and scale one. Choose Run before Save.",
+  "tutorials.authorASimulation.burstDone":
+    "Run plays the working draft immediately; the diagram has no saved definition yet.",
+  "tutorials.authorASimulation.noteTitle": "Add a paused note",
+  "tutorials.authorASimulation.noteGoal":
+    "Reopen More → Simulations…. In Timeline add Note at 0.5 s, write a short observation, add {worker} as focus and check Pause. Choose Run again without saving.",
+  "tutorials.authorASimulation.noteDone": "The draft now carries a focused pause; the note’s exact words are yours.",
+  "tutorials.authorASimulation.saveTitle": "Define the end result",
+  "tutorials.authorASimulation.saveGoal":
+    "Reopen Simulations…. In Expectations add {worker} completes 10: {worker}, processed, ≥ 10, at the end. Save. An end check waits for the run to finish; always would check throughout the run.",
+  "tutorials.authorASimulation.saveDone":
+    "Save writes traffic, note, seed, length and the end expectation into this sandbox diagram.",
+  "tutorials.authorASimulation.pauseTitle": "Run the saved definition",
+  "tutorials.authorASimulation.pauseGoal":
+    "Close Simulations… if it is open, then select {run} in the Live bar. Read its focused note when the saved run pauses.",
+  "tutorials.authorASimulation.pauseDone":
+    "The saved definition pauses at half a second; it has not decided the end expectation yet.",
+  "tutorials.authorASimulation.continueTitle": "Continue the experiment",
+  "tutorials.authorASimulation.continueGoal":
+    "Close Simulations… if needed, then choose Continue on the narration note. This resumes the current run; it does not start a fresh burst.",
+  "tutorials.authorASimulation.continueDone": "The same run continues after the paused note.",
+  "tutorials.authorASimulation.resultTitle": "Inspect the decided check",
+  "tutorials.authorASimulation.resultGoal":
+    "Use 8× speed if you like. Wait until {worker} completes 10 is met at the end. This is evidence for the declared experiment, not proof that the architecture is correct.",
+  "tutorials.authorASimulation.resultDone": "All ten jobs completed before this run ended.",
+  "tutorials.authorASimulation.replayTitle": "Repeat the result",
+  "tutorials.authorASimulation.replayGoal":
+    "Press Restart. If paused, press Play; then Continue at the note again. Keep seed, traffic, setup and timeline unchanged; wait for the same end expectation to pass in the new run.",
+  "tutorials.authorASimulation.replayDone":
+    "A second run reached the same declared end result; the previous run’s green check did not count.",
+  "tutorials.authorASimulation.finish":
+    "You authored and saved ten jobs, a focused pause and an end expectation; two runs completed the same ten jobs. Repetition holds the seed and setup fixed, while a useful real experiment also challenges the assumptions.",
+  "tutorials.ratesAndInputs.summaryV2":
+    "Compare source Rate in Free play with a saved traffic profile, then inspect Traffic × and sampling Scale. First try Request or Message; about three minutes.",
+  "tutorials.ratesAndInputs.liveGoalV2":
+    "Pick {run}. Its own constant profile supplies 6 requests/s, independently of the source Rate you just edited.",
+  "tutorials.ratesAndInputs.liveDoneV2":
+    "{run} supplies its own rate and seed; saved setup can also override diagram properties.",
+  "tutorials.ratesAndInputs.watchGoalV2":
+    "Hover {service}, or select it and open Properties, and watch at least 30 requests complete.",
+  "tutorials.ratesAndInputs.finishV2":
+    "You changed source Rate and Traffic ×; the configured offered rate and completed requests showed the effect. Free play uses source rates, saved runs use their profiles and setup, and Scale changes requests per dot rather than offered traffic.",
+  "tutorials.ratesAndInputs.freePlayTitle": "Try the source in Free play",
+  "tutorials.ratesAndInputs.freePlayGoal":
+    "Go Live without selecting a simulation. Free play uses {client}’s Rate of 6 requests/s; observe {service} complete a request.",
+  "tutorials.ratesAndInputs.freePlayDone": "Free play is running from the diagram’s source rates.",
+  "tutorials.ratesAndInputs.offeredTitle": "Read offered demand",
+  "tutorials.ratesAndInputs.offeredGoal":
+    "Open {service} → Edit properties and read its capacity explanation. {run}’s 6/s × Traffic 3 is 18 offered requests/s, independently of the cumulative completed count.",
+  "tutorials.ratesAndInputs.offeredDone": "Offered demand is eighteen requests/s in this configured run.",
+  "tutorials.ratesAndInputs.scaleTitle": "Separate dots from traffic",
+  "tutorials.ratesAndInputs.scaleGoal":
+    "In the still-open Inputs panel set Scale to 2. Each dot represents two requests; leave Traffic × at 3.",
+  "tutorials.ratesAndInputs.scaleDone": "Scale changes representation; Traffic × still controls the offered workload.",
+  "tutorials.readANode.summaryV2":
+    "Read selected-node vitals and distinguish waiting from work, then find a completion event. First try Rates and Inputs; about three minutes.",
+  "tutorials.readANode.readoutGoalV2":
+    "Select Order service and open Properties (double-click or F2). Its Live vitals stay in the dock; observe at least one completion. Hover is an alternative when its dock is closed.",
+  "tutorials.readANode.readoutDoneV2": "The selected-node dock keeps Live readings visible without relying on hover.",
+  "tutorials.readANode.eventsGoalV2":
+    "Open More → Event log. Filter it to Order service and find a completion event. Events describe individual sampled messages, while vitals aggregate the run.",
+  "tutorials.readANode.eventsDoneV2": "A completion event for Order service is present in the filtered log.",
+  "tutorials.readANode.finishV2":
+    "You read Order service’s vitals and found its completion event in the filtered log. Waiting consumes time without proving failure; these are model observations, not measurements of a production service.",
+  "tutorials.readANode.interpretTitle": "Separate waiting from work",
+  "tutorials.readANode.interpretGoal":
+    "Expand Latency in the selected-node dock. Compare time waiting with time working; waiting is not a failure count. Pick one observation to explain, then choose Done.",
+  "tutorials.readANode.interpretDone":
+    "Latency separates queueing and caller waits from local work. Small samples do not establish a stable percentile.",
+  "tutorials.capacity.summaryV2":
+    "Find a configured bottleneck, apply its replica fix and verify the observed queue drains. First try Read a node; about three minutes.",
+  "tutorials.capacity.overlayDoneV2":
+    "Show capacity is a steady-state estimate from supplied assumptions. It is separate from both observed backlog and Architecture Checks.",
+  "tutorials.capacity.fixGoalV2":
+    "Read Apply fix in the bottleneck callout. Confirm it increases Payment worker replicas in the saved run’s setup, then apply it.",
+  "tutorials.capacity.fixDoneV2":
+    "The saved run now uses more Payment worker replicas. The estimate still depends on supplied processing assumptions.",
+  "tutorials.capacity.finishV2":
+    "You increased the saved run’s Payment worker replicas; the waiting queue drained in Live. Configured headroom is an estimate, so validate its assumptions and transient behavior before transferring it to a real system.",
+  "tutorials.traceSlowmo.summaryV2":
+    "Pause, step and finish one message’s journey, then return to Live. First try Read a node; about three minutes.",
+  "tutorials.traceSlowmo.slowmoDoneV2":
+    "Live is frozen while the journey replays. The camera follows initially; a manual pan can take ownership as Custom.",
+  "tutorials.traceSlowmo.finishedGoalV2":
+    "Press Play and watch the remaining journey finish. Live stays frozen underneath this replay.",
+  "tutorials.traceSlowmo.finishV2":
+    "You paused and stepped a message, then returned to Live at the held point. The camera can become Custom after a manual pan; one journey does not represent the whole workload.",
+  "tutorials.traceSlowmo.pauseTitle": "Pause the replay",
+  "tutorials.traceSlowmo.pauseGoal":
+    "Choose Pause in the Live bar. Slow motion pauses its own replay clock; the underlying Live run is already frozen.",
+  "tutorials.traceSlowmo.pauseDone": "The replay is paused, with Live still held.",
+  "tutorials.traceSlowmo.hopTitle": "Step one hop",
+  "tutorials.traceSlowmo.hopGoal":
+    "Press Right arrow to step to the next hop. Space toggles playback; Left arrow steps back.",
+  "tutorials.traceSlowmo.hopDone": "The replay clock advanced to a later hop while staying paused.",
+  "tutorials.traceSlowmo.exitTitle": "Return to Live",
+  "tutorials.traceSlowmo.exitGoal":
+    "Press Escape to leave slow motion and return to the held Live run. Dismiss any readout and node selection with Escape first, then press Escape to return.",
+  "tutorials.traceSlowmo.exitDone": "Slow motion released the run; Live resumes where it was held.",
+  "tutorials.savedSimulations.summaryV2":
+    "Run narrated retries, continue its paused note and interpret an end expectation. First try Trace in slow motion; about three minutes.",
+  "tutorials.savedSimulations.expectationGoalV2":
+    "Wait for the run to end (8× speed is optional). Read {client} goodput at the end: either met or failed is evidence of this run. This end expectation cannot decide while its note is paused.",
+  "tutorials.savedSimulations.expectationDoneV2":
+    "The end check decided whether any request completed successfully after the scripted payment failures and recovery.",
+  "tutorials.savedSimulations.finishV2":
+    "You continued a narrated retry run; its decided end expectation reported whether the client achieved goodput after recovery. Either result is evidence under these scripted assumptions, not a guarantee about every workload.",
+  "tutorials.authorADrill.summaryV2":
+    "Save a targeted slowdown at a known time and observe it process traffic. First try Make a repeatable experiment; about three minutes.",
+  "tutorials.authorADrill.saveGoalV2":
+    "Choose Back, then New simulation. In Timeline add Slow dependency. Confirm {db} is the target and time is 0 s. In Details set length to 600 s to leave room for practice traffic, then Save.",
+  "tutorials.authorADrill.saveDoneV2": "The saved Drill targets {db} with a slowdown at the start.",
+  "tutorials.authorADrill.runGoalV2":
+    "Close the panel, select your saved Drill, then More → Continuous traffic. Observe {db} slowed while requests still complete. To extend the experiment later, restore its Fault and compare.",
+  "tutorials.authorADrill.runDoneV2":
+    "The saved slowdown is active on {db} and at least one request completed under it.",
+  "tutorials.authorADrill.finishV2":
+    "You saved a slowdown targeted at {db} at time zero; the active Fault and completed traffic showed its effect. Restore and replay to compare recovery, keeping other assumptions fixed.",
+  "tutorials.faults.summaryV2":
+    "Try a first Fault: take one zone’s node down and restore only its outage. First try Saved simulations; about three minutes.",
+  "tutorials.faults.finishV2":
+    "You took one node down and restored its outage; its Live state showed the change. Slowdowns, errors and link cuts are separate experiments, and restoring an outage does not clear an additional slowdown.",
+  "tutorials.resourceHeadroom.revisedTitle": "Read the revised explanation",
+  "tutorials.resourceHeadroom.revisedGoal":
+    "Reopen {worker} → Edit properties. Its explanation compares forty offered jobs/s with ten jobs/s of assumed capacity. CPU still binds per replica.",
+  "tutorials.traceSlowmo.cameraTitle": "Take the camera",
+  "tutorials.traceSlowmo.cameraGoal":
+    "Pan the paused replay with a middle-button drag or Space+drag. Keyboard: focus a canvas node, then Shift+0 zooms to 100%. The view becomes Custom while the same message stays paused.",
+  "tutorials.traceSlowmo.cameraDone":
+    "A manual view change takes ownership from Following; the replay and its held Live run do not move in time.",
+  "tutorials.savedSimulations.expectationLabelV2": "{client} goodput at the end",
 } as const;
 export default en;

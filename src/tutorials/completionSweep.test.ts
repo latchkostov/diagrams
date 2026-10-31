@@ -270,6 +270,17 @@ function sandbox(
     offUi?.();
     offUi = planningHost.publish({
       controller: c,
+      slowmo: slow,
+      openSequence: () => {
+        const trace = c.getState().trace?.current;
+        if (trace)
+          observationPorts.sequence.publish({
+            ...source,
+            traceId: trace.rootId,
+            open: true,
+            arrows: trace.steps.filter((s) => s.kind === "send").length,
+          });
+      },
       simulations: diagram.simulations ?? [],
       draft,
       saveSimulation: session.saveSimulation,
@@ -288,6 +299,11 @@ function sandbox(
       },
       openPanel: () => {
         panels.panelOpen = true;
+        renderUi();
+      },
+      closePanel: () => {
+        panels.panelOpen = false;
+        panelCopy = null;
         renderUi();
       },
     } as unknown as LiveUi);
@@ -311,6 +327,13 @@ function sandbox(
       slowListeners.add(f);
       return () => void slowListeners.delete(f);
     },
+    pause: () => setSlow({ ...slowState, playing: false }),
+    step: (_dir: 1 | -1) =>
+      setSlow({
+        ...slowState,
+        playing: false,
+        t: Math.min(SLOW_SCRIPT.duration, slowState.t + SLOW_SCRIPT.duration / 4),
+      }),
     end: () => setSlow({ status: "off", playing: false, t: 0, script: null }),
     start: () => setSlow({ status: "on", playing: true, t: 0, script: SLOW_SCRIPT }),
     /** Its replay plays on: at the end of the script it stops there (the machine's `finished`). */
@@ -660,6 +683,9 @@ function sandbox(
     },
     session: {
       run: () => {},
+      get disabledHint() {
+        return slow.getState().status === "on" ? "Slow motion owns engine mutations" : undefined;
+      },
       // Each session publishes its own controller's reader (useLiveSessionState): a remount is another session.
       state: (() => undefined) as () => LiveState | undefined,
       slowmo: slow,
@@ -795,6 +821,14 @@ function sandbox(
       const edge = (pair: readonly [string, string]) =>
         diagram.edges.find((e) => e.from === id(pair[0]) && e.to === id(pair[1]))!;
       switch (demo.kind) {
+        case "draftSimulation":
+          return session.runDraft(demo.simulation);
+        case "openSequence":
+          return planningHost.get()?.openSequence?.();
+        case "slowControl":
+          if (demo.action === "pause") return slow.pause();
+          if (demo.action === "step") return slow.step(1);
+          return slow.end();
         case "importFixture": {
           const outcome = importCompose([
             { name: "tutorial-status-compose.yaml", text: readFileSync("public/tutorial-status-compose.yaml", "utf8") },
@@ -872,7 +906,8 @@ function sandbox(
         case "traffic":
           return controller!.setTraffic(demo.on);
         case "trace":
-          return controller!.traceNext();
+          if (controller!.getState().trace) return;
+          return controller!.traceNext(demo.subject ? id(demo.subject) : undefined);
         case "fault": {
           const target = demo.edge ? edge(demo.edge).id : id(demo.subject);
           const group = isGroup(target);
@@ -908,9 +943,11 @@ function sandbox(
           return controller!.setInputs({ ...controller!.getState().inputs, [demo.input]: demo.value });
         case "openView": {
           const ui = planningHost.get()!;
-          if (demo.view === "capacity") return capacityOverlay.set(true);
-          if (demo.view === "inputs") return ui.openCapacity(true);
-          if (demo.view === "events") return ui.showEvents(null, true);
+          const open = demo.open ?? true;
+          if (demo.view === "capacity") return capacityOverlay.set(open);
+          if (demo.view === "inputs") return ui.openCapacity(open);
+          if (demo.view === "events") return ui.showEvents(demo.subject ? id(demo.subject) : null, open);
+          if (!open) return ui.closePanel();
           return ui.openPanel();
         }
         case "saveSimulation": {
@@ -946,6 +983,10 @@ it("author-a-drill: closing the editor at Run keeps progress until the saved Dri
   cleanup.push(planningHost.publish({ ...planningHost.get()!, panelOpen: false }));
   expect(state(s)).toMatchObject({ index: run, value: "active" });
   s.live!.selectSimulation(s.diagram.simulations!.find((sim) => sim.id === "simulation")!);
+  expect(state(s)).toMatchObject({ index: run, value: "active" });
+  s.live!.setTraffic(true);
+  for (let frame = 0; frame < 60; frame++) s.live!.advance(100);
+  s.live!.publish();
   expect(state(s).value).toBe("finished");
 });
 
@@ -956,7 +997,17 @@ const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inSt
 const checkNeedsTime = (check: Check): boolean =>
   check.kind === "all"
     ? check.checks.some(checkNeedsTime)
-    : (check.kind === "simulation" && !!check.atLeastMs) || check.kind === "routeEvidence";
+    : (check.kind === "simulation" && !!check.atLeastMs) ||
+      check.kind === "routeEvidence" ||
+      check.kind === "newRun" ||
+      (check.kind === "trace" && !!check.complete) ||
+      check.kind === "processed" ||
+      check.kind === "metric" ||
+      check.kind === "expectation" ||
+      check.kind === "note" ||
+      check.kind === "sequence" ||
+      check.kind === "event" ||
+      (check.kind === "prop" && !!check.effective);
 /** A step whose check needs run time, or whose injected messages need it to arrive. */
 const needsRunTime = (step: TutorialStep): boolean =>
   checkNeedsTime(step.check) || step.demo.some((d) => d.kind === "inject");
@@ -3168,6 +3219,19 @@ describe("completion regressions", () => {
     expect(state(s).value).toBe("finished");
   });
 
+  it("slow-motion Skip can pause and step while engine mutations are guarded", async () => {
+    const tutorial = tutorials.find((lesson) => lesson.id === "trace-slowmo")!;
+    const s = sandbox(tutorial);
+    expect(await reach(s, tutorial, 2)).toBe(true);
+    expect(s.hostState.session.disabledHint).toBeDefined();
+    await skip(s, tutorial);
+    expect(state(s)).toMatchObject({ value: "active", index: 3 });
+    expect(s.slow.getState().playing).toBe(false);
+    await skip(s, tutorial);
+    expect(state(s)).toMatchObject({ value: "active", index: 4 });
+    expect(s.slow.getState().t).toBeGreaterThan(0);
+  });
+
   it("a hover card on the subject completes its step, and on another item it doesn't", async () => {
     const s = sandbox(livePanelsFixture);
     const hover = livePanelsFixture.steps.findIndex((st) => st.id === "hover");
@@ -3177,4 +3241,16 @@ describe("completion regressions", () => {
     s.hover({ kind: "node", id: s.subject("api") });
     expect(state(s).index).toBe(hover + 1);
   });
+});
+
+it("authoring: the first unpaused draft cannot pre-complete the later Continue step", async () => {
+  const tutorial = tutorials.find((t) => t.id === "author-a-simulation")!;
+  const s = sandbox(tutorial);
+  expect(await reach(s, tutorial, 1)).toBe(true);
+  for (let frame = 0; frame < 60; frame++) s.live!.advance(100);
+  s.live!.publish();
+  const continuation = tutorial.steps.findIndex((step) => step.id === "continue");
+  expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(500);
+  expect(state(s).latched[continuation]).toBe(false);
+  expect(state(s).observed[continuation]).toBe(false);
 });

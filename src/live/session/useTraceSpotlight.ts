@@ -90,7 +90,12 @@ export function useTraceActions({
 }) {
   const { controller, flash, state, panel, notice, getDiagram } = session;
   const { slowRef } = spotlight;
-  const [sequence, setSequence] = useState<MessageTrace | null>(null);
+  const [sequenceChoice, chooseSequence] = useState<{ trace: MessageTrace; generation: number } | null>(null);
+  const sequence = sequenceChoice?.generation === state.generation ? sequenceChoice.trace : null;
+  const setSequence = useCallback(
+    (trace: MessageTrace | null) => chooseSequence(trace ? { trace, generation: state.generation } : null),
+    [state.generation],
+  );
   // One way in for the ⋯ menu, the right-click and the palette (same words when there's nothing yet).
   const startTrace = useCallback(
     (which: TraceChoice) => {
