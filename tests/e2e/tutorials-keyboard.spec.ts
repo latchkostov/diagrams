@@ -11,6 +11,7 @@ import {
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
+import { chooseNativeSelect } from "./native-select";
 
 class CompletedStep extends Error {}
 
@@ -306,29 +307,7 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
     await write(page, action.text);
   } else if ("choose" in action) {
     await focus(page, action.choose);
-    const values = await page
-      .getByTestId(action.choose)
-      .locator("option:not([disabled])")
-      .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
-    const index = values.indexOf(action.value);
-    expect(index).toBeGreaterThanOrEqual(0);
-    if (index === 0 || index === values.length - 1) {
-      // Native popup highlight updates run outside the page's animation frames.
-      // An endpoint needs one absolute key on the closed select, with a DOM value
-      // change to acknowledge it, rather than a counted sequence in that popup.
-      await page.keyboard.press(index === 0 ? "Home" : "End");
-    } else {
-      await page.keyboard.press("Alt+ArrowDown");
-      await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(true);
-      await page.keyboard.press("Home");
-      await animationFrames(page);
-      for (let i = 0; i < index; i++) {
-        await page.keyboard.press("ArrowDown");
-        await animationFrames(page);
-      }
-      await page.keyboard.press("Enter");
-      await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
-    }
+    await chooseNativeSelect(page, action.choose, action.value);
     await expect(page.getByTestId(action.choose)).toHaveValue(
       action.choose === "sim-panel-add-step" || /^sim-panel-step-\d+-focus$/.test(action.choose) ? "" : action.value,
     );
