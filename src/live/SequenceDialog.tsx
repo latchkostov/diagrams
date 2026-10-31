@@ -106,7 +106,7 @@ export function SequenceDialog({
       return blob.size;
     });
     if (result.status === "failure")
-      toast.error(t("planning.sequence.exportFailed"), {
+      toast.error(format === "mermaid" ? t("planning.sequence.copyFailed") : t("planning.sequence.exportFailed"), {
         action: {
           label: t("common.retry"),
           run: () => void exportSequence(format, owner),

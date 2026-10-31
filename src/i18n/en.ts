@@ -5099,6 +5099,7 @@ const en = {
   "planning.sequence.subtitle": "The whole journey of {title}, every copy included, in the order things happened.",
   "planning.sequence.travelling": " It is still travelling: this is the journey so far.",
   "planning.sequence.copy": "Copy as Mermaid",
+  "planning.sequence.copyFailed": "The browser didn't allow copying. Try again, or download the SVG.",
   "planning.sequence.copied": "Copied the sequence diagram as Mermaid.",
   "planning.sequence.exportFailed": "Could not export the sequence. Retry, or choose another format.",
   "planning.sequence.details": "Sequence details",

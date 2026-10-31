@@ -10,7 +10,7 @@ Pointer and keyboard solutions, near-miss negatives and Continue reconstruction 
 
 ## Output parity
 
-The intended golden change is `node/i18n/catalogs.json`: 144 additional messages raise all 38 catalog records from 4,397 to 4,541. Ten translated catalogs gain 142 English fallbacks and 27 gain 143; the pseudo-locale gains none. Only the tutorials/planning area fingerprints change. The changed slow-motion instruction has a V2 key, preserving the original translation sources until the new instruction is translated. Existing diagram, simulation, planning, trace, import/export and browser outputs remain unchanged. No golden is re-recorded to accommodate a failure.
+The intended golden change is `node/i18n/catalogs.json`: 145 additional messages raise all 38 catalog records from 4,397 to 4,542. Ten translated catalogs gain 143 English fallbacks and 27 gain 144; the pseudo-locale gains none. Only the tutorials/planning area fingerprints change. The changed slow-motion instruction has a V2 key, preserving the original translation sources until the new instruction is translated. Clipboard refusal retains its specific explanation and SVG alternative through an i18n key, alongside Retry. Existing diagram, simulation, planning, trace, import/export and browser outputs remain unchanged. No golden is re-recorded to accommodate a failure.
 
 ## Regression evidence
 
