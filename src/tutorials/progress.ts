@@ -106,7 +106,7 @@ export function withoutProgress(
     "track" in scope ? lesson.track === scope.track : lesson.id === scope.lesson,
   );
   const ids = new Set(selected.map((lesson) => lesson.id));
-  const affectedTracks = new Set(selected.map((lesson) => lesson.track));
+  const affectedTracks = new Set("track" in scope ? [scope.track] : selected.map((lesson) => lesson.track));
   const removedMarks = new Set<string>([
     "whole-syllabus",
     ...chapterSeals.filter((seal) => affectedTracks.has(seal.track)).map((seal) => seal.id),

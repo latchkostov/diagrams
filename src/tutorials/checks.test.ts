@@ -163,3 +163,14 @@ it("alignment ignores selected edges before checking the minimum node count", ()
   expect(holds(check, { ...v, mode: { ...v.mode, selection: selection.slice(1) } }, {})).toBe(false);
   expect(holds(check, { ...v, diagram: { ...d, nodes: d.nodes.map((n, i) => ({ ...n, y: i })) } }, {})).toBe(false);
 });
+
+it("matches boundary selection subjects against their editor flow IDs", () => {
+  const v = {
+    ...view("API"),
+    diagram: { ...diagram("API"), groups: [{ id: "box", label: "", x: 0, y: 0, width: 400, height: 200 }] },
+    mode: { ...initialEditorMode, selection: ["group:box"] },
+  };
+  const check: Check = { kind: "selection", subjects: ["box"], exact: true };
+  expect(holds(check, v, { box: "box" })).toBe(true);
+  expect(holds(check, { ...v, mode: { ...v.mode, selection: ["box"] } }, { box: "box" })).toBe(false);
+});

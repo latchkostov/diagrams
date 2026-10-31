@@ -117,3 +117,16 @@ it("starts the successful handoff exactly once", () => {
   expect(takeLessonStart(mobileApi.id)).toBe(true);
   expect(takeLessonStart(mobileApi.id)).toBe(false);
 });
+
+it("reads the recap once before next-lesson detail, with heading focus and no live duplication", async () => {
+  const next = { ...mobileApi, id: "next" };
+  await act(() =>
+    root.render(<FinishHandoff tutorial={mobileApi} catalog={[mobileApi, next]} before={{}} progress={{}} />),
+  );
+  const recap = host.querySelector('[data-testid="tutorial-handoff-recap"]')!;
+  const detail = host.querySelector('[data-testid="tutorial-handoff-next"]')!;
+  expect(recap.textContent).toBe(mobileApi.finish.text());
+  expect(recap.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(host.textContent!.split(mobileApi.finish.text())).toHaveLength(2);
+  expect(document.activeElement).toBe(host.querySelector('[data-testid="tutorial-handoff-heading"]'));
+});

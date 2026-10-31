@@ -1,4 +1,4 @@
-import { tracks } from "./catalog";
+import { chapters } from "./chapters";
 import type { StoredTutorials } from "./progress";
 import { earnedSeals, type SealLesson } from "./seals";
 import { tutorialRoute } from "./route";
@@ -35,7 +35,7 @@ export function startNextLesson(lesson: Tutorial) {
 }
 
 export function lessonNumber(lesson: Tutorial, catalog: readonly Tutorial[]) {
-  return `${tracks.findIndex((track) => track.id === lesson.track) + 1}.${catalog.filter((x) => x.track === lesson.track).findIndex((x) => x.id === lesson.id) + 1}`;
+  return `${chapters[lesson.track].order}.${catalog.filter((x) => x.track === lesson.track).findIndex((x) => x.id === lesson.id) + 1}`;
 }
 
 export function justEarnedSeals(before: StoredTutorials, after: StoredTutorials, catalog: readonly SealLesson[]) {

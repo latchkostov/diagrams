@@ -15,7 +15,8 @@ import type { DrillPreset } from "../model/faults";
 /** A catalog message, translated when shown. */
 export type Words = () => string;
 
-export type TrackId = "basics" | "blocks" | "simulation" | "waiting" | "resilience" | "studies";
+export type { TrackId } from "./chapters";
+import type { TrackId } from "./chapters";
 
 /** How a subject is found: an unbound node (in diagram order) with one of these stencils, else of this role. */
 export interface SubjectSpec {

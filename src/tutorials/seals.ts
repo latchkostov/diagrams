@@ -1,14 +1,12 @@
 import type { StoredTutorials } from "./progress";
-import type { TrackId, Tutorial } from "./types";
+import { tracks } from "./chapters";
+import type { Tutorial } from "./types";
 
-export const chapterSeals = [
-  { id: "chapter-basics", track: "basics", numeral: "I" },
-  { id: "chapter-blocks", track: "blocks", numeral: "II" },
-  { id: "chapter-simulation", track: "simulation", numeral: "III" },
-  { id: "chapter-waiting", track: "waiting", numeral: "IV" },
-  { id: "chapter-resilience", track: "resilience", numeral: "V" },
-  { id: "chapter-studies", track: "studies", numeral: "VI" },
-] as const satisfies readonly { id: string; track: TrackId; numeral: string }[];
+export const chapterSeals = tracks.map((chapter) => ({
+  id: chapter.seal,
+  track: chapter.id,
+  numeral: chapter.numeral,
+}));
 export const seals = [...chapterSeals, { id: "whole-syllabus", track: undefined, numeral: "✓" }] as const;
 export type SealId = (typeof seals)[number]["id"];
 export type SealLesson = Pick<Tutorial, "id" | "version" | "track" | "quarantined">;

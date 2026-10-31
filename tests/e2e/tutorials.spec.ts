@@ -1027,9 +1027,12 @@ test("annotate keeps each instruction current until the annotation's editor clos
   await page.getByTestId("palette-annotate-note").click();
   await expect(page.getByTestId("annotation-editor")).toBeFocused();
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
+  await expect(page.getByTestId("tutorial-completing")).toContainText("Escape or Ctrl/Cmd+Enter");
+  await page.getByTestId("annotation-editor").fill("Keep this learner note");
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-step", "zone");
   await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+  await expect(page.getByTestId(/^annotation-text-/).filter({ hasText: "Keep this learner note" })).toHaveCount(1);
   await expect(page.locator('[data-testid^="annotation-"][data-kind="note"]')).toHaveCount(1);
   expectNoErrors(consoleErrors);
 });

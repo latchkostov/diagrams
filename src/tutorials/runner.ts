@@ -13,6 +13,7 @@ import {
   observeSteps,
   resolveSubjects,
   sinceValues,
+  subjectFlowId,
   withoutSince,
 } from "./checks";
 import { createRepairs, type RepairPorts, type RepairTarget } from "./repair";
@@ -33,7 +34,6 @@ import { actionRegistry, type MenuNode } from "../editor/actions";
 import type { SandboxView } from "./checks";
 import type { EditorModeState } from "../canvas/interaction/mode";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
-import { GROUP_PREFIX } from "../canvas/types";
 import { simulationProjection } from "../sim/simulationContent";
 import { planningHost } from "../live/planningHost";
 import { capacityOverlay } from "../live/capacityOverlay";
@@ -147,6 +147,16 @@ export function createTutorialRunner(
   };
   /** Bumped by Restart and Exit: a demo still running stops there. */
   let generation = 0;
+  let operation = new AbortController();
+  const activeJobs = new Map<string, object>();
+  const cancelWork = () => {
+    generation++;
+    operation.abort();
+    operation = new AbortController();
+    activeJobs.clear();
+    repairs.reset();
+    changed.forEach((f) => f());
+  };
   const changed = new Set<() => void>();
   let app = { presenting: false, sharing: false };
 
@@ -258,9 +268,7 @@ export function createTutorialRunner(
   /** The flow id of step i's subject the learner is naming right now, if any. */
   const namingNow = (i: number, mode: EditorModeState | undefined) =>
     mode?.value === "naming"
-      ? naming[i]
-          .map((name) => (tutorial.subjects[name]?.boundary ? GROUP_PREFIX + subjects[name] : subjects[name]))
-          .find((id) => id === mode.target)
+      ? naming[i].map((name) => subjectFlowId(subjects[name], document)).find((id) => id === mode.target)
       : undefined;
 
   /**
@@ -282,10 +290,28 @@ export function createTutorialRunner(
     offReadouts = layer?.subscribe(observe);
   }
 
+  let boundDocument: { id: string | undefined; identity: object } | undefined;
   function observe() {
     watchReadouts();
     const h = host.get();
+    if (
+      (activeJobs.size > 0 || changed.size > 0) &&
+      boundDocument &&
+      h.canvas &&
+      (h.canvas.documentId !== boundDocument.id ||
+        (h.canvas.editor && h.canvas.editor.getDocumentVersion().identity !== boundDocument.identity))
+    ) {
+      cancelWork();
+      boundDocument = undefined;
+      send({ type: "documentReplaced" });
+      return;
+    }
     if (!h.canvas || !editor()) return changed.forEach((f) => f());
+    if (!activeJobs.size && !changed.size)
+      boundDocument = {
+        id: h.canvas.documentId,
+        identity: h.canvas.editor.getDocumentVersion().identity,
+      };
     const v = view();
     // The editor's mode (src/canvas/interaction/mode.ts): the selection, and whether the learner is mid-naming.
     const mode = canvasInteraction.get()?.mode;
@@ -322,7 +348,7 @@ export function createTutorialRunner(
 
   /** Resolves once `ok()` holds, checked after each change the canvas reports; never if the run is replaced. */
   const until = (ok: () => boolean, run: number) =>
-    new Promise<boolean>((resolve) => {
+    new Promise<boolean>((resolve, reject) => {
       let busy = false,
         done = false;
       const settle = (result: boolean) => {
@@ -337,9 +363,16 @@ export function createTutorialRunner(
         if (done) return;
         if (busy) return;
         busy = true;
-        if (run !== generation) settle(false);
-        else if (ok()) settle(true);
-        busy = false;
+        try {
+          if (run !== generation) settle(false);
+          else if (ok()) settle(true);
+        } catch (error) {
+          done = true;
+          changed.delete(check);
+          reject(error);
+        } finally {
+          busy = false;
+        }
       };
       changed.add(check);
       check();
@@ -362,8 +395,8 @@ export function createTutorialRunner(
       case "member": {
         const id = subjects[demo.subject],
           boundary = subjects[demo.boundary];
-        if (id && boundary) ed.moveIntoBoundary([id], boundary);
-        return;
+        if (!id || !boundary) throw new Error("Missing boundary subject");
+        return ed.moveIntoBoundary([id], boundary, { signal: operation.signal });
       }
       case "align": {
         const selection = !demo.subjects || demo.selection ? ed.getSelection() : undefined;
@@ -463,7 +496,8 @@ export function createTutorialRunner(
         const ids = demo.subjects.map((s) => subjects[s]);
         if (ids.some((id) => !id)) return;
         // The boundary is there already: bring in only the members it's missing.
-        if (subjects[demo.boundary]) return ed.moveIntoBoundary(ids as string[], subjects[demo.boundary]!);
+        if (subjects[demo.boundary])
+          return ed.moveIntoBoundary(ids as string[], subjects[demo.boundary]!, { signal: operation.signal });
         const id = ed.groupNodes(ids as string[]);
         if (id) {
           demoBindings.set(demo.boundary, id);
@@ -478,7 +512,7 @@ export function createTutorialRunner(
       case "runSimulation":
         // A design study's reference replay restores its authored load and capacity first.
         if (tutorial.study && repairs.reference(repairPorts(), demo.id) === "waiting") return false;
-        host.runSimulation?.(demo.id);
+        if (!host.runSimulation || host.runSimulation(demo.id) === false) throw new Error("Simulation unavailable");
         return;
       case "select": {
         const ids = demo.subjects.map((s) => subjects[s]).filter((id): id is string => !!id);
@@ -662,52 +696,91 @@ export function createTutorialRunner(
    * doesn't hold, then the settlement's action. So Skip from `completing` never repeats an edit (no second topic).
    */
   async function demos(steps: readonly number[], purpose: "interactive" | "reconstruct") {
+    const key = `${purpose}:${steps.join(",")}`;
+    if (activeJobs.has(key)) return;
+    const job = {};
+    activeJobs.set(key, job);
     const run = generation;
-    // Skip pressed before the sandbox canvas is up (its code still downloading): do it once it is.
-    if (!(await until(() => !!editor(), run))) return;
-    for (const i of steps) {
-      if (run !== generation) return;
-      if (!state.observed[i]) {
-        for (const d of tutorial.steps[i].demo) {
-          // Present once per demo, rather than again on each session acknowledgement.
-          // Re-selecting during a pending repair can publish another canvas commit.
-          if (d.kind === "patch" && !d.edge && host.get().canvas?.live) {
-            view();
-            const id = subjects[d.subject];
-            const ed = editor();
-            if (id && ed) {
-              ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
-              ed.openInspector("label");
+    try {
+      // Skip pressed before the sandbox canvas is up (its code still downloading): do it once it is.
+      if (
+        !(await until(() => {
+          const ed = editor();
+          if (!ed) return false;
+          boundDocument = { id: host.get().canvas?.documentId, identity: ed.getDocumentVersion().identity };
+          return true;
+        }, run))
+      )
+        return;
+      for (const i of steps) {
+        if (run !== generation) return;
+        if (!state.observed[i]) {
+          for (const d of tutorial.steps[i].demo) {
+            // Present once per demo, rather than again on each session acknowledgement.
+            // Re-selecting during a pending repair can publish another canvas commit.
+            if (d.kind === "patch" && !d.edge && host.get().canvas?.live) {
+              view();
+              const id = subjects[d.subject];
+              const ed = editor();
+              if (id && ed) {
+                ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+                ed.openInspector("label");
+              }
             }
+            const made =
+              d.kind === "add" || d.kind === "insert" ? d.subject : d.kind === "group" ? d.boundary : undefined;
+            const bound = made && demoBindings.get(made);
+            // Live publishes before its lazy session registers actions. Retry on session/registry changes.
+            if (live.has(d.kind)) {
+              if (
+                !(await until(() => {
+                  // Read-only views remain available while slow motion owns engine mutations.
+                  if (d.kind !== "openView" && host.get().session?.disabledHint) throw new Error("Live unavailable");
+                  return perform(d) !== false;
+                }, run))
+              )
+                return;
+            } else {
+              const operationResult = perform(d);
+              const result = operationResult instanceof Promise ? await operationResult : operationResult;
+              if (run !== generation) return;
+              if (result === false) throw new Error("Demo refused");
+            }
+            // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
+            // waits for that run, so it's pressed in the run the check reads.
+            if (
+              d.kind === "runSimulation" &&
+              !(await until(() => !!editor() && holds({ kind: "simulation", id: d.id }, view(), subjects), run))
+            )
+              return;
+            // The editor commits a node it made after its call returns: the step's next edit (name it, connect it)
+            // waits until the document reports it, rather than finding no subject and doing nothing.
+            const id = made && demoBindings.get(made);
+            if (id && id !== bound && !(await until(() => subjects[made] === id, run))) return;
           }
-          const made =
-            d.kind === "add" || d.kind === "insert" ? d.subject : d.kind === "group" ? d.boundary : undefined;
-          const bound = made && demoBindings.get(made);
-          // Live publishes before its lazy session registers actions. Retry on session/registry changes.
-          if (live.has(d.kind)) {
-            if (!(await until(() => perform(d) !== false, run))) return;
-          } else perform(d);
-          // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
-          // waits for that run, so it's pressed in the run the check reads.
-          if (
-            d.kind === "runSimulation" &&
-            !(await until(() => !!editor() && holds({ kind: "simulation", id: d.id }, view(), subjects), run))
-          )
-            return;
-          // The editor commits a node it made after its call returns: the step's next edit (name it, connect it)
-          // waits until the document reports it, rather than finding no subject and doing nothing.
-          const id = made && demoBindings.get(made);
-          if (id && id !== bound && !(await until(() => subjects[made] === id, run))) return;
+          // The next step's demo may need this one's node: wait for the canvas to report it. Replaying a step that
+          // counted since it began (Continue), what it counted is history: the rest of its check is what must hold.
+          const replayed = purpose === "reconstruct" && since[i].length > 0;
+          const done = () => state.observed[i] || (replayed && !!editor() && holds(historical[i], view(), subjects));
+          if (tutorial.steps[i].demo.length && !(await until(done, run))) return;
         }
-        // The next step's demo may need this one's node: wait for the canvas to report it. Replaying a step that
-        // counted since it began (Continue), what it counted is history: the rest of its check is what must hold.
-        const replayed = purpose === "reconstruct" && since[i].length > 0;
-        const done = () => state.observed[i] || (replayed && !!editor() && holds(historical[i], view(), subjects));
-        if (tutorial.steps[i].demo.length && !(await until(done, run))) return;
+        if (!(await settle(i, run))) return;
       }
-      if (!(await settle(i, run))) return;
+      if (run === generation)
+        send(
+          purpose === "reconstruct"
+            ? { type: "reconstructed" }
+            : { type: "observe", met: state.observed, settled: state.settled },
+        );
+    } catch {
+      if (
+        run === generation &&
+        (purpose === "reconstruct" || steps.some((i) => !state.observed[i] || !state.settled[i]))
+      )
+        send({ type: "demoFailed", steps, purpose });
+    } finally {
+      if (activeJobs.get(key) === job) activeJobs.delete(key);
     }
-    if (purpose === "reconstruct" && run === generation) send({ type: "reconstructed" });
   }
 
   /** Show me: the target node into view through the canvas camera only. The selection and focus stay the learner's. */
@@ -730,8 +803,8 @@ export function createTutorialRunner(
         void demos(command.steps, "reconstruct");
         return;
       case "reset": {
-        generation++;
-        repairs.reset();
+        cancelWork();
+        boundDocument = undefined;
         subjects = {};
         demoBindings.clear();
         document = undefined;
@@ -769,9 +842,7 @@ export function createTutorialRunner(
         writeTutorials((s) => ({ ...s, highlights: command.highlights }));
         return;
       case "close":
-        generation++;
-        repairs.reset();
-        changed.forEach((f) => f());
+        cancelWork();
         host.cancelRun?.();
         ports.close();
         return;
@@ -779,7 +850,7 @@ export function createTutorialRunner(
   }
 
   function announce(step: number | "finished") {
-    if (step === "finished") return t("tutorials.announceFinished", { text: tutorial.finish.text() });
+    if (step === "finished") return t("tutorials.finished");
     const s = tutorial.steps[step];
     return t("tutorials.announceStep", {
       step: step + 1,
@@ -845,8 +916,7 @@ export function createTutorialRunner(
       offReadouts?.();
       offSession?.();
       offSlow?.();
-      generation++;
-      changed.forEach((f) => f());
+      cancelWork();
       host.cancelRun?.();
       offMode?.();
       canvasInteraction.get()?.setGuide(null);

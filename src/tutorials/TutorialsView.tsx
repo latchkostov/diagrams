@@ -18,7 +18,7 @@ import {
   type ResetScope,
   type StoredTutorials,
 } from "./progress";
-import { chapterSeals, lessonProgress } from "./seals";
+import { lessonProgress } from "./seals";
 import { Seal } from "./Seal";
 import { SealsPage } from "./SealsPage";
 import { ResetProgressDialog } from "./ResetProgressDialog";
@@ -177,10 +177,10 @@ export function TutorialsView() {
                 </div>
               </section>
             )}
-            {tracks.map((track, index) => {
+            {tracks.map((track) => {
               const list = tutorials.filter((lesson) => lesson.track === track.id);
               const finished = list.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
-              const seal = chapterSeals[index];
+              const seal = { id: track.seal, numeral: track.numeral };
               const earned = awards.includes(seal.id);
               const expanded = open === track.id;
               const minutes = list
