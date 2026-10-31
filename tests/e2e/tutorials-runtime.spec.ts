@@ -34,7 +34,7 @@ test("finish reads the recap before the next lesson, without a duplicate announc
   }
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
   const recap = page.getByTestId("tutorial-handoff-recap");
-  await expect(recap).toHaveText(/Annotations/);
+  await expect(recap).toHaveText(/You added a title, an assumption and a visual region/);
   expect(
     await recap.evaluate(
       (el) =>
