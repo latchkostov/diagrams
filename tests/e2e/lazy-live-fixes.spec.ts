@@ -125,7 +125,7 @@ async function exportDiagram(page: Page) {
 }
 
 /** The payment lesson run to its exhaustion (15 s) and paused by keyboard: focus on Play. */
-async function exhaustPayment(page: Page, holdVerification = false) {
+async function exhaustPayment(page: Page, holdVerification = false, onPaused?: () => void) {
   await installThreadVerification(page, holdVerification);
   await page.clock.install();
   await gotoLive(page, PAYMENT);
@@ -141,15 +141,19 @@ async function exhaustPayment(page: Page, holdVerification = false) {
   await page.getByTestId("live-play").focus();
   await page.keyboard.press("Space");
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  onPaused?.();
   await waitForThreadVerification(page);
 }
 
 test("payment setup waits for the latest verification while the page clock is paused", async ({ page }) => {
+  const paused = Promise.withResolvers<undefined>();
   let finished = false;
-  const exhausting = exhaustPayment(page, true).then(() => {
+  const exhausting = exhaustPayment(page, true, () => paused.resolve(undefined)).then(() => {
     finished = true;
   });
   try {
+    // Navigation and eight seeks precede this assertion; its deadline belongs to the paused stage.
+    await Promise.race([paused.promise, exhausting]);
     await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "15000");
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
     await expect.poll(() => page.evaluate(() => window.__threadVerification?.requested ?? 0)).toBeGreaterThan(0);
