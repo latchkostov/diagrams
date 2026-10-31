@@ -1,7 +1,20 @@
 import { expect, it } from "vitest";
 import { allTutorials } from "./catalog";
-import { keyboardExceptions, keyboardSolutionNow } from "./keyboard";
+import { keyboardExceptions, keyboardSolutionNow, withKeyboardSolutions } from "./keyboard";
 import { runnerInitial } from "./machine";
+import { t } from "../i18n";
+
+it("uses the registered Fit view command instead of traversing the chrome", () => {
+  const lesson = allTutorials.find((lesson) => lesson.id === "study-fanout")!;
+  const routed = withKeyboardSolutions({
+    ...lesson,
+    steps: [{ ...lesson.steps[0], solution: [{ click: "fit-view-button" }], keyboardSolution: undefined }],
+  });
+  const [fit] = routed.steps[0].keyboardSolution!;
+  expect(routed.steps[0].keyboardSolution).toHaveLength(1);
+  expect(fit).toMatchObject({ command: "action:canvas.fit" });
+  expect("command" in fit && fit.query()).toBe(t("menu.fitView"));
+});
 
 it("every eligible lesson has a keyboard variant beside every pointer solution", () => {
   expect(Object.keys(keyboardExceptions)).toEqual(["boundaries", "arrange"]);
@@ -49,4 +62,18 @@ it("lets the final slow-motion replay finish without navigating away from it", (
   const step = lesson.steps.find((step) => step.check.kind === "slowmo" && step.check.finished)!;
   expect(step.solution.some((action) => "hover" in action)).toBe(true);
   expect(step.keyboardSolution).toEqual([]);
+});
+
+it("a semantic readout step has a keyboard read action, not just canvas focus", () => {
+  const lesson = allTutorials.find((t) => t.id === "network-policy")!;
+  expect(lesson.steps.find((s) => s.id === "observe")!.keyboardSolution).toContainEqual({ read: "node-{fw}" });
+});
+
+it("keeps authored keyboard routes for native radio groups", () => {
+  const lesson = allTutorials.find((t) => t.id === "route-by-address")!;
+  const step = lesson.steps.find((s) => s.id === "default")!;
+  const route = step.keyboardSolution;
+  expect(route).toContainEqual({ focus: "routes-default-reject" });
+  expect(route).toContainEqual({ press: "ArrowDown" });
+  expect(withKeyboardSolutions(lesson).steps.find((s) => s.id === "default")!.keyboardSolution).toBe(route);
 });

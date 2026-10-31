@@ -56,7 +56,8 @@ type PropComparison =
   | { op: Comparison; value: unknown; measure?: never }
   | { measure: "length"; op: Comparison; value: number }
   /** Whether an optional configuration is enabled, including customized objects. */
-  | { op: "truthy"; value?: never; measure?: never };
+  | { op: "truthy"; value?: never; measure?: never }
+  | { op: "falsy"; value?: never; measure?: never };
 
 /**
  * An edit-preserving prop edit for a demo: idempotent, and it writes only what's missing, so the learner's other values
@@ -131,7 +132,25 @@ export type LiveInput = "traffic" | "capacity" | "scale";
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
   | { kind: "dock"; tab: ProductObservations["dock"]["tab"]; snap?: ProductObservations["dock"]["snap"] }
-  | { kind: "checks"; status: ProductObservations["checks"]["status"]; rule?: string; findings?: number }
+  | {
+      kind: "checks";
+      status: ProductObservations["checks"]["status"];
+      rule?: string;
+      /** Restrict rule evidence to this bound finding target. */
+      subject?: string;
+      absent?: true;
+      findings?: number;
+      simulation?: string;
+    }
+  | {
+      kind: "routeEvidence";
+      subject: string;
+      route: string;
+      rule?: string;
+      to?: string;
+      rejected?: true;
+      reason?: string;
+    }
   | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
   | { kind: "export"; format: ProductObservations["exports"]["format"] }
   | { kind: "import"; format: ProductObservations["imports"]["format"] }
@@ -204,6 +223,8 @@ export type Check =
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
   | { kind: "add"; subject: string; stencil: string; after?: string }
+  /** Restore an absent subject, independent of the editor's undo history. */
+  | { kind: "remove"; subject: string }
   | { kind: "connect"; from: string; to: string; sourceSide?: Side; targetSide?: Side }
   | { kind: "reconnect"; edge: readonly [string, string]; to: string }
   | { kind: "insert"; edge: readonly [string, string]; subject: string; stencil: string }

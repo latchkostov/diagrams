@@ -13,13 +13,6 @@ import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutoria
 
 class CompletedStep extends Error {}
 
-async function activeControl(page: Page) {
-  return page.evaluate(() => {
-    const el = document.activeElement;
-    return el?.getAttribute("data-testid") ?? `${el?.tagName ?? "none"}:${document.hasFocus()}`;
-  });
-}
-
 /** Every operation below sends real keys. Locator reads choose a route; none moves focus or invokes an action. */
 async function write(page: Page, text: string) {
   await page.keyboard.press("ControlOrMeta+a");
@@ -62,6 +55,8 @@ async function node(page: Page, id: string) {
     .toBe(true);
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
   await waitForCameraIdle(page);
+  // Finishing during the camera reveal moves focus to the handoff, so navigation is done.
+  if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")) throw new CompletedStep();
 }
 
 async function edge(page: Page, id: string) {
@@ -116,53 +111,64 @@ async function focus(page: Page, id: string) {
   const seen = new Set<string>();
   const limit = await page.getByTestId(/./).count();
   let moves = 0;
-  while (
-    !(await target.evaluate(
-      (el) =>
-        el === document.activeElement ||
-        el.contains(document.activeElement) ||
-        (document.activeElement instanceof HTMLButtonElement && document.activeElement.contains(el)),
-    ))
-  ) {
-    if (await page.evaluate(() => ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? "")))
-      throw new CompletedStep();
-    const reading = await target.evaluate((el) => {
-      let parent = document.activeElement;
-      while (parent) {
-        if (parent.hasAttribute("data-live-readout"))
-          return parent.contains(el) ? null : parent.getAttribute("data-testid");
-        parent = parent.parentElement;
+  const readState = (settle = false) =>
+    target.evaluate(async (el, settle) => {
+      // Keep the two settling frames in the same round trip as the focus observation.
+      if (settle)
+        for (let frame = 0; frame < 2; frame++)
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const active = document.activeElement;
+      let reading: string | null = null;
+      for (let parent = active; parent; parent = parent.parentElement) {
+        if (!parent.hasAttribute("data-live-readout")) continue;
+        reading = parent.contains(el) ? null : parent.getAttribute("data-testid");
+        break;
       }
-      return null;
-    });
-    if (reading) {
-      await page.keyboard.press("Escape");
-      await expect(page.getByTestId(reading)).toHaveCount(0);
-      seen.clear();
-      continue;
-    }
-    const active = await activeControl(page);
-    const body = active.startsWith("BODY:");
-    if (++moves > limit || (!body && seen.has(active)))
-      throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
-    // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
-    if (!body) seen.add(active);
-    const roving = await target.evaluate((el) => {
-      let parent = el.parentElement;
-      while (parent) {
+      let roving = false;
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) {
         if (
           ["toolbar", "tablist", "menu", "radiogroup"].includes(parent.getAttribute("role") ?? "") ||
           parent.hasAttribute("data-live-readout")
-        )
-          return parent.contains(document.activeElement);
-        parent = parent.parentElement;
+        ) {
+          roving = !!active && parent.contains(active);
+          break;
+        }
       }
-      return false;
-    });
-    await page.keyboard.press(roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
+      return {
+        focused: el === active || el.contains(active) || (active instanceof HTMLButtonElement && active.contains(el)),
+        completed: ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? ""),
+        reading,
+        active: active?.getAttribute("data-testid") ?? `${active?.tagName ?? "none"}:${document.hasFocus()}`,
+        roving,
+      };
+    }, settle);
+  let state = await readState();
+  for (;;) {
+    if (state.focused) return;
+    if (state.completed) throw new CompletedStep();
+    if (state.reading) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId(state.reading)).toHaveCount(0);
+      seen.clear();
+      state = await readState();
+      continue;
+    }
+    const body = state.active.startsWith("BODY:");
+    if (++moves > limit || (!body && seen.has(state.active)))
+      throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
+    // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
+    if (!body) seen.add(state.active);
+    const previous = state.active;
+    await page.keyboard.press(state.roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
     // Roving focus and portal teardown can cross body before the destination lands on the next frame.
-    await animationFrames(page);
-    if (!body) await expect.poll(() => activeControl(page)).not.toBe(active);
+    if (body) state = await readState(true);
+    else
+      await expect
+        .poll(async () => {
+          state = await readState(true);
+          return state.active;
+        })
+        .not.toBe(previous);
   }
 }
 
@@ -199,6 +205,18 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
   if ("focus" in action) return focus(page, action.focus);
   if ("read" in action) {
     const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
+    // Esc on an earlier pinned card restores focus to that card's owner. Close it
+    // before navigating, or clearing the new selection can send Enter to the old node.
+    const pinned = await page.getByTestId(/^(node|edge)-detail-/).evaluateAll((cards) =>
+      cards
+        .filter((card) => card.getAttribute("data-pinned") === "true")
+        .map((card) => card.getAttribute("data-testid"))
+        .filter((id) => id !== null),
+    );
+    for (const id of pinned) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId(id)).toHaveCount(0);
+    }
     await focus(page, action.read);
     if ((await page.getByTestId("tutorial-step").getAttribute("data-step")) !== step) return;
     const card = page.getByTestId(action.read.replace(/^(node|edge)-/, "$1-detail-"));
@@ -247,16 +265,23 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
       .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
     const index = values.indexOf(action.value);
     expect(index).toBeGreaterThanOrEqual(0);
-    await page.keyboard.press("Alt+ArrowDown");
-    await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(true);
-    await page.keyboard.press("Home");
-    await animationFrames(page);
-    for (let i = 0; i < index; i++) {
-      await page.keyboard.press("ArrowDown");
+    if (index === 0 || index === values.length - 1) {
+      // Native popup highlight updates run outside the page's animation frames.
+      // An endpoint needs one absolute key on the closed select, with a DOM value
+      // change to acknowledge it, rather than a counted sequence in that popup.
+      await page.keyboard.press(index === 0 ? "Home" : "End");
+    } else {
+      await page.keyboard.press("Alt+ArrowDown");
+      await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(true);
+      await page.keyboard.press("Home");
       await animationFrames(page);
+      for (let i = 0; i < index; i++) {
+        await page.keyboard.press("ArrowDown");
+        await animationFrames(page);
+      }
+      await page.keyboard.press("Enter");
+      await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
     }
-    await page.keyboard.press("Enter");
-    await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
     await expect(page.getByTestId(action.choose)).toHaveValue(
       action.choose === "sim-panel-add-step" ? "" : action.value,
     );
@@ -344,3 +369,72 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
     expectNoErrors(consoleErrors);
   });
 }
+
+test("keyboard readout navigation leaves an earlier pinned card before selecting its next owner", async ({ page }) => {
+  await page.goto("./?tutorial=shared-api-quotas");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused({ timeout: pageLoadTimeout() });
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await command(page, "live:toggle", ">");
+  await waitForLiveSession(page);
+  await play(page, { read: "node-answer" });
+  await expect(page.getByTestId("node-detail-answer")).toHaveAttribute("data-pinned", "true");
+  await play(page, { read: "node-payments" });
+  await expect(page.getByTestId("node-detail-payments")).toHaveAttribute("data-pinned", "true");
+  await expect(page.getByTestId("node-detail-answer")).toHaveCount(0);
+});
+
+test("keyboard canvas navigation exits when the lesson has already finished", async ({ page }) => {
+  await page.goto("./?tutorial=property-sheet");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  for (let skipped = 0; skipped < 4 && !(await page.getByTestId("tutorial-finished").isVisible()); skipped++) {
+    const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
+    if (!step) throw new Error("Missing property-sheet step");
+    await activate(page, "tutorial-skip");
+    await expect(page.getByTestId("tutorial-step")).not.toHaveAttribute("data-step", step);
+  }
+  await expect(page.getByTestId("tutorial-finished")).toBeVisible();
+  await expect(node(page, "api")).rejects.toBeInstanceOf(CompletedStep);
+});
+
+test("keyboard control traversal reads a bounded amount of browser state per key", async ({ page }) => {
+  await page.setContent(
+    '<button data-testid="first">First</button><button data-testid="middle">Middle</button><button data-testid="last">Last</button>',
+  );
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("first")).toBeFocused();
+  let reads = 0,
+    keys = 0;
+  page.evaluate = new Proxy(page.evaluate, {
+    apply(target, thisArg, args) {
+      reads++;
+      return Reflect.apply(target, thisArg, args) as ReturnType<typeof page.evaluate>;
+    },
+  });
+  page.getByTestId = new Proxy(page.getByTestId, {
+    apply(target, thisArg, args) {
+      const locator = Reflect.apply(target, thisArg, args) as ReturnType<typeof page.getByTestId>;
+      locator.evaluate = new Proxy(locator.evaluate, {
+        apply(evaluate, receiver, input) {
+          reads++;
+          return Reflect.apply(evaluate, receiver, input) as ReturnType<typeof locator.evaluate>;
+        },
+      });
+      return locator;
+    },
+  });
+  page.keyboard.press = new Proxy(page.keyboard.press, {
+    apply(target, thisArg, args) {
+      keys++;
+      return Reflect.apply(target, thisArg, args) as ReturnType<typeof page.keyboard.press>;
+    },
+  });
+  await focus(page, "last");
+  expect(keys).toBeGreaterThan(0);
+  expect(reads).toBeLessThanOrEqual(keys + 3);
+  await expect(page.getByTestId("last")).toBeFocused();
+});

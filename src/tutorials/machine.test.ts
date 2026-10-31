@@ -349,3 +349,17 @@ it.each([false, true])(
     expect(m.send({ type: "skip", stepId: "1" }).commands).toEqual([{ type: "demo", steps: [1] }]);
   },
 );
+
+it("a sticky edit waits for naming settlement before latching across Undo", () => {
+  const m = createMachine({
+    ...runnerMachine,
+    initial: runnerInitial([true, true], { highlights: true, resumeAt: 0 }),
+  });
+  m.send({ type: "start" });
+  m.send(observe([true, false], [false, true]));
+  expect(m.state).toMatchObject({ index: 0, value: "completing", latched: [false, false] });
+  m.send(observe([true, false], [true, true]));
+  expect(m.state).toMatchObject({ index: 1, latched: [true, false] });
+  m.send(observe([false, false], [true, true]));
+  expect(m.state.index).toBe(1);
+});

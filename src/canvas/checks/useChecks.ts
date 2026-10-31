@@ -228,6 +228,7 @@ export function useChecks(opts: {
           ...source(),
           status: state.stale ? "stale" : "done",
           result: state.result,
+          simulations: state.evidence.status === "done" && !state.evidence.stale ? state.evidence.played : undefined,
         });
     });
     return () => {

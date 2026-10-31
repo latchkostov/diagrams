@@ -1,3 +1,5 @@
+import { runChecks } from "../checks/run";
+import { observationPorts } from "../lib/observations";
 /* eslint-disable local/no-literal-ui-text -- Labels these fake edits write are test input, not UI copy. */
 import { visibilityFixtures } from "./visibility.fixture";
 import { readFileSync } from "node:fs";
@@ -156,6 +158,7 @@ function sandbox(
 ) {
   let diagram = savedDocument ?? startOf(tutorial);
   let version = 0;
+  const source = { documentId: "tutorial-sandbox", identity: {} };
   let mode: EditorModeState = { ...initialEditorMode, annotating: null };
   let made = 0;
   const docs = new Set<() => void>();
@@ -174,6 +177,14 @@ function sandbox(
     diagram = next;
     version++;
     notify();
+    if (tutorial.id === "checks-and-fixes")
+      queueMicrotask(() =>
+        observationPorts.checks.publish({
+          ...source,
+          status: "done",
+          result: runChecks(diagram),
+        }),
+      );
     // Live takes the edit after the canvas republishes it: props patched in, a topology change rebuilt.
     controller?.updateDiagram(diagram);
     // Saved simulations reach the session as LiveSession re-renders: its list, then LiveSync's replay of the selected
@@ -451,7 +462,7 @@ function sandbox(
     openInspector: vi.fn(),
     getNode: (id: string) => diagram.nodes.find((node) => node.id === id),
     getEdge: (id: string) => diagram.edges.find((edge) => edge.id === id),
-    getDocumentVersion: () => version,
+    getDocumentVersion: () => ({ identity: source.identity, revision: version }),
     getSelection: () => ({
       nodeIds: mode.selection.filter((id) => diagram.nodes.some((n) => n.id === id)),
       groupIds: mode.selection.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
@@ -468,8 +479,14 @@ function sandbox(
       edgeIds?: string[];
     }) => select([...nodeIds, ...groupIds.map((g) => GROUP_PREFIX + g), ...edgeIds]),
     applyDiagram: (next: DiagramFile) => write(structuredClone(next)),
-    deleteElements: ({ edgeIds = [] }: { edgeIds?: string[] }) =>
-      write({ ...diagram, edges: diagram.edges.filter((e) => !edgeIds.includes(e.id)) }),
+    deleteElements: ({ edgeIds = [], nodeIds = [] }: { edgeIds?: string[]; nodeIds?: string[] }) =>
+      write({
+        ...diagram,
+        nodes: diagram.nodes.filter((n) => !nodeIds.includes(n.id)),
+        edges: diagram.edges.filter(
+          (e) => !edgeIds.includes(e.id) && !nodeIds.includes(e.from) && !nodeIds.includes(e.to),
+        ),
+      }),
     addStencil(stencil: string) {
       const node = newNode(stencil);
       commit(() => ({ ...diagram, nodes: [...diagram.nodes, node] }));
@@ -607,7 +624,7 @@ function sandbox(
     canvas: {
       editor: editor as unknown as EditorApi,
       live: false,
-      documentId: undefined as string | undefined,
+      documentId: source.documentId,
       addStencil: editor.addStencil,
       // The palette's go-to selects; a tutorial's Show me must use revealNode, which only moves the camera.
       focusNode: vi.fn((id: string) => select([id])),
@@ -745,6 +762,8 @@ function sandbox(
       const edge = (pair: readonly [string, string]) =>
         diagram.edges.find((e) => e.from === id(pair[0]) && e.to === id(pair[1]))!;
       switch (demo.kind) {
+        case "remove":
+          return editor.deleteElements({ nodeIds: [id(demo.subject)] });
         case "add":
           return demo.after
             ? editor.createConnected({ from: id(demo.after), stencil: demo.stencil })
@@ -885,7 +904,9 @@ const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inSt
 
 /** A check that needs the run to have played for a while: Live's time has to move for it. */
 const checkNeedsTime = (check: Check): boolean =>
-  check.kind === "all" ? check.checks.some(checkNeedsTime) : check.kind === "simulation" && !!check.atLeastMs;
+  check.kind === "all"
+    ? check.checks.some(checkNeedsTime)
+    : (check.kind === "simulation" && !!check.atLeastMs) || check.kind === "routeEvidence";
 /** A step whose check needs run time, or whose injected messages need it to arrive. */
 const needsRunTime = (step: TutorialStep): boolean =>
   checkNeedsTime(step.check) || step.demo.some((d) => d.kind === "inject");
@@ -1587,6 +1608,9 @@ describe("every tutorial's completion contract", () => {
                 (d.kind === "add" || d.kind === "insert") && !bindings[d.subject] ? [d.subject] : [],
               ),
             );
+            const removed = new Set(
+              step.demo.flatMap((d) => (d.kind === "remove" && bindings[d.subject] ? [bindings[d.subject]!] : [])),
+            );
             if (!beyond(s, i)) await skip(s, tutorial);
             expect(beyond(s, i)).toBe(true);
             if (perturbation === "learner has an unsaved draft of the target simulation") {
@@ -1608,9 +1632,12 @@ describe("every tutorial's completion contract", () => {
                 s.diagram.simulations!.find((sim) => sim.id === run)!,
                 run,
               );
-            expect(s.diagram.nodes).toHaveLength(before + missing.size);
+            expect(s.diagram.nodes).toHaveLength(before + missing.size - removed.size);
             for (const [name, id] of Object.entries(bindings))
-              if (id && !tutorial.subjects[name].edge) expect(s.subject(name)).toBe(id);
+              if (id && !tutorial.subjects[name].edge) {
+                if (removed.has(id)) expect(s.diagram.nodes.some((node) => node.id === id)).toBe(false);
+                else expect(s.subject(name)).toBe(id);
+              }
             const bound = Object.values(s.runner.getSnapshot().subjects).filter(Boolean);
             expect(new Set(bound).size).toBe(bound.length);
           });
@@ -2497,7 +2524,7 @@ describe("completion regressions", () => {
     for (let frame = 0; frame < 40; frame++) s.live!.advance(250);
     s.live!.publish();
     expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(2500);
-    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    expect(outbox.steps[state(s).index].id).toBe("read-compensation");
     await skip(s, outbox);
     expect(state(s).value).toBe("finished");
   });

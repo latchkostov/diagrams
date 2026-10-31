@@ -4712,5 +4712,196 @@ const en = {
   "live.zoneTrouble": "{failing, number} failing · {stressed, number} stressed",
   "live.zoneFailing": "{failing, plural, one {# failing} other {# failing}}",
   "live.zoneStressed": "{stressed, plural, one {# stressed} other {# stressed}}",
+  "tutorials.routeByAddress.title": "Send Orders to the right service",
+  "tutorials.routeByAddress.summary":
+    "Match an address to its service and recover from a refusal. Address routing keeps responsibilities apart; first complete the gateway lesson (four minutes).",
+  "tutorials.routeByAddress.app": "Practice app",
+  "tutorials.routeByAddress.gateway": "API gateway",
+  "tutorials.routeByAddress.orders": "Orders request",
+  "tutorials.routeByAddress.users": "Users request",
+  "tutorials.routeByAddress.unknown": "Unknown address",
+  "tutorials.routeByAddress.mix": "Address mix",
+  "tutorials.routeByAddress.finish":
+    "You corrected a rule; traces and fresh completions showed matching, refusal and Default forwarding. First match wins before Default, and this model does not use regular expressions.",
+  "tutorials.routeByAddress.inspectTitle": "Read the traffic mix",
+  "tutorials.routeByAddress.inspectGoal":
+    "Select the app and open Traffic mix in Properties. Read the two addresses and markers, then press Done.",
+  "tutorials.routeByAddress.inspectDone":
+    "A marker follows an addressed request; its name does not choose the destination.",
+  "tutorials.routeByAddress.routeTitle": "Choose {orders}",
+  "tutorials.routeByAddress.routeGoal":
+    "In the gateway Route table, open rule 1. Select {orders} as a target, then clear {users} so {orders} is the only target.",
+  "tutorials.routeByAddress.routeDone": "The keyed rule now sends its matching address only to {orders}.",
+  "tutorials.routeByAddress.watchTitle": "Trace a matched request",
+  "tutorials.routeByAddress.watchGoal":
+    "Go Live and pick {mix}. On {orders}, choose Trace next message from here and follow its address, matched rule and destination. Both services should process work.",
+  "tutorials.routeByAddress.watchDone":
+    "The trace records the address, matched rule and destination; this is address matching.",
+  "tutorials.routeByAddress.refuseTitle": "Read a refused address",
+  "tutorials.routeByAddress.refuseGoal":
+    "Pick {unknown} and read the gateway refusal. No rule matches this old address, so it is rejected 404.",
+  "tutorials.routeByAddress.refuseDone":
+    "The supplied unknown address was refused rather than distributed to a random service.",
+  "tutorials.routeByAddress.defaultTitle": "Restore Default forwarding",
+  "tutorials.routeByAddress.defaultGoal":
+    "Return to editing and open the gateway Properties and Route table. Open Default, choose Forward and keep {orders} as the target. Rules use first match; Default runs last.",
+  "tutorials.routeByAddress.defaultDone": "Unmatched addresses now have a fallback; earlier matching rules still win.",
+  "tutorials.routeByAddress.replayTitle": "Replay the unknown address",
+  "tutorials.routeByAddress.replayGoal":
+    "Go Live, pick {unknown} again and read {orders}. Five fresh completions show Default forwarding after the change.",
+  "tutorials.routeByAddress.replayDone":
+    "Fresh unknown-address requests reached {orders}; old refusals cannot satisfy this check.",
+  "tutorials.networkPolicy.title": "Follow an allowed and a denied path",
+  "tutorials.networkPolicy.summary":
+    "Compare allowed work with a denial, then allow the denied path. Policy decisions differ from failed attempts; first learn Properties and Live (four minutes).",
+  "tutorials.networkPolicy.browser": "Browser",
+  "tutorials.networkPolicy.probe": "Admin exercise",
+  "tutorials.networkPolicy.api": "Public API",
+  "tutorials.networkPolicy.admin": "Admin API",
+  "tutorials.networkPolicy.traffic": "Web and admin traffic",
+  "tutorials.networkPolicy.finish":
+    "You allowed a denied connection; fresh {admin} completions showed the effect with the same seeded traffic. This models policy and transit, not a packet-level appliance or complete vendor rulebase.",
+  "tutorials.networkPolicy.predictTitle": "Predict the policy result",
+  "tutorials.networkPolicy.predictGoal":
+    "Select the denied connection and read Rule and Only pass. Predict which of {web} and {probe} passes, then press Done; neither contains secrets.",
+  "tutorials.networkPolicy.predictDone": "{probe} has a deny rule; your prediction is a reading acknowledgment.",
+  "tutorials.networkPolicy.observeTitle": "Compare allowed and blocked",
+  "tutorials.networkPolicy.observeGoal":
+    "Go Live and pick {traffic}. Read {policy}: {api} processes work, {probe} is blocked, and {admin} processes nothing.",
+  "tutorials.networkPolicy.observeDone":
+    "Allowed completions and blocked counts come from the same run; blocked is separate from failed and dropped.",
+  "tutorials.networkPolicy.allowTitle": "Allow the admin path",
+  "tutorials.networkPolicy.allowGoal":
+    "Select {admin}’s incoming connection and set Rule to Allow in Properties. Keep its {probe} filter so the experiment changes only policy.",
+  "tutorials.networkPolicy.allowDone": "The connection now allows {probe}; replay tests its effect.",
+  "tutorials.networkPolicy.replayTitle": "Replay the same traffic",
+  "tutorials.networkPolicy.replayGoal":
+    "Restart {traffic} and read {admin}. Compare five fresh completions with zero before.",
+  "tutorials.networkPolicy.replayDone": "The same seeded traffic reaches {admin} after the policy change.",
+  "tutorials.networkPolicy.readTitle": "Explain the difference",
+  "tutorials.networkPolicy.readGoal":
+    "Read the result, then press Done. What changed was policy; the web and admin traffic stayed the same.",
+  "tutorials.networkPolicy.readDone": "Your acknowledgment records reading; the preceding counters supply evidence.",
+  "tutorials.checksAndFixes.title": "Turn a warning into evidence",
+  "tutorials.checksAndFixes.summary":
+    "Repair an unread topic and distinguish advice from simulated evidence. A document fix needs verification; first learn quick-add and Undo (four minutes).",
+  "tutorials.checksAndFixes.topic": "Practice events",
+  "tutorials.checksAndFixes.worker": "Event worker",
+  "tutorials.checksAndFixes.burst": "Small event burst",
+  "tutorials.checksAndFixes.finish":
+    "You added a consumer and used Undo to restore the warning; the saved burst supplied simulated evidence. Zero warnings does not prove a production system correct.",
+  "tutorials.checksAndFixes.openTitle": "Read the unread-topic finding",
+  "tutorials.checksAndFixes.openGoal":
+    "Open Checks and select the unread-topic finding. Expand Why: publishing is not the same as processing.",
+  "tutorials.checksAndFixes.openDone":
+    "Checks found incoming traffic with no reader; this is static advice about the document.",
+  "tutorials.checksAndFixes.fixTitle": "Add the offered consumer",
+  "tutorials.checksAndFixes.fixGoal":
+    "Choose Add a consumer, pick Service, name it {worker} and press Enter. Confirm that the finding disappears.",
+  "tutorials.checksAndFixes.fixDone":
+    "A real consumer connection now reads the topic; static advice tracks the document.",
+  "tutorials.checksAndFixes.undoTitle": "Undo the repair",
+  "tutorials.checksAndFixes.undoGoal":
+    "Press Undo once. The consumer and connection disappear together, and the unread-topic finding returns.",
+  "tutorials.checksAndFixes.undoDone": "Undo restored the original topology and its finding.",
+  "tutorials.checksAndFixes.reapplyTitle": "Reapply the consumer fix",
+  "tutorials.checksAndFixes.reapplyGoal":
+    "Choose Add a consumer again, pick Service and name it {worker}. Confirm that the finding disappears with the connection.",
+  "tutorials.checksAndFixes.reapplyDone": "The topology has a reader again; this is still not a production result.",
+  "tutorials.checksAndFixes.evidenceTitle": "Run the saved burst in Checks",
+  "tutorials.checksAndFixes.evidenceGoal":
+    "In Checks, choose Run simulations and inspect the completed {burst}. This adds evidence; it does not apply another repair.",
+  "tutorials.checksAndFixes.evidenceDone":
+    "Checks completed the saved burst on this document; simulated evidence is separate from static advice.",
+  "tutorials.kafkaTopic.billingGroupTitle": "Name the {name} group",
+  "tutorials.kafkaTopic.billingGroupGoal":
+    "Select {name}, select its incoming connection and set Consumer group to {group} in Properties. This stable group identity owns one stream copy.",
+  "tutorials.kafkaTopic.emailGroupTitle": "Name the {name} group",
+  "tutorials.kafkaTopic.emailGroupGoal":
+    "Select {name} and its incoming connection, then set Consumer group to {group}. A different identity receives a separate stream copy.",
+  "tutorials.kafkaTopic.groupDone":
+    "The connection now names its consumer group; readers sharing that name would compete for its copy.",
+  "tutorials.queueWorkers.predictTitle": "Predict the second worker’s effect",
+  "tutorials.queueWorkers.predictGoal":
+    "Before adding worker two, predict: does each worker receive every message, or do they share one delivery per job? Press Done after your prediction.",
+  "tutorials.queueWorkers.predictDone":
+    "This records a prediction; the Live counters will test the shared-work explanation.",
+  "tutorials.cacheAside.cacheShareTitle": "Set the cache share",
+  "tutorials.cacheAside.cacheShareGoal":
+    "Select Redis and its incoming connection. In Simulation, set Message share to 80%; observe that only this connection changed.",
+  "tutorials.cacheAside.databaseShareTitle": "Set the database share",
+  "tutorials.cacheAside.databaseShareGoal":
+    "Select {database} and its incoming connection. In Simulation, set Message share to 20%; both independent shares are now configured.",
+  "tutorials.outbox.compensationTitle": "Read the compensation point",
+  "tutorials.outbox.compensationGoal":
+    "Read the paused compensation note, then press Done. The run simulates message routing; the narrative assumes an atomic database-and-outbox write, which this model does not prove.",
+  "tutorials.webhooks.summaryVerified":
+    "Observe a queue protect a webhook sender during an outage. Parked work separates acceptance from downstream delivery; first learn Live narration (three minutes).",
+  "tutorials.webhooks.noteGoalVerified":
+    "Read the paused note and predict whether queued webhooks will be parked or dropped, then press Continue. The queue protects the sender from downstream waiting.",
+  "tutorials.webhooks.finishVerified":
+    "You continued an outage run; its expectation showed that webhooks were parked rather than dropped. What delivery and deduplication guarantees would a real sender require?",
+  "tutorials.fanout.summaryVerified":
+    "Configure which Message reaches the SMS queue after observing an outage. Independent channels isolate waiting work; first learn Live and Properties (three minutes).",
+  "tutorials.fanout.filterDoneVerified":
+    "The filter is configured to pass only the selected Message; this check does not prove delivery or repair the provider outage.",
+  "tutorials.fanout.finishVerified":
+    "You watched SMS wait and configured its Message filter; the check verified that configuration. Optionally rerun to observe which Message arrives, keeping the provider outage separate.",
+  "tutorials.partitions.summaryVerified":
+    "Compare six edited partitions with a saved eight-partition run. Partitions limit active readers in one group; first learn Live Properties (three minutes).",
+  "tutorials.partitions.rerunGoalVerified":
+    "You set six in the document. Now pick Give every reader a partition: its saved setup deliberately replaces six with eight, letting all eight readers work; compare their completions.",
+  "tutorials.partitions.finishVerified":
+    "You set six partitions; the named comparison’s effective eight and reader completions showed the saved setup’s effect. How many readers could your six-partition configuration use?",
+  "tutorials.outbox.summaryVerified":
+    "Find the saga’s compensation point in a repeatable checkout run. Compensation explains recovery after a decline; first learn Live narration (three minutes). Atomic outbox persistence is an assumption here.",
+  "tutorials.outbox.declineGoalVerified":
+    "Pick Declines and retries, then wait for the paused fraud-rule note. Read where the saga releases reserved stock and cancels the order before moving on.",
+  "tutorials.outbox.finishVerified":
+    "You traced a checkout and reached the paused compensation point; its saved run showed the message flow while narration explained the stock release. Atomic outbox persistence remains a modeling assumption.",
+  "tutorials.dependencies2.summaryVerified":
+    "Document a secret setting reference on a Config connection. References explain dependencies without exposing values; first learn Dependencies (two minutes).",
+  "tutorials.dependencies2.finishVerified":
+    "You added a setting and locked its reference; the Config connection showed the documented dependency. No secret value is stored, and this does not provision a secret.",
+  "tutorials.apiGateway.summaryVerified":
+    "Build one gateway that distributes work to Orders and Users. One entry point hides service topology; first learn quick-add (four minutes). Address matching comes in the next lesson.",
+  "tutorials.apiGateway.addUsersGoalVerified":
+    "Now add Users independently: connect a Service from the gateway and name it {name}. Both services should share the same entry point.",
+  "tutorials.apiGateway.finishVerified":
+    "You connected two services behind one gateway; both processed counts showed distribution. Which requests need address matching instead?",
+  "tutorials.kafkaTopic.summaryVerified":
+    "Give Billing and Email separate consumer groups and observe both streams. Independent groups let responsibilities consume every event; first learn quick-add and Properties (four minutes).",
+  "tutorials.kafkaTopic.finishVerified":
+    "You named two consumer groups; both completion counts showed that each received the stream. A queue in the next lesson shares one copy among workers instead.",
+  "tutorials.queueWorkers.summaryVerified":
+    "Share a queue between two workers and compare deliveries with completions. Competing workers divide work without multiplying it; first learn quick-add (three minutes).",
+  "tutorials.queueWorkers.watchGoalVerified":
+    "Compare both workers’ processed counts with deliveries from {queue}. Wait for both to process five and the totals to agree; in-flight work can make completions temporarily lower.",
+  "tutorials.queueWorkers.finishVerified":
+    "You added a competing worker; the delivery and completion totals showed shared work. In-flight jobs explain why these totals need not agree at every instant.",
+  "tutorials.cacheAside.summaryVerified":
+    "Approximate an 80% cache hit ratio using two independent message shares. Comparing store traffic explores a load assumption; first learn connection Properties (three minutes).",
+  "tutorials.cacheAside.finishVerified":
+    "You set two independent shares; Redis and PostgreSQL completion counts showed the sampled load split. This approximates a hit ratio and does not execute correlated cache hits and misses.",
+  "tutorials.loadBalancer.summaryVerified":
+    "Reduce a replicated service’s capacity and observe fresh progress. Replicas spread load; first learn Properties (three minutes). Lowering the count models capacity loss, not an individual replica outage.",
+  "tutorials.loadBalancer.faultGoalVerified":
+    "Lower Replicas to 2 in {service}’s Edit properties, Simulation section. This reduces aggregate capacity; it does not take down a specific replica.",
+  "tutorials.loadBalancer.finishVerified":
+    "You lowered the replica count; ten fresh completions showed continued work with less capacity. This count-based model does not identify an individual replica failure.",
+  "tutorials.routeByAddress.ordersService": "Orders service",
+  "tutorials.routeByAddress.usersService": "Users service",
+  "tutorials.checksAndFixes.readTitle": "Read why a consumer matters",
+  "tutorials.checksAndFixes.readGoal":
+    "Select the unread-topic finding and expand Why. Read why publishing is not the same as processing, then press Done.",
+  "tutorials.checksAndFixes.readDone":
+    "You acknowledged the explanation; the static finding identifies the missing reader.",
+  "tutorials.checksAndFixes.api": "Event API",
+  "tutorials.cacheAside.cacheShareDone":
+    "The cache connection now has an 80% share; this is an independent traffic choice.",
+  "tutorials.cacheAside.databaseShareDone":
+    "The database connection now has a 20% share; comparing Live work tests this load assumption.",
+  "tutorials.kafkaTopic.watchGroupsGoal":
+    "Watch {billing} and {email} until each has processed ten messages. Their groups are {billingGroup} and {emailGroup}; each receives its own copy.",
 } as const;
 export default en;

@@ -3,12 +3,12 @@ import type { Tutorial } from "../types";
 
 export const outbox: Tutorial = {
   id: "outbox",
-  version: 2,
+  version: 3,
   track: "blocks",
   level: 2,
   minutes: 3,
   title: msg("tutorials.outbox.title"),
-  summary: msg("tutorials.outbox.summary"),
+  summary: msg("tutorials.outbox.summaryVerified"),
   start: { example: "outbox-saga-checkout" },
   subjects: { saga: { stencils: ["generic.saga"] } },
   steps: [
@@ -57,14 +57,31 @@ export const outbox: Tutorial = {
     {
       id: "watch-compensation",
       title: msg("tutorials.outbox.declineTitle"),
-      goal: msg("tutorials.outbox.declineGoal"),
+      goal: msg("tutorials.outbox.declineGoalVerified"),
+      done: msg("tutorials.outbox.declineDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "declines", atLeastMs: 2500 },
+          { kind: "note", waiting: true },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "live-sim-picker", tip: msg("tutorials.outbox.declineTitle") }],
+      demo: [{ kind: "runSimulation", id: "declines" }],
+      solution: [{ select: "live-sim-picker", value: "declines" }],
+    },
+    {
+      id: "read-compensation",
+      title: msg("tutorials.outbox.compensationTitle"),
+      goal: msg("tutorials.outbox.compensationGoal"),
       done: msg("tutorials.outbox.declineDone"),
       check: { kind: "acknowledge" },
       sticky: true,
-      targets: [{ testId: "live-sim-picker", tip: msg("tutorials.outbox.declineGoal") }],
+      targets: [{ testId: "live-note-continue", tip: msg("tutorials.outbox.compensationTitle") }],
       demo: [],
-      solution: [{ select: "live-sim-picker", value: "declines" }, { click: "tutorial-skip" }],
+      solution: [{ click: "tutorial-skip" }],
     },
   ],
-  finish: { text: msg("tutorials.outbox.finish") },
+  finish: { text: msg("tutorials.outbox.finishVerified") },
 };

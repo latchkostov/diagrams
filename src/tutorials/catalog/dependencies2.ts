@@ -14,7 +14,7 @@ export const dependencies2: Tutorial = {
   level: 2,
   minutes: 2,
   title: msg("tutorials.dependencies2.title"),
-  summary: msg("tutorials.dependencies2.summary"),
+  summary: msg("tutorials.dependencies2.summaryVerified"),
   start: { example: "aks-app-config-key-vault" },
   subjects: { api: { stencils: ["service.dotnet"] }, config: { stencils: ["azure.app-config"] } },
   steps: [
@@ -86,5 +86,5 @@ export const dependencies2: Tutorial = {
       solution: [{ click: lockTarget }],
     },
   ],
-  finish: { text: msg("tutorials.dependencies2.finish") },
+  finish: { text: msg("tutorials.dependencies2.finishVerified") },
 };

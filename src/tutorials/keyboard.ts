@@ -1,4 +1,4 @@
-import type { Tutorial, UiStep, Words } from "./types";
+import type { Check, Tutorial, UiStep, Words } from "./types";
 import type { RunnerSnapshot } from "./runner";
 import { fillTestId } from "./checks";
 import { inStep } from "./machine";
@@ -28,6 +28,7 @@ export type KeyboardUiStep =
 function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
   if ("click" in step) {
     if (step.click === "live-toggle") return [{ command: "live:toggle", query: () => ">" }];
+    if (step.click === "fit-view-button") return [{ command: "action:canvas.fit", query: msg("menu.fitView") }];
     if (/^(inspector-section-|hover-section-)/.test(step.click)) return [{ open: step.click }];
     if (step.click.startsWith("grow-chip-"))
       return [{ focus: step.click.replace("grow-chip-", "node-") }, { press: "Alt+ArrowRight" }];
@@ -60,7 +61,12 @@ function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
 export function withKeyboardSolutions(tutorial: Tutorial): Tutorial {
   if (keyboardExceptions[tutorial.id]) return tutorial;
   for (const step of tutorial.steps) {
-    const readSection = step.solution.some((action) => "click" in action && action.click.startsWith("hover-section-"));
+    if (step.keyboardSolution) continue;
+    const needsReadout = (check: Check): boolean =>
+      check.kind === "readout" || (check.kind === "all" && check.checks.some(needsReadout));
+    const readSection =
+      needsReadout(step.check) ||
+      step.solution.some((action) => "click" in action && action.click.startsWith("hover-section-"));
     const solution: KeyboardUiStep[] = [];
     for (let i = 0; i < step.solution.length; i++) {
       const action = step.solution[i];

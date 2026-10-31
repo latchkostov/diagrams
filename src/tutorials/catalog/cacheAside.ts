@@ -5,12 +5,12 @@ import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
 
 export const cacheAside: Tutorial = {
   id: "cache-aside",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 2,
   minutes: 3,
   title: msg("tutorials.cacheAside.title"),
-  summary: msg("tutorials.cacheAside.summary"),
+  summary: msg("tutorials.cacheAside.summaryVerified"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.cacheAside.title"),
@@ -51,35 +51,33 @@ export const cacheAside: Tutorial = {
       done: msg("tutorials.cacheAside.addRedisDone"),
     }),
     {
-      id: "share",
-      title: msg("tutorials.cacheAside.shareTitle"),
-      goal: msg("tutorials.cacheAside.shareGoal"),
-      hint: msg("tutorials.cacheAside.shareHint"),
-      done: msg("tutorials.cacheAside.shareDone"),
-      check: {
-        kind: "all",
-        checks: [
-          { kind: "prop", edge: ["api", "redis"], prop: "share", op: "=", value: 0.8 },
-          { kind: "prop", edge: ["api", "db"], prop: "share", op: "=", value: 0.2 },
-        ],
-      },
-      targets: [
-        { testId: "inspector-field-share", tip: msg("tutorials.cacheAside.shareGoal") },
-        { testId: "inspector-section-edge-simulation", tip: msg("tutorials.cacheAside.shareGoal") },
-        { testId: "node-{redis}", tip: msg("tutorials.cacheAside.shareGoal") },
-      ],
-      demo: [
-        { kind: "prop", edge: ["api", "redis"], props: { share: 0.8 } },
-        { kind: "prop", edge: ["api", "db"], props: { share: 0.2 } },
-      ],
+      id: "cache-share",
+      title: msg("tutorials.cacheAside.cacheShareTitle"),
+      goal: msg("tutorials.cacheAside.cacheShareGoal"),
+      done: msg("tutorials.cacheAside.cacheShareDone"),
+      check: { kind: "prop", edge: ["api", "redis"], prop: "share", op: "=", value: 0.8 },
+      targets: [{ testId: "node-{redis}", tip: msg("tutorials.cacheAside.cacheShareTitle") }],
+      demo: [{ kind: "prop", edge: ["api", "redis"], props: { share: 0.8 } }],
       solution: [
         { click: "node-{redis}" },
         { press: "Control+Alt+[" },
-        { click: "inspector-section-edge-simulation" },
+        { open: "inspector-section-edge-simulation" },
         { fill: "inspector-field-share", text: "80" },
         { press: "Enter" },
+      ],
+    },
+    {
+      id: "database-share",
+      title: msg("tutorials.cacheAside.databaseShareTitle"),
+      goal: () => t("tutorials.cacheAside.databaseShareGoal", { database: t("tutorials.cacheAside.dbName") }),
+      done: msg("tutorials.cacheAside.databaseShareDone"),
+      check: { kind: "prop", edge: ["api", "db"], prop: "share", op: "=", value: 0.2 },
+      targets: [{ testId: "node-{db}", tip: msg("tutorials.cacheAside.databaseShareTitle") }],
+      demo: [{ kind: "prop", edge: ["api", "db"], props: { share: 0.2 } }],
+      solution: [
         { click: "node-{db}" },
         { press: "Control+Alt+[" },
+        { open: "inspector-section-edge-simulation" },
         { fill: "inspector-field-share", text: "20" },
         { press: "Enter" },
       ],
@@ -113,5 +111,5 @@ export const cacheAside: Tutorial = {
       solution: [{ hover: "node-{redis}" }],
     },
   ],
-  finish: { text: msg("tutorials.cacheAside.finish") },
+  finish: { text: msg("tutorials.cacheAside.finishVerified") },
 };

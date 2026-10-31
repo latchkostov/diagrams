@@ -9,12 +9,12 @@ const emailGoalWords = () => t("tutorials.kafkaTopic.emailGoal", { name: msg("tu
 
 export const kafkaTopic: Tutorial = {
   id: "kafka-topic",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 1,
   minutes: 4,
   title: msg("tutorials.kafkaTopic.title"),
-  summary: msg("tutorials.kafkaTopic.summary"),
+  summary: msg("tutorials.kafkaTopic.summaryVerified"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.kafkaTopic.title"),
@@ -75,6 +75,50 @@ export const kafkaTopic: Tutorial = {
       goal: emailGoalWords,
       done: msg("tutorials.kafkaTopic.emailDone"),
     }),
+    {
+      id: "group-billing",
+      title: () => t("tutorials.kafkaTopic.billingGroupTitle", { name: t("tutorials.kafkaTopic.billingName") }),
+      goal: () =>
+        t("tutorials.kafkaTopic.billingGroupGoal", { name: t("tutorials.kafkaTopic.billingName"), group: "billing" }),
+      done: msg("tutorials.kafkaTopic.groupDone"),
+      check: { kind: "prop", edge: ["topic", "billing"], prop: "group", op: "=", value: "billing" },
+      targets: [
+        {
+          testId: "node-{billing}",
+          tip: () => t("tutorials.kafkaTopic.billingGroupTitle", { name: t("tutorials.kafkaTopic.billingName") }),
+        },
+      ],
+      demo: [{ kind: "prop", edge: ["topic", "billing"], props: { group: "billing" } }],
+      solution: [
+        { click: "node-{billing}" },
+        { press: "Control+Alt+[" },
+        // eslint-disable-next-line local/no-literal-ui-text -- stable consumer-group identity, not a display label
+        { fill: "inspector-field-group", text: "billing" },
+        { press: "Enter" },
+      ],
+    },
+    {
+      id: "group-email",
+      title: () => t("tutorials.kafkaTopic.emailGroupTitle", { name: t("tutorials.kafkaTopic.emailName") }),
+      goal: () =>
+        t("tutorials.kafkaTopic.emailGroupGoal", { name: t("tutorials.kafkaTopic.emailName"), group: "email" }),
+      done: msg("tutorials.kafkaTopic.groupDone"),
+      check: { kind: "prop", edge: ["topic", "email"], prop: "group", op: "=", value: "email" },
+      targets: [
+        {
+          testId: "node-{email}",
+          tip: () => t("tutorials.kafkaTopic.emailGroupTitle", { name: t("tutorials.kafkaTopic.emailName") }),
+        },
+      ],
+      demo: [{ kind: "prop", edge: ["topic", "email"], props: { group: "email" } }],
+      solution: [
+        { click: "node-{email}" },
+        { press: "Control+Alt+[" },
+        // eslint-disable-next-line local/no-literal-ui-text -- stable consumer-group identity, not a display label
+        { fill: "inspector-field-group", text: "email" },
+        { press: "Enter" },
+      ],
+    },
     liveStep(
       msg("tutorials.kafkaTopic.liveTitle"),
       msg("tutorials.kafkaTopic.liveGoal"),
@@ -83,24 +127,32 @@ export const kafkaTopic: Tutorial = {
     {
       id: "watch",
       title: msg("tutorials.kafkaTopic.watchTitle"),
-      goal: msg("tutorials.kafkaTopic.watchGoal"),
+      goal: () =>
+        t("tutorials.kafkaTopic.watchGroupsGoal", {
+          billing: t("tutorials.kafkaTopic.billingName"),
+          email: t("tutorials.kafkaTopic.emailName"),
+          billingGroup: "billing",
+          emailGroup: "email",
+        }),
       done: msg("tutorials.kafkaTopic.watchDone"),
       check: {
         kind: "all",
         checks: [
           { kind: "simulation", id: "tutorial-flow" },
+          { kind: "prop", edge: ["topic", "billing"], prop: "group", op: "=", value: "billing", effective: true },
+          { kind: "prop", edge: ["topic", "email"], prop: "group", op: "=", value: "email", effective: true },
           { kind: "metric", subject: "billing", field: "processed", op: ">=", value: 10 },
           { kind: "metric", subject: "email", field: "processed", op: ">=", value: 10 },
         ],
       },
       sticky: true,
-      targets: [{ testId: "node-{topic}", tip: msg("tutorials.kafkaTopic.watchGoal"), dim: false }],
+      targets: [{ testId: "node-{topic}", tip: msg("tutorials.kafkaTopic.watchTitle"), dim: false }],
       demo: [],
       solution: [{ hover: "node-{topic}" }],
     },
   ],
   finish: {
-    text: msg("tutorials.kafkaTopic.finish"),
+    text: msg("tutorials.kafkaTopic.finishVerified"),
     example: { slug: "kafka-order-pipeline", label: msg("tutorials.kafkaTopic.example") },
   },
 };

@@ -4,12 +4,12 @@ import type { Tutorial } from "../types";
 
 export const partitions: Tutorial = {
   id: "partitions",
-  version: 2,
+  version: 3,
   track: "blocks",
   level: 2,
   minutes: 3,
   title: msg("tutorials.partitions.title"),
-  summary: msg("tutorials.partitions.summary"),
+  summary: msg("tutorials.partitions.summaryVerified"),
   start: { example: "partitions-vs-subscriptions", simulation: "compare" },
   subjects: { topic: { stencils: ["kafka.topic"] }, consumers: { stencils: ["service.java"] } },
   steps: [
@@ -52,13 +52,20 @@ export const partitions: Tutorial = {
     {
       id: "rerun",
       title: msg("tutorials.partitions.rerunTitle"),
-      goal: msg("tutorials.partitions.rerunGoal"),
+      goal: msg("tutorials.partitions.rerunGoalVerified"),
       done: msg("tutorials.partitions.rerunDone"),
-      check: { kind: "simulation", id: "more-partitions", atLeastMs: 1000 },
-      targets: [{ testId: "live-sim-picker", tip: msg("tutorials.partitions.rerunGoal") }],
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "more-partitions", atLeastMs: 1000 },
+          { kind: "prop", subject: "topic", prop: "partitions", op: "=", value: 8, effective: true },
+          { kind: "processed", subject: "consumers", atLeast: 5 },
+        ],
+      },
+      targets: [{ testId: "live-sim-picker", tip: msg("tutorials.partitions.rerunGoalVerified") }],
       demo: [{ kind: "runSimulation", id: "more-partitions" }],
       solution: [{ select: "live-sim-picker", value: "more-partitions" }],
     },
   ],
-  finish: { text: msg("tutorials.partitions.finish") },
+  finish: { text: msg("tutorials.partitions.finishVerified") },
 };

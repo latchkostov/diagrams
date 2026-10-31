@@ -51,6 +51,7 @@ describe("building-block lessons", () => {
   it("registers both batches of building blocks, including Config settings, in order", () => {
     expect(tutorials.filter((t) => t.track === "blocks").map((t) => t.id)).toEqual([
       "api-gateway",
+      "route-by-address",
       "kafka-topic",
       "queue-workers",
       "load-balancer",
@@ -60,6 +61,8 @@ describe("building-block lessons", () => {
       "partitions",
       "outbox",
       "dependencies-2",
+      "network-policy",
+      "checks-and-fixes",
     ]);
   });
 

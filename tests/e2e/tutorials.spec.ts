@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { openDiagramProperties } from "./fixtures";
 import { openAnnotate, openLibrary } from "./fixtures";
 import { deflateRawSync } from "node:zlib";
@@ -526,7 +528,7 @@ test("outbox: happy-path waits for narration Continue", async ({ page }) => {
   await expect
     .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
     .toBeGreaterThanOrEqual(2500);
-  await expect(strip(page)).toHaveAttribute("data-step", "watch-compensation");
+  await expect(strip(page)).toHaveAttribute("data-step", "read-compensation");
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
@@ -951,9 +953,16 @@ for (const { id, quarantined } of tutorialEntries)
     test.fixme(!!quarantined, quarantineReason);
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
+    const capture = process.env.TUTORIAL_SCREENSHOTS;
+    if (capture && ["checks-and-fixes", "route-by-address", "network-policy"].includes(id)) {
+      mkdirSync(capture, { recursive: true });
+      await page.screenshot({ path: join(capture, `${id}-intro.png`) });
+    }
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
+    if (capture && ["checks-and-fixes", "route-by-address", "network-policy"].includes(id))
+      await page.screenshot({ path: join(capture, `${id}-completed.png`) });
     if (id === "rate-limit") expect(seen).toEqual(["quota-10", "run", "rejected"]);
     if (id === "backlog-lag") expect(seen).toEqual(["live", "backlog-50", "add-consumer", "consumer-progress"]);
     if (id === "shared-api-quotas")
@@ -967,7 +976,13 @@ for (const { id, quarantined } of tutorialEntries)
     if (id === "dead-letters") expect(seen).toContain("replay");
     if (id === "partitions") expect(seen).toEqual(["read-idle", "six-partitions", "rerun"]);
     if (id === "outbox")
-      expect(seen).toEqual(["trace-message", "run-happy-path", "read-happy-path", "watch-compensation"]);
+      expect(seen).toEqual([
+        "trace-message",
+        "run-happy-path",
+        "read-happy-path",
+        "watch-compensation",
+        "read-compensation",
+      ]);
     if (id === "command-palette") expect(seen).toEqual(["add", "goto"]);
     if (id === "share-present") expect(seen).toEqual(["present", "leave", "share"]);
     await expect(page.getByTestId("tutorial-progress")).toBeVisible();
@@ -1897,3 +1912,109 @@ test("shortcuts Tutorials navigation preserves the opened device file Save bindi
   const saved = await page.evaluate(() => window.__tutorialFiles.writes[0]);
   expect(JSON.parse(saved).nodes[0].label).toBe("Saved after tutorials");
 });
+
+test("checks-and-fixes: Continue after a real Undo restores Reapply and its finding before learner input", async ({
+  page,
+  consoleErrors,
+}) => {
+  await openTutorial(page, "checks-and-fixes");
+  await page.getByTestId("tutorial-start").click();
+  for (const current of ["open", "read", "fix", "undo"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", current);
+    for (const action of await page.evaluate(() => {
+      const tutorial = window.__tutorial;
+      if (!tutorial) throw new Error("The tutorial runner is missing");
+      return tutorial.solution();
+    }))
+      await play(page, action);
+    await expect(strip(page)).not.toHaveAttribute("data-step", current);
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "reapply");
+  const absentConsumer = async () =>
+    expect(
+      await page.evaluate(() => window.__tutorial?.diagram()?.nodes.some((node) => node.stencil === "generic.service")),
+    ).toBe(false);
+  await absentConsumer();
+  await page.getByTestId("tutorial-exit").click();
+  await page.goto("./?tutorial=checks-and-fixes");
+  await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-state", "active");
+  await expect(strip(page)).toHaveAttribute("data-step", "reapply");
+  await absentConsumer();
+  await page.getByTestId("checks-count").click();
+  await expect(page.getByTestId("check-choose-no-reader:topic")).toBeEnabled();
+  await skipAll(page);
+  expectNoErrors(consoleErrors);
+});
+
+for (const id of [
+  "api-gateway",
+  "route-by-address",
+  "kafka-topic",
+  "queue-workers",
+  "load-balancer",
+  "cache-aside",
+  "webhooks",
+  "fanout",
+  "partitions",
+  "outbox",
+  "dependencies-2",
+  "network-policy",
+  "checks-and-fixes",
+]) {
+  test(`${id}: Continue reconstructs the first completed step and Skip reaches the handoff`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.clock.install();
+    await openTutorial(page, id);
+    await page.getByTestId("tutorial-start").click();
+    await pauseClock(page);
+    const first = await strip(page).getAttribute("data-step");
+    await page.getByTestId("tutorial-skip").click();
+    await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== first);
+    const milestone = await strip(page).getAttribute("data-step");
+    if (!milestone) throw new Error("The saved tutorial milestone is missing");
+    const predecessor = await page.evaluate(() => {
+      const diagram = window.__tutorial?.diagram();
+      if (!diagram) throw new Error("The tutorial diagram is missing");
+      return {
+        nodes: diagram.nodes.map(({ stencil, label, props }) => ({ stencil, label, props })),
+        edges: diagram.edges.map(({ from, to, kind, props }) => ({
+          from: diagram.nodes.findIndex((node) => node.id === from),
+          to: diagram.nodes.findIndex((node) => node.id === to),
+          kind,
+          props,
+        })),
+      };
+    });
+    await page.getByTestId("tutorial-exit").click();
+    await page.goto(`./?tutorial=${id}`);
+    await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+    await page.getByTestId("tutorial-start").click();
+    await pauseClock(page);
+    await advanceTutorialClock(page, async () =>
+      ["active", "hinting", "completing"].includes((await strip(page).getAttribute("data-state")) ?? ""),
+    );
+    await expect(strip(page)).toHaveAttribute("data-step", milestone);
+    expect(
+      await page.evaluate(() => {
+        const diagram = window.__tutorial?.diagram();
+        if (!diagram) throw new Error("The tutorial diagram is missing");
+        return {
+          nodes: diagram.nodes.map(({ stencil, label, props }) => ({ stencil, label, props })),
+          edges: diagram.edges.map(({ from, to, kind, props }) => ({
+            from: diagram.nodes.findIndex((node) => node.id === from),
+            to: diagram.nodes.findIndex((node) => node.id === to),
+            kind,
+            props,
+          })),
+        };
+      }),
+    ).toEqual(predecessor);
+    await skipAll(page, true);
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
+}

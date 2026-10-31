@@ -21,6 +21,10 @@ import type { LiveUi } from "../live/context";
 import { editorHarness } from "../test/editorHarness";
 import { insertOnEdge } from "./catalog/insertOnEdge";
 import { beginObservedWork, observationPorts } from "../lib/observations";
+import { checksAndFixes } from "./catalog/checksAndFixes";
+import { runChecks } from "../checks/run";
+import { HistoryController } from "../editor/historyController";
+import { toFlow, fromFlow } from "../canvas/convert";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -73,6 +77,12 @@ function sandbox(
     startEditing: ({ id }: { id: string }) =>
       setMode(editorModeStep(mode, { type: "field.focused", target: id, field: "label" })),
     applyDiagram: edit,
+    deleteElements: ({ nodeIds = [] }: { nodeIds?: string[] }) =>
+      edit({
+        ...diagram,
+        nodes: diagram.nodes.filter((n) => !nodeIds.includes(n.id)),
+        edges: diagram.edges.filter((e) => !nodeIds.includes(e.from) && !nodeIds.includes(e.to)),
+      }),
     updateNode: (id: string, patch: Partial<DiagramNode>) =>
       edit({ ...diagram, nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)) }),
     createConnected: ({ from, stencil }: { from: string; stencil: string }) => {
@@ -133,8 +143,10 @@ function sandbox(
   };
   const close = vi.fn();
   const runner = createTutorialRunner(tutorial, { close, host, initial });
-  cleanup.push(runner.connect());
+  const disconnect = runner.connect();
+  cleanup.push(disconnect);
   return {
+    disconnect,
     runner,
     close,
     editor,
@@ -580,6 +592,56 @@ it("Continue replays persisted progress through the real runner and Start over r
   s.runner.send({ type: "restart" });
   expect(s.runner.getSnapshot().state.index).toBe(0);
   expect(s.editor.getDiagram().nodes).toEqual([]);
+});
+
+it("Continue after a real Undo reconstructs the absent consumer and waits for refreshed Checks", async () => {
+  const s = sandbox(checksAndFixes);
+  const checks = (current: ReturnType<typeof sandbox>) =>
+    observationPorts.checks.publish({
+      documentId: "sandbox",
+      identity: current.editor.getDocumentVersion().identity,
+      status: "done",
+      result: runChecks(current.editor.getDiagram()),
+    });
+  s.runner.send({ type: "start" });
+  checks(s);
+  s.runner.send({ type: "skip", stepId: "open" });
+  s.runner.send({ type: "skip", stepId: "read" });
+  expect(s.runner.getSnapshot().state.index).toBe(2);
+  const history = new HistoryController(toFlow(s.editor.getDiagram()), 0);
+  s.runner.send({ type: "skip", stepId: "fix" });
+  await vi.waitFor(() => expect(s.editor.getDiagram().nodes).toHaveLength(4));
+  checks(s);
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.index).toBe(3));
+  history.commit(toFlow(s.editor.getDiagram()), "repair", 1);
+  const undone = history.step("undo", { nodes: [], edges: [] })!;
+  s.edit(fromFlow(undone.meta, undone.nodes, undone.edges));
+  checks(s);
+  expect(s.runner.getSnapshot().state.index).toBe(4);
+  s.runner.send({ type: "exit" });
+  s.disconnect();
+
+  const resumed = sandbox(checksAndFixes, undefined, true);
+  resumed.runner.send({ type: "resume" });
+  await vi.waitFor(() => expect(resumed.editor.getDiagram().nodes).toHaveLength(4));
+  checks(resumed);
+  await vi.waitFor(() => expect(resumed.editor.getDiagram().nodes).toHaveLength(3));
+  // The topology is restored before the async Checks result arrives: control must still be withheld.
+  expect(resumed.runner.getSnapshot().state.value).toBe("reconstructing");
+  checks(resumed);
+  await vi.waitFor(() => expect(resumed.runner.getSnapshot().state).toMatchObject({ value: "active", index: 4 }));
+  expect(resumed.runner.getSnapshot().subjects.worker).toBeUndefined();
+  expect(runChecks(resumed.editor.getDiagram()).findings).toContainEqual(
+    expect.objectContaining({ rule: "no-reader", target: "topic" }),
+  );
+  resumed.runner.send({ type: "skip", stepId: "reapply" });
+  await vi.waitFor(() =>
+    expect(resumed.editor.getDiagram().nodes).toContainEqual(
+      expect.objectContaining({ id: "node-4", label: "Event worker" }),
+    ),
+  );
+  checks(resumed);
+  await vi.waitFor(() => expect(resumed.runner.getSnapshot().state.index).toBe(5));
 });
 
 it.each([2, 3])(
