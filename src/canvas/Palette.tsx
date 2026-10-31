@@ -85,6 +85,7 @@ function readClosed(): StencilCategory[] {
 export const Palette = memo(function Palette({
   collapsed,
   initialQuery = "",
+  initialPick,
   mode = "pinned",
   onToggle,
   onAdd,
@@ -94,6 +95,8 @@ export const Palette = memo(function Palette({
   collapsed: boolean;
   initialQuery?: string;
   onInitialQuery?: (query: string) => void;
+  initialPick?: string;
+  onInitialPick?: (query: string | undefined) => void;
   mode?: "flyout" | "pinned";
   onToggle: () => void;
   onAdd: (stencilId: string) => void;
@@ -127,6 +130,16 @@ export const Palette = memo(function Palette({
     () => (family === "all" ? stencils : stencils.filter((s) => familyOf(s) === family)),
     [family],
   );
+  const picked = useRef(false);
+  useEffect(() => {
+    if (collapsed || initialPick === undefined || picked.current) return;
+    picked.current = true;
+    const first = searchStencils(inFamily, initialPick)[0];
+    if (first) {
+      pushRecentStencil(first.id);
+      onAdd(first.id);
+    }
+  }, [collapsed, initialPick, inFamily, onAdd]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- shared search metadata resolves the current locale
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q, locale]);
   const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q, locale) : []), [q, locale]);
@@ -447,7 +460,7 @@ function PaletteItem(p: ItemProps) {
       style={{ "--accent": s.accent } as CSSProperties}
     >
       <span className="palette-tile">
-        <StencilIcon stencil={s} size={20} />
+        <StencilIcon stencil={s} size={20} loading="lazy" />
       </span>
       <span className="palette-name">{stencilLabel(s)}</span>
       <span className="palette-add" aria-hidden>
@@ -468,7 +481,7 @@ function RecentTile(p: ItemProps) {
       data-testid={`palette-recent-item-${s.id}`}
       style={{ "--accent": s.accent } as CSSProperties}
     >
-      <StencilIcon stencil={s} size={20} />
+      <StencilIcon stencil={s} size={20} loading="lazy" />
     </button>
   );
 }

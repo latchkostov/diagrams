@@ -8,3 +8,12 @@ export function textBoundaryKey(boundary: "start" | "end", platform = process.pl
       ? "Home"
       : "End";
 }
+
+/** Tutorial recipes use document boundaries, which macOS binds to Command + vertical arrows. */
+export function tutorialKey(combo: string, platform = process.platform): string {
+  if (platform === "darwin") {
+    if (combo === "ControlOrMeta+End") return "Meta+ArrowDown";
+    if (combo === "ControlOrMeta+Home") return "Meta+ArrowUp";
+  }
+  return combo;
+}

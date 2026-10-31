@@ -18,6 +18,7 @@ import {
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
+import { tutorialKey } from "../../scripts/e2e-keys";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
 
@@ -209,7 +210,7 @@ async function play(page: Page, step: ResolvedUiStep) {
         )
         .toBe(true);
     }
-    await page.keyboard.press(step.press);
+    await page.keyboard.press(tutorialKey(step.press));
   }
 }
 
@@ -629,7 +630,10 @@ test("rate-limit: playback waits for the limiter readout before completing", asy
     .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
     .toBeGreaterThan(0);
   await pauseClock(page);
-  await page.clock.runFor(10000);
+  await advanceTutorialClock(
+    page,
+    async () => (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) === "10000",
+  );
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "10000");
   await expect(strip(page)).toHaveAttribute("data-step", "rejected");
   await hoverPractice(page, "node-limiter");
