@@ -292,120 +292,467 @@
   font-size: 14.5px;
 }
 
-/* ---------- the Tutorials view ---------- */
-
+/* ---------- the Syllabus hub ---------- */
 .tutorials-view {
   position: absolute;
   inset: 0;
   overflow: auto;
-  padding-block: 28px 48px;
-  padding-inline: max(24px, calc((100% - 1120px) / 2));
 }
-
+.tutorials-wrap {
+  max-width: 944px;
+  margin: 0 auto;
+  padding: 36px 32px 64px;
+}
+.tutorials-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.tutorials-heading {
+  flex: 1;
+  min-width: 0;
+}
 .tutorials-head h1 {
-  margin: 0 0 6px;
-  font-size: 24px;
-  letter-spacing: -0.02em;
-}
-
-.tutorials-head p {
   margin: 0;
-  color: var(--text-2);
-  font-size: 14px;
+  font-size: 26px;
+  font-weight: 650;
+  font-stretch: var(--stretch-wide);
+  letter-spacing: -0.015em;
 }
-
+.tutorials-head p {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: 13.5px;
+}
 .tutorials-overall {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 14px;
   color: var(--text-2);
-  font-size: 13px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
 }
-
-.tutorials-overall progress {
-  width: 220px;
-  height: 6px;
-  accent-color: var(--accent);
-}
-
-.tutorials-track {
-  margin-top: 28px;
-}
-
-.tutorials-track-head {
+.tutorials-segments {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 3px;
+  width: 280px;
 }
-
-.tutorials-track-head h2 {
+.tutorials-segments > span {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.tutorials-segments b {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+.tutorials-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.tutorials-resume {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-1);
+}
+.tutorials-number {
+  font: 500 12px var(--font-mono);
+  color: var(--text-2);
+}
+.tutorials-resume > .tutorials-number {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 30px;
+}
+.tutorials-resume-words {
+  flex: 1;
+  min-width: 0;
+}
+.tutorials-eyebrow {
   margin: 0;
-  font-size: 16px;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-
-.tutorials-track-head span {
+.tutorials-resume-words > b {
+  font-size: 15px;
+  font-weight: 620;
+}
+.tutorials-resume p {
+  margin: 1px 0 0;
   color: var(--text-2);
   font-size: 12.5px;
 }
-
-.tutorials-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 12px;
+.tutorials-chapter {
+  border-top: 1px solid var(--line);
 }
-
-.tutorials-soon {
+.tutorials-chapter:last-of-type {
+  border-bottom: 1px solid var(--line);
+}
+.tutorials-chapter-heading {
   margin: 0;
-  padding: 14px 16px;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-m);
+  font-size: inherit;
+}
+.tutorials-disclosure {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto 20px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  text-align: start;
+  color: var(--text);
+  cursor: pointer;
+}
+.tutorials-disclosure:hover {
+  background: var(--hover);
+}
+.tutorials-chapter-label {
+  min-width: 0;
+}
+.tutorials-chapter-label small {
+  display: block;
   color: var(--text-2);
-  font-size: 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-
-.tutorial-card {
+.tutorials-chapter-label b {
+  font-size: 15.5px;
+  font-weight: 620;
+}
+.tutorials-chapter-label > span {
+  display: block;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.tutorials-glyph-strip {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-l);
+  gap: 3px;
+}
+.tutorials-chapter-count {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 400;
+  text-align: end;
+  white-space: nowrap;
+}
+.tutorials-chapter-count b {
+  color: var(--text);
+  font-weight: 600;
+}
+.tutorials-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1.4px solid var(--control-line);
+  border-radius: 50%;
+}
+.tutorials-status.is-going {
+  border-color: var(--text);
+  background: linear-gradient(to right, var(--text) 50%, transparent 50%);
+}
+.tutorials-status.is-done {
+  color: var(--surface);
+  border-color: var(--text);
+  background: var(--text);
+}
+.tutorials-glyph-strip .tutorials-status {
+  width: 10px;
+  height: 10px;
+}
+.tutorials-glyph-strip svg {
+  width: 8px;
+  height: 8px;
+}
+.tutorials-rows {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  padding-inline-start: 50px;
+}
+.tutorials-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 18px 1fr auto 76px;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.tutorials-row:hover,
+.tutorials-row:focus-within {
+  background: var(--hover);
+}
+.tutorials-row.is-going {
   background: var(--surface);
-  box-shadow: var(--shadow-1);
+  box-shadow: 0 0 0 1px var(--line);
 }
-
-.tutorial-card.is-done {
-  border-color: var(--accent-soft);
+.tutorials-row h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
 }
-
-.tutorial-card h3 {
+.tutorials-row p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.tutorials-row-meta {
+  color: var(--text-2);
+  font-size: 12px;
+  text-align: end;
+}
+.tutorials-row > button {
+  justify-self: end;
+  font-size: 12.5px;
+  height: 28px;
+}
+.tutorials-row > button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.tutorials-chapter-foot {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding-block: 0 14px;
+  padding-inline-start: 58px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.tutorials-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tutorials-chapter-foot > span {
+  flex: 1;
+}
+.tutorials-chapter-foot > button {
+  flex: none;
+}
+.tutorials-browser-note {
+  margin-top: 18px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tutorial-seal {
+  flex: none;
+  color: var(--text-2);
+}
+.tutorial-seal circle {
+  stroke: var(--control-line);
+  stroke-dasharray: 3 3;
+}
+.tutorial-seal text {
+  fill: currentColor;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.tutorial-seal.is-earned {
+  color: var(--text);
+}
+.tutorial-seal.is-earned circle {
+  stroke: currentColor;
+  stroke-dasharray: none;
+}
+.tutorials-breadcrumb {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0;
-  font-size: 15px;
-}
-
-.tutorial-card h3 svg {
-  color: var(--accent);
-}
-
-.tutorial-card p {
-  margin: 0;
   color: var(--text-2);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  margin-bottom: 10px;
 }
-
-.tutorial-card .tutorial-card-meta {
-  font-size: 12px;
+.tutorials-seals-count {
+  margin-inline-start: auto;
+  font-size: 12.5px;
+  color: var(--text-2);
+  white-space: nowrap;
 }
-
-.tutorial-card-actions {
+.tutorials-seal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.tutorials-seal-card {
+  padding: 18px 16px;
+  border: 1px dashed var(--control-line);
+  border-radius: var(--radius-m);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.tutorials-seal-card.is-earned {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tutorials-seal-card h2 {
+  font-size: 14px;
+  font-weight: 620;
+  margin: 6px 0 0;
+}
+.tutorials-seal-card p,
+.tutorials-seal-card > span,
+.tutorials-seals-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.tutorials-seal-card > span {
   margin-top: auto;
-  padding-top: 8px;
+}
+.tutorials-seals-note {
+  margin-top: 22px;
+}
+.tutorials-reset-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.tutorials-reset-options {
+  display: grid;
+  gap: 10px;
+}
+.tutorials-reset-option {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.tutorials-reset-option.is-selected {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+.tutorials-reset-option label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+}
+.tutorials-reset-option input {
+  accent-color: var(--text);
+}
+.tutorials-reset-option select {
+  margin-block-start: 8px;
+  margin-inline-start: 24px;
+  max-width: calc(100% - 24px);
+}
+.tutorials-reset-note {
+  color: var(--text-2);
+}
+.tutorials-view :is(button, select, input):focus-visible {
+  box-shadow: var(--focus-ring);
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .tutorials-wrap {
+    padding: 20px 16px 40px;
+  }
+  .tutorials-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .tutorials-head h1 {
+    font-size: 22px;
+  }
+  .tutorials-segments {
+    width: 100%;
+  }
+  .tutorials-overall {
+    gap: 6px;
+  }
+  .tutorials-header-actions {
+    width: 100%;
+  }
+  .tutorials-resume {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .tutorials-resume > button {
+    width: 100%;
+  }
+  .tutorials-disclosure {
+    grid-template-columns: 30px 1fr auto 16px;
+    gap: 10px;
+  }
+  .tutorials-glyph-strip {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    flex-wrap: wrap;
+  }
+  .tutorials-glyph-strip:empty {
+    display: none;
+  }
+  .tutorials-chapter-label > span {
+    display: none;
+  }
+  .tutorials-chapter-label b {
+    font-size: 14px;
+  }
+  .tutorials-chapter-count {
+    font-size: 12px;
+    white-space: normal;
+  }
+  .tutorials-rows {
+    padding-inline-start: 0;
+  }
+  .tutorials-row {
+    grid-template-columns: 28px 18px 1fr;
+  }
+  .tutorials-row-meta {
+    grid-column: 3;
+    text-align: start;
+  }
+  .tutorials-row > button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+  }
+  .tutorials-chapter-foot {
+    padding-inline-start: 8px;
+    flex-wrap: wrap;
+  }
+  .tutorials-seal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tutorials-chevron.is-open {
+  rotate: 180deg;
 }
 
 /* ---------- the Examples dialog's link ---------- */
