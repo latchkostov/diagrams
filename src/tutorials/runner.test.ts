@@ -20,6 +20,7 @@ import { planningHost } from "../live/planningHost";
 import type { LiveUi } from "../live/context";
 import { editorHarness } from "../test/editorHarness";
 import { insertOnEdge } from "./catalog/insertOnEdge";
+import { beginObservedWork, observationPorts } from "../lib/observations";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -149,6 +150,48 @@ function sandbox(
     tick: () => sessions.forEach((f) => f()),
   };
 }
+
+it("a successful export belongs to one active step and never advances a later identical step", () => {
+  const template = mobileApi.steps[0];
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    id: "port-moments",
+    subjects: {},
+    steps: ["first", "second"].map((id) => ({
+      ...template,
+      id,
+      check: { kind: "export", format: "svg" },
+      demo: [],
+      solution: [],
+    })),
+  };
+  const s = sandbox(tutorial);
+  const source = { documentId: "sandbox", identity: s.editor.getDocumentVersion().identity };
+  observationPorts.exports.publish({ ...source, format: "svg", bytes: 10 });
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.index).toBe(0);
+  observationPorts.exports.publish({ ...source, format: "svg", bytes: 10 });
+  expect(s.runner.getSnapshot().state.index).toBe(1);
+  s.publish();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  observationPorts.exports.publish({ ...source, identity: {}, format: "svg", bytes: 10 });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  observationPorts.exports.publish({ ...source, format: "svg", bytes: 10 });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+for (const event of ["restart", "exit", "replacement"] as const)
+  it(`${event} cancels delayed product work without a demo job`, () => {
+    const s = sandbox();
+    s.runner.send({ type: "start" });
+    const source = { documentId: "sandbox", identity: s.editor.getDocumentVersion().identity };
+    const work = beginObservedWork(source);
+    if (event === "replacement") {
+      s.hostState.canvas.documentId = "replacement";
+      s.publish();
+    } else s.runner.send({ type: event });
+    expect(work.signal.aborted).toBe(true);
+  });
 
 const named = (): DiagramFile => ({
   ...mobileApi.start(),

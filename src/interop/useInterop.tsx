@@ -63,7 +63,9 @@ import {
   encryptedPayloadFromInput,
   parseEncrypted,
 } from "./passwordLink";
-import { downloadBlob, downloadText, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
+import { createFileWriter, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
+import { beginObservedWork, observationPorts, sameObservationSource } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 import { deviceProvider } from "./storage/device";
 import { CLOUD_PROVIDERS, providerInfo, type ProviderInfo } from "./storage/registry";
 import { StorageError, type OpenContext, type StorageEntry, type StorageProvider } from "./storage/types";
@@ -323,35 +325,42 @@ export function useInterop({
   /** Runs an action, turning any failure into a friendly toast. Called from handlers, never during render. */
   const attempt = async (
     what: import("./ui/fileMessages").FileFailureAction,
-    fn: (notify: (show: (words: typeof import("./ui/fileMessages")) => void) => void) => Promise<void> | void,
+    fn: (
+      notify: (show: (words: typeof import("./ui/fileMessages")) => void) => void,
+      writer: ReturnType<typeof createFileWriter>,
+    ) => Promise<void> | void,
   ) => {
     // Start the message download beside the operation, without awaiting before a system picker opens.
     const messages = import("./ui/fileMessages");
     messages.catch(() => {});
+    const writer = createFileWriter();
     try {
       await fn((show) => {
         // Notifications are best effort. They never delay a file operation or turn its success into failure.
         void messages.then(show).catch(() => {});
-      });
+      }, writer);
     } catch (err) {
+      if (writer.signal.aborted) return;
       if (err instanceof StorageError && err.standalone) toast.error(err.message);
       else
         void messages.then(
           (words) => toast.error(words.fileFailure(what, message(err))),
           () => toast.error(message(err)),
         );
+    } finally {
+      writer.finish();
     }
   };
 
   const exportNative = () =>
-    attempt("diagram", (notify) => {
+    attempt("diagram", (notify, writer) => {
       const d = current();
-      downloadText(serializeNative(d), `${baseName(d)}.diagram.json`, "application/json");
+      writer.text(serializeNative(d), `${baseName(d)}.diagram.json`, "application/json");
       notify(({ nativeExported }) => toast.success(nativeExported(d.nodes.length, d.edges.length)));
     });
 
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
-    attempt({ action: "image", name: kind.toUpperCase() }, async () => {
+    attempt({ action: "image", name: kind.toUpperCase() }, async (_, writer) => {
       const d = current();
       // A big diagram takes seconds: the toast shows how far it has got and offers Cancel (Escape too).
       const version = canvasRef.current?.getDocumentVersion();
@@ -361,6 +370,8 @@ export function useInterop({
           throw new Error(t("common.tryAgain"));
       };
       const cancel = new AbortController();
+      const cancelWork = () => cancel.abort();
+      writer.signal.addEventListener("abort", cancelWork, { once: true });
       const release = holdInput(() => cancel.abort());
       const busy = toast.busy(t("fileToast.exportingImage", { format: kind.toUpperCase() }), {
         blocking: true,
@@ -400,12 +411,13 @@ export function useInterop({
           kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
         // A download clicks its temporary anchor; it must no longer be captured by our input hold.
         release();
-        downloadBlob(image, `${baseName(d)}${suffix}.${kind}`);
+        writer.blob(image, `${baseName(d)}${suffix}.${kind}`);
         toast.dismiss(busy);
         toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
       } catch (err) {
         if (!cancel.signal.aborted) throw err;
       } finally {
+        writer.signal.removeEventListener("abort", cancelWork);
         cancel.signal.removeEventListener("abort", abort);
         release();
         toast.dismiss(busy);
@@ -413,14 +425,14 @@ export function useInterop({
     });
 
   const exportDrawio = () =>
-    attempt("drawio", async () => {
+    attempt("drawio", async (_, writer) => {
       const d = current();
       const [{ diagramToDrawio, drawioExported }, { inlineIcons }] = await Promise.all([
         drawioWriter(),
         import("./icons"),
       ]);
       const xml = diagramToDrawio(d, { iconSvg: await inlineIcons(d) });
-      downloadText(xml, `${baseName(d)}.drawio`, "application/vnd.jgraph.mxfile");
+      writer.text(xml, `${baseName(d)}.drawio`, "application/vnd.jgraph.mxfile");
       toast.success(drawioExported(d));
     });
 
@@ -433,10 +445,10 @@ export function useInterop({
     });
 
   const downloadMermaid = () =>
-    attempt("mermaid", async () => {
+    attempt("mermaid", async (_, writer) => {
       const d = current();
       const { diagramToMermaid, mermaidDownloaded } = await mermaidWriter();
-      downloadText(diagramToMermaid(d), `${baseName(d)}.mmd`, "text/plain");
+      writer.text(diagramToMermaid(d), `${baseName(d)}.mmd`, "text/plain");
       toast.success(mermaidDownloaded());
     });
 
@@ -514,12 +526,12 @@ export function useInterop({
   // ---------------------------------------------------------------- save
 
   const saveToDevice = (as = false) =>
-    attempt("save", async (notify) => {
+    attempt("save", async (notify, writer) => {
       const d = current();
       const text = serializeNative(d);
       const name = `${baseName(d)}.diagram.json`;
       if (!fsSupported) {
-        downloadText(text, name, "application/json");
+        writer.text(text, name, "application/json");
         notify(({ downloadedFile }) => toast.success(downloadedFile(name)));
         return;
       }
@@ -638,6 +650,7 @@ export function useInterop({
 
   const handleOutcome = useCallback(
     async (outcome: ImportOutcome, source: Source, valid: () => boolean = () => true) => {
+      const origin = currentObservationSource();
       // Resolve messages before changing the document. A failed chunk leaves a paste/page dialog available to retry.
       const words = await loadFileMessages(valid);
       if (!valid() || !words) return;
@@ -661,6 +674,8 @@ export function useInterop({
         toast.error(t("fileToast.couldntImportValue0Value1", { value0: source.name, value1: message(err) }));
         return;
       }
+      // The destination policy stays with openDiagram. This fact does not grant sandbox ownership or save a copy.
+      if (origin && created) observationPorts.imports.publish({ ...origin, format: outcome.format });
       setDialog(null);
       const r = outcome.report;
       if (r && created) {
@@ -688,22 +703,33 @@ export function useInterop({
   const importFileList = useCallback(
     async (files: readonly File[], target?: SaveTarget) => {
       if (!files.length) return;
-      const name = files.length === 1 ? files[0].name : t("fileToast.files", { count: files.length });
-      // Check the size before reading anything into memory: the limit is for all of them together.
-      const size = files.reduce((sum, f) => sum + f.size, 0);
-      if (size > LIMITS.maxTextChars) {
-        const words = await loadFileMessages();
-        if (words) toast.error(words.importTooLarge(name, size));
-        return;
-      }
-      let read: { name: string; text: string }[];
+      const origin = currentObservationSource();
+      const work = beginObservedWork(origin);
+      const valid = () => {
+        const now = currentObservationSource();
+        return !work.signal.aborted && (!origin || (!!now && sameObservationSource(origin, now)));
+      };
       try {
-        read = await Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() })));
-      } catch {
-        toast.error(t("fileToast.couldntReadName", { name: name }));
-        return;
+        const name = files.length === 1 ? files[0].name : t("fileToast.files", { count: files.length });
+        // Check the size before reading anything into memory: the limit is for all of them together.
+        const size = files.reduce((sum, f) => sum + f.size, 0);
+        if (size > LIMITS.maxTextChars) {
+          const words = await loadFileMessages(valid);
+          if (words) toast.error(words.importTooLarge(name, size));
+          return;
+        }
+        let read: { name: string; text: string }[];
+        try {
+          read = await Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() })));
+        } catch {
+          if (valid()) toast.error(t("fileToast.couldntReadName", { name: name }));
+          return;
+        }
+        if (!valid()) return;
+        await handleOutcome(await importFiles(read), { name, target: files.length === 1 ? target : undefined }, valid);
+      } finally {
+        work.finish();
       }
-      handleOutcome(await importFiles(read), { name, target: files.length === 1 ? target : undefined });
     },
     [handleOutcome],
   );
@@ -718,25 +744,38 @@ export function useInterop({
   });
 
   /** Opens a file from a provider; Save goes back to it (native files). */
-  const openFromProvider = async (info: ProviderInfo, provider: StorageProvider) => {
+  const openFromProvider = async (
+    info: ProviderInfo,
+    provider: StorageProvider,
+    writer: ReturnType<typeof createFileWriter>,
+  ) => {
     const file = await provider.open(openContext(info, provider));
     if (!file) return;
+    writer.check();
     const target: SaveTarget =
       info.id === DEVICE_PROVIDER
         ? deviceTarget(file.ref as FileHandle)
         : { providerId: info.id, ref: file.ref, name: file.name };
-    handleOutcome(await importText(file.text, file.name), { name: file.name, target });
+    await handleOutcome(await importText(file.text, file.name), { name: file.name, target }, () => {
+      try {
+        writer.check();
+        return true;
+      } catch {
+        return false;
+      }
+    });
   };
 
   /** Open… (Ctrl+O): this device's file picker (several files at once), or the file input where there's none. */
   const openFile = () =>
-    attempt("open", async () => {
+    attempt("open", async (_, writer) => {
       if (!fsSupported) {
         fileInput.current?.click();
         return;
       }
       const picked = await openWithPicker(true);
       if (!picked?.length) return;
+      writer.check();
       // One file opened here saves back to it (our own format).
       await importFileList(
         picked.map((p) => p.file),
@@ -749,17 +788,29 @@ export function useInterop({
     if (id === DEVICE_PROVIDER) return openFile();
     const info = providerInfo(id);
     if (!info) return Promise.resolve();
-    return attempt({ action: "openProvider", name: info.label }, async () => openFromProvider(info, await info.load()));
+    return attempt({ action: "openProvider", name: info.label }, async (_, writer) =>
+      openFromProvider(info, await info.load(), writer),
+    );
   };
 
   const importPasted = useCallback(
     async (text: string) => {
       const session = ++importSession.current;
-      await handleOutcome(
-        await importText(text),
-        { name: t("fileToast.pastedText") },
-        () => session === importSession.current,
-      );
+      const origin = currentObservationSource();
+      const work = beginObservedWork(origin);
+      const valid = () => {
+        const now = currentObservationSource();
+        return (
+          !work.signal.aborted &&
+          session === importSession.current &&
+          (!origin || (!!now && sameObservationSource(origin, now)))
+        );
+      };
+      try {
+        await handleOutcome(await importText(text), { name: t("fileToast.pastedText") }, valid);
+      } finally {
+        work.finish();
+      }
     },
     [handleOutcome],
   );

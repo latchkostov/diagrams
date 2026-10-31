@@ -4,7 +4,7 @@ import type { MessageTrace } from "../sim/types";
 import { Dialog } from "../interop/ui/Dialog";
 import { Glyph } from "../interop/ui/glyphs";
 import { copyText } from "../interop/ui/copyText";
-import { downloadBlob, downloadDataUrl, slugify } from "../interop/files";
+import { createFileWriter, dataUrlToBlob, downloadBlob, slugify } from "../interop/files";
 import { svgToPng } from "../interop/image";
 import { toast } from "../interop/ui/toast";
 import { buildSequence } from "../trace/sequence";
@@ -77,10 +77,14 @@ export function SequenceDialog({
   };
   const downloadSvg = () => downloadBlob(new Blob([picture.svg], { type: "image/svg+xml" }), `${file}.svg`);
   const downloadPng = async () => {
+    const writer = createFileWriter();
     try {
-      await downloadDataUrl(await svgToPng(picture.svg, picture.width, picture.height, 2), `${file}.png`);
+      const png = await svgToPng(picture.svg, picture.width, picture.height, 2);
+      writer.blob(dataUrlToBlob(png), `${file}.png`);
     } catch {
-      toast.error("Couldn't render the PNG. Download the SVG instead.");
+      if (!writer.signal.aborted) toast.error("Couldn't render the PNG. Download the SVG instead.");
+    } finally {
+      writer.finish();
     }
   };
 

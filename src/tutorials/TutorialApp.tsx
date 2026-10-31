@@ -41,6 +41,7 @@ import { createTutorialRunner, type RunnerSnapshot } from "./runner";
 import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
 import { solutionNow, type ResolvedUiStep } from "./solution";
+import { keyboardSolutionNow, type ResolvedKeyboardStep } from "./keyboard";
 import "./tutorials.css";
 
 /** Live's address keys belong to the diagram that set them: a tutorial starts in editing, on its own diagram. */
@@ -212,6 +213,8 @@ function Running({
       journal: runner.journal,
       runs: runner.runs,
       solution: () => solutionNow(tutorial, runner.getSnapshot()),
+      keyboardSolution: () => keyboardSolutionNow(tutorial, runner.getSnapshot()),
+      diagram: () => paletteHost.get().canvas?.editor.getDiagram(),
     };
     return () => void delete window.__tutorial;
   }, [runner, tutorial]);
@@ -637,6 +640,8 @@ declare global {
       runs(): { saved: readonly Simulation[]; draft: Simulation | null };
       /** The current step's solution path, its subjects and words filled in. */
       solution(): ResolvedUiStep[];
+      keyboardSolution(): ResolvedKeyboardStep[];
+      diagram(): DiagramFile | undefined;
     };
   }
 }

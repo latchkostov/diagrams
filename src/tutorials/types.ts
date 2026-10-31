@@ -2,6 +2,8 @@ import type { AnnotationKind, DiagramFile, EdgeRelation, Expectation, Side, SimR
 import type { EdgeSimState, NodeSimState } from "../sim/types";
 import type { EditorModeValue } from "../canvas/interaction/mode";
 import type { DrillPreset } from "../model/faults";
+import type { ProductObservations } from "../lib/observations";
+import type { KeyboardUiStep } from "./keyboard";
 
 /**
  * The tutorial format: typed data, no code. A tutorial is a starting diagram plus steps; each step says what to do
@@ -128,6 +130,13 @@ export type LiveInput = "traffic" | "capacity" | "scale";
 
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
+  | { kind: "dock"; tab: ProductObservations["dock"]["tab"]; snap?: ProductObservations["dock"]["snap"] }
+  | { kind: "checks"; status: ProductObservations["checks"]["status"]; rule?: string; findings?: number }
+  | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
+  | { kind: "export"; format: ProductObservations["exports"]["format"] }
+  | { kind: "import"; format: ProductObservations["imports"]["format"] }
+  | { kind: "aiTurn"; turn?: ProductObservations["ai"]["kind"]; subject?: string }
+  | { kind: "collaboration"; status: "joined" | "left"; role?: ProductObservations["collaboration"]["role"] }
   | { kind: "node"; subject: string }
   /** A flow (never a dependency) from one subject to the other. */
   | { kind: "edge"; from: string; to: string }
@@ -324,6 +333,8 @@ export interface TutorialStep {
   targets: readonly Target[];
   demo: readonly Demo[];
   solution: readonly UiStep[];
+  /** Done is allowed only for explicit acknowledgment checks. */
+  keyboardSolution?: readonly KeyboardUiStep[];
 }
 
 export interface TutorialMetadata {

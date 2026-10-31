@@ -1,0 +1,85 @@
+import type { CheckResult } from "../checks/types";
+import type { FormatId } from "../interop/formats";
+import type { DetailView } from "../canvas/detail";
+
+export type ExportFormat = "native" | "png" | "svg" | "drawio" | "mermaid" | "html" | "video" | "other";
+
+/** Product facts only. Subscribers are optional; publishers never know about tutorials or test hooks. */
+export function createObservationPort<T>() {
+  const listeners = new Set<(event: T) => void>();
+  let latest: T | undefined;
+  return {
+    get: () => latest,
+    publish(event: T) {
+      latest = event;
+      for (const listener of listeners) listener(event);
+    },
+    subscribe(listener: (event: T) => void) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
+  };
+}
+
+/** Identity changes on document replacement, but survives ordinary edits and Undo. */
+export interface ObservationSource {
+  documentId: string;
+  identity: object;
+}
+export interface ProductObservations {
+  dock: ObservationSource & {
+    tab: "closed" | "properties" | "checks" | "ai";
+    snap: "peek" | "half" | "full";
+    live: boolean;
+    presenting: boolean;
+    view?: DetailView;
+  };
+  checks: ObservationSource & {
+    status: "running" | "done" | "failed" | "cancelled" | "stale";
+    result?: CheckResult | null;
+  };
+  exports: ObservationSource & { format: ExportFormat; bytes: number };
+  imports: ObservationSource & { format: FormatId };
+  ai: ObservationSource & { kind: "change" | "explain" | "revert"; changed: readonly string[] };
+  collaboration: ObservationSource & {
+    status: "joining" | "joined" | "left";
+    role?: "creator" | "joiner";
+  };
+}
+export const observationPorts: {
+  [K in keyof ProductObservations]: ReturnType<typeof createObservationPort<ProductObservations[K]>>;
+} = {
+  dock: createObservationPort<ProductObservations["dock"]>(),
+  checks: createObservationPort<ProductObservations["checks"]>(),
+  exports: createObservationPort<ProductObservations["exports"]>(),
+  imports: createObservationPort<ProductObservations["imports"]>(),
+  ai: createObservationPort<ProductObservations["ai"]>(),
+  collaboration: createObservationPort<ProductObservations["collaboration"]>(),
+};
+
+export const sameObservationSource = (a: ObservationSource, b: ObservationSource) =>
+  a.documentId === b.documentId && a.identity === b.identity;
+
+const pending = new Set<{ source: ObservationSource; controller: AbortController }>();
+
+/** A file operation belongs to the document that started it, including while its lazy writer loads. */
+export function beginObservedWork(source: ObservationSource | undefined) {
+  const controller = new AbortController();
+  const job = source && { source, controller };
+  if (job) pending.add(job);
+  return {
+    signal: controller.signal,
+    finish() {
+      if (job) pending.delete(job);
+    },
+  };
+}
+
+/** Restart/Exit/replacement cancel pending product work for this sandbox, never another document. */
+export function cancelObservedWork(source: ObservationSource) {
+  for (const job of pending) {
+    if (!sameObservationSource(job.source, source)) continue;
+    pending.delete(job);
+    job.controller.abort();
+  }
+}

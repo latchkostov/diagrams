@@ -24,9 +24,11 @@ import { checkProps } from "./configuration";
 import type { LiveState } from "../live/controller";
 import type { EditorModeState } from "../canvas/interaction/mode";
 import type { SlowState } from "../live/slowmo/session";
+import type { ProductObservations } from "../lib/observations";
 
 /** What a step can see: the sandbox diagram, whether it's live, and Live's counters (real messages). */
 export interface SandboxView {
+  observations?: Partial<ProductObservations>;
   diagram: DiagramFile;
   live: boolean;
   processed(nodeId: string): number;
@@ -164,6 +166,37 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       ? equal(actual, value)
       : typeof actual === "number" && typeof value === "number" && (op === ">=" ? actual >= value : actual <= value));
   switch (check.kind) {
+    case "view":
+      return view.observations?.dock?.view === check.view;
+    case "dock":
+      return (
+        view.observations?.dock?.tab === check.tab &&
+        (check.snap === undefined || view.observations.dock.snap === check.snap)
+      );
+    case "checks": {
+      const event = view.observations?.checks;
+      return (
+        event?.status === check.status &&
+        (check.findings === undefined || event.result?.findings.length === check.findings) &&
+        (check.rule === undefined || !!event.result?.findings.some((finding) => finding.rule === check.rule))
+      );
+    }
+    case "export":
+      return view.observations?.exports?.format === check.format && view.observations.exports.bytes > 0;
+    case "import":
+      return view.observations?.imports?.format === check.format;
+    case "aiTurn": {
+      const event = view.observations?.ai;
+      return (
+        !!event &&
+        (check.turn === undefined || event.kind === check.turn) &&
+        (check.subject === undefined || (!!subjects[check.subject] && event.changed.includes(subjects[check.subject]!)))
+      );
+    }
+    case "collaboration": {
+      const event = view.observations?.collaboration;
+      return event?.status === check.status && (check.role === undefined || event.role === check.role);
+    }
     case "selection": {
       const selected = view.mode?.selection ?? [];
       return (

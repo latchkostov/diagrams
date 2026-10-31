@@ -3,6 +3,8 @@
 // browser's storage, capped and validated); the caps hold in memory as well.
 
 import { useCallback, useSyncExternalStore } from "react";
+import { observationPorts } from "../../lib/observations";
+import { currentObservationSource } from "../../palette/observationSource";
 import { capThread, loadThread, saveThread, turnId, type ThreadTurn } from "./thread";
 
 import { cachedTurns, cacheTurns, cachedConversationCount, retainConversation } from "../../lib/exampleConversations";
@@ -28,6 +30,9 @@ export const threads = {
   },
   append(documentId: string, turn: Omit<ThreadTurn, "id" | "at">): void {
     threads.update(documentId, (t) => [...t, { ...turn, id: turnId(), at: Date.now() }]);
+    const source = currentObservationSource();
+    if (source?.documentId === documentId)
+      observationPorts.ai.publish({ ...source, kind: turn.kind, changed: turn.changed });
   },
   subscribe(documentId: string, l: () => void): () => void {
     let set = listeners.get(documentId);

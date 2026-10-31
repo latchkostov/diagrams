@@ -1,4 +1,5 @@
 import { Icon } from "../components/Icon";
+import { observationPorts } from "../lib/observations";
 import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
 import { activateDock, closeWorkbenchDock } from "./inspector/dockActions";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
@@ -657,6 +658,7 @@ function CanvasInner({
   }, [checksOn]);
   const checksCard = useChecksPanel().open;
   const checks = useChecks({
+    source: () => ({ documentId, identity: editor.getDocumentVersion().identity }),
     enabled: checksOn,
     revision: hostRevision,
     read: () => editor.getDiagram(),
@@ -664,6 +666,20 @@ function CanvasInner({
     cardOpen: checksCard,
     content: hostRevision,
   });
+  useEffect(() => {
+    const report = () =>
+      observationPorts.dock.publish({
+        documentId,
+        identity: editor.getDocumentVersion().identity,
+        tab: dock.value,
+        snap: dock.snap,
+        live,
+        presenting,
+        view: controller.state.view,
+      });
+    report();
+    return controller.subscribe(report);
+  }, [documentId, editor, dock.value, dock.snap, live, presenting, controller]);
   useEffect(() => {
     stopSimulations.current = checks.stopSimulations;
   }, [checks]);

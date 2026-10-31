@@ -1,0 +1,52 @@
+import { expect, it } from "vitest";
+import { allTutorials } from "./catalog";
+import { keyboardExceptions, keyboardSolutionNow } from "./keyboard";
+import { runnerInitial } from "./machine";
+
+it("every eligible lesson has a keyboard variant beside every pointer solution", () => {
+  expect(Object.keys(keyboardExceptions)).toEqual(["boundaries", "arrange"]);
+  for (const lesson of allTutorials) {
+    for (const step of lesson.steps) {
+      if (keyboardExceptions[lesson.id]) {
+        expect(step.keyboardSolution).toBeUndefined();
+        continue;
+      }
+      expect(step.keyboardSolution, `${lesson.id}/${step.id}`).toBeDefined();
+      const acknowledgment = step.check.kind === "acknowledge";
+      for (const action of step.keyboardSolution!) {
+        expect(action).not.toHaveProperty("click");
+        expect(action).not.toHaveProperty("hover");
+        expect(action).not.toHaveProperty("drag");
+        if ("activate" in action && action.activate === "tutorial-skip") expect(acknowledgment).toBe(true);
+      }
+    }
+  }
+});
+
+it("resolves keyboard subjects and connection identities without executing a demo", () => {
+  const lesson = allTutorials.find((lesson) => lesson.id === "dots-and-sides")!;
+  const snapshot = {
+    state: { ...runnerInitial([true, true, false], { highlights: true, resumeAt: 0 }), value: "active" as const },
+    subjects: { app: "browser", a: "api", b: "other", link: "wire" },
+    selected: [],
+    announcement: "",
+    nearMiss: null,
+    edges: {},
+  };
+  expect(keyboardSolutionNow(lesson, snapshot)).toEqual([
+    { connect: "node-browser", to: "node-api", side: undefined, fromSide: "right" },
+  ]);
+  expect(keyboardSolutionNow(lesson, { ...snapshot, state: { ...snapshot.state, index: 2 } })).toEqual([
+    { activate: "edge-wire" },
+    { reconnect: "edge-wire", to: "node-other" },
+  ]);
+  expect(() => keyboardSolutionNow(lesson, { ...snapshot, subjects: {} })).toThrow("Missing keyboard solution subject");
+  expect(keyboardSolutionNow(lesson, { ...snapshot, state: { ...snapshot.state, value: "finished" } })).toEqual([]);
+});
+
+it("lets the final slow-motion replay finish without navigating away from it", () => {
+  const lesson = allTutorials.find((lesson) => lesson.id === "trace-slowmo")!;
+  const step = lesson.steps.find((step) => step.check.kind === "slowmo" && step.check.finished)!;
+  expect(step.solution.some((action) => "hover" in action)).toBe(true);
+  expect(step.keyboardSolution).toEqual([]);
+});
