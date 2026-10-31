@@ -28,6 +28,7 @@ export type KeyboardUiStep =
 function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
   if ("click" in step) {
     if (step.click === "live-toggle") return [{ command: "live:toggle", query: () => ">" }];
+    if (step.click === "fit-view-button") return [{ command: "action:canvas.fit", query: msg("menu.fitView") }];
     if (/^(inspector-section-|hover-section-)/.test(step.click)) return [{ open: step.click }];
     if (step.click.startsWith("grow-chip-"))
       return [{ focus: step.click.replace("grow-chip-", "node-") }, { press: "Alt+ArrowRight" }];

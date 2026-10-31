@@ -6,6 +6,6 @@ API gateway, Kafka groups, queue workers, cache shares, partitions and outbox le
 
 Checks completion reads typed product observations, current job results and real route traces and rejection counters by address and reason. Sticky editing milestones now wait for naming to finish before latching. The lessons distinguish static advice, document settings, observed work and acknowledged explanations; cache shares, saved eight-partition setup, outbox atomicity and network-model limits are explicit.
 
-Keyboard walkthroughs collect one consistent focus snapshot per key, reducing repeated browser round trips while retaining real keyboard events, completion assertions and existing timeouts. An operation-count regression rejects the previous traversal.
+Keyboard walkthroughs use the existing Fit view command and reuse their post-key focus snapshot, including the same two settling frames. They retain real keyboard events, all focus and completion assertions, and existing timeouts. Regressions reject the previous Fit view route and redundant browser reads.
 
 Output review: only `tests/parity/goldens/node/i18n/catalogs.json` changes, reflecting new tutorial keys, English fallbacks and pseudo-locale fingerprints. Existing translated keys remain intact; new copy uses new keys so stale translations cannot change the lesson’s meaning. No simulation, planning, example, layout or export golden is intentionally changed. No simulation-engine algorithm or budget changes.

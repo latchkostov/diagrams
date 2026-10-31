@@ -2,6 +2,19 @@ import { expect, it } from "vitest";
 import { allTutorials } from "./catalog";
 import { keyboardExceptions, keyboardSolutionNow, withKeyboardSolutions } from "./keyboard";
 import { runnerInitial } from "./machine";
+import { t } from "../i18n";
+
+it("uses the registered Fit view command instead of traversing the chrome", () => {
+  const lesson = allTutorials.find((lesson) => lesson.id === "study-fanout")!;
+  const routed = withKeyboardSolutions({
+    ...lesson,
+    steps: [{ ...lesson.steps[0], solution: [{ click: "fit-view-button" }], keyboardSolution: undefined }],
+  });
+  const [fit] = routed.steps[0].keyboardSolution!;
+  expect(routed.steps[0].keyboardSolution).toHaveLength(1);
+  expect(fit).toMatchObject({ command: "action:canvas.fit" });
+  expect("command" in fit && fit.query()).toBe(t("menu.fitView"));
+});
 
 it("every eligible lesson has a keyboard variant beside every pointer solution", () => {
   expect(Object.keys(keyboardExceptions)).toEqual(["boundaries", "arrange"]);

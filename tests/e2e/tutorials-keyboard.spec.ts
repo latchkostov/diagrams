@@ -13,13 +13,6 @@ import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutoria
 
 class CompletedStep extends Error {}
 
-async function activeControl(page: Page) {
-  return page.evaluate(() => {
-    const el = document.activeElement;
-    return el?.getAttribute("data-testid") ?? `${el?.tagName ?? "none"}:${document.hasFocus()}`;
-  });
-}
-
 /** Every operation below sends real keys. Locator reads choose a route; none moves focus or invokes an action. */
 async function write(page: Page, text: string) {
   await page.keyboard.press("ControlOrMeta+a");
@@ -116,9 +109,12 @@ async function focus(page: Page, id: string) {
   const seen = new Set<string>();
   const limit = await page.getByTestId(/./).count();
   let moves = 0;
-  for (;;) {
-    // One consistent browser snapshot per key: separate round trips here multiply the cost of long studies.
-    const state = await target.evaluate((el) => {
+  const readState = (settle = false) =>
+    target.evaluate(async (el, settle) => {
+      // Keep the two settling frames in the same round trip as the focus observation.
+      if (settle)
+        for (let frame = 0; frame < 2; frame++)
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       const active = document.activeElement;
       let reading: string | null = null;
       for (let parent = active; parent; parent = parent.parentElement) {
@@ -143,13 +139,16 @@ async function focus(page: Page, id: string) {
         active: active?.getAttribute("data-testid") ?? `${active?.tagName ?? "none"}:${document.hasFocus()}`,
         roving,
       };
-    });
+    }, settle);
+  let state = await readState();
+  for (;;) {
     if (state.focused) return;
     if (state.completed) throw new CompletedStep();
     if (state.reading) {
       await page.keyboard.press("Escape");
       await expect(page.getByTestId(state.reading)).toHaveCount(0);
       seen.clear();
+      state = await readState();
       continue;
     }
     const body = state.active.startsWith("BODY:");
@@ -157,10 +156,17 @@ async function focus(page: Page, id: string) {
       throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
     // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
     if (!body) seen.add(state.active);
+    const previous = state.active;
     await page.keyboard.press(state.roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
     // Roving focus and portal teardown can cross body before the destination lands on the next frame.
-    await animationFrames(page);
-    if (!body) await expect.poll(() => activeControl(page)).not.toBe(state.active);
+    if (body) state = await readState(true);
+    else
+      await expect
+        .poll(async () => {
+          state = await readState(true);
+          return state.active;
+        })
+        .not.toBe(previous);
   }
 }
 
@@ -377,6 +383,6 @@ test("keyboard control traversal reads a bounded amount of browser state per key
   });
   await focus(page, "last");
   expect(keys).toBeGreaterThan(0);
-  expect(reads).toBeLessThanOrEqual(keys * 4 + 3);
+  expect(reads).toBeLessThanOrEqual(keys + 3);
   await expect(page.getByTestId("last")).toBeFocused();
 });
