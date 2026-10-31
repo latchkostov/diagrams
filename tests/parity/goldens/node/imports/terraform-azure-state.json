@@ -78,12 +78,12 @@
       "title": "azure-state (everything)",
       "direction": "LR",
       "groups": [
-        { "id": "boundary-rg-billing", "label": "rg-billing", "tone": "azure", "x": 40, "y": 40, "width": 1380, "height": 672 },
-        { "id": "boundary-rg-shared", "label": "rg-shared", "tone": "azure", "x": 40, "y": 760, "width": 321, "height": 568 }
+        { "id": "boundary-rg-billing", "label": "rg-billing", "tone": "azure", "x": 40, "y": 40, "width": 1540, "height": 560 },
+        { "id": "boundary-rg-shared", "label": "rg-shared", "tone": "azure", "x": 40, "y": 650, "width": 321, "height": 568 }
       ],
       "nodes": [
         { "id": "rg-billing", "stencil": "generic.service", "label": "rg-billing", "sublabel": "azurerm_resource_group", "x": 80, "y": 376, "group": "boundary-rg-billing" },
-        { "id": "rg-shared", "stencil": "generic.service", "label": "rg-shared", "sublabel": "azurerm_resource_group", "x": 80, "y": 824, "group": "boundary-rg-shared" },
+        { "id": "rg-shared", "stencil": "generic.service", "label": "rg-shared", "sublabel": "azurerm_resource_group", "x": 80, "y": 714, "group": "boundary-rg-shared" },
         { "id": "shop-bus", "stencil": "generic.service", "label": "shop-bus", "sublabel": "azurerm_servicebus_namespace", "x": 388, "y": 376, "group": "boundary-rg-billing" },
         { "id": "orders", "stencil": "azure.service-bus.topic", "label": "orders", "x": 80, "y": 104, "group": "boundary-rg-billing" },
         { "id": "billing", "stencil": "generic.service", "label": "billing", "sublabel": "azurerm_servicebus_subscription", "x": 696, "y": 376, "group": "boundary-rg-billing" },
@@ -91,16 +91,16 @@
         { "id": "billingfuncstore", "stencil": "azure.blob-storage", "label": "billingfuncstore", "x": 80, "y": 224, "group": "boundary-rg-billing" },
         { "id": "billing-plan", "stencil": "generic.service", "label": "billing-plan", "sublabel": "azurerm_service_plan", "x": 1004, "y": 376, "group": "boundary-rg-billing" },
         { "id": "billing-func", "stencil": "azure.functions", "label": "billing-func", "x": 800, "y": 164, "group": "boundary-rg-billing" },
-        { "id": "func_reads_inbox", "stencil": "generic.service", "label": "func_reads_inbox", "sublabel": "azurerm_role_assignment", "x": 80, "y": 488, "group": "boundary-rg-billing" },
-        { "id": "shop-kv", "stencil": "azure.key-vault", "label": "shop-kv", "x": 80, "y": 1216, "group": "boundary-rg-shared" },
-        { "id": "servicebus-connection", "stencil": "generic.service", "label": "servicebus-connection", "sublabel": "azurerm_key_vault_secret", "x": 80, "y": 944, "group": "boundary-rg-shared" },
-        { "id": "func_reads_secrets", "stencil": "generic.service", "label": "func_reads_secrets", "sublabel": "azurerm_role_assignment", "x": 80, "y": 1064, "group": "boundary-rg-shared" },
-        { "id": "shop-telemetry", "stencil": "generic.service", "label": "shop-telemetry", "sublabel": "azurerm_eventhub_namespace", "x": 388, "y": 488, "group": "boundary-rg-billing" },
+        { "id": "func_reads_inbox", "stencil": "generic.service", "label": "func_reads_inbox", "sublabel": "azurerm_role_assignment", "x": 1312, "y": 376, "group": "boundary-rg-billing" },
+        { "id": "shop-kv", "stencil": "azure.key-vault", "label": "shop-kv", "x": 80, "y": 1106, "group": "boundary-rg-shared" },
+        { "id": "servicebus-connection", "stencil": "generic.service", "label": "servicebus-connection", "sublabel": "azurerm_key_vault_secret", "x": 80, "y": 834, "group": "boundary-rg-shared" },
+        { "id": "func_reads_secrets", "stencil": "generic.service", "label": "func_reads_secrets", "sublabel": "azurerm_role_assignment", "x": 80, "y": 954, "group": "boundary-rg-shared" },
+        { "id": "shop-telemetry", "stencil": "generic.service", "label": "shop-telemetry", "sublabel": "azurerm_eventhub_namespace", "x": 80, "y": 488, "group": "boundary-rg-billing" },
         { "id": "billing-events", "stencil": "azure.event-hubs", "label": "billing-events", "x": 1160, "y": 164, "group": "boundary-rg-billing" },
-        { "id": "analytics", "stencil": "generic.service", "label": "analytics", "sublabel": "azurerm_eventhub_consumer_group", "x": 696, "y": 488, "group": "boundary-rg-billing" },
-        { "id": "func_sends_events", "stencil": "generic.service", "label": "func_sends_events", "sublabel": "azurerm_role_assignment", "x": 1004, "y": 488, "group": "boundary-rg-billing" },
+        { "id": "analytics", "stencil": "generic.service", "label": "analytics", "sublabel": "azurerm_eventhub_consumer_group", "x": 388, "y": 488, "group": "boundary-rg-billing" },
+        { "id": "func_sends_events", "stencil": "generic.service", "label": "func_sends_events", "sublabel": "azurerm_role_assignment", "x": 696, "y": 488, "group": "boundary-rg-billing" },
         { "id": "billing-blobs", "stencil": "azure.event-grid", "label": "billing-blobs", "x": 440, "y": 224, "group": "boundary-rg-billing" },
-        { "id": "invoice-uploaded", "stencil": "generic.service", "label": "invoice-uploaded", "sublabel": "azurerm_eventgrid_system_topic_event_subscription", "x": 80, "y": 600, "group": "boundary-rg-billing" }
+        { "id": "invoice-uploaded", "stencil": "generic.service", "label": "invoice-uploaded", "sublabel": "azurerm_eventgrid_system_topic_event_subscription", "x": 1004, "y": 488, "group": "boundary-rg-billing" }
       ],
       "edges": [
         { "id": "e1", "from": "orders", "to": "billing-inbox", "kind": "async", "props": { "group": "billing" } },

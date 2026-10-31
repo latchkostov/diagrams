@@ -10,6 +10,7 @@ import {
   expectNoErrors,
   openShareChooser,
   waitForStableViewport,
+  waitForCameraIdle,
 } from "./fixtures";
 
 // Infrastructure imports, batch 1: docker-compose (docs/research/imports.md). Open…, drop, the Import report
@@ -834,7 +835,8 @@ test.describe("imports: Terraform", () => {
     await page.getByTestId("import-report-draw-everything").click();
     await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
     await page.getByTestId("fit-view-button").click();
-    // Measured once Fit's animation has finished, not part-way through it.
+    // Include measurement refinements after the first fit, which can be briefly stable.
+    await waitForCameraIdle(page);
     await waitForStableViewport(page);
     // The whole diagram fits the view at a scale where a card reads: the spread layout fitted at under a fifth.
     const card = await page.getByTestId("node-msk-brokers").boundingBox();

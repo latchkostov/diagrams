@@ -28,7 +28,7 @@ export const towardOf = (direction: "LR" | "TB" = "LR", side: "downstream" | "up
   direction === "TB" ? (side === "upstream" ? "up" : "down") : side === "upstream" ? "left" : "right";
 
 /**
- * One gap from `from` on its `toward` side (`gap` to the left or right, 80 above or below), centred on it
+ * One gap from `from` on its `toward` side (`gap` horizontally, `verticalGap` above or below), centred on it
  * across that axis. When the spot is taken (it overlaps one of `others`, grown by `margin`) it steps across:
  * down for a left or right spot, right for one above or below, so a fan-out reads as a column (or a row).
  * Returns the new box's centre.
@@ -40,6 +40,7 @@ export function placeToward(
   toward: Toward,
   margin = 0,
   gap = GAP_X,
+  verticalGap = GAP_Y * 2,
 ): { x: number; y: number } {
   const across = toward === "right" || toward === "left";
   let x = across
@@ -50,8 +51,8 @@ export function placeToward(
   let y = across
     ? from.y + from.height / 2 - size.height / 2
     : toward === "up"
-      ? from.y - GAP_Y * 2 - size.height
-      : from.y + from.height + GAP_Y * 2;
+      ? from.y - verticalGap - size.height
+      : from.y + from.height + verticalGap;
   for (let i = 0; i < MAX_TRIES; i++) {
     if (isClear({ x, y, ...size }, others, margin)) break;
     if (across) y += size.height + GAP_Y;

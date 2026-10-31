@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
-import { compactColumns } from "./layout";
+import { compactColumns, layoutImport } from "./layout";
+import { DIAGRAM_FORMAT } from "../../model/types";
 
 // The importers' layout: the column restack on its own, at scale (the rest is covered through each reader's fixtures
 // and the Lab's overlap audits).
@@ -63,4 +64,29 @@ describe("import layout: compacting columns", () => {
     const small = work(200);
     expect(work(200 * GROWTH_FACTOR) / small).toBeLessThan(LINEAR_LIMIT);
   });
+});
+
+it("packs isolated resources across the flow lane before starting another row", () => {
+  const flow = Array.from({ length: 4 }, (_, i) => `flow-${i}`);
+  const isolated = Array.from({ length: 10 }, (_, i) => `resource-${i}`);
+  const result = layoutImport({
+    format: DIAGRAM_FORMAT,
+    title: "Imported resources",
+    nodes: [...flow, ...isolated, "support-store"].map((id) => ({
+      id,
+      stencil: "generic.service",
+      label: id,
+      x: 0,
+      y: 0,
+    })),
+    edges: [
+      ...flow.slice(1).map((id, i) => ({ id: `edge-${i}`, from: flow[i], to: id })),
+      { id: "uses-store", from: "resource-9", to: "support-store", relation: "depends" },
+    ],
+  });
+  const resources = result.nodes.filter((node) => isolated.includes(node.id));
+  expect(new Set(resources.map((node) => node.y)).size).toBe(2);
+  expect(new Set(resources.map((node) => node.x)).size).toBe(5);
+  const support = result.nodes.find((node) => node.id === "support-store");
+  expect(support?.y).toBe(Math.max(...resources.map((node) => node.y)) + 72 + 40);
 });

@@ -38,6 +38,29 @@ async function hold(page: Page, name: string, source: string) {
   };
 }
 
+test("the stencil library keeps Enter typed while its contents are loading", async ({ page }) => {
+  await seed(page);
+  const library = await hold(page, "Palette", "src/canvas/Palette.tsx");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    const before = await savedDiagram(page);
+    await openLibrary(page);
+    await expect.poll(library.requested).toBe(true);
+    await expect(page.getByTestId("palette-loading")).toBeVisible();
+    await expect(page.getByTestId("palette-search")).toBeFocused();
+    await page.keyboard.type("kafka topic");
+    await page.keyboard.press("Enter");
+    library.release();
+    await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(before.nodes.length + 1);
+    const after = await savedDiagram(page);
+    const added = after.nodes.filter((node) => !before.nodes.some((old) => old.id === node.id));
+    expect(added).toHaveLength(1);
+    expect(added[0].stencil).toBe("kafka.topic");
+  } finally {
+    library.release();
+  }
+});
+
 for (const delayed of [false, true])
   test(`new boundary keeps immediate naming with ${delayed ? "delayed" : "loaded"} GroupPanel`, async ({ page }) => {
     await seed(page);
@@ -172,6 +195,145 @@ test("Live overflow keeps its trace fold across dismissal", async ({ page }) => 
   await page.getByTestId("live-more").click();
   await expect(page.getByTestId("live-trace-message")).toHaveAttribute("aria-expanded", "true");
 });
+
+for (const name of [undefined, "Cache audit"])
+  test(`held quick-add search hands ${name ? "typing" : "Escape"} to naming after Enter`, async ({ browser }) => {
+    const picks: string[] = [];
+    for (const delayed of [false, true]) {
+      const page = await browser.newPage();
+      const search = delayed ? await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts") : null;
+      try {
+        await seed(page);
+        await gotoCanvas(page, "blocking-call");
+        await waitForStableViewport(page);
+        await page.getByTestId("node-caller").click();
+        await page.getByTestId("canvas-wrap").focus();
+        const before = await savedDiagram(page);
+        await page.keyboard.press("Alt+ArrowRight");
+        await expect(page.getByTestId("quick-add-search")).toBeFocused();
+        await page.keyboard.type("cache");
+        if (search) await expect.poll(search.requested).toBe(true);
+        else await waitForQuickAddResults(page);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        if (name) await page.keyboard.type(name);
+        await page.keyboard.press("Escape");
+        search?.release();
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
+        const after = await savedDiagram(page);
+        const added = after.nodes.filter((node) => !before.nodes.some((old) => old.id === node.id));
+        expect(added).toHaveLength(1);
+        picks.push(added[0].stencil);
+        if (name) expect(added[0].label).toBe(name);
+      } finally {
+        search?.release();
+        await page.close();
+      }
+    }
+    expect(picks[1]).toBe(picks[0]);
+  });
+
+for (const recovery of ["Escape", "Retry"] as const)
+  test(`failed queued quick-add releases the keyboard for ${recovery}`, async ({ page }) => {
+    await seed(page);
+    const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");
+    try {
+      await gotoCanvas(page, "blocking-call");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-caller").click();
+      await page.getByTestId("canvas-wrap").focus();
+      const before = await savedDiagram(page);
+      await page.keyboard.press("Alt+ArrowRight");
+      await expect(page.getByTestId("quick-add-search")).toBeFocused();
+      await page.keyboard.type("redis cache");
+      await expect.poll(search.requested).toBe(true);
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("Cache audit");
+      search.fail();
+      await expect(page.getByTestId("quick-add-search-failed")).toBeVisible();
+      if (recovery === "Escape") {
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("quick-add-search")).toHaveValue("");
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        expect(await savedDiagram(page)).toEqual(before);
+      } else {
+        await page.keyboard.press("Tab");
+        await expect(page.getByTestId("quick-add-search-retry")).toBeFocused();
+        search.pass();
+        await page.keyboard.press("Enter");
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+        await expect(page.getByTestId("inspector-field-label")).toHaveValue("Cache audit");
+        await page.keyboard.press("Enter");
+        await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
+        const added = (await savedDiagram(page)).nodes.filter(
+          (node) => !before.nodes.some((old) => old.id === node.id),
+        );
+        expect(added).toHaveLength(1);
+        expect(added[0]).toMatchObject({ stencil: "redis.cache", label: "Cache audit" });
+      }
+    } finally {
+      search.release();
+    }
+  });
+
+test("clearing a queued quick-add query releases its capture while search is held", async ({ page }) => {
+  await seed(page);
+  const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    await page.getByTestId("canvas-wrap").focus();
+    const before = await savedDiagram(page);
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(page.getByTestId("quick-add-search")).toBeFocused();
+    await page.keyboard.type("redis cache");
+    await expect.poll(search.requested).toBe(true);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Discarded name");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("");
+    await page.keyboard.type("topic");
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("topic");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    search.release();
+    expect(await savedDiagram(page)).toEqual(before);
+  } finally {
+    search.release();
+  }
+});
+
+for (const finish of ["Escape", "ControlOrMeta+Enter"])
+  test(`held quick-add preserves annotation newlines before ${finish}`, async ({ page }) => {
+    const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");
+    try {
+      await seed(page);
+      await gotoCanvas(page, "blocking-call");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-caller").click();
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("Alt+ArrowRight");
+      await expect(page.getByTestId("quick-add-search")).toBeFocused();
+      await page.keyboard.type("hexagon");
+      await expect.poll(search.requested).toBe(true);
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("alpha");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("beta");
+      await page.keyboard.press(finish);
+      search.release();
+      await expect(page.getByTestId("annotation-text-shape-1")).toHaveText("alpha\nbeta");
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    } finally {
+      search.release();
+    }
+  });
 
 for (const name of [undefined, "Cache audit"])
   test(`quick-add navigation picks before ${name ? "typing hands over to naming" : "Escape finishes naming"}`, async ({
