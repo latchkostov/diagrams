@@ -43,3 +43,10 @@ it("resolves keyboard subjects and connection identities without executing a dem
   expect(() => keyboardSolutionNow(lesson, { ...snapshot, subjects: {} })).toThrow("Missing keyboard solution subject");
   expect(keyboardSolutionNow(lesson, { ...snapshot, state: { ...snapshot.state, value: "finished" } })).toEqual([]);
 });
+
+it("lets the final slow-motion replay finish without navigating away from it", () => {
+  const lesson = allTutorials.find((lesson) => lesson.id === "trace-slowmo")!;
+  const step = lesson.steps.find((step) => step.check.kind === "slowmo" && step.check.finished)!;
+  expect(step.solution.some((action) => "hover" in action)).toBe(true);
+  expect(step.keyboardSolution).toEqual([]);
+});

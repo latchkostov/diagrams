@@ -211,7 +211,7 @@ export function useChecks(opts: {
   useEffect(() => {
     const source = opts.source;
     if (!source) return;
-    runs.setReport((status) => observationPorts.checks.publish({ ...source(), status }));
+    runs.setReport((status, result) => observationPorts.checks.publish({ ...source(), status, result }));
     const stop = store.subscribe(() => {
       const state = store.get();
       if (state.result)
@@ -304,7 +304,7 @@ export function installCheckRunControls(runs: CheckRuns): () => void {
 
 /** The runs behind useChecks: the scheduler, what to read, and which results are still wanted. */
 export class CheckRuns {
-  private report?: (status: ProductObservations["checks"]["status"]) => void;
+  private report?: (status: ProductObservations["checks"]["status"], result?: CheckResult) => void;
   setReport(report: CheckRuns["report"]) {
     this.report = report;
   }
@@ -342,7 +342,11 @@ export class CheckRuns {
       checkRunStats.finished++;
       // A result for a diagram that has since been replaced (another one opened, checks off) is dropped; one
       // for an older edit of this diagram still shows (marked stale) until the newer run lands.
-      if (gen === this.generation) deliver(next, diagram);
+      if (gen === this.generation) {
+        deliver(next, diagram);
+        // Identical results need no store redraw, but this job still completed.
+        this.report?.("done", next);
+      }
     };
     this.scheduler = scheduler ? scheduler(task) : createCheckScheduler(task);
   }

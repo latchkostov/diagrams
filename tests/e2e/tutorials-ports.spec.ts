@@ -63,6 +63,7 @@ test("Checks: a real worker job publishes findings", async ({ page, consoleError
   await begin(page, "checks");
   await page.getByTestId("checks-count").click();
   await page.evaluate(() => window.__checks?.flush());
+  await expect.poll(async () => (await latest(page)).checks?.status).toBe("done");
   await finished(page);
   const result = (await latest(page)).checks;
   expect(result?.status).toBe("done");

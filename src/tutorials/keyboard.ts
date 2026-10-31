@@ -64,6 +64,8 @@ export function withKeyboardSolutions(tutorial: Tutorial): Tutorial {
     const solution: KeyboardUiStep[] = [];
     for (let i = 0; i < step.solution.length; i++) {
       const action = step.solution[i];
+      // The final replay observation requires no navigation; moving focus can pause the take being watched.
+      if ("hover" in action && step.check.kind === "slowmo" && step.check.finished) continue;
       if ("rightclick" in action && action.rightclick === "canvas-pane") {
         const leaf = step.solution[i + 2];
         if (leaf && "click" in leaf && leaf.click === "context-menu-item-view:dependencies") {

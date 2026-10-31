@@ -11,6 +11,8 @@ import {
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
 
+class CompletedStep extends Error {}
+
 /** Every operation below sends real keys. Locator reads choose a route; none moves focus or invokes an action. */
 async function write(page: Page, text: string) {
   await page.keyboard.press("ControlOrMeta+a");
@@ -84,11 +86,26 @@ async function focus(page: Page, id: string) {
   }
   const target = page.getByTestId(id);
   await expect(target).toBeVisible();
-  const backwards = await target.evaluate(
-    (el) =>
-      !!document.activeElement &&
-      !!(el.compareDocumentPosition(document.activeElement) & Node.DOCUMENT_POSITION_FOLLOWING),
-  );
+  const backwards = await target.evaluate((el) => {
+    const stops = Array.from(document.querySelectorAll<HTMLElement>("[data-testid]")).filter(
+      (stop) =>
+        !stop.hasAttribute("disabled") &&
+        stop.getClientRects().length &&
+        (stop.tabIndex >= 0 || /^(rf__node-|node-live-focus-)/.test(stop.dataset.testid ?? "")),
+    );
+    const destination = stops.findIndex((stop) => stop === el || stop.contains(el) || el.contains(stop));
+    let active = document.activeElement;
+    for (let parent = active; parent; parent = parent.parentElement) {
+      if (!parent.hasAttribute("data-live-readout")) continue;
+      active = stops.find((stop) => stop.getAttribute("data-id") === parent.getAttribute("data-item")) ?? active;
+      break;
+    }
+    const current = stops.findIndex((stop) => stop === active || stop.contains(active));
+    if (destination < 0) return !!active && !!(el.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const forward = current < 0 ? destination + 1 : (destination - current + stops.length) % stops.length;
+    const backward = current < 0 ? stops.length - destination : (current - destination + stops.length) % stops.length;
+    return backward < forward;
+  });
   const seen = new Set<string>();
   while (
     !(await target.evaluate(
@@ -98,6 +115,8 @@ async function focus(page: Page, id: string) {
         (document.activeElement instanceof HTMLButtonElement && document.activeElement.contains(el)),
     ))
   ) {
+    if (await page.evaluate(() => ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? "")))
+      throw new CompletedStep();
     const reading = await target.evaluate((el) => {
       let parent = document.activeElement;
       while (parent) {
@@ -226,9 +245,15 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
     const index = values.indexOf(action.value);
     expect(index).toBeGreaterThanOrEqual(0);
     await page.keyboard.press("Alt+ArrowDown");
+    await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(true);
     await page.keyboard.press("Home");
-    for (let i = 0; i < index; i++) await page.keyboard.press("ArrowDown");
+    await animationFrames(page);
+    for (let i = 0; i < index; i++) {
+      await page.keyboard.press("ArrowDown");
+      await animationFrames(page);
+    }
     await page.keyboard.press("Enter");
+    await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
     await expect(page.getByTestId(action.choose)).toHaveValue(
       action.choose === "sim-panel-add-step" ? "" : action.value,
     );
@@ -304,7 +329,12 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
       expect(["active", "hinting", "completing"]).toContain(current.phase);
       expect(seen.has(current.id), `${id}/${current.id} came back`).toBe(false);
       seen.add(current.id);
-      for (const action of current.actions) await play(page, action);
+      try {
+        for (const action of current.actions) await play(page, action);
+      } catch (error) {
+        // A real completion can land while focus travels to an optional speed/readout control.
+        if (!(error instanceof CompletedStep)) throw error;
+      }
       await expect(page.getByTestId("tutorial-step")).not.toHaveAttribute("data-step", current.id, { timeout: 20_000 });
     }
     await expect(page.getByTestId("tutorial-finished")).toBeVisible();
