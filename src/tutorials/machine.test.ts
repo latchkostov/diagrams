@@ -327,3 +327,25 @@ it("retries failed Continue reconstruction without dropping retained latches or 
   m.send({ type: "demoFailed", steps: [0], purpose: "interactive" });
   expect(m.state.value).toBe("closed");
 });
+
+it.each([false, true])(
+  "Retry reopens an undone prerequisite (check met: %s) without replaying the later demo",
+  (met) => {
+    const m = createMachine(def());
+    m.send({ type: "start" });
+    m.send(observe([true, false, false]));
+    m.send({ type: "demoFailed", steps: [1], purpose: "interactive" });
+    // Undo boundary creation while its later membership move is in recovery.
+    m.send(observe([met, false, false], [false, true, true]));
+    const retried = m.send({ type: "retry" });
+    expect(retried.state).toMatchObject({ value: met ? "completing" : "active", index: 0, recovery: null });
+    expect(retried.commands).toEqual([
+      { type: "announce", step: 0 },
+      { type: "save", step: 0, completed: false },
+    ]);
+    // Assistance is available again for the prerequisite; the failed action can follow it.
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    m.send(observe([true, false, false]));
+    expect(m.send({ type: "skip", stepId: "1" }).commands).toEqual([{ type: "demo", steps: [1] }]);
+  },
+);

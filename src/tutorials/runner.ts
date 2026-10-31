@@ -734,7 +734,8 @@ export function createTutorialRunner(
             if (live.has(d.kind)) {
               if (
                 !(await until(() => {
-                  if (host.get().session?.disabledHint) throw new Error("Live unavailable");
+                  // Read-only views remain available while slow motion owns engine mutations.
+                  if (d.kind !== "openView" && host.get().session?.disabledHint) throw new Error("Live unavailable");
                   return perform(d) !== false;
                 }, run))
               )

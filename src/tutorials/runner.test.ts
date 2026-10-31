@@ -278,6 +278,51 @@ it.each(["inputs", "simulations"] as const)("opens %s independently of the other
   expect(s.runner.getSnapshot().state.value).toBe("finished");
 });
 
+it("opens Events while slow motion disables engine mutations", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "liveView", view: "events", open: true },
+        demo: [{ kind: "openView", view: "events" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  s.hostState.session.disabledHint = "Slow motion";
+  const showEvents = vi.fn((nodeId: string | null, open: boolean) => {
+    cleanup.push(planningHost.publish({ events: { nodeId, open }, showEvents } as unknown as LiveUi));
+  });
+  cleanup.push(planningHost.publish({ events: { nodeId: "api", open: false }, showEvents } as unknown as LiveUi));
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(showEvents).toHaveBeenCalledExactlyOnceWith("api", true);
+  expect(s.hostState.session.disabledHint).toBe("Slow motion");
+});
+
+it("fails an engine-mutating demo while slow motion disables mutations", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "simulation", id: "demo" },
+        demo: [{ kind: "runSimulation", id: "demo" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.session.disabledHint = "Slow motion";
+  s.host.runSimulation = vi.fn(() => true);
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("failed"));
+  expect(s.host.runSimulation).not.toHaveBeenCalled();
+});
+
 it("replaying an add-and-name demo fixes a near miss on the same connected node", async () => {
   const tutorial: Tutorial = {
     ...mobileApi,

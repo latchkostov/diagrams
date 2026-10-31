@@ -346,12 +346,18 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
           reduce: (s) => ({ ...s, recovery: null, baseline: {} }),
         },
         ...goTo(
-          (s) => position({ ...s, recovery: null }, s),
+          (s) => ({ ...position(s, s), recovery: null }),
           (s) => s.recovery?.purpose === "interactive",
           () => true,
         ).map((row): Row => ({
           ...row,
-          effects: (s, _e, n) => [...progress(n), { type: "demo", steps: s.recovery!.steps }],
+          // Undo may have reopened a prerequisite. Hand it back to the learner before retrying a later action.
+          effects: (s, _e, n) => [
+            ...progress(n),
+            ...(n.value !== "finished" && n.index === s.recovery!.steps[0]
+              ? [{ type: "demo" as const, steps: s.recovery!.steps }]
+              : []),
+          ],
         })),
       ],
       restart,
