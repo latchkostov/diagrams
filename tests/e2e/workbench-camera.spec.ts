@@ -16,7 +16,60 @@ async function finishCameraClock(page: Page, duration: number) {
     .toBe("idle");
   // The camera's landing schedules the decoration and identity commits on the next frames.
   await page.clock.runFor(32);
+  // CSS fades use the browser's animation timeline, independently of the fake JS clock.
+  await page.getByTestId("canvas-wrap").evaluate(async (canvas) => {
+    await Promise.allSettled(
+      canvas
+        .getAnimations({ subtree: true })
+        .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+        .map((animation) => animation.finished),
+    );
+  });
 }
+
+test("camera capture waits for a finite browser fade without waiting for endless decoration", async ({ page }) => {
+  await page.clock.install();
+  await page.setContent('<div data-testid="canvas-wrap" data-camera-state="idle">Camera frame</div>');
+  const canvas = page.getByTestId("canvas-wrap");
+  const held = await canvas.evaluateHandle((el) => {
+    const fade = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1000, fill: "both" });
+    fade.pause();
+    const finished = fade.finished;
+    Object.defineProperty(fade, "finished", {
+      get() {
+        el.dataset.fadeObserved = "true";
+        return finished;
+      },
+    });
+    const endless = el.animate([{ translate: "0px" }, { translate: "1px" }], {
+      duration: 1000,
+      iterations: Infinity,
+    });
+    return {
+      release: () => fade.finish(),
+      cleanup: () => {
+        fade.cancel();
+        endless.cancel();
+      },
+    };
+  });
+  let returned = false;
+  const waiting = finishCameraClock(page, 0).then(() => {
+    returned = true;
+  });
+  try {
+    await expect.poll(async () => returned || (await canvas.getAttribute("data-fade-observed")) === "true").toBe(true);
+    expect(returned, "a paused finite fade still owns the captured pixels").toBe(false);
+    await held.evaluate(({ release }) => release());
+    await waiting;
+    expect(returned).toBe(true);
+    await expect(canvas).toHaveCSS("opacity", "1");
+  } finally {
+    await held.evaluate(({ cleanup }) => cleanup());
+    await waiting;
+    await held.dispose();
+  }
+});
 
 for (const theme of ["light", "dark"])
   for (const large of [false, true])
