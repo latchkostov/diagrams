@@ -187,3 +187,163 @@ larger timeouts, weaker tolerances, skips or quarantines were introduced. No eng
 or model behavior, menu semantics or naming state machine was rewritten without
 evidence. All servers and containers created by completed gates were stopped by
 the gate; the interrupted guard-validation container was explicitly stopped.
+
+## Hover-card focused-target removal (2026-10-29 follow-up)
+
+[Job 122705505116](https://github.com/latchkostov/diagrams/actions/runs/40655300204/job/122705505116)
+fails `removing a focused edge readout target recovers canvas focus` before any
+deletion: its initial `edge-detail-call` never opens. The first-attempt log and
+trace show Live controls visible while `data-camera-state` is still `pending`.
+The forced SVG click samples `(1112.21, 348.78)` before the camera corrects the
+view upward by 28 pixels. By input dispatch the camera is idle at 106% zoom and
+the stroke has moved away. A later card wait cannot repair a missed pointer move.
+
+Wait for camera idle before choosing an exposed stroke point, then pin through
+the named header and require the pinned state before focusing the section. After
+Undo, observe camera completion and the node's Live badge before hovering the
+restored target. Keep the canvas-focus recovery and unpinned-card assertions.
+This is test setup readiness; the trace does not support changing focus recovery
+or Undo in the app.
+
+## Hover-card pinned-target deletion (2026-10-29 follow-up)
+
+[Job 123294824853](https://github.com/latchkostov/diagrams/actions/runs/40827694466/job/123294824853)
+fails `deleting a pinned edge closes its readout and Undo restores an unpinned
+target` at the initial card visibility assertion, before pinning or deleting.
+Its first-attempt trace has the same pending camera, sampled pointer position,
+28-pixel correction and final 106% view as the focused-target failure above.
+
+Use the same camera/stroke/header readiness sequence. Observe the restored node's
+Live snapshot as well as its canvas presence after Undo. Retain deletion, card
+closure, restored target, visibility and `data-pinned="false"` assertions. There
+is no evidence here of a product bug reopening a pinned readout after Undo.
+
+## Quick-add highlighted-row navigation (verification of #392)
+
+[Job 123271423867](https://github.com/latchkostov/diagrams/actions/runs/40820334489/job/123271423867)
+fails `searchable menu navigation picks the highlighted row`. Its trace sends
+ArrowDown and reads the highlighted row while `quick-add-search-loading` is
+still present. The trace's source lacks #392's two `waitForQuickAddResults`
+calls. Search intentionally shows no rows until both stencil metadata and search
+code are ready, then publishes a highlighted choice with the results.
+
+Keep #392's waits before navigation, including after later query edits. Removing
+only those two calls locally reproduces the exact missing-highlight exception
+under Linux load. No additional menu behavior change is justified. The pointer
+and keyboard choices must still match; no assertion or timeout is relaxed.
+
+## Hover-card follow-up before-fix measurements
+
+Pinned Playwright Linux image, production E2E bundle, four workers sharing a
+two-CPU quota, ports 6680–6684, `--repeat-each 30`, zero retries. The first run of
+the unmodified branch passes all six cases (both node/edge deletion variants and
+both menu variants): **180 passed, 0 failed, 0 flaky, 0 skipped**. Reports:
+`tests/.output/g/rVdbFHb`.
+
+The second run keeps that configuration, adds 4× browser CPU throttling to the
+two edge cases and temporarily removes only #392's two quick-add readiness waits.
+Reports: `tests/.output/g/rEw6s85`.
+
+| Case                                                | Before failures / executions |
+| --------------------------------------------------- | ---------------------------- |
+| Focused edge target removal                         | 0/30                         |
+| Pinned edge target deletion                         | 0/30                         |
+| Quick-add navigation, waits removed                 | 2/30                         |
+| Quick-add navigation and later edits, waits removed | 1/30                         |
+
+Both node variants also pass 30/30. All three failures are the exact reported
+`Quick-add has no highlighted row` exception. Total: **177 passed, 3 failed,
+0 flaky, 0 skipped**. The original waits are restored after this deliberate
+regression check; no additional quick-add source change is needed.
+
+The natural hover-card CI miss did not reproduce in either local configuration.
+These measurements cannot establish a local failure-rate reduction for those
+two tests. The readiness fix follows the two independently matching CI traces,
+including their pending camera and identical stale coordinates. Raw CI logs and
+extracted traces remain in `tests/.output/hovercards/`.
+
+## Hover-card follow-up output checks
+
+Reports: `tests/.output/g/ri83toq`. The complete startup/reserve heavy file passes
+**30/30**, and production build and `pnpm size` pass. `pnpm parity` checks
+**3,178 goldens: 0 changed, 0 added, 0 missing, 0 stale**. No golden is re-recorded.
+No application code is changed, so there are no additional affected app units.
+
+## Hover-card resume baseline (2026-10-30)
+
+Merged current `origin/master` (`be15437c1`) into this branch before resuming;
+Git could fast-forward, so no rebase or merge conflict was needed. Re-read the
+first-attempt logs and extracted traces linked above. Both hover-card traces
+show the same pending-to-idle camera transition and 28-pixel vertical correction
+between point sampling and input dispatch, at 106% zoom.
+
+Also inspected the current [Nightly run 41003070821](https://github.com/latchkostov/diagrams/actions/runs/41003070821),
+including native job logs and structured result artifacts. All 42 hover-card
+cases passed on Windows shard 8 and macOS shard 10, including both edge cases in
+this fix. Windows shard 8's failure is in `network-devices`; macOS shard 10 has
+13 room-admission failures and is interrupted by its action deadline. These are
+baseline observations, not failures caused by this patch or claims that the
+intermittent hover-card race is absent. No unrelated Nightly fix is included.
+
+The first resumed load command selected the surrounding loop lines instead of
+the moved hover-card test declarations. It selected only the two menu variants;
+it was stopped and is not an after-fix rate measurement. Its incomplete report
+(`tests/.output/g/rjbmoyS`) has 7 passed, 1 whole-test deadline, 4 interrupted and
+48 not run. The deadline occurs near the keyboard pick's final autosave read,
+not at the missing-highlight exception. The menu spec, fixtures and application
+source in that run are identical to current master. No deadline was increased.
+
+## Hover-card follow-up after-fix load results (2026-10-30)
+
+Reports: `tests/.output/g/rzlmGnp`. The corrected declaration-line selection runs
+all six cases, with the same pinned Linux image, four workers, two-CPU quota,
+ports 6680–6684 and 4× browser CPU throttle on the two edge cases as the earlier
+throttled before run. Thirty repetitions per case, zero retries:
+
+| Case                                                         | Before failures / executions | After failures / executions |
+| ------------------------------------------------------------ | ---------------------------- | --------------------------- |
+| Focused edge target removal                                  | 0/30                         | 0/30                        |
+| Pinned edge target deletion                                  | 0/30                         | 0/30                        |
+| Quick-add navigation, #392 waits removed/restored            | 2/30                         | 0/30                        |
+| Quick-add navigation and later edits, waits removed/restored | 1/30                         | 0/30                        |
+| Focused node target removal                                  | 0/30                         | 0/30                        |
+| Pinned node target deletion                                  | 0/30                         | 0/30                        |
+
+The complete after run is **180 passed, 0 failed, 0 flaky, 0 skipped**. The two
+hover-card misses still have no locally reproduced before failure; their fix is
+supported by the matching first-attempt CI traces, not a claimed local failure-rate
+reduction or a successful local negative control. Quick-add's negative control
+does reproduce the reported exception with the waits removed.
+
+```text
+SUMMARY: be15437c118de1c51077a49a8c426d2a9a9a43c9 | unit="not run" parity="not run" e2e={"passed":180,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+During the final check, master advanced to `e3ca5c7c7` (#395, camera ownership
+through menu deferral and slow motion). Stopped that check during its unit step
+(`tests/.output/g/rfFrjUF`, interrupted without a summary), merged master normally
+and restarted final validation on the merged tree, including its camera units.
+The completed 180-repeat measurement above retains its actual tested base.
+
+## Hover-card merged-tree validation (2026-10-30)
+
+Reports: `tests/.output/g/rZCAc7f`, on `e3ca5c7c7`. Linux, four workers and four
+CPUs, explicit ports 6680–6684, production E2E builds, zero retries:
+
+- Complete `hover-cards` and `bundle-trim` specs, two repetitions each:
+  **114 passed, 0 failed, 0 flaky, 0 skipped**.
+- Camera-controller units and the complete startup/reserve heavy file:
+  **66 passed, 0 failed, 0 skipped** (36 camera, 30 reserve/build cases).
+- Production build and `pnpm size`: pass; no budget or reserve changed.
+- `pnpm parity`: **3,178 goldens, 0 changed, 0 added, 0 missing, 0 stale**.
+  No golden was re-recorded.
+- Final lint, typecheck, `format:check` and `pnpm exec prettier --check .` run
+  after the final documentation edit, immediately before the signed commit.
+
+```text
+SUMMARY: e3ca5c7c711ab5a0b69610ae8d1af981ca15c49f | unit={"passed":66,"failed":0,"skipped":0} parity={"goldens":3178,"changed":0,"added":0,"missing":0,"stale":0} e2e={"passed":114,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+The fix-round protocol leaves the full suite to PR CI. All gate-created servers
+and containers are stopped. No retries, timeouts, tolerances, skips or assertions
+were relaxed, and no application behavior is changed by this branch.

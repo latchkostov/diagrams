@@ -1,6 +1,6 @@
 import { goToNode, waitForCameraIdle } from "./fixtures";
 import { breakerFixture } from "../../src/lab/resilienceFixture";
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { pathToFileURL } from "node:url";
 import { deflateRawSync } from "node:zlib";
 import {
@@ -18,7 +18,14 @@ import {
   liveKeyLevels,
   interactionJournalMark,
   edgePoint,
+  waitForStableBox,
 } from "./fixtures";
+
+/** Exercise slower opening Live layout on fast machines too. */
+async function slowReadoutLayout(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+}
 
 async function sectionsInsideClip(card: Locator) {
   const clip = await card.getByTestId("hover-sections").boundingBox();
@@ -727,17 +734,27 @@ test("an inert node and an annotation never own a hidden readout", async ({ page
 
 for (const kind of ["node", "edge"] as const)
   test(`removing a focused ${kind} readout target recovers canvas focus`, async ({ page, consoleErrors }) => {
+    if (kind === "edge") await slowReadoutLayout(page);
     await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
     const id = kind === "node" ? "caller" : "call";
     const item = page.getByTestId(`${kind}-${id}`);
-    await item.click({ force: true });
+    // Live controls precede the transport's pane correction. Measure only after the camera finishes it.
+    await waitForCameraIdle(page);
+    if (kind === "edge") {
+      const point = await edgePoint(page, id);
+      await page.mouse.click(point.x, point.y);
+    } else await item.click();
     if (kind === "node") {
       await expect(page.getByTestId("dock-live-identity")).toBeVisible();
       await page.getByTestId("inspector-toggle").click();
-      await item.hover({ force: true });
+      await waitForCameraIdle(page);
+      await item.hover();
     }
     const card = page.getByTestId(`${kind}-detail-${id}`);
-    await card.click();
+    await expect(card).toBeVisible();
+    await waitForStableBox(card);
+    await card.getByTestId("hover-full-name").click();
+    await expect(card).toHaveAttribute("data-pinned", "true");
     await card
       .getByTestId(/^hover-section-/)
       .first()
@@ -753,7 +770,11 @@ for (const kind of ["node", "edge"] as const)
 
     // Undo restores the canvas before Live syncs its snapshot; only then can a node own a readout.
     if (kind === "node") await expect(page.getByTestId(`node-badge-${id}`)).toBeVisible();
-    await item.hover({ force: true });
+    await waitForCameraIdle(page);
+    if (kind === "edge") {
+      const point = await edgePoint(page, id);
+      await page.mouse.move(point.x, point.y);
+    } else await item.hover();
     await expect(card).toHaveAttribute("data-pinned", "false");
     expectNoErrors(consoleErrors);
   });
@@ -763,18 +784,25 @@ for (const kind of ["node", "edge"] as const)
     page,
     consoleErrors,
   }) => {
+    if (kind === "edge") await slowReadoutLayout(page);
     await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
     const id = kind === "node" ? "caller" : "call";
     const item = page.getByTestId(`${kind}-${id}`);
-    await item.click({ force: true });
+    await waitForCameraIdle(page);
+    if (kind === "edge") {
+      const point = await edgePoint(page, id);
+      await page.mouse.click(point.x, point.y);
+    } else await item.click();
     if (kind === "node") {
       await expect(page.getByTestId("dock-live-identity")).toBeVisible();
       await page.getByTestId("inspector-toggle").click();
-      await item.hover({ force: true });
+      await waitForCameraIdle(page);
+      await item.hover();
     }
     const card = page.getByTestId(`${kind}-detail-${id}`);
     await expect(card).toBeVisible();
-    await card.click();
+    await waitForStableBox(card);
+    await card.getByTestId("hover-full-name").click();
     await expect(card).toHaveAttribute("data-pinned", "true");
     await item.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
     await page.keyboard.press("Delete");
@@ -783,7 +811,12 @@ for (const kind of ["node", "edge"] as const)
     await page.keyboard.press("ControlOrMeta+z");
     await expect(item).toHaveCount(1);
 
-    await item.hover({ force: true });
+    if (kind === "node") await expect(page.getByTestId(`node-badge-${id}`)).toBeVisible();
+    await waitForCameraIdle(page);
+    if (kind === "edge") {
+      const point = await edgePoint(page, id);
+      await page.mouse.move(point.x, point.y);
+    } else await item.hover();
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute("data-pinned", "false");
     expectNoErrors(consoleErrors);
