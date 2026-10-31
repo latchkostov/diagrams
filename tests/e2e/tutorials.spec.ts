@@ -23,6 +23,7 @@ import { CATCH_UP_MS } from "../../src/live/frameClock";
 import { tutorialKey } from "../../scripts/e2e-keys";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
+import { chunk, holdChunk } from "./chunk";
 
 // Tutorials (src/tutorials): one generated test per tutorial plays its solution path through the real UI, step by
 // step, and waits on the runner's state (the strip's data-step) to move on. Then the entry point, Skip ("do it for
@@ -118,7 +119,16 @@ async function play(page: Page, step: ResolvedUiStep) {
         return { x: screen.x, y: screen.y };
       });
       await page.mouse.click(point.x, point.y);
-    } else await page.getByTestId(step.click).click();
+    } else {
+      await page.getByTestId(step.click).click();
+      // A click requests Live before its lazy session and picker exist. Keep the next recipe input
+      // behind the session's real mount signal, as gotoLive does for direct navigation.
+      if (
+        step.click === "live-toggle" &&
+        (await page.getByTestId("live-toggle").getAttribute("aria-pressed")) === "true"
+      )
+        await waitForLiveSession(page);
+    }
   } else if ("modClick" in step) {
     await fitDiagram(page);
     await waitForCameraIdle(page);
@@ -301,6 +311,28 @@ test("capacity: solution driver handles completion between browser reads", async
     return locator;
   };
   expect(await finishSolution(page)).toEqual(["drain"]);
+});
+
+test("dead-letters: solution input waits for the requested Live session to mount", async ({ page }) => {
+  const session = await holdChunk(page, chunk("LiveSession", "src/live/LiveSession.tsx"));
+  await openTutorial(page, "dead-letters");
+  await page.getByTestId("tutorial-start").click();
+  let finished = false;
+  const clicking = play(page, { click: "live-toggle" }).then(() => {
+    finished = true;
+  });
+  try {
+    await expect.poll(session.requested).toBe(true);
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-busy", "true");
+    // The pending surface is the boundary, independent of how long its download takes.
+    expect(finished).toBe(false);
+    session.release();
+    await clicking;
+    await expect(page.getByTestId("live-sim-picker")).toBeVisible();
+  } finally {
+    session.release();
+    await clicking;
+  }
 });
 
 /** Drive authored replay time separately from the wall-clock assertion deadline. */
