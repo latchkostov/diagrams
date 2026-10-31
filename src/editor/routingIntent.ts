@@ -15,8 +15,10 @@ export const routingIntent = {
     listeners.forEach((l) => l());
   },
   peek: (nodeId: string): RoutingIntent | undefined => intents.get(nodeId),
-  clear(nodeId: string) {
-    intents.delete(nodeId);
+  /** A delayed field mount consumes only the request it rendered, leaving newer requests alone. */
+  clear(nodeId: string, serial: number): boolean {
+    if ((serials.get(nodeId) ?? 0) !== serial) return false;
+    return intents.delete(nodeId);
   },
   /** Changes with every request for this node: the inspector's routing fields remount on a new one. */
   serial: (nodeId: string): number => serials.get(nodeId) ?? 0,
