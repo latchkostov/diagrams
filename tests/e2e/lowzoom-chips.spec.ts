@@ -169,12 +169,13 @@ test("a troubled drill accents chips and rolls up zone health without animated c
 
 for (const renderer of ["worker", "main"])
   test(`low zoom stops painting during running playback: ${renderer}`, async ({ page }) => {
+    await installParticleCounters(page);
     await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=kafka-order-pipeline&live=1&sim=black-friday&renderer=${renderer}`);
+    await expect.poll(() => page.evaluate(() => typeof window.__liveProbe)).toBe("function");
     await zoomIdentity(page, 0.8);
     await pauseClock(page);
-    const canvas = page.getByTestId("live-canvas");
-    const frames = async () => Number(await canvas.getAttribute("data-frames"));
+    const frames = async () => (await rendererCounters(page, true)).frames;
     const clock = async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
     const first = await frames();
     await page.clock.runFor(1000);
@@ -259,3 +260,4 @@ test("image exports never include the chips: the natural drawing's SVG at 40%, 2
     await context.close();
   }
 });
+import { installParticleCounters, rendererCounters } from "./particle-counters";

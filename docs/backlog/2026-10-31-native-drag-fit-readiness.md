@@ -1,0 +1,7 @@
+## Read geometry after the fit's controller completes
+
+macOS shard 4 of Nightly 41183332686 fails `edge-node-moves.spec.ts`'s Escape cancellation case before cancellation begins. Its snapshot at the geometry read shows `data-camera-state="pending"` and `data-fit-pending="true"`, despite the preceding stable-transform helper having returned. The pointer starts at x=15, underneath the left rail. The fit then moves the node while the test presses, so the interaction stays idle. This is a failed gesture precondition, not evidence that Escape lost a bend.
+
+The local selection fixture now waits for the camera controller to become idle after Fit, then confirms a stable viewport before reading drag coordinates. The shared Fit helper is left unchanged because other tests deliberately inspect interrupted or paused fits. All original bend, gesture and Undo assertions remain exact.
+
+A new paused-clock regression reaches the old helper's completion, requires the full drag-fit operation to remain pending, advances the animation clock explicitly, then starts a real drag. Its clock is installed before navigation, before the animation library can capture native timer references. It retains the normal test backstop and introduces no delay, timeout, tolerance or animation-budget increase. Native Windows and Linux verification are requested through targeted gates; a busy (75) result means no browser execution and is reported separately from a pass. Final branch Nightly supplies the macOS before/after result in PR #403.

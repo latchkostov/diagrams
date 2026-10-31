@@ -1,0 +1,15 @@
+## Observe the same run without painting every simulated frame
+
+Windows Nightly 41183332686 finishes real fix verification but exhausts the test allowance while opening the planner readout. Advancing the fake clock through 15 seconds also paints roughly 900 animation frames; those paints are unrelated to this agreement, keyboard-apply and Undo test. The observed Scaling row failure reproduces natively at three workers constrained to two CPUs: **1 failed, 2 passed**. Temporarily restoring the original clock drive reproduces it again: **1 failed, 4 passed**.
+
+The fixture now seeks through the existing authored timeline in two-second samples, preserving the trouble watcher's ten-second trend window. It derives range values from the fixture's actual duration, commits each preview by moving focus to Play, and requires the exact final simulation clock of **15,000 ms**. It still waits for real verification and retains every exact planner agreement, simulation name, keyboard application, unchanged-node and Undo assertion.
+
+The corrected native cohort passes all three repetitions under the same two-CPU/three-worker constraint. An initial seek attempt omitted the range's blur commit and correctly failed all three exact clock assertions at zero; it is not counted as a passing cohort. The final repeated native rate and complete-spec Linux repeats are reported in the PR. No application, simulation, verifier, timeout, tolerance or budget is changed.
+
+## Scenario sizing is a separate producer
+
+The trace also shows that a verified callout does not establish the inspector's scenario-sizing readiness. Its Scaling row is published after a separate `plan` worker response. The probe now observes that request independently of `threadFix`, preserving both transfer overloads and all existing exact UI assertions. It uses the unchanged whole-test backstop for the real response, not a larger assertion timeout. A response is not treated as success: the original row and agreement checks still decide that.
+
+A deterministic native regression holds the real scenario request after the verified callout and Resources row exist. Removing only the scenario wait makes setup return before release (**1 failed**); restored, it passes twice (**2 passed**). Eight probe units cover the independent request families and a held plan alongside unrelated traffic. With both changes, the original agreement test passes all five repetitions at three workers on two CPUs (**5 passed**), versus **1 failed, 4 passed** with the original drive temporarily restored.
+
+The first Linux regression attempt checked Resources before the earlier verification stage finished; cleanup then ran before a held plan had been requested. Both repeats timed out. The regression now first observes the inspector-request stage and the actual plan request, then performs the unchanged visible-row and pending-setup checks. Request observation has its own cold-start promise, independent of completion. The corrected four-case native cohort passes, and removing only the plan wait again fails deterministically. Those initial two failures are not presented as green verification.

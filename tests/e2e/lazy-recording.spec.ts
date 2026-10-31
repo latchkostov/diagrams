@@ -1,4 +1,5 @@
-import { test, expect, waitForCameraIdle, pauseClock } from "./fixtures";
+import { expect, waitForCameraIdle, pauseClock } from "./fixtures";
+import { captureTest as test } from "./capture-browser";
 import { openSurface, surfaceContract } from "./lazy-surface-helpers";
 import { chunk, holdChunk } from "./chunk";
 import { installCaptureReady } from "./capture-ready";
@@ -26,8 +27,6 @@ function observeRecording() {
     }
   };
 }
-
-test.use({ channel: "chromium", launchOptions: { args: ["--auto-accept-this-tab-capture"] } });
 
 test("recording waits before countdown and captures the released narration", async ({ page }) => {
   await page.addInitScript(installCaptureReady);

@@ -1,4 +1,4 @@
-import { goToNode, waitForCameraIdle } from "./fixtures";
+import { fitDiagram, goToNode, waitForCameraIdle } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import { simReviewFixture, simReviewTrafficFixture } from "../../src/lab/simReviewFixture";
 import type { Page } from "@playwright/test";
@@ -166,6 +166,8 @@ test.describe("the simulation tells the truth", () => {
     await page.keyboard.press("Shift+Tab");
     await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     // Out of a topic both are there.
+    // Focus on the API left this unrelated edge behind the canvas controls on macOS. Fit before changing subjects.
+    await fitDiagram(page);
     await page.getByTestId("edge-label-topic-billing").click();
     await expect(page.getByTestId("inspector-field-group")).toBeVisible();
     await expect(page.getByTestId("inspector-field-dlq")).toBeVisible();

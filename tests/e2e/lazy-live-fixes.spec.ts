@@ -11,6 +11,7 @@ import {
   openShareChooser,
 } from "./fixtures";
 import { expectLiveParticles } from "./node-identity";
+import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
 
 // Live code that downloads on first use (PR #225's bundle trim): the thread-fix application ships in the trouble
 // callout's chunk, and slow motion's script loads when slow motion first starts. Each chunk is held (and failed)
@@ -124,7 +125,8 @@ async function exportDiagram(page: Page) {
 }
 
 /** The payment lesson run to its exhaustion (15 s) and paused by keyboard: focus on Play. */
-async function exhaustPayment(page: Page) {
+async function exhaustPayment(page: Page, holdVerification = false, onPaused?: () => void) {
+  await installThreadVerification(page, holdVerification);
   await page.clock.install();
   await gotoLive(page, PAYMENT);
   await pauseClock(page);
@@ -139,7 +141,32 @@ async function exhaustPayment(page: Page) {
   await page.getByTestId("live-play").focus();
   await page.keyboard.press("Space");
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  onPaused?.();
+  await waitForThreadVerification(page);
 }
+
+test("payment setup waits for the latest verification while the page clock is paused", async ({ page }) => {
+  const paused = Promise.withResolvers<undefined>();
+  let finished = false;
+  const exhausting = exhaustPayment(page, true, () => paused.resolve(undefined)).then(() => {
+    finished = true;
+  });
+  try {
+    // Navigation and eight seeks precede this assertion; its deadline belongs to the paused stage.
+    await Promise.race([paused.promise, exhausting]);
+    await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "15000");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await expect.poll(() => page.evaluate(() => window.__threadVerification?.requested ?? 0)).toBeGreaterThan(0);
+    await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "events");
+    expect(finished, "setup cannot finish before the worker's real reply").toBe(false);
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await exhausting;
+    await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
+  } finally {
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await exhausting;
+  }
+});
 
 test("export readiness waits for a held confirmation before the toast clock advances", async ({ page }) => {
   const messages = await gate(page, FILE_MESSAGES);
@@ -343,12 +370,17 @@ test("a failed slow-motion download returns to live with a focused Retry that st
 
 test("pending script download freezes live controls and says so; Esc gives them back", async ({ page }) => {
   const script = await gate(page, SCRIPT);
+  await page.clock.install();
   await gotoLive(page, `${KAFKA}&sim=payments-outage&speed=8`);
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  await waitForCameraIdle(page);
   const at = (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) ?? "";
   // The note frames Payments: slow motion from there.
   await slowMotionFromStorefront(page, "payments");
   await expect.poll(script.requested).toBe(true);
+  // Opening the menu waits for any late camera refinement; freeze only once that work has completed.
+  await pauseClock(page);
+  const heldClock = await page.evaluate(() => performance.now());
   const loading = page.getByTestId("slowmo-loading");
   await expect(loading).toHaveAttribute("role", "status");
   await expect(loading).toContainText("Loading slow motion");
@@ -376,9 +408,11 @@ test("pending script download freezes live controls and says so; Esc gives them 
   await page.evaluate(async (url) => {
     await import(url);
   }, module.url());
-  await page.evaluate(
-    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
-  );
+  // Code download/evaluation has no simulation-time budget. Advance playback only after it has arrived.
+  expect(await page.evaluate(() => performance.now())).toBe(heldClock);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", at);
+  await page.clock.runFor(250);
+  expect(Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time"))).toBeGreaterThan(Number(at));
   await expect(page.getByTestId("live-canvas")).not.toHaveAttribute("data-slowmo", /./);
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
   await expect(page.getByTestId("slowmo-loading")).toHaveCount(0);

@@ -7,10 +7,123 @@ import {
   STORAGE_KEYS,
   pauseClock,
   openCheckFinding,
+  animationFrames,
 } from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
+import { waitForBackgroundChecks } from "./checks-readiness";
+import { installChecksMeasurement } from "./checks-measurement";
+import type { Page } from "@playwright/test";
+import { chunk, holdChunk } from "./chunk";
+
+async function openVerifiedChecks(page: Page) {
+  await waitForBackgroundChecks(page);
+  await page.getByTestId("checks-count").focus();
+  await page.keyboard.press("Enter");
+}
+
+async function openReplicaAlternative(page: Page) {
+  await openVerifiedChecks(page);
+  return page.getByTestId("check-fix-option-1-blocked-threads:caller");
+}
+
+async function openInspectorAlternative(page: Page, locale: string) {
+  await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+  // A saved diagram edits in place, keeping the inspector available when its findings disappear.
+  await gotoCanvas(page, "aks-app-config-key-vault");
+  await page.getByTestId("import-input").setInputFiles({
+    name: "busy.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(busy)),
+  });
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await waitForBackgroundChecks(page);
+  await expect(page.getByTestId("checks-count")).toBeVisible();
+  await page.getByTestId("node-caller").dblclick();
+  const free = page.getByTestId("inspector-check-fix-option-0-blocked-threads:caller");
+  await expect(free).toBeEnabled();
+  await expect(page.getByTestId("inspector-check-row-scaling-blind:caller")).toBeVisible();
+  return free;
+}
+
+async function tabFromDiagramInspector(page: Page) {
+  // The body can own focus while its replacement panel is still downloading or committing.
+  await expect(page.getByTestId("inspector-field-title")).toBeVisible();
+  await page.keyboard.press("Tab");
+}
+
+test("inspector Tab waits for diagram fields after its selected findings disappear", async ({ page }) => {
+  const held = await holdChunk(page, chunk("DiagramPanel", "src/canvas/inspector/DiagramPanel.tsx"));
+  let tabbing: Promise<void> | undefined;
+  try {
+    const free = await openInspectorAlternative(page, "ar");
+    await free.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("inspector-body")).toBeFocused();
+    await expect.poll(held.requested).toBe(true);
+    let tabbed = false;
+    tabbing = tabFromDiagramInspector(page).then(() => {
+      tabbed = true;
+    });
+    await animationFrames(page);
+    expect(tabbed, "focus restoration does not establish that the lazy panel's fields exist").toBe(false);
+    await expect(page.getByTestId("inspector-body")).toBeFocused();
+    held.release();
+    await tabbing;
+    expect(
+      await page.evaluate(
+        () => !!document.querySelector('[data-testid="inspector"]')?.contains(document.activeElement),
+      ),
+    ).toBe(true);
+  } finally {
+    held.release();
+    await tabbing;
+  }
+});
+
+for (const [kind, open] of [
+  ["verified", openVerifiedChecks],
+  ["replica", openReplicaAlternative],
+] as const)
+  test(`${kind} keyboard setup waits for the real background result before opening Checks`, async ({ page }) => {
+    await page.addInitScript(installChecksMeasurement);
+    await page.addInitScript(
+      ({ key, d }) => {
+        window.__checkResults.held = true;
+        localStorage.setItem(key, JSON.stringify(d));
+      },
+      { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy },
+    );
+    await gotoCanvas(page, "scale-on-busy-threads");
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const queued = () => {
+            if (window.__checkResults.queued.length) resolve();
+            else requestAnimationFrame(queued);
+          };
+          queued();
+        }),
+    );
+    let opened = false;
+    const opening = open(page).then(() => {
+      opened = true;
+    });
+    try {
+      // The canvas remains keyboard-usable while the genuine worker response is held.
+      await page.getByTestId("canvas-wrap").focus();
+      await animationFrames(page);
+      expect(opened).toBe(false);
+      await expect(page.getByTestId("checks-card")).toHaveCount(0);
+      await page.evaluate(() => window.__checkResults.release());
+      await opening;
+      await expect(page.getByTestId("check-fix-blocked-threads:caller")).toBeEnabled();
+    } finally {
+      await page.evaluate(() => window.__checkResults.release());
+      await opening;
+    }
+  });
 
 test("worker fallback keeps the displayed timeout actionable", async ({ page }) => {
   await page.addInitScript(
@@ -74,8 +187,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
       { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy, locale },
     );
     await gotoCanvas(page, "scale-on-busy-threads");
-    await page.getByTestId("checks-count").focus();
-    await page.keyboard.press("Enter");
+    await openVerifiedChecks(page);
     const primary = page.getByTestId("check-fix-blocked-threads:caller");
     const blind = page.getByTestId("check-fix-scaling-blind:caller");
     await expect(primary).toBeEnabled();
@@ -120,9 +232,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
       { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy, locale },
     );
     await gotoCanvas(page, "scale-on-busy-threads");
-    await page.getByTestId("checks-count").focus();
-    await page.keyboard.press("Enter");
-    const replicas = page.getByTestId("check-fix-option-1-blocked-threads:caller");
+    const replicas = await openReplicaAlternative(page);
     await expect(replicas).toBeEnabled();
     if (locale === "en") await expect(replicas).toHaveText("Add replicas (12; fixed fleet)");
     await replicas.focus();
@@ -137,21 +247,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
   });
 
   test(`an inspector alternative that removes two findings keeps keyboard focus in ${locale}`, async ({ page }) => {
-    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
-    // One of Your diagrams, so the fix edits it in place (an example's first edit opens a copy, unselected).
-    await gotoCanvas(page, "aks-app-config-key-vault");
-    await page.getByTestId("import-input").setInputFiles({
-      name: "busy.diagram.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(busy)),
-    });
-    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
-    // The first check (in the worker, verification replays included) has finished.
-    await expect(page.getByTestId("checks-count")).toBeVisible();
-    await page.getByTestId("node-caller").dblclick();
-    const free = page.getByTestId("inspector-check-fix-option-0-blocked-threads:caller");
-    await expect(free).toBeEnabled();
-    await expect(page.getByTestId("inspector-check-row-scaling-blind:caller")).toBeVisible();
+    const free = await openInspectorAlternative(page, locale);
     await free.focus();
     await page.keyboard.press("Enter");
     await expect
@@ -162,7 +258,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     // Applying an edit drops the selection, and the inspector's findings with it: focus stays in the inspector, never
     // the page, and the keyboard carries on from there.
     await expect(page.getByTestId("inspector-body")).toBeFocused();
-    await page.keyboard.press("Tab");
+    await tabFromDiagramInspector(page);
     expect(
       await page.evaluate(
         () => !!document.querySelector('[data-testid="inspector"]')?.contains(document.activeElement),

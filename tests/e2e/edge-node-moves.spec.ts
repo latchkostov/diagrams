@@ -11,6 +11,7 @@ import {
   waitForHistoryIdle,
   waitForCameraIdle,
   fitDiagram,
+  pauseClock,
 } from "./fixtures";
 
 const SLUG = "kafka-order-pipeline";
@@ -66,7 +67,14 @@ async function selectBoth(page: Page, count = 3) {
   await waitForSelectionSettled(page);
   await waitForCameraIdle(page);
   await waitForStableViewport(page);
+  await fitForDrag(page);
+}
+async function fitForDrag(page: Page, requested?: () => void) {
   await fitDiagram(page);
+  requested?.();
+  // A stable transform can be the first paused frame of a fit, before measurement/refinement completes.
+  await waitForCameraIdle(page);
+  await waitForStableViewport(page);
 }
 function must<T>(value: T | undefined | null): T {
   if (value === undefined || value === null) throw new Error("Missing expected geometry");
@@ -87,6 +95,32 @@ async function saved(page: Page) {
   await waitForHistoryIdle(page);
   return savedDiagram(page);
 }
+
+test("a drag fit waits for the camera while its animation clock is paused", async ({ page }) => {
+  await page.clock.install();
+  await open(page);
+  await selectBoth(page);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Shift+Digit0");
+  await waitForCameraIdle(page);
+  await pauseClock(page);
+  let requested!: () => void;
+  const reached = new Promise<void>((resolve) => (requested = resolve));
+  let finished = false;
+  const fitting = fitForDrag(page, requested).then(() => (finished = true));
+  try {
+    await reached;
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-camera-state", "idle");
+  } finally {
+    await page.clock.runFor(1_000);
+    await page.clock.resume();
+    await fitting;
+  }
+  await startDrag(page, "node-api");
+  await page.mouse.up();
+});
 
 for (const cancel of ["Escape", "blur"] as const) {
   test(`cancelling bend carry via ${cancel} leaves bends unchanged`, async ({ page }) => {

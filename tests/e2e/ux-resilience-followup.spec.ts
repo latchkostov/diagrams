@@ -1,5 +1,7 @@
 import { resilienceFixture, breakerFixture } from "../../src/lab/resilienceFixture";
 import { timelineKeyboardFixture } from "../../src/lab/timelineKeyboardFixture";
+import type { Page } from "@playwright/test";
+import { chunk, holdChunk } from "./chunk";
 import {
   test,
   expect,
@@ -113,12 +115,44 @@ test("reselecting enabled resilience controls preserves tuning and the Undo step
   await expect.poll(caller).toEqual(tuned);
 });
 
-test("timeline events form one roving keyboard stop and retain pointer access", async ({ page }) => {
+async function openKeyboardTimeline(page: Page, controlsReady?: () => void) {
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
     d: timelineKeyboardFixture(),
   });
   await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&sim=payments-outage&paused=1");
+  controlsReady?.();
+  await expect(page.getByTestId("live-marker-0")).toBeVisible();
+}
+
+test("keyboard timeline setup waits for its deferred event markers", async ({ page }) => {
+  const timeline = await holdChunk(page, chunk("Timeline", "src/live/Timeline.tsx"));
+  let controlsReady!: () => void;
+  const controls = new Promise<void>((resolve) => (controlsReady = resolve));
+  let finished = false;
+  const opening = openKeyboardTimeline(page, controlsReady).then(() => {
+    finished = true;
+  });
+  try {
+    await expect.poll(timeline.requested).toBe(true);
+    await controls;
+    await expect(page.getByTestId("live-marker-0")).toHaveCount(0);
+    expect(finished, "Live controls do not establish that timeline markers have mounted").toBe(false);
+    timeline.release();
+    await opening;
+    expect(
+      await page
+        .getByTestId(/^live-marker-\d+$/)
+        .evaluateAll((els) => els.filter((el) => (el as HTMLElement).tabIndex === 0).length),
+    ).toBe(1);
+  } finally {
+    timeline.release();
+    await opening;
+  }
+});
+
+test("timeline events form one roving keyboard stop and retain pointer access", async ({ page }) => {
+  await openKeyboardTimeline(page);
   const markers = page.getByTestId(/^live-marker-\d+$/);
   const tabs = () => markers.evaluateAll((els) => els.filter((el) => (el as HTMLElement).tabIndex === 0).length);
   expect(await tabs()).toBe(1);
