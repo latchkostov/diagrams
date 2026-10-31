@@ -4756,7 +4756,6 @@ const en = {
     "Compare allowed work with a denial, then allow the denied path. Policy decisions differ from failed attempts; first learn Properties and Live (four minutes).",
   "tutorials.networkPolicy.browser": "Browser",
   "tutorials.networkPolicy.probe": "Admin exercise",
-  "tutorials.networkPolicy.firewall": "Firewall",
   "tutorials.networkPolicy.api": "Public API",
   "tutorials.networkPolicy.admin": "Admin API",
   "tutorials.networkPolicy.traffic": "Web and admin traffic",
@@ -4768,7 +4767,7 @@ const en = {
   "tutorials.networkPolicy.predictDone": "{probe} has a deny rule; your prediction is a reading acknowledgment.",
   "tutorials.networkPolicy.observeTitle": "Compare allowed and blocked",
   "tutorials.networkPolicy.observeGoal":
-    "Go Live and pick {traffic}. Read the firewall: {api} processes work, {probe} is blocked, and {admin} processes nothing.",
+    "Go Live and pick {traffic}. Read {policy}: {api} processes work, {probe} is blocked, and {admin} processes nothing.",
   "tutorials.networkPolicy.observeDone":
     "Allowed completions and blocked counts come from the same run; blocked is separate from failed and dropped.",
   "tutorials.networkPolicy.allowTitle": "Allow the admin path",

@@ -34,6 +34,7 @@ export const networkPolicy: Tutorial = {
       title: msg("tutorials.networkPolicy.observeTitle"),
       goal: () =>
         t("tutorials.networkPolicy.observeGoal", {
+          policy: t("stencil.genericFirewallName"),
           traffic: t("tutorials.networkPolicy.traffic"),
           api: t("tutorials.networkPolicy.api"),
           admin: t("tutorials.networkPolicy.admin"),

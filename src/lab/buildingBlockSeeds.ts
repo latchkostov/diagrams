@@ -96,7 +96,7 @@ export function policyPractice(): DiagramFile {
     n.label = [
       t("tutorials.networkPolicy.browser"),
       t("tutorials.networkPolicy.probe"),
-      t("tutorials.networkPolicy.firewall"),
+      t("stencil.genericFirewallName"),
       t("tutorials.networkPolicy.api"),
       t("tutorials.networkPolicy.admin"),
     ][i];
