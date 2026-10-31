@@ -32,7 +32,12 @@ const captures: { state: TypeAhead; closeModal?: () => void; accept(typed: TypeA
 
 /** Pass keys held after a deferred menu pick to the name capture that its action just opened. */
 export function handoffTypeAhead(typed: TypeAhead): void {
-  captures.at(-1)?.accept(typed);
+  const owner = captures.at(-1);
+  // Metadata arrives in a React effect; naming may flush a document commit. Finish outside that
+  // effect, and keep the destination's identity so cancellation cannot name a newer field instead.
+  queueMicrotask(() => {
+    if (owner && captures.includes(owner)) owner.accept(typed);
+  });
 }
 
 /** A modal owns Escape as soon as its input capture starts, including while its chunk is pending. */

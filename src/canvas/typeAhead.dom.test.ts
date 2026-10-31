@@ -12,7 +12,7 @@ import { createInteractionController } from "./interaction/controller";
 
 afterEach(() => document.body.replaceChildren());
 
-it("a deferred menu pick hands the name and its finish key to the new naming capture", () => {
+it("a deferred menu pick hands the name and its finish key to the new naming capture", async () => {
   const done = vi.fn();
   const pending = captureTypeAhead();
   for (const key of ["C", "a", "c", "h", "e", "Escape"])
@@ -21,10 +21,26 @@ it("a deferred menu pick hands the name and its finish key to the new naming cap
   const name = captureTypeAhead(undefined, done);
   try {
     handoffTypeAhead(typed);
+    await Promise.resolve();
     expect(name.read()).toEqual({ text: "Cache", done: "escape" });
     expect(done).toHaveBeenCalledExactlyOnceWith({ text: "Cache", done: "escape" });
   } finally {
     name.stop();
+  }
+});
+
+it("a cancelled deferred name never hands its keys to a newer capture", async () => {
+  const done = vi.fn();
+  const old = captureTypeAhead(undefined, done);
+  handoffTypeAhead({ text: "Old name", done: "enter" });
+  old.stop();
+  const next = captureTypeAhead();
+  try {
+    await Promise.resolve();
+    expect(done).not.toHaveBeenCalled();
+    expect(next.read()).toEqual({ text: null });
+  } finally {
+    next.stop();
   }
 });
 

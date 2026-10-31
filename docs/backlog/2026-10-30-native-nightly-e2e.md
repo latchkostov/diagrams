@@ -163,4 +163,45 @@ Before merging #395: all 30 bundle-splitting/reserve tests, production build, si
 
 After merging #395, all 158 targeted unit tests and all 30 bundle-splitting/reserve tests pass again, as do production build and size limits. The final parity and static results are recorded in the PR.
 
-Linux verifies the complete failure selection plus the host spec and platform, drawing-basics, round4-polish, viewport and inspector neighbours once. The initially requested five broad repetitions were narrowed: repetitions 2–5 of that broad invocation are intentionally stopped after its first complete pass, then a separate invocation repeats the changed library, quick-add, host autoplay, rate-limit and caret cases with relevant cases from every named neighbour five times. Both use eight workers on three CPUs/7 GiB and zero retries. This avoids repeating hundreds of unchanged tutorial cases five times; no test declaration is skipped or quarantined. The exact completed-pass counts, interrupted broad invocation and focused SUMMARY are recorded in the PR. Unreproduced observations above remain open even when isolated replays pass.
+Linux verifies the complete failure selection plus the host spec and platform, drawing-basics, round4-polish, viewport and inspector neighbours once: 370 passed, 18 failed, 0 flaky. The initially requested five broad repetitions were narrowed: repetitions 2–5 of that broad invocation were intentionally stopped after its first complete execution, then a separate invocation repeated the changed library, quick-add, host autoplay, rate-limit and caret cases with relevant cases from every named neighbour five times. Both use eight workers on three CPUs/7 GiB and zero retries. This avoids repeating hundreds of unchanged tutorial cases five times; no test declaration is skipped or quarantined. Unreproduced observations above remain open even when isolated replays pass.
+
+The focused run completed all five repetitions: 145 passed, 0 failed, 0 flaky. Exact SUMMARY:
+
+```text
+SUMMARY: e4f7e9be484565036a3b3806ca88a18d69e089f0 | unit="not run" parity="not run" e2e={"passed":145,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+## Broad Linux failures and one clean-master comparison
+
+The only clean-master comparison used the same worktree detached at e3ca5c7c711ab5a0b69610ae8d1af981ca15c49f with an empty status, the failed locations only, two executions, and the same eight workers/three CPUs/7 GiB. Selecting the generated tutorial location also selects its sibling solutions. It completed with:
+
+```text
+SUMMARY: e3ca5c7c711ab5a0b69610ae8d1af981ca15c49f | unit="not run" parity="not run" e2e={"passed":112,"failed":22,"flaky":0,"skipped":0} gate_failures=1
+```
+
+| Branch failure identity                                | Clean-master evidence                                                                                         | Disposition                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| inspector-layout:172, six locale/width variants        | Each fails 2/2 at the existing whole-test deadline; waits vary between camera, inspector and checks readiness | The timeout reproduces; a shared root cause is not established |
+| pools-busy-threads:66                                  | 2/2, same absent inspector scaling section                                                                    | Reproduced                                                     |
+| requests-wait-owner:7; requests-wait-review:110        | Each fails 2/2 at the whole-test deadline; individual waits vary                                              | The timeout reproduces; no claim of an identical inner wait    |
+| tutorials:932, trace-slowmo solution                   | 1/2, same step remains finished                                                                               | Reproduced                                                     |
+| live-large:183                                         | 2/2, but master stops at the capacity click while the branch lacks Live controls                              | Related failure, not an identical reproduction                 |
+| inspector-live:453, light and dark                     | Neither fails in two master executions                                                                        | Unproven; investigate readiness under load                     |
+| tutorials:626 scale-to-zero; tutorials:1704 share-link | Neither fails in two master executions                                                                        | Unproven; retain exact step and camera assertions              |
+| ux-resilience-followup:116                             | Does not fail in two master executions                                                                        | Unproven; retain the exact one-roving-stop assertion           |
+| checks-simulations:276, both dev entry points          | Neither fails in two master executions                                                                        | Unproven; capture Checks mount and worker lifecycle            |
+
+The broad wrapper was stopped after its complete first result, so it has no five-repetition SUMMARY. Its retained e1/results.json records all 388 outcomes. Raw reports, comparison and revision proof are under ignored tests/.output/native-nightly/. The seven unmatched identities are not declared pre-existing or fixed. No additional full suite or clean-master replay was run, following the verification budget.
+
+## Buffered naming lifecycle follow-up
+
+Review found that a buffered name could finish while ContextMenu's metadata effect was flushing. A DOM integration regression reproduces React's synchronous-flush lifecycle warning without the fix. Delivering the captured input in a microtask avoids that lifecycle boundary; destination identity prevents delivery after cancellation or to a newer field. The negative control fails, and the fixed DOM integration and cancellation regressions pass. This does not change any output golden.
+
+Final follow-up checks: 164 targeted units pass, as do production build, size and all 30 startup/reserve heavy tests. Native Windows executes the affected handoff cases and neighbours twice (22 passed); Linux executes them five times with eight workers on three CPUs/7 GiB (55 passed). Both have zero failures, flakes or skips:
+
+```text
+SUMMARY: e4f7e9be484565036a3b3806ca88a18d69e089f0 | unit="not run" parity="not run" e2e={"passed":22,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+SUMMARY: e4f7e9be484565036a3b3806ca88a18d69e089f0 | unit="not run" parity="not run" e2e={"passed":55,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+Merged origin/master normally again at 9b3e8b2b2 (#396, hover-card test readiness). No test expectations, tolerances or timeouts are changed by this branch. Branch Nightly results are linked and recorded in the PR.
