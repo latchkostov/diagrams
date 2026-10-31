@@ -14,6 +14,7 @@ import { planShards, shardFiles } from "../../scripts/e2e-shard.mjs";
 import { selfHostProfiles } from "../../scripts/e2e-profiles.mjs";
 import { collectNative, failureSummary } from "../../scripts/e2e-failures.mjs";
 import CheckpointReporter, { pendingReport, writeCheckpoint, readTestReport } from "../../scripts/gate/reporter.mjs";
+import { seedReport, collectReport } from "../../scripts/ci/e2e-report.mjs";
 import type { FullConfig, Suite, TestCase, TestResult } from "@playwright/test/reporter";
 
 const directories: string[] = [];
@@ -38,6 +39,45 @@ afterEach(() => {
   vi.unstubAllEnvs();
   for (const root of directories.splice(0))
     rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+});
+
+it("collects Linux shard checkpoints when the final JSON is absent or truncated", () => {
+  const directory = fixture();
+  seedReport(directory);
+  expect(collectReport(directory)).toMatchObject({ interrupted: true, expectedTests: 0 });
+  const unfinished = [{ file: "slow.spec.ts", title: "still running", projectName: "chromium", state: "running" }];
+  const partial = { ...pendingReport(), completed: 1, expectedTests: 2, unfinished };
+  writeCheckpoint(join(directory, "checkpoint.json"), partial);
+  writeFileSync(join(directory, "results.json"), '{"suites":');
+  expect(collectReport(directory)).toEqual(partial);
+  expect(JSON.parse(readFileSync(join(directory, "results.json"), "utf8"))).toEqual(partial);
+
+  const final = { stats: { expected: 1, unexpected: 0, flaky: 0, skipped: 0 }, suites: [] };
+  writeFileSync(join(directory, "results.json"), JSON.stringify(final));
+  expect(collectReport(directory)).toMatchObject({ ...final, interrupted: true, unfinished });
+  seedReport(directory);
+  expect(collectReport(directory)).toMatchObject({ interrupted: true, expectedTests: 0, unfinished: [] });
+});
+
+it("collects CI and Nightly Linux results after their composite shard action, including its deadline", () => {
+  const action = parse(readFileSync(".github/actions/e2e/action.yml", "utf8"));
+  const steps = action.runs.steps as { run?: string; env?: Record<string, string> }[];
+  const seed = steps.findIndex((step) => step.run?.includes("e2e-report.mjs seed"));
+  const run = steps.findIndex((step) => step.run?.includes("pnpm exec playwright test"));
+  expect(seed).toBeGreaterThanOrEqual(0);
+  expect(seed).toBeLessThan(run);
+  expect(steps[run].env?.GATE_CHECKPOINT).toBe("tests/.output/checkpoint.json");
+  expect(readFileSync("playwright.config.ts", "utf8")).toContain('[["./scripts/gate/reporter.mjs"] as [string]]');
+  for (const file of [".github/workflows/ci.yml", ".github/workflows/nightly.yml"]) {
+    const workflow = parse(readFileSync(file, "utf8"));
+    const steps = workflow.jobs.e2e.steps as { uses?: string; run?: string; if?: string }[];
+    const shard = steps.findIndex((step) => step.uses === "./.github/actions/e2e");
+    const collect = steps.findIndex((step) => step.run?.includes("e2e-report.mjs collect"));
+    const durations = steps.findIndex((step) => step.run?.includes("scripts/e2e-durations.mjs"));
+    expect(collect).toBeGreaterThan(shard);
+    expect(collect).toBeLessThan(durations);
+    expect(steps[collect].if).toBe("always()");
+  }
 });
 
 it("parses one-based shards and never stamps even a 1/1 shard", () => {

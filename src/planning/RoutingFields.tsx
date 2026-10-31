@@ -749,13 +749,14 @@ export function RouteTableFields({
 }) {
   useLocale();
   const [summaries] = useState(createTargetSummaries);
-  const [open, setOpen] = useState<string | null>(() => (routingIntent.peek(nodeId) === "default" ? "default" : null));
+  const intent = routingIntent.peek(nodeId);
+  const intentSerial = routingIntent.serial(nodeId);
+  const [open, setOpen] = useState<string | null>(() => (intent === "default" ? "default" : null));
   const defaultRow = useRef<HTMLButtonElement>(null);
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   useEffect(() => {
-    if (routingIntent.peek(nodeId) === "default") defaultRow.current?.focus();
-    routingIntent.clear(nodeId);
-  }, [nodeId]);
+    if (routingIntent.clear(nodeId, intentSerial) && intent === "default") defaultRow.current?.focus();
+  }, [nodeId, intentSerial, intent]);
   const [announce, setAnnounce] = useState("");
   const table = props.routeTable as RouteTable | undefined;
   const doc = editor.getDiagram();
@@ -1086,15 +1087,18 @@ export function TrafficMixFields({
   useLocale();
   const mix = props.trafficMix as TrafficMix | undefined;
   const routes = planning?.requestRoutes ?? [];
+  const intent = routingIntent.peek(nodeId);
+  const intentSerial = routingIntent.serial(nodeId);
   // A right-click "Add traffic mix…" opens straight onto the new route's form.
-  const [adding, setAdding] = useState(() => routingIntent.peek(nodeId) === "new-route");
+  const [adding, setAdding] = useState(() => intent === "new-route");
   const [intended] = useState(adding);
-  useEffect(() => routingIntent.clear(nodeId), [nodeId]);
+  useEffect(() => {
+    routingIntent.clear(nodeId, intentSerial);
+  }, [nodeId, intentSerial]);
   const [choosing, setChoosing] = useState(false);
   // Keyboard position after choosing from Add route: the new form's Path, or the added row's value.
   const [focusNew, setFocusNew] = useState(false);
   const [focusRow, setFocusRow] = useState<string | null>(() => {
-    const intent = routingIntent.peek(nodeId);
     return typeof intent === "object" ? intent.focusRow : null;
   });
   const valueRefs = useRef(new Map<string, HTMLInputElement>());

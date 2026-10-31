@@ -83,6 +83,7 @@ export function useHistory(
   const latest = useRef(state);
   const privacyRef = useRef(privacy);
   const gesture = useRef<string | undefined>(undefined);
+  const gestureSequence = useRef(0);
   const gestureTimer = useRef<number | undefined>(undefined);
   const applyRef = useRef(apply);
   const onStepRef = useRef(onStep);
@@ -108,7 +109,9 @@ export function useHistory(
   // Read-only completion signal for browser tests; never bundled into the public app.
   useLayoutEffect(() => {
     if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return;
-    const probe = () => ({ pending: ctl.key(latest.current) !== present(ctl.history).key });
+    const probe = () => ({
+      pending: gesture.current !== undefined || ctl.key(latest.current) !== present(ctl.history).key,
+    });
     window.__historyProbe = probe;
     return () => {
       if (window.__historyProbe === probe) delete window.__historyProbe;
@@ -249,17 +252,14 @@ export function useHistory(
   );
   const open = useCallback(() => ctl.openTransaction, [ctl]);
   const beginGesture = useCallback(() => {
-    if (!ctl.collaborative) return;
     if (gesture.current && gestureTimer.current === undefined) return;
     flush();
     if (gesture.current) ctl.end(gesture.current);
     window.clearTimeout(gestureTimer.current);
     gestureTimer.current = undefined;
-    const tag = room?.newId("gesture");
-    if (tag) {
-      gesture.current = tag;
-      ctl.begin(tag);
-    }
+    const tag = room?.newId("gesture") ?? `gesture:${++gestureSequence.current}`;
+    gesture.current = tag;
+    ctl.begin(tag);
   }, [ctl, flush, room]);
   const endGesture = useCallback(() => {
     const tag = gesture.current;

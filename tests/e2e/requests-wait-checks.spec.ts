@@ -14,6 +14,8 @@ import payment from "../../src/examples/slow-payment-provider.json" with { type:
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import { waitForBackgroundChecks } from "./checks-readiness";
 import { installChecksMeasurement } from "./checks-measurement";
+import process from "node:process";
+import { chooseNativeSelect } from "./native-select";
 import type { Page } from "@playwright/test";
 import { chunk, holdChunk } from "./chunk";
 
@@ -356,7 +358,9 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await expect(field).toHaveValue("threadsBusy");
     await field.focus();
     await expect(field).toBeFocused();
-    await field.press("ArrowDown");
+    if (process.platform === "darwin")
+      await chooseNativeSelect(page, "sim-panel-expectation-0-field", "threadsWaiting");
+    else await field.press("ArrowDown");
     await field.press("Tab");
     await expect(field).toHaveValue("threadsWaiting");
     const words = await field.evaluate((el: HTMLSelectElement) => el.selectedOptions[0].textContent);
