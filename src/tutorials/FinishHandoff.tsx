@@ -41,6 +41,7 @@ export function FinishHandoff({
     document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus();
   };
   useEffect(() => {
+    if (dismissed) return;
     heading.current?.focus();
     const dismiss = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -49,7 +50,7 @@ export function FinishHandoff({
     };
     window.addEventListener("keydown", dismiss);
     return () => window.removeEventListener("keydown", dismiss);
-  }, []);
+  }, [dismissed]);
   if (dismissed) return null;
   return (
     <section className="tutorial-handoff" data-testid="tutorial-handoff" aria-labelledby="tutorial-handoff-title">

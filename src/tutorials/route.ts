@@ -15,6 +15,7 @@ let returnView: View | undefined;
 const onPop = () => {
   if (returnView) {
     const query = new URLSearchParams(window.location.search);
+    query.delete(KEY);
     query.set("view", returnView);
     returnView = undefined;
     window.history.replaceState(
@@ -58,8 +59,12 @@ export const tutorialRoute = {
     window.history.pushState(null, "", `${window.location.pathname}?${query}`);
     emit();
   },
+  /** Safe to pass directly to a React click handler. */
+  close(): void {
+    tutorialRoute.returnTo();
+  },
   /** Pop the lesson entry when present; an explicit destination replaces the restored view, keeping Back intact. */
-  close(view?: View): void {
+  returnTo(view?: View): void {
     if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) {
       returnView = view;
       return window.history.back();

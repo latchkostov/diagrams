@@ -5,16 +5,33 @@ import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
 
 /** Session-only navigation belongs to the lazy tutorial surface, never startup or persistent progress. */
-export const lessonReturn: { lesson?: Tutorial; start?: string } = {};
+export const lessonReturn: { lesson?: Tutorial } = {};
+let pendingStart: string | undefined;
+let stopWatching: (() => void) | undefined;
+
+/** A route change abandons the handoff's intent, even when the destination lesson never mounts. */
+export function cancelLessonStart() {
+  pendingStart = undefined;
+  stopWatching?.();
+  stopWatching = undefined;
+}
+
+export function takeLessonStart(id: string): boolean {
+  const start = pendingStart === id;
+  cancelLessonStart();
+  return start;
+}
 
 export function leaveLesson(lesson: Tutorial) {
   lessonReturn.lesson = lesson;
-  tutorialRoute.close("tutorials");
+  tutorialRoute.returnTo("tutorials");
 }
 
 export function startNextLesson(lesson: Tutorial) {
-  lessonReturn.start = lesson.id;
+  cancelLessonStart();
+  pendingStart = lesson.id;
   tutorialRoute.open(lesson.id, true);
+  if (pendingStart) stopWatching = tutorialRoute.subscribe(cancelLessonStart);
 }
 
 export function lessonNumber(lesson: Tutorial, catalog: readonly Tutorial[]) {

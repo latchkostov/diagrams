@@ -22,7 +22,7 @@ import { trackLabel, tracks, tutorials } from "./catalog";
 import { lazyComponent, loadOnce } from "../lib/lazyLoad";
 import { readTutorials, subscribeTutorials, tutorialsSnapshot } from "./progress";
 import { FinishHandoff } from "./FinishHandoff";
-import { justEarnedSeals, leaveLesson, lessonReturn } from "./handoff";
+import { cancelLessonStart, justEarnedSeals, leaveLesson, takeLessonStart } from "./handoff";
 import { seals } from "./seals";
 import { createTutorialStart } from "./start";
 import { TopBar } from "../components/TopBar";
@@ -88,7 +88,7 @@ const loadRuntimeFixtures = loadOnce(() =>
   import("../lab/tutorialRuntimeFixture").then((m) => m.tutorialRuntimeFixtures),
 );
 function Prepared({ tutorial, catalog }: { tutorial: Tutorial; catalog: readonly Tutorial[] }) {
-  const [loader] = useState(() => createTutorialStart(tutorial));
+  const [loader] = useState(() => createTutorialStart(tutorial, undefined, cancelLessonStart));
   const state = useSyncExternalStore(loader.subscribe, loader.getSnapshot);
   useEffect(() => loader.connect(), [loader]);
   if (state.value === "ready" && state.diagram)
@@ -200,8 +200,7 @@ function Running({
   const canvasRef = useInteropCanvasActions(canvas, files);
   useEffect(() => runner.connect(), [runner]);
   useEffect(() => {
-    if (lessonReturn.start !== tutorial.id) return;
-    delete lessonReturn.start;
+    if (!takeLessonStart(tutorial.id)) return;
     runner.send({ type: "start" });
   }, [runner, tutorial]);
   useEffect(() => {

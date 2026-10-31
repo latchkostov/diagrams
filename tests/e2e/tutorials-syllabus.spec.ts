@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { expectNoViolations } from "./a11y-helpers";
+import { chunk, holdChunk } from "./chunk";
 
 test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page, consoleErrors }) => {
   await page.goto("./?view=tutorials");
@@ -42,6 +43,13 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await page.getByTestId("tutorials-reset-basics").click();
   await expect(page.getByTestId("tutorials-reset-dialog")).toHaveAttribute("role", "alertdialog");
   await expect(page.getByTestId("tutorials-reset-scope-track")).toBeChecked();
+  await expect(page.getByTestId("tutorials-reset-cancel")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByTestId("tutorials-reset-chapter-select")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByTestId("tutorials-reset-scope-track")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByTestId("tutorials-reset-confirm")).toBeFocused();
   await expect(page.getByTestId("tutorials-reset-counts")).toHaveText(
     "1 finished lesson, 0 in progress and 0 seals will be reset.",
   );
@@ -88,6 +96,26 @@ async function finishBySkipping(page: Page, clocked = false) {
   }
   await expect(strip).toHaveAttribute("data-phase", "finished");
 }
+
+test("cancelling Start next while its example loads preserves the intro on a normal reopen", async ({ page }) => {
+  const held = await holdChunk(page, chunk("aks-app-config-key-vault", "src/examples/aks-app-config-key-vault.json"));
+  try {
+    await page.goto("./?tutorial=annotate");
+    await page.getByTestId("tutorial-start").click();
+    await finishBySkipping(page);
+    await page.getByTestId("tutorial-next").click();
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("view-loading")).toBeVisible();
+    await page.getByTestId("tutorial-exit").click();
+    await expect(page.getByTestId("tutorials-view")).toBeVisible();
+    held.release();
+    await page.getByTestId("tutorial-open-dependencies").click();
+    await expect(page.getByTestId("tutorial-intro")).toBeVisible();
+    await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  } finally {
+    held.release();
+  }
+});
 
 test("handoff starts the next lesson directly and Escape leaves the canvas usable", async ({ page }) => {
   await page.goto("./?tutorial=mobile-api");
