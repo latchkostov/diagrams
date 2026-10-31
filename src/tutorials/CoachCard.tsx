@@ -143,7 +143,7 @@ export function CoachCard({
         const rtl = document.documentElement.dir === "rtl";
         const old = previous.current;
         const held =
-          (aiming.current || el.contains(document.activeElement)) && old?.mode === "card"
+          aiming.current && old?.mode === "card"
             ? keepCard({ ...size, x: old.place.x, y: old.place.y }, external, area, hard)
             : null;
         let place = held || (external && placeCard(external, size, panes, area, rtl, soft));

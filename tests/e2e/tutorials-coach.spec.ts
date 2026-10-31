@@ -100,6 +100,21 @@ for (const [device, width, height] of [
   }
 }
 
+test("focused help follows the target through camera movement without losing focus", async ({ page }) => {
+  await page.setViewportSize({ width: 2560, height: 1440 });
+  await begin(page, "workbench-tour");
+  await page.getByTestId("coach-hint").click();
+  await expect(page.getByTestId("coach-hint")).toBeFocused();
+  const source = await page.getByTestId("node-api").boundingBox();
+  const canvas = await page.getByTestId("canvas-wrap").boundingBox();
+  if (!source || !canvas) throw new Error("Missing tutorial target or canvas");
+  await page.mouse.move(canvas.x + canvas.width - 80, canvas.y + canvas.height / 2);
+  await page.mouse.wheel(Math.round(source.x - 100), 0);
+  await waitForCameraIdle(page);
+  await clearTarget(page, 240);
+  await expect(page.getByTestId("coach-hint")).toBeFocused();
+});
+
 test("help is keyboard reachable; Do it for me completes the step without stealing typing focus", async ({ page }) => {
   await begin(page, "quick-add");
   await page.getByTestId("tutorial-skip").click();

@@ -137,11 +137,13 @@ export function leaderBetween(card: Box, target: Box) {
   return { x1, y1, x2, y2 };
 }
 
-/** Keep help buttons still while the learner aims or tabs, provided the target and chrome remain clear. */
+/** Keep help buttons still while the learner aims, provided the target stays nearby and the chrome remains clear. */
 export function keepCard(card: Box, target: Box | null, area: Box, obstacles: readonly Box[]): CardPlace | null {
   if (card.x < area.x || card.y < area.y || right(card) > right(area) || bottom(card) > bottom(area)) return null;
   if ((target && intersects(card, target)) || obstacles.some((o) => intersects(card, o))) return null;
-  return { x: card.x, y: card.y, side: null, nub: null, leader: target ? leaderBetween(card, target) : null };
+  const leader = target ? leaderBetween(card, target) : null;
+  if (leader && Math.hypot(leader.x2 - leader.x1, leader.y2 - leader.y1) > 240) return null;
+  return { x: card.x, y: card.y, side: null, nub: null, leader };
 }
 
 /**

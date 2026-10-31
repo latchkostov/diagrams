@@ -9,6 +9,7 @@ it("holds help still as a hover target disappears, but moves off new menus and t
   const card = { x: 800, y: 400, ...size };
   expect(keepCard(card, null, area, [])).toMatchObject({ x: 800, y: 400 });
   expect(keepCard(card, target, area, [])?.leader).not.toBeNull();
+  expect(keepCard(card, { ...target, x: 50 }, area, [])).toBeNull();
   expect(keepCard(card, card, area, [])).toBeNull();
   expect(keepCard(card, null, area, [card])).toBeNull();
   expect(keepCard({ ...card, y: 850 }, null, area, [])).toBeNull();

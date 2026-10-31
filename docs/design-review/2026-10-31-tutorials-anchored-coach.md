@@ -17,7 +17,8 @@ words compact. Completion actions join the handoff rather than covering its next
 Placement measures the visible viewport, target, rail, dock, transport, simulation panels, menus
 and popovers. It uses clear panes, a notch when adjacent, and a leader when displaced. Home
 placement prefers clear space under or above the visible diagram and avoids nodes and edge labels.
-Help holds still while a learner aims or tabs, as long as the target and chrome remain clear.
+Help holds still while a learner aims, as long as the target stays nearby and chrome remains clear.
+Keyboard focus stays on its button while the card follows camera movement.
 Legacy tips that repeat the heading give way to the actionable goal.
 Coach-owned targets stay in place. There is no camera nudge: camera modes are lesson evidence.
 
