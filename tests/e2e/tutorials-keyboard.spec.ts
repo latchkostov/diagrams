@@ -116,53 +116,51 @@ async function focus(page: Page, id: string) {
   const seen = new Set<string>();
   const limit = await page.getByTestId(/./).count();
   let moves = 0;
-  while (
-    !(await target.evaluate(
-      (el) =>
-        el === document.activeElement ||
-        el.contains(document.activeElement) ||
-        (document.activeElement instanceof HTMLButtonElement && document.activeElement.contains(el)),
-    ))
-  ) {
-    if (await page.evaluate(() => ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? "")))
-      throw new CompletedStep();
-    const reading = await target.evaluate((el) => {
-      let parent = document.activeElement;
-      while (parent) {
-        if (parent.hasAttribute("data-live-readout"))
-          return parent.contains(el) ? null : parent.getAttribute("data-testid");
-        parent = parent.parentElement;
+  for (;;) {
+    // One consistent browser snapshot per key: separate round trips here multiply the cost of long studies.
+    const state = await target.evaluate((el) => {
+      const active = document.activeElement;
+      let reading: string | null = null;
+      for (let parent = active; parent; parent = parent.parentElement) {
+        if (!parent.hasAttribute("data-live-readout")) continue;
+        reading = parent.contains(el) ? null : parent.getAttribute("data-testid");
+        break;
       }
-      return null;
-    });
-    if (reading) {
-      await page.keyboard.press("Escape");
-      await expect(page.getByTestId(reading)).toHaveCount(0);
-      seen.clear();
-      continue;
-    }
-    const active = await activeControl(page);
-    const body = active.startsWith("BODY:");
-    if (++moves > limit || (!body && seen.has(active)))
-      throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
-    // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
-    if (!body) seen.add(active);
-    const roving = await target.evaluate((el) => {
-      let parent = el.parentElement;
-      while (parent) {
+      let roving = false;
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) {
         if (
           ["toolbar", "tablist", "menu", "radiogroup"].includes(parent.getAttribute("role") ?? "") ||
           parent.hasAttribute("data-live-readout")
-        )
-          return parent.contains(document.activeElement);
-        parent = parent.parentElement;
+        ) {
+          roving = !!active && parent.contains(active);
+          break;
+        }
       }
-      return false;
+      return {
+        focused: el === active || el.contains(active) || (active instanceof HTMLButtonElement && active.contains(el)),
+        completed: ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? ""),
+        reading,
+        active: active?.getAttribute("data-testid") ?? `${active?.tagName ?? "none"}:${document.hasFocus()}`,
+        roving,
+      };
     });
-    await page.keyboard.press(roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
+    if (state.focused) return;
+    if (state.completed) throw new CompletedStep();
+    if (state.reading) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId(state.reading)).toHaveCount(0);
+      seen.clear();
+      continue;
+    }
+    const body = state.active.startsWith("BODY:");
+    if (++moves > limit || (!body && seen.has(state.active)))
+      throw new Error(`Keyboard control is unreachable: ${id} (${[...seen].join(" → ")})`);
+    // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
+    if (!body) seen.add(state.active);
+    await page.keyboard.press(state.roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
     // Roving focus and portal teardown can cross body before the destination lands on the next frame.
     await animationFrames(page);
-    if (!body) await expect.poll(() => activeControl(page)).not.toBe(active);
+    if (!body) await expect.poll(() => activeControl(page)).not.toBe(state.active);
   }
 }
 
@@ -344,3 +342,41 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
     expectNoErrors(consoleErrors);
   });
 }
+
+test("keyboard control traversal reads a bounded amount of browser state per key", async ({ page }) => {
+  await page.setContent(
+    '<button data-testid="first">First</button><button data-testid="middle">Middle</button><button data-testid="last">Last</button>',
+  );
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("first")).toBeFocused();
+  let reads = 0,
+    keys = 0;
+  page.evaluate = new Proxy(page.evaluate, {
+    apply(target, thisArg, args) {
+      reads++;
+      return Reflect.apply(target, thisArg, args) as ReturnType<typeof page.evaluate>;
+    },
+  });
+  page.getByTestId = new Proxy(page.getByTestId, {
+    apply(target, thisArg, args) {
+      const locator = Reflect.apply(target, thisArg, args) as ReturnType<typeof page.getByTestId>;
+      locator.evaluate = new Proxy(locator.evaluate, {
+        apply(evaluate, receiver, input) {
+          reads++;
+          return Reflect.apply(evaluate, receiver, input) as ReturnType<typeof locator.evaluate>;
+        },
+      });
+      return locator;
+    },
+  });
+  page.keyboard.press = new Proxy(page.keyboard.press, {
+    apply(target, thisArg, args) {
+      keys++;
+      return Reflect.apply(target, thisArg, args) as ReturnType<typeof page.keyboard.press>;
+    },
+  });
+  await focus(page, "last");
+  expect(keys).toBeGreaterThan(0);
+  expect(reads).toBeLessThanOrEqual(keys * 4 + 3);
+  await expect(page.getByTestId("last")).toBeFocused();
+});

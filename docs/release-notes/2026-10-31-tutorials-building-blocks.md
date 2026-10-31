@@ -6,4 +6,6 @@ API gateway, Kafka groups, queue workers, cache shares, partitions and outbox le
 
 Checks completion reads typed product observations, current job results and real route traces/counters. Sticky editing milestones now wait for naming to finish before latching. The lessons distinguish static advice, document settings, observed work and acknowledged explanations; cache shares, saved eight-partition setup, outbox atomicity and network-model limits are explicit.
 
+Keyboard walkthroughs collect one consistent focus snapshot per key, reducing repeated browser round trips while retaining real keyboard events, completion assertions and existing timeouts. An operation-count regression rejects the previous traversal.
+
 Output review: only `tests/parity/goldens/node/i18n/catalogs.json` changes, reflecting new tutorial keys, English fallbacks and pseudo-locale fingerprints. Existing translated keys remain intact; new copy uses new keys so stale translations cannot change the lesson’s meaning. No simulation, planning, example, layout or export golden is intentionally changed. No simulation-engine algorithm or budget changes.

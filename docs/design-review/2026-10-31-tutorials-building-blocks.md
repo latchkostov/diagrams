@@ -6,4 +6,6 @@ Reviewed the new lessons’ intro and completed screenshots at the normal deskto
 
 Pointer and keyboard solutions exercise the actual controls, including selecting incoming connections without a rendered label, tracing at the destination, explicit return to editing for Default, and reopening Checks after Undo. Skip and Continue are covered per lesson. Checks reading uses Done honestly; completed saved-run evidence is a separate semantic observation. Near-miss tests reject ignored warnings, wrong targets, shared consumer groups, wrong filters and shares, and old totals.
 
+The keyboard driver batches its read-only focus facts per key. This removes redundant browser round trips from long capstones without changing key events, focus assertions or timeouts; the operation-count test fails with the previous driver.
+
 Rejected new teaching chrome and extra gallery entries: existing public stories plus small Lab seeds cover the concepts. Rejected packet-level network claims, correlated cache hits, transactional outbox proof and treating a completed static check as a completed simulation.
