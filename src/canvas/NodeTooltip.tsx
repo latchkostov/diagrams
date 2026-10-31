@@ -7,6 +7,7 @@ import { useSyncExternalStore, useRef, useLayoutEffect, type RefObject } from "r
 import { MarkdownView } from "../components/markdown/lazy";
 import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
 import type { Stencil } from "../model/types";
+import { placeNodeTip } from "./nodeTipPlacement";
 
 /** Descriptions are display text in the stencils catalog: their code arrives with it, when a tip first opens. */
 let describe: ((s: Stencil) => string) | undefined;
@@ -14,6 +15,8 @@ let describe: ((s: Stencil) => string) | undefined;
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
 export interface NodeTip {
   rect: DOMRect;
+  /** Follow the actual node through fit-view, zoom and layout changes while the tip is open. */
+  anchor?: Element;
   /** The node it describes (aria-describedby). */
   nodeId?: string;
   label: string;
@@ -31,23 +34,27 @@ export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: 
     const el = ref.current;
     if (!el) return;
     const position = () => {
-      const pad = 8;
       const { width, height } = el.getBoundingClientRect();
-      const aboveSpace = tip.rect.top - pad * 2;
-      const belowSpace = window.innerHeight - tip.rect.bottom - pad * 2;
-      const above = aboveSpace >= height || (belowSpace < height && aboveSpace > belowSpace);
-      const top = above ? tip.rect.top - pad - height : tip.rect.bottom + pad;
-      el.style.left = `${Math.max(pad, Math.min(tip.rect.left + tip.rect.width / 2 - width / 2, window.innerWidth - width - pad))}px`;
-      el.style.top = `${Math.max(pad, Math.min(top, window.innerHeight - height - pad))}px`;
+      const target = tip.anchor?.isConnected ? tip.anchor.getBoundingClientRect() : tip.rect;
+      const pane = tip.anchor?.closest('[data-testid="canvas-wrap"]')?.getBoundingClientRect();
+      const area = pane ?? { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+      const obstacles = [...document.querySelectorAll("[data-tip-obstacle]")]
+        .map((node) => node.getBoundingClientRect())
+        .filter((r) => r.width && r.height);
+      const place = placeNodeTip(target, { width, height }, area, obstacles);
+      el.style.visibility = place ? "" : "hidden";
+      if (place) {
+        el.style.left = `${place.x}px`;
+        el.style.top = `${place.y}px`;
+      }
     };
-    position();
-    const observer = new ResizeObserver(position);
-    observer.observe(el);
-    window.addEventListener("resize", position);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", position);
+    let frame = 0;
+    const update = () => {
+      position();
+      frame = requestAnimationFrame(update);
     };
+    update();
+    return () => cancelAnimationFrame(frame);
   }, [tip]);
   return (
     <div

@@ -8,6 +8,10 @@ import { mobileApi } from "./catalog/mobileApi";
 import { cancelLessonStart, startNextLesson, takeLessonStart } from "./handoff";
 import { tutorialRoute } from "./route";
 import { createTutorialStart } from "./start";
+import { chapters } from "./chapters";
+import { BlueprintBoard } from "./BlueprintBoard";
+import { state as locale } from "../i18n";
+import { quickAdd } from "./catalog/quickAdd";
 
 const host = document.createElement("div");
 let root: ReturnType<typeof createRoot>;
@@ -22,9 +26,36 @@ afterEach(async () => {
   host.remove();
   cancelLessonStart();
   vi.unstubAllGlobals();
+  locale.l = "en";
 });
 
-it.each(["Stay", "Escape"])(
+it("refreshes a mounted blueprint's authored labels when the language changes", async () => {
+  const lesson = {
+    ...mobileApi,
+    start: () => ({
+      ...mobileApi.start(),
+      nodes: [{ id: "api", stencil: "generic.service", label: locale.l, x: 0, y: 0 }],
+    }),
+    steps: [],
+  };
+  await act(() => root.render(<BlueprintBoard lesson={lesson} catalog={[lesson]} />));
+  expect(host.querySelector('[data-testid="tutorial-handoff-drawing"]')?.textContent).toContain("en");
+  await act(() => {
+    locale.l = "es";
+    locale.f.forEach((listener) => listener());
+  });
+  expect(host.querySelector('[data-testid="tutorial-handoff-drawing"]')?.textContent).toContain("es");
+});
+
+it("places a node's numbered markers in reading order", async () => {
+  await act(() => root.render(<BlueprintBoard lesson={quickAdd} catalog={[quickAdd]} />));
+  const marks = [...host.querySelectorAll(".handoff-svg-mark")];
+  const x = (number: string) =>
+    Number(/translate\((\d+)/.exec(marks.find((mark) => mark.textContent === number)!.getAttribute("transform")!)![1]);
+  expect(x("2")).toBeLessThan(x("3"));
+});
+
+it.each(["Stay", "Escape", "Scrim"])(
   "%s detaches the handoff's Escape listener for continued keyboard practice",
   async (how) => {
     await act(() =>
@@ -38,6 +69,7 @@ it.each(["Stay", "Escape"])(
     );
     await act(() => {
       if (how === "Stay") host.querySelector<HTMLButtonElement>('[data-testid="tutorial-handoff-dismiss"]')!.click();
+      else if (how === "Scrim") host.querySelector<HTMLElement>('[data-testid="tutorial-handoff-scrim"]')!.click();
       else window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
     });
     expect(host.querySelector('[data-testid="tutorial-handoff"]')).toBeNull();
@@ -116,6 +148,23 @@ it("starts the successful handoff exactly once", () => {
   startNextLesson(mobileApi);
   expect(takeLessonStart(mobileApi.id)).toBe(true);
   expect(takeLessonStart(mobileApi.id)).toBe(false);
+});
+
+it.each([false, true])("shows the %s end state with a single header seal", async (whole) => {
+  const other = { ...mobileApi, id: "another-chapter", track: "blocks" as const };
+  const completed = { version: mobileApi.version, step: mobileApi.steps.length, completed: true };
+  const progress = { progress: { [mobileApi.id]: completed, ...(whole ? { [other.id]: completed } : {}) } };
+  await act(() =>
+    root.render(<FinishHandoff tutorial={mobileApi} catalog={[mobileApi, other]} before={{}} progress={progress} />),
+  );
+  expect(host.querySelector('[data-testid="tutorial-handoff-heading"]')?.textContent).toBe(
+    whole ? "You've finished the syllabus" : "Chapter I complete",
+  );
+  expect(host.querySelectorAll(".tutorial-seal")).toHaveLength(1);
+  expect(
+    host.querySelector(`[data-testid="tutorial-handoff-seal-${whole ? "whole-syllabus" : chapters.basics.seal}"]`),
+  ).not.toBeNull();
+  expect(host.querySelector('[data-testid="tutorial-next"]') === null).toBe(whole);
 });
 
 it("reads the recap once before next-lesson detail, with heading focus and no live duplication", async () => {
