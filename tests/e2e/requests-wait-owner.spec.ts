@@ -3,10 +3,12 @@ import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoLive, pauseClock, savedDiagram, fitDiagram, STORAGE_KEYS } from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
+import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
 
 test("the callout and planner offer the same verified fix; keyboard apply names its simulation and Undo restores it", async ({
   page,
 }) => {
+  await installThreadVerification(page);
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads",
     d: busy,
@@ -18,6 +20,7 @@ test("the callout and planner offer the same verified fix; keyboard apply names 
   await page.clock.runFor(15000);
   await page.getByTestId("live-play").click();
   const action = page.getByTestId("trouble-action");
+  await waitForThreadVerification(page);
   await expect(action).toHaveAttribute("data-action", "scale-threads");
   await page.getByTestId("node-caller").dblclick();
   await openInspectorLiveDetails(page, "resources");

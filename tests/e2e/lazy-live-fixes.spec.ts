@@ -11,6 +11,7 @@ import {
   openShareChooser,
 } from "./fixtures";
 import { expectLiveParticles } from "./node-identity";
+import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
 
 // Live code that downloads on first use (PR #225's bundle trim): the thread-fix application ships in the trouble
 // callout's chunk, and slow motion's script loads when slow motion first starts. Each chunk is held (and failed)
@@ -124,7 +125,8 @@ async function exportDiagram(page: Page) {
 }
 
 /** The payment lesson run to its exhaustion (15 s) and paused by keyboard: focus on Play. */
-async function exhaustPayment(page: Page) {
+async function exhaustPayment(page: Page, holdVerification = false) {
+  await installThreadVerification(page, holdVerification);
   await page.clock.install();
   await gotoLive(page, PAYMENT);
   await pauseClock(page);
@@ -139,7 +141,28 @@ async function exhaustPayment(page: Page) {
   await page.getByTestId("live-play").focus();
   await page.keyboard.press("Space");
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  await waitForThreadVerification(page);
 }
+
+test("payment setup waits for the latest verification while the page clock is paused", async ({ page }) => {
+  let finished = false;
+  const exhausting = exhaustPayment(page, true).then(() => {
+    finished = true;
+  });
+  try {
+    await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "15000");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await expect.poll(() => page.evaluate(() => window.__threadVerification?.requested ?? 0)).toBeGreaterThan(0);
+    await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "events");
+    expect(finished, "setup cannot finish before the worker's real reply").toBe(false);
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await exhausting;
+    await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
+  } finally {
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await exhausting;
+  }
+});
 
 test("export readiness waits for a held confirmation before the toast clock advances", async ({ page }) => {
   const messages = await gate(page, FILE_MESSAGES);
