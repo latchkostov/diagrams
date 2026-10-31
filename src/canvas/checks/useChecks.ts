@@ -7,6 +7,7 @@ import { runChecksOffThread } from "./runner";
 import { NO_EVIDENCE, SimulationRuns, type EvidenceSink, type EvidenceView, type SimContent } from "./simulationRuns";
 import { setEditingRuns } from "./editingRuns";
 import { FindingSelection } from "./findingSelection";
+import { observationPorts, type ObservationSource, type ProductObservations } from "../../lib/observations";
 
 // The canvas's checks: re-run after edits pause, in idle time, off the main thread (runner.ts). The first
 // run waits for the canvas to settle. Diagrams over 1,500 nodes are checked only while the Checks card is
@@ -195,6 +196,7 @@ export function useHotFinding(store: ChecksStore): string | null {
  * its nodes, edges and meta); `read` builds the file at run time, so a burst of edits costs one read, after it.
  */
 export function useChecks(opts: {
+  source?: () => ObservationSource;
   enabled: boolean;
   revision: unknown;
   read: () => DiagramFile;
@@ -206,6 +208,24 @@ export function useChecks(opts: {
   const { enabled, revision, nodeCount, cardOpen, content } = opts;
   const [store] = useState(() => new ChecksStore());
   const [runs] = useState(() => new CheckRuns((r, d) => store.set(r, d)));
+  useEffect(() => {
+    const source = opts.source;
+    if (!source) return;
+    runs.setReport((status) => observationPorts.checks.publish({ ...source(), status }));
+    const stop = store.subscribe(() => {
+      const state = store.get();
+      if (state.result)
+        observationPorts.checks.publish({
+          ...source(),
+          status: state.stale ? "stale" : "done",
+          result: state.result,
+        });
+    });
+    return () => {
+      stop();
+      runs.setReport(undefined);
+    };
+  });
   const sims = store.simulations;
   useEffect(() => {
     store.setRetry(() => runs.retryFailed());
@@ -284,6 +304,10 @@ export function installCheckRunControls(runs: CheckRuns): () => void {
 
 /** The runs behind useChecks: the scheduler, what to read, and which results are still wanted. */
 export class CheckRuns {
+  private report?: (status: ProductObservations["checks"]["status"]) => void;
+  setReport(report: CheckRuns["report"]) {
+    this.report = report;
+  }
   private read: () => DiagramFile = () => ({ format: "diagrams/v1", title: "", nodes: [], edges: [] });
   private generation = 0;
   private first = true;
@@ -303,6 +327,7 @@ export class CheckRuns {
       }
       const gen = this.generation;
       const diagram = this.read();
+      this.report?.("running");
       checkRunStats.started++;
       // An empty diagram has nothing to check: that's a finished check, not one still running.
       let next: CheckResult;
@@ -310,6 +335,7 @@ export class CheckRuns {
         next = diagram.nodes.length ? await run(diagram) : NOTHING_TO_CHECK;
         this.failed = false;
       } catch (error) {
+        if (gen === this.generation) this.report?.("failed");
         this.failed = true;
         throw error;
       }
@@ -350,5 +376,6 @@ export class CheckRuns {
   stop() {
     this.generation++;
     this.scheduler.cancel();
+    this.report?.("cancelled");
   }
 }

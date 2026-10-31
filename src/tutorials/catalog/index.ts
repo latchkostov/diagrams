@@ -49,6 +49,7 @@ import { dependencies } from "./dependencies";
 import { arrange } from "./arrange";
 import { commandPalette } from "./commandPalette";
 import { sharePresent } from "./sharePresent";
+import { withKeyboardSolutions } from "../keyboard";
 
 /** Every tutorial, in the order the list shows them within a track. */
 export const allTutorials: readonly Tutorial[] = [
@@ -101,7 +102,7 @@ export const allTutorials: readonly Tutorial[] = [
   studyFanout,
   studyRag,
   studyCells,
-];
+].map(withKeyboardSolutions);
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
 export const tutorials = allTutorials.filter((t) => !t.quarantined);

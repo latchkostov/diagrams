@@ -1,5 +1,6 @@
 import { msg, t } from "../i18n";
 import type { Tutorial } from "../tutorials/types";
+import { tutorialObservationFixtures } from "./tutorialObservationFixture";
 
 /** Runtime integration preview, separate from the learner catalog. Uses only a public example. */
 const runtimePreviews: readonly Tutorial[] = [
@@ -162,6 +163,8 @@ export const tutorialRuntimeFixtures: readonly Tutorial[] = [
 
 /** Isolated previews must not change the established handoff fixture's curriculum. */
 export function tutorialRuntimeCatalog(id: string): readonly Tutorial[] {
+  const observation = tutorialObservationFixtures.find((lesson) => lesson.id === id);
+  if (observation) return [observation];
   const preview = runtimePreviews.find((lesson) => lesson.id === id);
   return preview ? [preview] : tutorialRuntimeFixtures;
 }

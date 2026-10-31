@@ -206,7 +206,11 @@ const withoutPrivate = (d: DiagramFile): DiagramFile => {
   return copy;
 };
 
+import { beginObservedWork, observationPorts, type ObservationSource } from "../../lib/observations";
+import { currentObservationSource } from "../../palette/observationSource";
+
 export class RoomLifecycle {
+  private observationSource?: ObservationSource;
   private snap: RoomSnapshot = {};
   private listeners = new Set<() => void>();
   private active?: Active;
@@ -245,7 +249,14 @@ export class RoomLifecycle {
   getSnapshot = (): RoomSnapshot => this.snap;
 
   private set(next: Partial<RoomSnapshot>): void {
+    const before = this.snap.open;
     this.snap = { ...this.snap, ...next };
+    const after = this.snap.open;
+    const source = this.observationSource;
+    if (source && after?.ready && !before?.ready)
+      observationPorts.collaboration.publish({ ...source, status: "joined", role: after.role });
+    if (source && before?.ready && !after)
+      observationPorts.collaboration.publish({ ...source, status: "left", role: before.role });
     for (const fn of this.listeners) fn();
   }
 
@@ -370,6 +381,22 @@ export class RoomLifecycle {
   }
 
   private async open(o: OpenRequest): Promise<OpenRoom | undefined> {
+    this.observationSource = currentObservationSource();
+    const work = beginObservedWork(this.observationSource);
+    const attempt = this.attempt + 1;
+    const cancel = () => {
+      if (this.attempt === attempt) void this.leave();
+    };
+    work.signal.addEventListener("abort", cancel, { once: true });
+    try {
+      return await this.openRoom(o);
+    } finally {
+      work.signal.removeEventListener("abort", cancel);
+      work.finish();
+    }
+  }
+
+  private async openRoom(o: OpenRequest): Promise<OpenRoom | undefined> {
     const token = ++this.attempt;
     this.set({ opening: o.role, prompt: undefined });
     const privacy: CanvasPrivacyState = o.slug

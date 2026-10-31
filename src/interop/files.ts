@@ -1,4 +1,11 @@
 import { t } from "../i18n";
+import {
+  beginObservedWork,
+  observationPorts,
+  sameObservationSource,
+  type ObservationSource,
+} from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 // Local files: the File System Access API where available (Chrome / Edge: real "Save" back to the
 // same file, which also works inside a Google Drive for desktop or OneDrive synced folder), with
 // download + <input type=file> fallbacks for Firefox and Safari.
@@ -11,7 +18,11 @@ interface FsHandle {
   kind: "file";
   name: string;
   getFile(): Promise<File>;
-  createWritable(): Promise<{ write(data: Blob | string): Promise<void>; close(): Promise<void> }>;
+  createWritable(): Promise<{
+    write(data: Blob | string): Promise<void>;
+    close(): Promise<void>;
+    abort?(): Promise<void>;
+  }>;
   queryPermission?(o: { mode: "read" | "readwrite" }): Promise<PermissionState>;
   requestPermission?(o: { mode: "read" | "readwrite" }): Promise<PermissionState>;
 }
@@ -26,6 +37,31 @@ type FsWindow = Window & {
 };
 
 export type FileHandle = FsHandle;
+
+/** Capture before awaiting a writer. Cancellation or document replacement prevents its late download. */
+export function createFileWriter() {
+  const source = currentObservationSource();
+  const work = beginObservedWork(source);
+  const check = () => {
+    work.signal.throwIfAborted();
+    const now = currentObservationSource();
+    if (source && (!now || !sameObservationSource(source, now)))
+      throw new DOMException(t("common.tryAgain"), "AbortError");
+  };
+  return {
+    ...work,
+    check,
+    source,
+    blob(blob: Blob, name: string) {
+      check();
+      downloadBlob(blob, name, source);
+    },
+    text(text: string, name: string, mime: string) {
+      check();
+      downloadBlob(new Blob([text], { type: mime }), name, source);
+    },
+  };
+}
 
 const w = () => window as FsWindow;
 
@@ -82,29 +118,60 @@ export async function saveWithPicker(
   suggestedName: string,
   type: PickerType = NATIVE_TYPE,
 ): Promise<FileHandle | undefined> {
-  let handle: FileHandle;
+  const writer = createFileWriter();
   try {
-    handle = await w().showSaveFilePicker!({ suggestedName, types: [type], id: "diagrams" });
-  } catch (err) {
-    if (isAbort(err)) return undefined;
-    throw err;
+    let handle: FileHandle;
+    try {
+      handle = await w().showSaveFilePicker!({ suggestedName, types: [type], id: "diagrams" });
+    } catch (err) {
+      if (isAbort(err)) return undefined;
+      throw err;
+    }
+    writer.check();
+    await writeHandle(handle, text, writer);
+    return handle;
+  } finally {
+    writer.finish();
   }
-  await writeHandle(handle, text);
-  return handle;
 }
 
 /** Writes to a handle we already have (asks for permission again after a reload of the tab). */
-export async function writeHandle(handle: FileHandle, text: string): Promise<void> {
-  if (handle.queryPermission && (await handle.queryPermission({ mode: "readwrite" })) !== "granted") {
-    if ((await handle.requestPermission?.({ mode: "readwrite" })) !== "granted")
-      throw new Error(t("fileDialog.permissionToSaveValue0WasntGranted", { value0: handle.name }));
+export async function writeHandle(
+  handle: FileHandle,
+  text: string,
+  captured?: ReturnType<typeof createFileWriter>,
+): Promise<void> {
+  const writer = captured ?? createFileWriter();
+  try {
+    writer.check();
+    if (handle.queryPermission && (await handle.queryPermission({ mode: "readwrite" })) !== "granted") {
+      if ((await handle.requestPermission?.({ mode: "readwrite" })) !== "granted")
+        throw new Error(t("fileDialog.permissionToSaveValue0WasntGranted", { value0: handle.name }));
+    }
+    writer.check();
+    const out = await handle.createWritable();
+    try {
+      writer.check();
+      await out.write(text);
+      writer.check();
+      await out.close();
+      writer.check();
+      if (writer.source)
+        observationPorts.exports.publish({ ...writer.source, format: "native", bytes: new Blob([text]).size });
+    } catch (error) {
+      await out.abort?.().catch(() => {});
+      throw error;
+    }
+  } finally {
+    if (!captured) writer.finish();
   }
-  const out = await handle.createWritable();
-  await out.write(text);
-  await out.close();
 }
 
-export function downloadBlob(blob: Blob, name: string): void {
+export function downloadBlob(
+  blob: Blob,
+  name: string,
+  source: ObservationSource | undefined = currentObservationSource(),
+): void {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -112,7 +179,32 @@ export function downloadBlob(blob: Blob, name: string): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
+  if (source)
+    observationPorts.exports.publish({
+      ...source,
+      format: name.endsWith(".diagram.json") ? "native" : exportFormat(name),
+      bytes: blob.size,
+    });
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+function exportFormat(name: string): import("../lib/observations").ExportFormat {
+  const extension = name.split(".").at(-1);
+  switch (extension) {
+    case "png":
+    case "svg":
+    case "drawio":
+    case "html":
+      return extension;
+    case "mmd":
+    case "mermaid":
+      return "mermaid";
+    case "webm":
+    case "mp4":
+      return "video";
+    default:
+      return "other";
+  }
 }
 
 export const downloadText = (text: string, name: string, mime: string) =>

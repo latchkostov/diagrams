@@ -4,7 +4,7 @@ import { templatePath } from "virtual:interactive-viewer";
 import type { DiagramFile } from "../model/types";
 import { iconUrl } from "../stencils/iconUrls";
 import { loadOnce } from "../lib/lazyLoad";
-import { downloadText } from "../interop/files";
+import { createFileWriter } from "../interop/files";
 import { validateDiagram } from "../interop/native";
 import { toast } from "../interop/ui/toast";
 import {
@@ -74,11 +74,16 @@ export async function downloadInteractiveHtml(
   diagram: DiagramFile,
   options: HtmlExportOptions,
 ): Promise<{ name: string; bytes: number }> {
-  const html = await buildInteractiveHtml(diagram, options);
-  // A protected file's name says nothing of the diagram either, and a random suffix keeps two apart.
-  const name = options.password !== undefined ? lockedFileName() : htmlFileName(options.title ?? diagram.title);
-  downloadText(html, name, "text/html");
-  return { name, bytes: new Blob([html]).size };
+  const writer = createFileWriter();
+  try {
+    const html = await buildInteractiveHtml(diagram, options);
+    // A protected file's name says nothing of the diagram either, and a random suffix keeps two apart.
+    const name = options.password !== undefined ? lockedFileName() : htmlFileName(options.title ?? diagram.title);
+    writer.text(html, name, "text/html");
+    return { name, bytes: new Blob([html]).size };
+  } finally {
+    writer.finish();
+  }
 }
 
 /** The dialog's Download: the file, with progress and the outcome in a toast (never a thrown error). */
@@ -97,6 +102,7 @@ export async function exportInteractiveHtml(diagram: DiagramFile, options: HtmlE
     );
   } catch (err) {
     toast.dismiss(busy);
+    if (err instanceof DOMException && err.name === "AbortError") return;
     toast.error(
       t("htmlExport.couldntExportTheInteractiveHTMLValue0", {
         value0: err instanceof Error ? err.message : String(err),

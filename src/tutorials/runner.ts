@@ -37,6 +37,13 @@ import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { simulationProjection } from "../sim/simulationContent";
 import { planningHost } from "../live/planningHost";
 import { capacityOverlay } from "../live/capacityOverlay";
+import {
+  cancelObservedWork,
+  observationPorts,
+  sameObservationSource,
+  type ProductObservations,
+} from "../lib/observations";
+import { workbenchDock } from "../canvas/inspector/dockState";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -102,6 +109,13 @@ export function createTutorialRunner(
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
     [
+      "dock",
+      "view",
+      "checks",
+      "export",
+      "import",
+      "aiTurn",
+      "collaboration",
       "live",
       "processed",
       "metric",
@@ -125,6 +139,10 @@ export function createTutorialRunner(
     (check.kind === "prop" && !!check.effective) ||
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
+  const moment = (check: Tutorial["steps"][number]["check"]): boolean =>
+    ["export", "import", "aiTurn", "collaboration"].includes(check.kind) ||
+    (check.kind === "all" && check.checks.some(moment));
+  const momentChecks = tutorial.steps.map((step) => moment(step.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
   const since = tutorial.steps.map((s) => sinceValues(s.check));
   const historical = tutorial.steps.map((s) => withoutSince(s.check));
@@ -141,6 +159,7 @@ export function createTutorialRunner(
   let state: RunnerState = machine.state;
   let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "", nearMiss: null, edges: {} };
   const listeners = new Set<() => void>();
+  let observations: Partial<ProductObservations> = {};
   const publish = (patch: Partial<RunnerSnapshot>) => {
     snapshot = { ...snapshot, ...patch };
     listeners.forEach((l) => l());
@@ -150,6 +169,8 @@ export function createTutorialRunner(
   let operation = new AbortController();
   const activeJobs = new Map<string, object>();
   const cancelWork = () => {
+    if (boundDocument?.id) cancelObservedWork({ documentId: boundDocument.id, identity: boundDocument.identity });
+    observations = {};
     generation++;
     operation.abort();
     operation = new AbortController();
@@ -199,6 +220,13 @@ export function createTutorialRunner(
     // Counters prove traffic only in the editor's flow. Undo can restore that basis without a rebuild.
     const session = currentSession?.diagramBasis === topology ? currentSession : undefined;
     const ui = planningHost.get();
+    const publishedDock = observationPorts.dock.get();
+    const dock =
+      publishedDock &&
+      publishedDock.documentId === h.canvas!.documentId &&
+      publishedDock.identity === ed.getDocumentVersion().identity
+        ? publishedDock
+        : undefined;
     return {
       diagram,
       live: !!h.canvas!.live,
@@ -216,6 +244,18 @@ export function createTutorialRunner(
       },
       readout: canvasInteraction.get()?.readouts?.get() ?? null,
       ...app,
+      observations: {
+        ...observations,
+        dock: observations.dock ??
+          dock ?? {
+            documentId: h.canvas!.documentId ?? "",
+            identity: ed.getDocumentVersion().identity,
+            tab: workbenchDock.get().value,
+            snap: workbenchDock.get().snap,
+            live: !!h.canvas!.live,
+            presenting: app.presenting,
+          },
+      },
       processed: (id: string) => session?.snapshot.nodes[id]?.processed ?? 0,
     };
   }
@@ -260,6 +300,10 @@ export function createTutorialRunner(
 
   /** The current step's guide for the canvas (quick-add opens searched for its pick); data, never a focus move. */
   function guide() {
+    delete observations.exports;
+    delete observations.imports;
+    delete observations.ai;
+    delete observations.collaboration;
     const step = inStep(state) ? tutorial.steps[state.index] : undefined;
     const quickAdd = step?.guide?.quickAdd?.();
     canvasInteraction.get()?.setGuide(quickAdd ? { quickAdd } : null);
@@ -295,16 +339,18 @@ export function createTutorialRunner(
     watchReadouts();
     const h = host.get();
     if (
-      (activeJobs.size > 0 || changed.size > 0) &&
       boundDocument &&
       h.canvas &&
       (h.canvas.documentId !== boundDocument.id ||
         (h.canvas.editor && h.canvas.editor.getDocumentVersion().identity !== boundDocument.identity))
     ) {
+      const demoPending = activeJobs.size > 0 || changed.size > 0;
       cancelWork();
       boundDocument = undefined;
-      send({ type: "documentReplaced" });
-      return;
+      if (demoPending) {
+        send({ type: "documentReplaced" });
+        return;
+      }
     }
     if (!h.canvas || !editor()) return changed.forEach((f) => f());
     if (!activeJobs.size && !changed.size)
@@ -326,9 +372,11 @@ export function createTutorialRunner(
     capture(v);
     const current = inStep(state) ? state.index : -1;
     const met = tutorial.steps.map((s, i) =>
-      dynamicChecks[i]
-        ? holds(s.check, i === current ? { ...v, baseline: state.baseline } : v, subjects)
-        : documentChecks[i],
+      momentChecks[i] && i !== current
+        ? state.observed[i]
+        : dynamicChecks[i]
+          ? holds(s.check, i === current ? { ...v, baseline: state.baseline } : v, subjects)
+          : documentChecks[i],
     );
     const settled = tutorial.steps.map((s, i) => {
       if (!s.settle || (met[i] && state.observed[i] && state.settled[i])) return true;
@@ -905,6 +953,30 @@ export function createTutorialRunner(
     const offDependencies = dependencyVisibility.subscribe(observe);
     const offPlanning = planningHost.subscribe(observe);
     const offOverlay = capacityOverlay.subscribe(observe);
+    const watch = <K extends keyof ProductObservations>(key: K) =>
+      observationPorts[key].subscribe((event: ProductObservations[K]) => {
+        if (["exports", "imports", "ai", "collaboration"].includes(key) && !inStep(state)) return;
+        const canvas = host.get().canvas;
+        if (!canvas || event.documentId !== canvas.documentId) return;
+        if (
+          "identity" in event &&
+          !sameObservationSource(event, {
+            documentId: canvas.documentId,
+            identity: canvas.editor.getDocumentVersion().identity,
+          })
+        )
+          return;
+        observations[key] = event;
+        observe();
+      });
+    const offObservations = [
+      watch("dock"),
+      watch("checks"),
+      watch("exports"),
+      watch("imports"),
+      watch("ai"),
+      watch("collaboration"),
+    ];
     sync();
     return () => {
       offHost();
@@ -913,6 +985,7 @@ export function createTutorialRunner(
       offDependencies();
       offPlanning();
       offOverlay();
+      offObservations.forEach((off) => off());
       offReadouts?.();
       offSession?.();
       offSlow?.();
