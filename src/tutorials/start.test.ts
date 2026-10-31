@@ -31,7 +31,7 @@ it("loads factories too and surfaces example failures instead of opening an empt
   await expect(loadTutorialStart({ ...mobileApi, start: { example: "missing" } })).rejects.toThrow("unavailable");
 });
 
-it("offers the first unfinished tutorial in the same track and none after the track is done", () => {
+it("offers unfinished lessons in chapter order, continuing into the next chapter", () => {
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     getItem: (k: string) => storage.get(k) ?? null,
@@ -44,6 +44,8 @@ it("offers the first unfinished tutorial in the same track and none after the tr
     saveProgress(completed, 0, true);
     expect(nextTutorial(mobileApi, [mobileApi, elsewhere, completed, next])).toBe(next);
     saveProgress(next, 0, true);
+    expect(nextTutorial(mobileApi, [mobileApi, elsewhere, completed, next])).toBe(elsewhere);
+    saveProgress(elsewhere, 0, true);
     expect(nextTutorial(mobileApi, [mobileApi, elsewhere, completed, next])).toBeUndefined();
   } finally {
     vi.unstubAllGlobals();

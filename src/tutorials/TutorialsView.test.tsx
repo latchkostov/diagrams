@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
 import { act } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { mobileApi } from "./catalog/mobileApi";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { toast } from "../interop/ui/toast";
 import { tutorials } from "./catalog";
-import { writeTutorials } from "./progress";
+import { savedProgress, writeTutorials } from "./progress";
 import { TutorialsView } from "./TutorialsView";
 
 let host: HTMLDivElement;
@@ -74,3 +76,12 @@ for (const step of [-1, 0.5, null, "1", 1000000]) {
     expect(control("tutorials-resume").textContent).toContain(lesson.steps[index].title());
   });
 }
+
+it.each([-1, 0.5, null, "bad", 1000000])("keeps the hub usable with stored step %s", (step) => {
+  const raw = JSON.stringify({ progress: { [mobileApi.id]: { version: mobileApi.version, step, completed: false } } });
+  localStorage.setItem("diagrams.tutorials.v1", raw);
+  const html = renderToStaticMarkup(<TutorialsView />);
+  expect(html).toContain('data-testid="tutorials-resume"');
+  expect(html).toContain('data-testid="tutorials-reset-basics"');
+  expect(savedProgress(mobileApi)?.step).toBe(step === 1000000 ? step : 0);
+});

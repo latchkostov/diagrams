@@ -11,15 +11,30 @@ const KEY = "tutorial";
 const OPENED = "livediagrams-tutorial";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
+let returnView: View | undefined;
+const onPop = () => {
+  if (returnView) {
+    const query = new URLSearchParams(window.location.search);
+    query.delete(KEY);
+    query.set("view", returnView);
+    returnView = undefined;
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}?${query}${window.location.hash}`,
+    );
+  }
+  emit();
+};
 
 export const tutorialRoute = {
   get: (): string | null => new URLSearchParams(window.location.search).get(KEY),
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
-    window.addEventListener("popstate", listener);
+    window.addEventListener("popstate", onPop);
     return () => {
       listeners.delete(listener);
-      window.removeEventListener("popstate", listener);
+      if (!listeners.size) window.removeEventListener("popstate", onPop);
     };
   },
   open(id: string, replace = false): void {
@@ -44,10 +59,21 @@ export const tutorialRoute = {
     window.history.pushState(null, "", `${window.location.pathname}?${query}`);
     emit();
   },
-  /** Back where the tutorial was opened from; a tutorial reached by its link goes to the app instead. */
+  /** Safe to pass directly to a React click handler. */
   close(): void {
-    if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) return window.history.back();
-    window.history.replaceState(null, "", `${window.location.pathname}?view=canvas${window.location.hash}`);
+    tutorialRoute.returnTo();
+  },
+  /** Pop the lesson entry when present; an explicit destination replaces the restored view, keeping Back intact. */
+  returnTo(view?: View): void {
+    if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) {
+      returnView = view;
+      return window.history.back();
+    }
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?view=${view ?? "canvas"}${window.location.hash}`,
+    );
     emit();
   },
 };
