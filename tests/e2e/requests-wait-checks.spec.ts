@@ -7,10 +7,59 @@ import {
   STORAGE_KEYS,
   pauseClock,
   openCheckFinding,
+  animationFrames,
 } from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
+import { waitForBackgroundChecks } from "./checks-readiness";
+import { installChecksMeasurement } from "./checks-measurement";
+import type { Page } from "@playwright/test";
+
+async function openVerifiedChecks(page: Page) {
+  await waitForBackgroundChecks(page);
+  await page.getByTestId("checks-count").focus();
+  await page.keyboard.press("Enter");
+}
+
+test("verified keyboard setup waits for the real background result before opening Checks", async ({ page }) => {
+  await page.addInitScript(installChecksMeasurement);
+  await page.addInitScript(
+    ({ key, d }) => {
+      window.__checkResults.held = true;
+      localStorage.setItem(key, JSON.stringify(d));
+    },
+    { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy },
+  );
+  await gotoCanvas(page, "scale-on-busy-threads");
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const queued = () => {
+          if (window.__checkResults.queued.length) resolve();
+          else requestAnimationFrame(queued);
+        };
+        queued();
+      }),
+  );
+  let opened = false;
+  const opening = openVerifiedChecks(page).then(() => {
+    opened = true;
+  });
+  try {
+    // The canvas remains keyboard-usable while the genuine worker response is held.
+    await page.getByTestId("canvas-wrap").focus();
+    await animationFrames(page);
+    expect(opened).toBe(false);
+    await expect(page.getByTestId("checks-card")).toHaveCount(0);
+    await page.evaluate(() => window.__checkResults.release());
+    await opening;
+    await expect(page.getByTestId("check-fix-blocked-threads:caller")).toBeEnabled();
+  } finally {
+    await page.evaluate(() => window.__checkResults.release());
+    await opening;
+  }
+});
 
 test("worker fallback keeps the displayed timeout actionable", async ({ page }) => {
   await page.addInitScript(
@@ -74,8 +123,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
       { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy, locale },
     );
     await gotoCanvas(page, "scale-on-busy-threads");
-    await page.getByTestId("checks-count").focus();
-    await page.keyboard.press("Enter");
+    await openVerifiedChecks(page);
     const primary = page.getByTestId("check-fix-blocked-threads:caller");
     const blind = page.getByTestId("check-fix-scaling-blind:caller");
     await expect(primary).toBeEnabled();
@@ -147,6 +195,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     });
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     // The first check (in the worker, verification replays included) has finished.
+    await waitForBackgroundChecks(page);
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await page.getByTestId("node-caller").dblclick();
     const free = page.getByTestId("inspector-check-fix-option-0-blocked-threads:caller");
