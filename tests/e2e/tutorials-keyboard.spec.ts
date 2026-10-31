@@ -13,6 +13,7 @@ import {
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
 import { chooseNativeSelect } from "./native-select";
+import { CATCH_UP_MS } from "../../src/live/frameClock";
 
 class CompletedStep extends Error {}
 
@@ -109,11 +110,14 @@ async function edge(page: Page, id: string) {
 
 async function waitForScheduledNote(page: Page) {
   await expect
-    .poll(async () => {
-      if (await page.getByTestId("live-note-continue").isVisible()) return true;
-      await page.clock.runFor(1000);
-      return page.getByTestId("live-note-continue").isVisible();
-    })
+    .poll(
+      async () => {
+        if (await page.getByTestId("live-note-continue").isVisible()) return true;
+        await page.clock.fastForward(CATCH_UP_MS);
+        return page.getByTestId("live-note-continue").isVisible();
+      },
+      { intervals: [0] },
+    )
     .toBe(true);
 }
 
@@ -513,7 +517,8 @@ test("keyboard scheduled-note navigation advances the simulation until its real 
   await expect(page.getByTestId("tutorial-start")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
-  await play(page, { activate: "live-toggle" });
+  await command(page, "live:toggle", ">");
+  await waitForLiveSession(page);
   await play(page, { choose: "live-sim-picker", value: "outage-replay" });
   await pauseClock(page);
   await waitForScheduledNote(page);
