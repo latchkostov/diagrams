@@ -39,6 +39,7 @@ async function chooseRow(page: Page, id: string) {
 }
 
 async function command(page: Page, id: string, query: string) {
+  if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")) throw new CompletedStep();
   await page.keyboard.press("ControlOrMeta+k");
   await expect(page.getByTestId("command-input")).toBeFocused();
   await write(page, query);
@@ -52,7 +53,12 @@ async function node(page: Page, id: string) {
     .poll(
       async () =>
         (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")) ||
-        (await page.getByTestId(`node-${id}`).evaluate((el) => !!document.activeElement?.contains(el))),
+        (await page
+          .getByTestId(`node-${id}`)
+          .evaluate(
+            (el, id) => document.activeElement?.getAttribute("data-id") === id && document.activeElement.contains(el),
+            id,
+          )),
     )
     .toBe(true);
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
@@ -67,14 +73,35 @@ async function edge(page: Page, id: string) {
   await node(page, from);
   const target = page.getByTestId(`edge-${id}`);
   const count = await page.evaluate(() => window.__tutorial?.diagram().edges.length ?? 0);
+  const state = () =>
+    page.evaluate(() => ({
+      finished: window.__tutorial?.snapshot().state.value === "finished",
+      id: document.activeElement?.getAttribute("data-id"),
+    }));
   for (let i = 0; i < count; i++) {
-    const before = await page.evaluate(() => document.activeElement?.getAttribute("data-id"));
+    const before = await state();
+    if (before.finished) throw new CompletedStep();
     // eslint-disable-next-line no-restricted-syntax -- canvas connection navigation is literal Ctrl on every platform
     await page.keyboard.press("Control+Alt+]");
-    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-id"))).not.toBe(before);
+    let finished = false;
+    await expect
+      .poll(async () => {
+        const next = await state();
+        finished = next.finished;
+        return finished || next.id !== before.id;
+      })
+      .toBe(true);
+    if (finished) throw new CompletedStep();
     // Focus settles on a frame after the selection; the camera's idle state includes that reveal.
     await waitForCameraIdle(page);
-    if (await target.evaluate((el) => !!document.activeElement?.contains(el))) return;
+    if ((await state()).finished) throw new CompletedStep();
+    if (
+      await target.evaluate(
+        (el, id) => document.activeElement?.getAttribute("data-id") === id && document.activeElement.contains(el),
+        id,
+      )
+    )
+      return;
   }
   throw new Error(`Keyboard could not reach edge ${id}`);
 }
@@ -495,6 +522,81 @@ test("keyboard canvas navigation exits when the lesson has already finished", as
   }
   await expect(page.getByTestId("tutorial-finished")).toBeVisible();
   await expect(node(page, "api")).rejects.toBeInstanceOf(CompletedStep);
+  await expect(command(page, "node:api", "@ api")).rejects.toBeInstanceOf(CompletedStep);
+});
+
+test("keyboard node navigation waits for the item's focus, not its containing canvas", async ({ page }) => {
+  await page.goto("./?tutorial=property-sheet");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.evaluate(() => {
+    const original = HTMLElement.prototype.focus;
+    const pending: (() => void)[] = [];
+    const hold = (window.__keyboardFocusHold = {
+      pending: false,
+      release() {
+        HTMLElement.prototype.focus = original;
+        for (const focus of pending.splice(0)) focus();
+        delete window.__keyboardFocusHold;
+      },
+    });
+    HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+      if (this.getAttribute("data-id") === "api") {
+        hold.pending = true;
+        pending.push(() => original.call(this, options));
+      } else original.call(this, options);
+    };
+  });
+  let settled = false;
+  const choosing = node(page, "api").then(() => {
+    settled = true;
+  });
+  try {
+    await expect.poll(() => page.evaluate(() => window.__keyboardFocusHold?.pending)).toBe(true);
+    await waitForCameraIdle(page);
+    await animationFrames(page);
+    expect(settled).toBe(false);
+    await page.evaluate(() => window.__keyboardFocusHold?.release());
+    await choosing;
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("api");
+  } finally {
+    await page.evaluate(() => window.__keyboardFocusHold?.release());
+    await choosing;
+  }
+});
+
+declare global {
+  interface Window {
+    __keyboardFocusHold?: { pending: boolean; release(): void };
+  }
+}
+
+test("keyboard edge navigation yields when the lesson finishes during its keypress", async ({ page }) => {
+  await page.goto("./?tutorial=circuit-breaker");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  const first = await page.evaluate(() => window.__tutorial?.diagram().edges[0]?.id);
+  if (!first) throw new Error("Missing fixture edge");
+  const press = page.keyboard.press.bind(page.keyboard);
+  page.keyboard.press = async (key, options) => {
+    // eslint-disable-next-line no-restricted-syntax -- connection navigation uses literal Ctrl on every platform
+    if (key === "Control+Alt+]") {
+      const steps = await page.evaluate(() => window.__tutorial?.snapshot().state.stepIds.length ?? 0);
+      for (let i = 0; i < steps && !(await page.getByTestId("tutorial-finished").isVisible()); i++) {
+        const before = await page.getByTestId("tutorial-step").getAttribute("data-step");
+        await page.getByTestId("tutorial-skip").click();
+        await expect(page.getByTestId("tutorial-step")).not.toHaveAttribute("data-step", before ?? "");
+      }
+      await expect(page.getByTestId("tutorial-finished")).toBeVisible();
+    }
+    await press(key, options);
+  };
+  await expect(edge(page, first)).rejects.toBeInstanceOf(CompletedStep);
 });
 
 test("keyboard control traversal reads a bounded amount of browser state per key", async ({ page }) => {
