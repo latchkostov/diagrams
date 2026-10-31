@@ -260,7 +260,10 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await expect(field).toHaveValue("threadsBusy");
     await field.focus();
     await expect(field).toBeFocused();
+    // macOS opens the popup on ArrowDown; a later Tab cancels that choice. Explicitly open and commit it.
+    await field.press("Space");
     await field.press("ArrowDown");
+    await field.press("Enter");
     await field.press("Tab");
     await expect(field).toHaveValue("threadsWaiting");
     const words = await field.evaluate((el: HTMLSelectElement) => el.selectedOptions[0].textContent);

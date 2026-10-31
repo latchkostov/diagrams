@@ -84,7 +84,11 @@ test("R-caf692ac78 phone Speed retains native navigation keys", async ({ page })
     ).toBe(true);
     await expect(speed).toBeFocused();
   }
+  // Open the native popup, navigate, then commit. macOS leaves a closed select unchanged on End;
+  // Tab dismisses its popup without accepting the highlighted choice.
+  await speed.press("Space");
   await speed.press("End");
+  await speed.press("Enter");
   await speed.press("Tab");
   await expect(speed).toHaveValue("8");
 });
