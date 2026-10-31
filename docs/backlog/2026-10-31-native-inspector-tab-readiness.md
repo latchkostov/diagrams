@@ -1,0 +1,7 @@
+## Wait for the replacement inspector's actual fields before testing Tab
+
+The inspector-alternative case failed in English on macOS and reproduces in Arabic in three of five Linux repetitions at eight workers/four CPUs. The original 130-execution cohort has 127 passed and three failures. Focus restoration itself passes: `inspector-body` is focused. Trace `rT2ivtV/e3` presses Tab at 36581 ms while that body is empty; the lazy diagram panel's controls first appear at 36790 ms. Its asset response finished earlier, so network completion alone does not establish a rendered panel.
+
+Wait for the real `inspector-field-title` before sending Tab. Keep the existing body-focus assertion, Tab containment assertion, translated fixtures, model edit and Undo checks. A new regression holds the real DiagramPanel download and proves no Tab is sent until its fields render. Do not add a product focus trap: the existing fallback focus is already correct, and the modeless inspector should retain its normal navigation.
+
+The complete file passes 40 native Windows and 40 Linux executions, two repetitions each. Removing the rendered-field wait fails the held-download regression with `tabbed=true` before the module is released; the tested bytes are restored afterward. The expanded five-repeat cohort passes all 135 executions at eight workers/four CPUs, including all 15 inspector-focus executions across three locales. No timeouts, animation durations, tolerances or application behavior change.

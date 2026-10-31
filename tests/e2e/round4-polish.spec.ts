@@ -1,4 +1,4 @@
-import { waitForStableViewport, openDiagramProperties } from "./fixtures";
+import { waitForStableViewport, waitForCameraIdle, openDiagramProperties } from "./fixtures";
 import { TEXT_END } from "./fixtures";
 import { copyFileSync, readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
@@ -33,6 +33,8 @@ async function openNative(page: Page, diagram: Record<string, unknown>) {
     buffer: Buffer.from(JSON.stringify({ format: "diagrams/v1", ...diagram })),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(String(diagram.title));
+  // Import publishes the title before the new document's initial fit has completed.
+  await waitForCameraIdle(page);
 }
 
 /** Someone who keeps the inspector on: below 1680px it waits for a selection, then narrows the canvas. */

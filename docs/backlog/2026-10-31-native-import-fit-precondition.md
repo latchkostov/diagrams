@@ -1,0 +1,5 @@
+## Initial import geometry belongs after the fit controller
+
+Nightly 41190929111, macOS shard 2, fails the existing 1024-pixel annotation/inspector case before selecting anything: the note's right edge is 665, while the fixture requires it beyond 780. Its trace records `data-fit-pending=true` and `data-camera-state=pending` at the imported title, note visibility and collapsed-inspector observations immediately before those boxes are read. The geometry is from an unfinished document replacement, not a completed selection pan.
+
+The native-file helper now waits for the existing camera-idle signal after the title publishes. All five import fixtures in this spec use real page clocks. The original right-edge precondition and exact subsequent containment assertions remain unchanged. No positions, tolerances, timeouts, worker budgets or application code change. The existing native case is the regression: the preceding macOS run fails without this readiness boundary; the final branch dispatch supplies the affected-OS after result. Local Windows and Linux run the complete affected spec twice, plus Linux focus/geometry neighbours under load.

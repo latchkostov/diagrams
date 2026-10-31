@@ -1775,6 +1775,8 @@ test("documentation tooltips fit the viewport using their rendered height", asyn
     await page.mouse.wheel(0, before.y - 150);
     await waitForStableViewport(page);
     await expect.poll(async () => (await box(node)).y).toBeLessThan(200);
+    // A wheel can dismiss a tooltip while the last hit target is still this node. Begin a fresh hover.
+    await page.getByTestId("canvas-wrap").hover({ position: await emptyCanvasPoint(page) });
     await node.hover();
     const tip = page.getByTestId("node-tooltip");
     await expect(page.getByTestId("node-tooltip-doc")).toBeVisible();

@@ -1,0 +1,7 @@
+## Coordinate fake playback with real paints
+
+Nightly 41196683594, Windows shard 4, fails the calm-speed case at its initial particle assertion: simulation time reaches 1920, while the published UI counter remains at 7 particles and 2 frames throughout the paused-clock poll. The renderer permits one frame in flight and drops subsequent frame submissions until its real ACK arrives. Advancing a page clock alone cannot complete that round trip or republish its UI counters.
+
+The case starts from the same free-play scene paused, prepares the actual renderer, and measures completed paints through the existing observer and FIFO readback. It uses the original quarter-second sampling slices for preparation too, finishing the prior paint before the next slice. Total fake preparation time remains 1500 then 2500 ms; both twelve-slice averages and every original threshold (60, 70, 50, 8 and the 0.8 in-system ratio) remain unchanged. A real first ACK is held for the first slice and released before the remaining slices, exercising slow-worker startup deterministically. Reinstating the unsynchronized warmup must fail the existing particle assertion.
+
+These are normal-detail paint counts. The test confirms that precondition; far-zoom UI assertions keep their deliberate zero semantics. The message-in-system counter continues to use its original UI metric. No fake particle values, synthetic worker replies, timing budgets, tolerances or application changes.

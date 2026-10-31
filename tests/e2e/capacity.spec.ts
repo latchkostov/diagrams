@@ -2,6 +2,7 @@ import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, gotoLive, fitDiagram, pauseClock } from "./fixtures";
 import { interactionJournalMark, interactionLog } from "./fixtures";
+import { holdResizeObservers } from "../parity/browser/holdReadiness";
 
 // Inputs & capacity: the presenter's what-if flow (Black Friday at 3×, the heat map, Apply fix),
 // undo, "Save to simulation" across a reload, the heat map in edit mode, and real units.
@@ -306,6 +307,20 @@ const topology = async (page: Page) => ({
   edges: await testIds(page, /^edge-(?!label-)/),
 });
 
+async function expectTopology(
+  page: Page,
+  expected: Awaited<ReturnType<typeof topology>>,
+  observed?: (snapshot: Awaited<ReturnType<typeof topology>>) => void,
+) {
+  await expect
+    .poll(async () => {
+      const snapshot = await topology(page);
+      observed?.(snapshot);
+      return snapshot;
+    })
+    .toEqual(expected);
+}
+
 /** "Traffic into Order API" from the Inputs panel; returns the new entry point's node id. */
 async function addEntryIntoApi(page: Page): Promise<string> {
   await page.getByTestId("live-toggle").click();
@@ -325,6 +340,7 @@ async function addEntryIntoApi(page: Page): Promise<string> {
 test.describe("entry points (sixth review)", () => {
   test("adding an entry point is one undoable topology edit", async ({ page }) => {
     await openInEditor(page, ORDERS);
+    await expect(page.getByTestId(/^edge-(?!label-)/)).toHaveCount(ORDERS.edges.length);
     const before = await topology(page);
     expect(before.nodes).toHaveLength(5);
     const id = await addEntryIntoApi(page);
@@ -340,12 +356,53 @@ test.describe("entry points (sixth review)", () => {
     await page.getByTestId("undo-button").click();
     await expect(page.getByTestId(`node-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(newEdges[0])).toHaveCount(0);
-    expect(await topology(page)).toEqual(before);
+    await expectTopology(page, before);
     // One redo brings both back.
     await page.getByTestId("redo-button").click();
     await expect(page.getByTestId(`node-${id}`)).toBeVisible();
     await expect(page.getByTestId(newEdges[0])).toBeAttached();
-    expect(await topology(page)).toEqual(added);
+    await expectTopology(page, added);
+  });
+
+  test("Undo waits for restored node measurements before comparing its full topology", async ({ page }) => {
+    await page.addInitScript(holdResizeObservers, false);
+    await openInEditor(page, ORDERS);
+    await expect(page.getByTestId(/^edge-(?!label-)/)).toHaveCount(ORDERS.edges.length);
+    const before = await topology(page);
+    const id = await addEntryIntoApi(page);
+    await page.getByTestId("capacity-close").click();
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+    await page.evaluate(() => window.dispatchEvent(new Event("hold-resize-observers")));
+    let verifying: Promise<void> | undefined;
+    let failure: unknown;
+    try {
+      await page.getByTestId("undo-button").click();
+      await expect(page.getByTestId(`node-${id}`)).toHaveCount(0);
+      await expect
+        .poll(() => page.evaluate(() => (window as unknown as { heldResizeObservers(): number }).heldResizeObservers()))
+        .toBeGreaterThan(0);
+      let read!: (snapshot: Awaited<ReturnType<typeof topology>>) => void;
+      const firstRead = new Promise<Awaited<ReturnType<typeof topology>>>((resolve) => (read = resolve));
+      let finished = false;
+      verifying = expectTopology(page, before, read).then(
+        () => {
+          finished = true;
+        },
+        (error: unknown) => {
+          finished = true;
+          failure = error;
+        },
+      );
+      expect((await firstRead).edges).toEqual([]);
+      await Promise.resolve();
+      expect(finished).toBe(false);
+    } finally {
+      await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+      await verifying;
+    }
+    if (failure) throw failure;
+    expect(await topology(page)).toEqual(before);
   });
 
   test("a new entry point commits 5k as 5,000 msg/s, and Save keeps it across a reload", async ({ page }) => {

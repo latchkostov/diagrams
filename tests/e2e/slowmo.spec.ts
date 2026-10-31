@@ -15,6 +15,7 @@ import {
 import { expectLiveParticles } from "./node-identity";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { installParticleCounters, rendererCounters } from "./particle-counters";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -534,23 +535,49 @@ test("Record this slow motion plays it from the start and stops at its end", asy
 test.describe("calmer slow speeds", () => {
   test("0.25× draws a calm sample of whole journeys; counts stay exact", async ({ page, consoleErrors }) => {
     test.slow();
+    await installParticleCounters(page);
     await page.clock.install();
-    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await waitForCameraIdle(page);
+    await expect(canvas(page)).toHaveAttribute("data-renderer", /worker|main/);
+    await expect.poll(() => page.evaluate(() => typeof window.__liveProbe)).toBe("function");
+    await rendererCounters(page, true);
+    // This measures paints at normal detail. Far-zoom UI particle counts intentionally mean something else.
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom", "far");
     await pauseClock(page);
+    const particles = async () => (await rendererCounters(page, true)).particles;
+    const advance = async (ms: number) => {
+      // A worker has one frame in flight: finish it before advancing the next authored quarter-second slice.
+      for (let remaining = ms; remaining > 0; remaining -= 250) {
+        await page.clock.runFor(Math.min(250, remaining));
+        await rendererCounters(page, true);
+      }
+    };
     const sample = async () => {
       const out: number[] = [];
       for (let i = 0; i < 12; i++) {
-        await page.clock.runFor(250);
-        out.push(Number(await data(page, "particles")));
+        await advance(250);
+        out.push(await particles());
       }
       return out.reduce((a, b) => a + b, 0) / out.length;
     };
-    await page.clock.runFor(1500);
-    await expect.poll(async () => Number(await data(page, "particles"))).toBeGreaterThan(60);
+    // Reproduce a late first reply without substituting any drawing or worker result.
+    await page.evaluate(() => window.__particleCounters?.holdReports());
+    try {
+      await page.getByTestId("live-play").click();
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+      await page.clock.runFor(250);
+    } finally {
+      await page.evaluate(() => window.__particleCounters?.releaseReports());
+    }
+    await rendererCounters(page, true);
+    await advance(1250);
+    await expect.poll(particles).toBeGreaterThan(60);
     const full = await sample();
     expect(full).toBeGreaterThan(70);
     await page.getByTestId("live-speed").selectOption("0.25");
-    await page.clock.runFor(2500);
+    await advance(2500);
     const calm = await sample();
     expect(calm).toBeLessThan(50);
     expect(calm).toBeGreaterThan(8);

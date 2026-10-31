@@ -11,6 +11,7 @@ import {
 } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { zoomIdentity } from "./node-identity";
+import { installParticleCounters, rendererCounters } from "./particle-counters";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
 // the Live dot's breath in a worker, on OffscreenCanvas (src/live/liveRenderer.ts); where that isn't
@@ -21,10 +22,36 @@ import { zoomIdentity } from "./node-identity";
 const KAFKA = "kafka-order-pipeline";
 const PILL = "shopper-to-gateway"; // "HTTPS": the entry edge, always busy
 const canvas = (page: Page) => page.getByTestId("live-canvas");
-const count = async (page: Page, name: string) => Number(await canvas(page).getAttribute(`data-${name}`));
+const count = async (page: Page, name: "particles" | "frames") =>
+  name === "frames" ? (await rendererCounters(page)).frames : Number(await canvas(page).getAttribute("data-particles"));
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 
 type Renderer = "worker" | "main";
+
+test.beforeEach(async ({ page }) => {
+  await installParticleCounters(page);
+});
+
+test("worker paint counters remain observable while UI reports are held", async ({ page }) => {
+  await goLive(page, "worker");
+  await zoomIdentity(page, 0.8);
+  await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-glow", "canvas");
+  await expect.poll(() => page.evaluate(() => typeof window.__liveProbe)).toBe("function");
+  const before = await page.evaluate(() => {
+    const counters = window.__particleCounters;
+    if (!counters) throw new Error("Expected the particle counter observer");
+    return counters.holdReports();
+  });
+  try {
+    await page.getByTestId("canvas-wrap").hover();
+    await page.mouse.wheel(0, 32);
+    await expect.poll(() => page.evaluate(() => window.__particleCounters?.held() ?? 0)).toBeGreaterThan(0);
+    expect((await rendererCounters(page, true)).frames).toBeGreaterThan(before);
+    expect(Number(await canvas(page).getAttribute("data-frames"))).toBeLessThanOrEqual(before);
+  } finally {
+    await page.evaluate(() => window.__particleCounters?.releaseReports());
+  }
+});
 
 async function goLive(page: Page, renderer: Renderer, query = "") {
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1${renderer === "main" ? "&renderer=main" : ""}${query}`);

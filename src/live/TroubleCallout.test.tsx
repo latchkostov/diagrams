@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { expect, it, vi } from "vitest";
 import { TroubleCallout } from "./TroubleCallout";
+import { BottleneckCallout } from "./BottleneckCallout";
 
 it("the consumer tutorial target stays inside the existing action button", () => {
   const html = renderToStaticMarkup(
@@ -58,6 +59,38 @@ it("clicking the consumer alias activates the existing action", () => {
       "Add a consumer",
       expect.any(Function),
     );
+  } finally {
+    flushSync(() => root.unmount());
+    host.remove();
+  }
+});
+
+it("the consumer tutorial action works when capacity replaces the Trouble callout", () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const addConsumer = vi.fn();
+  try {
+    flushSync(() =>
+      root.render(
+        <BottleneckCallout
+          view={{
+            nodes: {},
+            tone: "warn",
+            headline: "Nobody reads Orders",
+            detail: "Messages wait for a reader.",
+            fix: null,
+            addConsumer: "orders",
+            converged: true,
+          }}
+          onAddConsumer={addConsumer}
+        />,
+      ),
+    );
+    const target = host.querySelector<HTMLElement>('[data-testid="trouble-add-consumer"]');
+    expect(target).not.toBeNull();
+    target!.click();
+    expect(addConsumer).toHaveBeenCalledExactlyOnceWith("orders");
   } finally {
     flushSync(() => root.unmount());
     host.remove();

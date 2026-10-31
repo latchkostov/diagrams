@@ -64,6 +64,8 @@ export function failureSummary(inputs) {
       notes.push(
         `Interrupted: ${report.reason ?? `${report.completed} of ${report.expectedTests} tests completed; counts are partial`}.`,
       );
+    for (const test of report.unfinished ?? [])
+      notes.push(`- ${test.file}:${test.line} › ${test.title} [${test.projectName}]: unfinished (${test.state})`);
     if (report.stats && (native || report.interrupted)) {
       const s = report.stats;
       notes.push(`Recorded: ${s.expected} passed, ${s.unexpected} failed, ${s.flaky} flaky, ${s.skipped} skipped.`);

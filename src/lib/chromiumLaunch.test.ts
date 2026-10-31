@@ -1,8 +1,26 @@
 import { expect, it } from "vitest";
 import { chromiumLaunchArgs, playwrightChromiumArgs } from "../../scripts/e2e-chromium";
 
-it.each(["linux", "darwin"] as const)("retains ordinary Chromium flags on %s", (platform) => {
-  expect(chromiumLaunchArgs("127.0.0.1", platform)).toEqual(["--host-resolver-rules=MAP localhost 127.0.0.1"]);
+it.each(["linux", "darwin"] as const)("retains ordinary Chromium flags for the mDNS diagnostic on %s", (platform) => {
+  expect(chromiumLaunchArgs("127.0.0.1", platform, { directHostCandidates: false })).toEqual([
+    "--host-resolver-rules=MAP localhost 127.0.0.1",
+  ]);
+});
+
+it("uses direct host candidates only by default on macOS, preserving the pinned feature flags", () => {
+  const disabled = playwrightChromiumArgs().find((arg) => arg.startsWith("--disable-features="));
+  expect(chromiumLaunchArgs("127.0.0.1", "darwin")).toEqual([
+    "--host-resolver-rules=MAP localhost 127.0.0.1",
+    `${disabled},WebRtcHideLocalIpsWithMdns`,
+  ]);
+  expect(chromiumLaunchArgs("127.0.0.1", "linux")).toEqual(["--host-resolver-rules=MAP localhost 127.0.0.1"]);
+});
+
+it("can compare direct candidates with mDNS without re-enabling Windows port randomization", () => {
+  const args = chromiumLaunchArgs("127.0.0.1", "win32", { directHostCandidates: true });
+  expect(args.at(-1)).toBe(
+    `${playwrightChromiumArgs().find((arg) => arg.startsWith("--disable-features="))},TcpPortRandomizationWin,WebRtcHideLocalIpsWithMdns`,
+  );
 });
 
 it("disables Windows port randomization while preserving every pinned Playwright feature flag", () => {

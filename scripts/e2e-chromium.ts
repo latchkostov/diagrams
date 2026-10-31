@@ -19,15 +19,24 @@ export function playwrightChromiumArgs(): string[] {
   return core.server.createPlaywright({ sdkLanguage: "javascript" }).chromium._innerDefaultArgs({});
 }
 
-export function chromiumLaunchArgs(loopback: string, platform: NodeJS.Platform = process.platform): string[] {
+export function chromiumLaunchArgs(
+  loopback: string,
+  platform: NodeJS.Platform = process.platform,
+  { directHostCandidates = platform === "darwin" }: { directHostCandidates?: boolean } = {},
+): string[] {
   const args = [`--host-resolver-rules=MAP localhost ${loopback}`];
-  if (platform !== "win32") return args;
+  const features: string[] = [];
   // Chromium 156's randomized Windows loopback connects can fail with WSAENOBUFS (10055), before HTTP.
   // A standalone tiny-page probe reproduced it. Disable only this test-browser feature, not error assertions.
+  if (platform === "win32") features.push("TcpPortRandomizationWin");
+  // Native macOS CI peers share a runner. Direct host candidates avoid mDNS's Local Network permission prompt
+  // in its headless browser. The diagnostic explicitly compares both modes on that same machine.
+  if (directHostCandidates) features.push("WebRtcHideLocalIpsWithMdns");
+  if (!features.length) return args;
   const disabled = playwrightChromiumArgs().filter((arg) => arg.startsWith("--disable-features="));
   if (disabled.length !== 1 || disabled[0] === "--disable-features=")
-    throw new Error("Review Windows Chromium launch flags after the Playwright upgrade: expected one feature list");
+    throw new Error("Review Chromium launch flags after the Playwright upgrade: expected one feature list");
   // Chrome honors the last switch: a bare new list would re-enable Playwright's other disabled features.
-  args.push(`${disabled[0]},TcpPortRandomizationWin`);
+  args.push(`${disabled[0]},${features.join(",")}`);
   return args;
 }

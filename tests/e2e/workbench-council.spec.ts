@@ -1,4 +1,14 @@
 import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForCameraIdle } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { waitForSelectionSettled } from "./fixtures";
+
+async function planningNoteInset(page: Page) {
+  await waitForSelectionSettled(page);
+  const dock = await page.getByTestId("inspector").boundingBox();
+  const box = await page.getByTestId("planning-unavailable").boundingBox();
+  if (!dock || !box) throw new Error("Expected planning note");
+  return box.x - dock.x;
+}
 
 for (const width of [1440, 390])
   for (const theme of ["light", "dark"])
@@ -79,12 +89,40 @@ test("council inspector note has an inset and the description hint does not trun
   await gotoCanvas(page, "outbox-saga-checkout");
   await page.getByTestId("node-order-api").click();
   const note = page.getByTestId("planning-unavailable");
-  const dock = await page.getByTestId("inspector").boundingBox();
-  const box = await note.boundingBox();
-  if (!dock || !box) throw new Error("Expected planning note");
-  expect(box.x - dock.x).toBeGreaterThanOrEqual(16);
+  expect(await planningNoteInset(page)).toBeGreaterThanOrEqual(16);
   await expect(note).toContainText("ⓘ");
   await expect(page.getByTestId("toolbar-divider-collapse")).toHaveCount(0);
+});
+
+test("inspector inset measurement waits for the deferred selection reveal", async ({ page }) => {
+  await gotoCanvas(page, "outbox-saga-checkout");
+  await waitForCameraIdle(page);
+  await page.clock.install();
+  await pauseClock(page);
+  await page.getByTestId("node-order-api").click();
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+  let returned = false;
+  const reading = planningNoteInset(page).then(
+    (inset) => {
+      returned = true;
+      return { inset };
+    },
+    (error: unknown) => {
+      returned = true;
+      return { error };
+    },
+  );
+  try {
+    await page.evaluate(() => undefined);
+    expect(returned, "a held reveal cannot publish geometry from the collapsed dock").toBe(false);
+    await page.clock.resume();
+    const measured = await reading;
+    if ("error" in measured) throw measured.error;
+    expect(measured.inset).toBeGreaterThanOrEqual(16);
+  } finally {
+    await page.clock.resume();
+    await reading;
+  }
 });
 
 for (const theme of ["light", "dark"])

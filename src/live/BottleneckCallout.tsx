@@ -71,7 +71,7 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
           disabled={!!disabledHint}
           title={disabledHint ?? "Add a service that reads it (undo with Ctrl+Z)"}
         >
-          <LiveIcon name="plus" size={13} /> Add a consumer
+          <LiveIcon name="plus" size={13} /> <span data-testid="trouble-add-consumer">Add a consumer</span>
         </button>
       ) : fix && onApply ? (
         <button
