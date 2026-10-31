@@ -131,6 +131,27 @@ test("trace-slowmo: keyboard Escape stops when the lesson finishes, preserving L
   await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
 });
 
+test("keyboard menu confirmation releases the camera work deferred by that menu", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="canvas-wrap" data-camera-state="deferred" data-interaction-state="menu-open"><input data-testid="quick-add-search"></div>',
+  );
+  await page.getByTestId("quick-add-search").evaluate((input) => {
+    input.addEventListener("keydown", (event) => {
+      if ((event as KeyboardEvent).key !== "Enter") return;
+      const canvas = input.parentElement;
+      if (!canvas) throw new Error("Missing menu's camera owner");
+      input.remove();
+      canvas.setAttribute("data-interaction-state", "idle");
+      canvas.setAttribute("data-camera-state", "idle");
+      canvas.setAttribute("data-confirmations", "1");
+    });
+  });
+  await page.getByTestId("quick-add-search").focus();
+  await play(page, { press: "Enter" });
+  await expect(page.getByTestId("quick-add-search")).toHaveCount(0);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-confirmations", "1");
+});
+
 test("keyboard scheduled-note navigation advances the simulation until its real pause", async ({ page }) => {
   await page.clock.install();
   await page.goto("./?tutorial=webhooks");

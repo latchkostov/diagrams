@@ -409,7 +409,20 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
     if (action.into) await expect(page.getByTestId(action.into)).toBeFocused();
     await page.keyboard.insertText(action.type);
   } else {
-    await waitForCameraIdle(page);
+    // An open menu intentionally defers pane work. Its Enter/Escape must run before
+    // the camera can become idle; canvas keys still wait for their settled frame.
+    await expect
+      .poll(() =>
+        page
+          .getByTestId("canvas-wrap")
+          .evaluate(
+            (canvas) =>
+              canvas.getAttribute("data-camera-state") === "idle" ||
+              (canvas.getAttribute("data-camera-state") === "deferred" &&
+                canvas.getAttribute("data-interaction-state") === "menu-open"),
+          ),
+      )
+      .toBe(true);
     if (action.press === "ControlOrMeta+d")
       await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
     await page.keyboard.press(action.press);
