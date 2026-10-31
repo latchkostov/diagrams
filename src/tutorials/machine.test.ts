@@ -273,7 +273,7 @@ describe("tutorial step runner", () => {
       : runnerMachine;
     const paths = machinePaths(definition, { maxDepth: 4 });
     expect(new Set(paths.map((p) => p.state.value))).toEqual(
-      new Set(["intro", "active", "hinting", "completing", "finished", "closed"]),
+      new Set(["intro", "active", "hinting", "completing", "failed", "finished", "closed"]),
     );
     for (const { state } of paths) {
       expect(state.index).toBeGreaterThanOrEqual(0);
@@ -285,7 +285,7 @@ describe("tutorial step runner", () => {
       }
       if (state.value === "finished") expect(firstOpen(state)).toBe(state.observed.length);
       // A baseline belongs to the current step: none in the intro, during reconstruction, once finished or closed.
-      if (!inStep(state)) expect(state.baseline).toEqual({});
+      if (!inStep(state) && state.value !== "failed") expect(state.baseline).toEqual({});
       state.latched.forEach((on, i) => on && expect(state.sticky[i]).toBe(true));
       if (state.value === "closed")
         for (const event of runnerMachine.events) expect(machineStep(runnerMachine, state, event).accepted).toBe(false);
@@ -312,3 +312,40 @@ describe("where the coach mark points", () => {
     expect(targetsShown(at("completing"), true)).toBe(false);
   });
 });
+
+it("retries failed Continue reconstruction without dropping retained latches or accepting late completion after Exit", () => {
+  const m = createMachine(def(2));
+  m.send({ type: "resume" });
+  const latched = m.state.latched;
+  m.send({ type: "demoFailed", steps: [0, 1], purpose: "reconstruct" });
+  expect(m.state.value).toBe("failed");
+  expect(m.send({ type: "retry" }).commands).toEqual([{ type: "reconstruct", steps: [0, 1] }]);
+  expect(m.state.value).toBe("reconstructing");
+  expect(m.state.latched).toEqual(latched);
+  m.send({ type: "exit" });
+  m.send({ type: "reconstructed" });
+  m.send({ type: "demoFailed", steps: [0], purpose: "interactive" });
+  expect(m.state.value).toBe("closed");
+});
+
+it.each([false, true])(
+  "Retry reopens an undone prerequisite (check met: %s) without replaying the later demo",
+  (met) => {
+    const m = createMachine(def());
+    m.send({ type: "start" });
+    m.send(observe([true, false, false]));
+    m.send({ type: "demoFailed", steps: [1], purpose: "interactive" });
+    // Undo boundary creation while its later membership move is in recovery.
+    m.send(observe([met, false, false], [false, true, true]));
+    const retried = m.send({ type: "retry" });
+    expect(retried.state).toMatchObject({ value: met ? "completing" : "active", index: 0, recovery: null });
+    expect(retried.commands).toEqual([
+      { type: "announce", step: 0 },
+      { type: "save", step: 0, completed: false },
+    ]);
+    // Assistance is available again for the prerequisite; the failed action can follow it.
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    m.send(observe([true, false, false]));
+    expect(m.send({ type: "skip", stepId: "1" }).commands).toEqual([{ type: "demo", steps: [1] }]);
+  },
+);

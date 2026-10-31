@@ -14,8 +14,7 @@ import { authorADrill } from "./authorADrill";
 import { loadShedding } from "./loadShedding";
 import { deadLetters } from "./deadLetters";
 import { healthChecks } from "./healthChecks";
-import { msg } from "../../i18n";
-import type { TrackId, Tutorial, Words } from "../types";
+import type { TrackId, Tutorial } from "../types";
 import { apiGateway } from "./apiGateway";
 import { kafkaTopic } from "./kafkaTopic";
 import { queueWorkers } from "./queueWorkers";
@@ -107,14 +106,8 @@ export const allTutorials: readonly Tutorial[] = [
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
 export const tutorials = allTutorials.filter((t) => !t.quarantined);
 
-export const tracks: readonly { id: TrackId; label: Words; blurb: Words }[] = [
-  { id: "basics", label: msg("tutorials.trackBasics"), blurb: msg("tutorials.syllabus.blurbBasics") },
-  { id: "blocks", label: msg("tutorials.trackBlocks"), blurb: msg("tutorials.syllabus.blurbBlocks") },
-  { id: "simulation", label: msg("tutorials.trackSimulation"), blurb: msg("tutorials.syllabus.blurbSimulation") },
-  { id: "waiting", label: msg("tutorials.trackWaiting"), blurb: msg("tutorials.syllabus.blurbWaiting") },
-  { id: "resilience", label: msg("tutorials.trackResilience"), blurb: msg("tutorials.syllabus.blurbResilience") },
-  { id: "studies", label: msg("tutorials.trackStudies"), blurb: msg("tutorials.syllabus.blurbStudies") },
-];
+export { tracks } from "../chapters";
+import { chapters } from "../chapters";
 
 export const findTutorial = (id: string | null): Tutorial | undefined => tutorials.find((x) => x.id === id);
-export const trackLabel = (id: TrackId): string => tracks.find((x) => x.id === id)!.label();
+export const trackLabel = (id: TrackId): string => chapters[id].label();

@@ -1,7 +1,75 @@
-import { msg } from "../i18n";
+import { msg, t } from "../i18n";
 import type { Tutorial } from "../tutorials/types";
 
 /** Runtime integration preview, separate from the learner catalog. Uses only a public example. */
+const runtimePreviews: readonly Tutorial[] = [
+  {
+    id: "lab-tutorial-recovery",
+    version: 1,
+    track: "basics",
+    level: 1,
+    minutes: 1,
+    title: msg("tutorials.boundaries.title"),
+    summary: msg("tutorials.boundaries.summary"),
+    start: () => ({
+      format: "diagrams/v1",
+      title: t("tutorials.boundaries.diagramTitle"),
+      nodes: [{ id: "c", stencil: "generic.service", label: t("tutorials.boundaries.service3"), x: 500, y: 0 }],
+      edges: [],
+      groups: [{ id: "box", label: t("tutorials.boundaries.boundaryName"), x: 0, y: 0, width: 360, height: 240 }],
+    }),
+    subjects: { api: { role: "processor" }, boundary: { boundary: true } },
+    steps: [
+      {
+        id: "move",
+        title: msg("tutorials.boundaries.dragInTitle"),
+        goal: msg("tutorials.boundaries.dragInGoal"),
+        check: { kind: "member", subject: "api", boundary: "boundary" },
+        targets: [
+          { testId: "inspector-field-replicas", tip: msg("tutorials.boundaries.dragInTip") },
+          { testId: "inspector-section-node-simulation", tip: msg("tutorials.boundaries.dragInTip") },
+          { testId: "node-{api}", tip: msg("tutorials.boundaries.dragInTip") },
+        ],
+        demo: [{ kind: "member", subject: "api", boundary: "boundary" }],
+        solution: [{ drag: "node-{api}", to: "group-{boundary}" }],
+      },
+      {
+        id: "done",
+        title: msg("tutorials.boundaries.fitTitle"),
+        goal: msg("tutorials.boundaries.fitGoal"),
+        check: { kind: "acknowledge" },
+        targets: [],
+        demo: [],
+        solution: [{ click: "tutorial-skip" }],
+      },
+    ],
+    finish: { text: msg("tutorials.boundaries.finish") },
+  },
+  {
+    id: "lab-tutorial-phone-note",
+    version: 1,
+    track: "simulation",
+    level: 1,
+    minutes: 1,
+    title: msg("tutorials.runtime.title"),
+    summary: msg("tutorials.runtime.summary"),
+    start: { example: "retry-storm", simulation: "three-quick-retries" },
+    subjects: {},
+    steps: [
+      {
+        id: "read",
+        title: msg("tutorials.runtime.runningTitle"),
+        goal: msg("tutorials.runtime.runningGoal"),
+        check: { kind: "acknowledge" },
+        targets: [{ testId: "live-note-expand", tip: msg("tutorials.runtime.runningGoal") }],
+        demo: [],
+        solution: [{ click: "tutorial-skip" }],
+      },
+    ],
+    finish: { text: msg("tutorials.runtime.finish") },
+  },
+];
+
 export const tutorialRuntimeFixtures: readonly Tutorial[] = [
   {
     id: "lab-tutorial-runtime",
@@ -91,3 +159,9 @@ export const tutorialRuntimeFixtures: readonly Tutorial[] = [
     finish: { text: msg("tutorials.runtime.finish") },
   },
 ];
+
+/** Isolated previews must not change the established handoff fixture's curriculum. */
+export function tutorialRuntimeCatalog(id: string): readonly Tutorial[] {
+  const preview = runtimePreviews.find((lesson) => lesson.id === id);
+  return preview ? [preview] : tutorialRuntimeFixtures;
+}

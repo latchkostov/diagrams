@@ -1300,9 +1300,17 @@ export const presets: readonly Preset[] = [
     group: "Playground",
     description: "Example loading, saved simulation, app chrome, explicit copies and the next tutorial.",
     render: () => (
-      <a className="btn" href="?tutorial=lab-tutorial-runtime" data-testid="lab-tutorial-runtime">
-        {t("tutorials.runtime.title")}
-      </a>
+      <>
+        <a className="btn" href="?tutorial=lab-tutorial-runtime" data-testid="lab-tutorial-runtime">
+          {t("tutorials.runtime.title")}
+        </a>
+        <a className="btn" href="?tutorial=lab-tutorial-recovery" data-testid="lab-tutorial-recovery">
+          {t("tutorials.boundaries.dragInTitle")}
+        </a>
+        <a className="btn" href="?tutorial=lab-tutorial-phone-note" data-testid="lab-tutorial-phone-note">
+          {t("workbench.readNote")}
+        </a>
+      </>
     ),
   },
   {

@@ -1,3 +1,4 @@
+import { GROUP_PREFIX } from "../canvas/types";
 import type { DiagramFile } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { getStencil } from "../stencils/registry";
@@ -168,7 +169,11 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       return (
         selected.length >= (check.atLeast ?? check.subjects?.length ?? 1) &&
         (!check.exact || selected.length === check.subjects?.length) &&
-        (check.subjects?.every((s) => !!subjects[s] && selected.includes(subjects[s]!)) ?? true)
+        (check.subjects?.every((s) => {
+          const id = subjectFlowId(subjects[s], view.diagram);
+          return !!id && selected.includes(id);
+        }) ??
+          true)
       );
     }
     case "aligned": {
@@ -506,4 +511,9 @@ export function edgeTargets(
     for (const from of names.get(edge.from) ?? [])
       for (const to of names.get(edge.to) ?? []) edges[`${from}->${to}`] ??= edge.id;
   return edges;
+}
+
+/** Subjects use saved IDs; editor selection and naming use boundary flow IDs. */
+export function subjectFlowId(id: string | undefined, diagram: Pick<DiagramFile, "groups"> | undefined) {
+  return id && diagram?.groups?.some((group) => group.id === id) ? GROUP_PREFIX + id : id;
 }

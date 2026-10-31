@@ -243,12 +243,80 @@
 }
 
 .tutorial-tip.is-below {
-  translate: -50% 0;
+  translate: none;
 }
 
 .tutorial-tip.is-below::before {
   top: -4px;
   left: calc(50% - 4px);
+}
+
+.tutorial-tip.is-above::before {
+  bottom: -4px;
+  left: calc(50% - 4px);
+}
+
+.tutorial-target-hint:empty {
+  display: none;
+}
+
+.tutorial-fallback {
+  pointer-events: none;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.tutorial-app .lv-note.is-expanded {
+  min-block-size: 0;
+  max-block-size: var(--tutorial-note-room, 65dvh);
+}
+
+.tutorial-handoff .tutorial-handoff-recap {
+  margin: 0;
+  padding: 12px 20px 16px;
+  line-height: 1.5;
+}
+
+/* Preserve the practice pane when instructions expand, text is zoomed or a keyboard opens. */
+@media (max-width: 640px), (max-height: 500px) {
+  .tutorial-bar {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+  .tutorial-bar .tutorial-chip,
+  .tutorial-bar .tutorial-dots,
+  .tutorial-bar .tutorial-switch,
+  .tutorial-bar .tutorial-count {
+    display: none;
+  }
+  .tutorial-bar .tutorial-name {
+    flex: 1;
+  }
+  .tutorial-bar .tutorial-progress {
+    display: none;
+  }
+  .tutorial-bar .btn {
+    padding-inline: 8px;
+  }
+  .tutorial-strip {
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 8px;
+    min-height: 0;
+    max-height: 30dvh;
+  }
+  .tutorial-words {
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .tutorial-goal {
+    font-size: 0.875rem;
+  }
+  .tutorial-actions {
+    flex-direction: column;
+    justify-content: center;
+    max-inline-size: 40%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
