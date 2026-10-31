@@ -64,21 +64,29 @@ function listen(capture: Capture, onInput: (event: Event) => void): () => void {
 }
 
 /** A deferred pick does not know yet whether Enter finishes a name or adds an annotation newline. */
-export function capturePendingTypeAhead(): { stop: () => PendingTypeAhead } {
+export function capturePendingTypeAhead(): { stop: () => PendingTypeAhead; resume: () => void } {
   const capture: Capture = {};
   const inputs: HeldInput[] = [];
   const typed = { inputs };
-  const stop = listen(capture, (event) => {
+  const onInput = (event: Event) => {
     if (captures.at(-1) !== capture) return;
     const input = inputFrom(event);
     if (!input || !nextInput({ text: null }, input, true)) return;
     inputs.push(input);
     event.preventDefault();
     event.stopImmediatePropagation();
-  });
+  };
+  let stopListening: (() => void) | undefined;
+  // A failed deferred search yields the keyboard, keeping its input for Retry.
+  const resume = () => {
+    stopListening ??= listen(capture, onInput);
+  };
+  resume();
   return {
+    resume,
     stop() {
-      stop();
+      stopListening?.();
+      stopListening = undefined;
       return typed;
     },
   };

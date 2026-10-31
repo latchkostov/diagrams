@@ -234,6 +234,81 @@ for (const name of [undefined, "Cache audit"])
     expect(picks[1]).toBe(picks[0]);
   });
 
+for (const recovery of ["Escape", "Retry"] as const)
+  test(`failed queued quick-add releases the keyboard for ${recovery}`, async ({ page }) => {
+    await seed(page);
+    const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");
+    try {
+      await gotoCanvas(page, "blocking-call");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-caller").click();
+      await page.getByTestId("canvas-wrap").focus();
+      const before = await savedDiagram(page);
+      await page.keyboard.press("Alt+ArrowRight");
+      await expect(page.getByTestId("quick-add-search")).toBeFocused();
+      await page.keyboard.type("redis cache");
+      await expect.poll(search.requested).toBe(true);
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("Cache audit");
+      search.fail();
+      await expect(page.getByTestId("quick-add-search-failed")).toBeVisible();
+      if (recovery === "Escape") {
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("quick-add-search")).toHaveValue("");
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        expect(await savedDiagram(page)).toEqual(before);
+      } else {
+        await page.keyboard.press("Tab");
+        await expect(page.getByTestId("quick-add-search-retry")).toBeFocused();
+        search.pass();
+        await page.keyboard.press("Enter");
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+        await expect(page.getByTestId("inspector-field-label")).toHaveValue("Cache audit");
+        await page.keyboard.press("Enter");
+        await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
+        const added = (await savedDiagram(page)).nodes.filter(
+          (node) => !before.nodes.some((old) => old.id === node.id),
+        );
+        expect(added).toHaveLength(1);
+        expect(added[0]).toMatchObject({ stencil: "redis.cache", label: "Cache audit" });
+      }
+    } finally {
+      search.release();
+    }
+  });
+
+test("clearing a queued quick-add query releases its capture while search is held", async ({ page }) => {
+  await seed(page);
+  const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    await page.getByTestId("canvas-wrap").focus();
+    const before = await savedDiagram(page);
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(page.getByTestId("quick-add-search")).toBeFocused();
+    await page.keyboard.type("redis cache");
+    await expect.poll(search.requested).toBe(true);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Discarded name");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("");
+    await page.keyboard.type("topic");
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("topic");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    search.release();
+    expect(await savedDiagram(page)).toEqual(before);
+  } finally {
+    search.release();
+  }
+});
+
 for (const finish of ["Escape", "ControlOrMeta+Enter"])
   test(`held quick-add preserves annotation newlines before ${finish}`, async ({ page }) => {
     const search = await hold(page, "stencilDisplaySearch", "src/lib/stencilDisplaySearch.ts");

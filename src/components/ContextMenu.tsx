@@ -264,6 +264,7 @@ function MenuList(p: ListProps) {
   const id = useId();
   const ref = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const retryButton = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const [q, setQ] = useState(() => (p.searchable && p.query) || "");
   // Quick-add and Change stencil search translated stencil metadata: the search waits for it, never ranks without it.
@@ -280,6 +281,20 @@ function MenuList(p: ListProps) {
   const pendingNavigation = useRef(0);
   const pendingName = useRef<ReturnType<typeof capturePendingTypeAhead> | null>(null);
   useEffect(() => () => void pendingName.current?.stop(), []);
+  useLayoutEffect(() => {
+    if (metadata.failed) pendingName.current?.stop();
+  }, [metadata.failed, waiting]);
+  const cancelPendingPick = () => {
+    pickWhenReady.current = false;
+    pendingNavigation.current = 0;
+    pendingName.current?.stop();
+    pendingName.current = null;
+  };
+  const retrySearch = () => {
+    pendingName.current?.resume();
+    metadata.retry();
+    input.current?.focus({ preventScroll: true });
+  };
   const [active, setActive] = useState(() => (p.activateFirst || q ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
@@ -486,7 +501,7 @@ function MenuList(p: ListProps) {
       case "Enter":
         e.preventDefault();
         // Before the search can rank: Enter retries a failed download, or picks the best match once it's in.
-        if (waiting && metadata.failed) metadata.retry();
+        if (waiting && metadata.failed) retrySearch();
         else if (waiting) {
           pickWhenReady.current = true;
           pendingName.current ??= capturePendingTypeAhead();
@@ -499,12 +514,18 @@ function MenuList(p: ListProps) {
         break;
       case "Escape":
         e.preventDefault();
-        if (inInput && q) setQ("");
-        else if (p.depth > 0) p.onBack();
+        if (inInput && q) {
+          cancelPendingPick();
+          setQ("");
+        } else if (p.depth > 0) p.onBack();
         else p.onCloseAll("escape");
         break;
       case "Tab":
         e.preventDefault();
+        if (waiting && metadata.failed) {
+          (inInput ? retryButton.current : input.current)?.focus({ preventScroll: true });
+          break;
+        }
         move(e.shiftKey ? -1 : 1);
         break;
     }
@@ -617,8 +638,7 @@ function MenuList(p: ListProps) {
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
-                pickWhenReady.current = false;
-                pendingNavigation.current = 0;
+                cancelPendingPick();
               }}
               placeholder={p.searchable}
               aria-label={p.searchable}
@@ -634,13 +654,11 @@ function MenuList(p: ListProps) {
             <div className="cm-empty" role="alert" data-testid={`${p.testId}-search-failed`}>
               {t("fileDialog.loadFailed")}{" "}
               <button
+                ref={retryButton}
                 type="button"
                 className="link-btn"
                 tabIndex={-1}
-                onClick={() => {
-                  metadata.retry();
-                  input.current?.focus({ preventScroll: true });
-                }}
+                onClick={retrySearch}
                 data-testid={`${p.testId}-search-retry`}
               >
                 {t("common.retry")}
