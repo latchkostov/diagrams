@@ -17,6 +17,9 @@ const view: SandboxView = {
 };
 type ExistingPort = "dock" | "checks" | "exports" | "imports" | "ai" | "collaboration";
 const facts: ProductObservations = {
+  planning: { ...source, nodeId: "api", constraint: "cpu", capacity: 5, offered: 20 },
+  sequence: { ...source, traceId: 1, open: true, arrows: 2 },
+  sequenceExport: { ...source, traceId: 1, format: "svg", bytes: 20 },
   navigation: { ...source, nodeId: "api" },
   tools: { ...source, query: "service", stencils: ["generic.service"] },
   gallery: { ...source, feature: "partitions", slugs: ["kafka-order-pipeline"] },

@@ -351,6 +351,33 @@ it.each([0, 1500])("Continue waits for external state after a refused note at %s
   expect(update).toHaveBeenCalledExactlyOnceWith("api", { sublabel: "Continued" });
 });
 
+it("does not mistake an unpublished Live panel for a closed panel", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "liveView", view: "simulations", open: false },
+        sticky: true,
+        demo: [],
+      },
+    ],
+  };
+  const ui = { panelOpen: true, events: { open: false, nodeId: null } } as LiveUi;
+  const off = planningHost.publish(ui);
+  cleanup.push(off);
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  off();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  cleanup.push(planningHost.publish(ui));
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  cleanup.push(planningHost.publish({ ...ui, panelOpen: false }));
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
 it.each(["inputs", "simulations"] as const)("opens %s independently of the other panel", async (view) => {
   const tutorial: Tutorial = {
     ...mobileApi,

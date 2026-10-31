@@ -48,6 +48,14 @@ export interface ProductObservations {
     /** Completed, current saved-run evidence; absent during static checks. */
     simulations?: readonly { id: string; playedMs: number; capped: boolean }[];
   };
+  planning: ObservationSource & {
+    nodeId: string;
+    constraint: "cpu" | "threads" | "unknown";
+    capacity: number;
+    offered: number;
+  };
+  sequence: ObservationSource & { traceId: number; open: boolean; arrows: number };
+  sequenceExport: ObservationSource & { traceId: number; format: "svg" | "mermaid" | "png"; bytes: number };
   exports: ObservationSource & { format: ExportFormat; bytes: number };
   imports: ObservationSource & { format: FormatId; source?: string };
   ai: ObservationSource & { kind: "change" | "explain" | "revert"; changed: readonly string[] };
@@ -59,6 +67,9 @@ export interface ProductObservations {
 export const observationPorts: {
   [K in keyof ProductObservations]: ReturnType<typeof createObservationPort<ProductObservations[K]>>;
 } = {
+  planning: createObservationPort<ProductObservations["planning"]>(),
+  sequence: createObservationPort<ProductObservations["sequence"]>(),
+  sequenceExport: createObservationPort<ProductObservations["sequenceExport"]>(),
   navigation: createObservationPort<ProductObservations["navigation"]>(),
   tools: createObservationPort<ProductObservations["tools"]>(),
   gallery: createObservationPort<ProductObservations["gallery"]>(),

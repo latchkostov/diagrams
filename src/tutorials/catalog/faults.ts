@@ -8,7 +8,7 @@ export const faults: Tutorial = {
   level: 1,
   minutes: 3,
   title: msg("tutorials.faults.title"),
-  summary: msg("tutorials.faults.summary"),
+  summary: msg("tutorials.faults.summaryV2"),
   start: { example: "zone-outage-drill" },
   subjects: { api: { stencils: ["aws.ecs"] } },
   steps: [
@@ -61,5 +61,5 @@ export const faults: Tutorial = {
       ],
     },
   ],
-  finish: { text: msg("tutorials.faults.finish") },
+  finish: { text: msg("tutorials.faults.finishV2") },
 };

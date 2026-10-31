@@ -505,6 +505,7 @@ describe("runner forms for builds 06 to 12", () => {
     expect(met({ kind: "liveView", view: "capacity", open: false }, v)).toBe(true);
     expect(met({ kind: "liveView", view: "events", open: true }, v)).toBe(false);
     expect(met({ kind: "liveView", view: "simulations", open: true }, v)).toBe(false);
+    expect(met({ kind: "liveView", view: "simulations", open: false }, v)).toBe(false);
     const simulations = { ...v, views: { inputs: false, simulations: true } };
     expect(met({ kind: "liveView", view: "simulations", open: true }, simulations)).toBe(true);
     expect(met({ kind: "liveView", view: "inputs", open: true }, simulations)).toBe(false);

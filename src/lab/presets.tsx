@@ -1,3 +1,4 @@
+import { resourcePractice, experimentPractice } from "./simulationPractice";
 import { addressPractice, policyPractice, checksPractice } from "./buildingBlockSeeds";
 import { workbenchTour } from "../tutorials/catalog/workbenchTour";
 import { libraryReuse } from "../tutorials/catalog/libraryReuse";
@@ -321,14 +322,22 @@ const diagramPresets: Preset[] = [
       return lesson.start();
     },
   })),
-  ...[addressPractice, policyPractice, checksPractice].map((diagram, index): Preset => ({
-    kind: "diagram",
-    id: ["tutorial-address-practice", "tutorial-policy-practice", "tutorial-checks-practice"][index],
-    title: diagram().title,
-    group: "Diagrams",
-    description: diagram().title,
-    diagram,
-  })),
+  ...[addressPractice, policyPractice, checksPractice, resourcePractice, experimentPractice].map(
+    (diagram, index): Preset => ({
+      kind: "diagram",
+      id: [
+        "tutorial-address-practice",
+        "tutorial-policy-practice",
+        "tutorial-checks-practice",
+        "tutorial-resource-practice",
+        "tutorial-experiment-practice",
+      ][index],
+      title: diagram().title,
+      group: "Diagrams",
+      description: diagram().title,
+      diagram,
+    }),
+  ),
   {
     kind: "render",
     id: "message-readers",

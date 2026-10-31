@@ -1,4 +1,4 @@
-import { useContext, useState, useSyncExternalStore } from "react";
+import { useContext, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { EditorApi } from "../editor/types";
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "../live/controller";
@@ -11,6 +11,32 @@ import { t, useLocale } from "../i18n";
 import { PlanningConnections } from "./PlanningConnections";
 import { LiveDetails } from "./LiveDetails";
 import { formatRate } from "../i18n/format";
+
+import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
+import type { Explanation } from "./explanation";
+import type { ComputeResources } from "../model/autoscaling";
+
+function PlanningEvidence({ explanation: x, resources }: { explanation: Explanation; resources?: ComputeResources }) {
+  const { documentId, identity } = currentObservationSource() ?? {};
+  const threads = x.seconds ? x.slots / x.seconds : Infinity;
+  const cpu = resources?.cpuMsPerMessage
+    ? (resources.cpuLimitMilli ?? resources.availableCpuMilli ?? Infinity) / resources.cpuMsPerMessage
+    : Infinity;
+  const constraint = cpu < threads ? "cpu" : Number.isFinite(threads) ? "threads" : "unknown";
+  useLayoutEffect(() => {
+    if (documentId && identity)
+      observationPorts.planning.publish({
+        documentId,
+        identity,
+        nodeId: x.id,
+        constraint,
+        capacity: x.capacity,
+        offered: x.offered,
+      });
+  }, [documentId, identity, x.id, constraint, x.capacity, x.offered]);
+  return null;
+}
 
 const noSubscribe = () => () => {};
 const noState = () => null;
@@ -174,6 +200,7 @@ export function NodePlanning({
     <>
       {x && (
         <section className="insp-section" aria-label={t("planning.heading")}>
+          <PlanningEvidence explanation={x} resources={configured.analysis.resolved[id]?.resources} />
           <h3 className="insp-section-title">{t("planning.heading")}</h3>
           <ExplanationView
             explanation={x}

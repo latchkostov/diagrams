@@ -1,3 +1,4 @@
+import { authoredSimulation } from "./simulations";
 import { createMachine } from "../lib/machine";
 import { t } from "../i18n";
 import { readTutorials, savedProgress, saveProgress, writeTutorials } from "./progress";
@@ -69,6 +70,9 @@ export interface RunnerSnapshot {
 /** Demos pressing Live's controls: they wait (retrying on each change) until Live's lazy session offers them. */
 const live = new Set<Demo["kind"]>([
   // Repairs (./repair.ts) wait for Live's session to show their last write, and for its commands while it mounts.
+  "openSequence",
+  "draftSimulation",
+  "slowControl",
   "patch",
   "saveSimulation",
   "runSimulation",
@@ -117,6 +121,13 @@ export function createTutorialRunner(
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
     [
+      "freePlay",
+      "event",
+      "planning",
+      "sequence",
+      "newRun",
+      "draftSimulation",
+      "slowControl",
       "navigation",
       "toolSearch",
       "gallery",
@@ -156,8 +167,16 @@ export function createTutorialRunner(
     (check.kind === "prop" && !!check.effective) ||
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
+  const hasSlowStep = (c: Tutorial["steps"][number]["check"]): boolean =>
+    (c.kind === "slowControl" && c.action === "stepped") || (c.kind === "all" && c.checks.some(hasSlowStep));
+  const hasNewRun = (c: Tutorial["steps"][number]["check"]): boolean =>
+    c.kind === "newRun" || (c.kind === "all" && c.checks.some(hasNewRun));
   const moment = (check: Tutorial["steps"][number]["check"]): boolean =>
     [
+      "sequence",
+      "planning",
+      "slowControl",
+      "newRun",
       "export",
       "import",
       "aiTurn",
@@ -171,6 +190,7 @@ export function createTutorialRunner(
       "toolSearch",
       "navigation",
     ].includes(check.kind) ||
+    (check.kind === "note" && !!check.currentOnly) ||
     (check.kind === "all" && check.checks.some(moment));
   const momentChecks = tutorial.steps.map((step) => moment(step.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
@@ -262,14 +282,16 @@ export function createTutorialRunner(
       live: !!h.canvas!.live,
       session: currentSession,
       sessionId: sessionId(h.session?.state),
+      draft: ui?.draft,
+      eventNodeId: ui?.events.nodeId,
       trafficReady: !!session,
       mode: canvasInteraction.get()?.mode,
       slowmo: h.session?.slowmo?.getState(),
       dependencies: dependencyVisibility.get(),
       views: {
-        inputs: !!ui?.capacityOpen,
-        events: !!ui?.events.open,
-        simulations: !!ui?.panelOpen,
+        inputs: ui?.capacityOpen,
+        events: ui?.events.open,
+        simulations: ui?.panelOpen,
         capacity: capacityOverlay.get(),
       },
       readout: canvasInteraction.get()?.readouts?.get() ?? null,
@@ -311,7 +333,16 @@ export function createTutorialRunner(
     }
     for (const c of commands) run(c);
     // Entered, or Skip emptied it: what the step counts starts here, once its commands (Restart's reset) have run.
-    if (changed && inStep(state) && since[state.index].length && host.get().canvas && editor()) capture(view());
+    if (
+      changed &&
+      inStep(state) &&
+      (since[state.index].length ||
+        hasNewRun(tutorial.steps[state.index].check) ||
+        hasSlowStep(tutorial.steps[state.index].check)) &&
+      host.get().canvas &&
+      editor()
+    )
+      capture(view());
   }
 
   /**
@@ -319,8 +350,27 @@ export function createTutorialRunner(
    * earlier), kept in the machine's state. Nothing to send when it has them all, or Live doesn't show them yet.
    */
   function capture(v: SandboxView) {
-    if (!inStep(state) || !since[state.index].length || !v.session || v.sessionId === undefined) return;
+    if (
+      !inStep(state) ||
+      (!since[state.index].length &&
+        !hasNewRun(tutorial.steps[state.index].check) &&
+        !hasSlowStep(tutorial.steps[state.index].check)) ||
+      !v.session ||
+      v.sessionId === undefined
+    )
+      return;
     const values: Record<string, readonly [number, number, number]> = {};
+    if (hasSlowStep(tutorial.steps[state.index].check) && !state.baseline.slowStep && v.slowmo?.status === "on") {
+      // Reading Pause can outlast the journey. Rewind before measuring the learner's next hop.
+      if (v.slowmo.script && (v.slowmo.t ?? 0) >= v.slowmo.script.duration && v.slowmo.script.duration > 0) {
+        host.get().session?.slowmo?.seek(0);
+        capture(view());
+        return;
+      }
+      values.slowStep = [v.slowmo.t ?? 0, 0, 0];
+    }
+    if (hasNewRun(tutorial.steps[state.index].check) && !state.baseline.newRun)
+      values.newRun = [0, v.session.generation, v.sessionId];
     for (const expr of since[state.index]) {
       const key = baselineKey(expr);
       const now = state.baseline[key] ? undefined : metricValue(expr, v, subjects);
@@ -335,6 +385,7 @@ export function createTutorialRunner(
     const nextStep = inStep(state) ? state.index : -1;
     if (observationStep !== nextStep) {
       observationStep = nextStep;
+      delete observations.sequenceExport;
       delete observations.exports;
       delete observations.imports;
       delete observations.ai;
@@ -633,6 +684,33 @@ export function createTutorialRunner(
       case "annotate":
         ed.addAnnotation(demo.annotation);
         return;
+      case "openSequence": {
+        const ui = planningHost.get();
+        if (!ui?.controller.getState().trace?.current || !ui.openSequence) return false;
+        ui.openSequence();
+        return true;
+      }
+      case "draftSimulation": {
+        const ui = planningHost.get();
+        if (!h.canvas?.live || !ui?.runDraft) return false;
+        const own = ui.draft?.id === demo.simulation.id ? ui.draft : undefined;
+        const next = authoredSimulation(ed.getDiagram(), own, {
+          kind: "saveSimulation",
+          id: demo.simulation.id,
+          title: () => demo.simulation.title,
+          definition: demo.simulation,
+        });
+        ui.runDraft(next ?? own ?? demo.simulation);
+        return true;
+      }
+      case "slowControl": {
+        const slow = planningHost.get()?.slowmo;
+        if (!slow || (demo.action !== "end" && slow.getState().status !== "on")) return false;
+        if (demo.action === "pause") slow.pause();
+        else if (demo.action === "step") slow.step(1);
+        else slow.end();
+        return true;
+      }
       case "runSimulation":
         // A design study's reference replay restores its authored load and capacity first.
         if (tutorial.study && repairs.reference(repairPorts(), demo.id) === "waiting") return false;
@@ -704,7 +782,9 @@ export function createTutorialRunner(
           demo.kind === "traffic"
             ? "sim.traffic"
             : demo.kind === "trace"
-              ? "sim.trace-message:next"
+              ? node
+                ? "sim.trace-next"
+                : "sim.trace-message:next"
               : demo.kind === "slowmo"
                 ? node
                   ? "sim.slowmo-from"
@@ -743,11 +823,14 @@ export function createTutorialRunner(
         );
       }
       case "openView": {
-        if (demo.view === "capacity") return void capacityOverlay.set(true);
+        const open = demo.open ?? true;
+        if (demo.view === "capacity") return void capacityOverlay.set(open);
         const ui = planningHost.get();
         if (!h.canvas?.live || !ui) return false;
-        if (demo.view === "inputs") ui.openCapacity(true);
-        else if (demo.view === "events") ui.showEvents(ui.events.nodeId, true);
+        if (demo.view === "inputs") ui.openCapacity(open);
+        else if (demo.view === "events")
+          ui.showEvents(demo.subject ? (subjects[demo.subject] ?? null) : ui.events.nodeId, open);
+        else if (!open) ui.closePanel();
         else if (!ui.panelOpen) ui.openPanel();
         return true;
       }
@@ -866,7 +949,8 @@ export function createTutorialRunner(
               if (
                 !(await until(() => {
                   // Read-only views remain available while slow motion owns engine mutations.
-                  if (d.kind !== "openView" && host.get().session?.disabledHint) throw new Error("Live unavailable");
+                  if (d.kind !== "openView" && d.kind !== "slowControl" && host.get().session?.disabledHint)
+                    throw new Error("Live unavailable");
                   return perform(d) !== false;
                 }, run))
               )
@@ -1067,6 +1151,9 @@ export function createTutorialRunner(
         observe();
       });
     const offObservations = [
+      watch("planning"),
+      watch("sequence"),
+      watch("sequenceExport"),
       watch("navigation"),
       watch("tools"),
       watch("gallery"),

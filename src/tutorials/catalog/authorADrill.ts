@@ -4,12 +4,12 @@ import { liveStep, practiceRun } from "./buildingBlocks";
 
 export const authorADrill: Tutorial = {
   id: "author-a-drill",
-  version: 1,
+  version: 2,
   track: "simulation",
   level: 1,
   minutes: 3,
   title: msg("tutorials.authorADrill.title"),
-  summary: msg("tutorials.authorADrill.summary"),
+  summary: msg("tutorials.authorADrill.summaryV2"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.authorADrill.title"),
@@ -61,16 +61,25 @@ export const authorADrill: Tutorial = {
     {
       id: "save",
       title: msg("tutorials.authorADrill.saveTitle"),
-      goal: msg("tutorials.authorADrill.saveGoal"),
-      done: msg("tutorials.authorADrill.saveDone"),
-      check: { kind: "savedSimulation", match: { drill: "slow-dependency" } },
-      targets: [{ testId: "sim-panel-new", tip: msg("tutorials.authorADrill.saveGoal") }],
+      goal: () => t("tutorials.authorADrill.saveGoalV2", { db: t("tutorials.authorADrill.dbName") }),
+      done: () => t("tutorials.authorADrill.saveDoneV2", { db: t("tutorials.authorADrill.dbName") }),
+      check: {
+        kind: "savedSimulation",
+        match: { drill: "slow-dependency", fault: { node: "db", atMs: 0, kind: "slow" } },
+      },
+      targets: [
+        {
+          testId: "sim-panel-new",
+          tip: () => t("tutorials.authorADrill.saveGoalV2", { db: t("tutorials.authorADrill.dbName") }),
+        },
+      ],
       demo: [
         {
           kind: "saveSimulation",
           id: "simulation",
           title: msg("tutorials.authorADrill.drillName"),
-          drills: [{ preset: "slow-dependency", atMs: 0 }],
+          durationMs: 600_000,
+          drills: [{ preset: "slow-dependency", atMs: 0, target: "db" }],
         },
       ],
       solution: [
@@ -78,18 +87,38 @@ export const authorADrill: Tutorial = {
         { click: "sim-panel-new" },
         { click: "sim-panel-section-timeline" },
         { select: "sim-panel-add-step", value: "slow-dependency" },
+        { select: "sim-panel-step-0-fault-target", value: "db" },
+        { click: "sim-panel-section-details" },
+        { fill: "sim-panel-duration", text: "600" },
         { click: "sim-panel-save" },
       ],
     },
     {
       id: "run",
       title: msg("tutorials.authorADrill.runTitle"),
-      goal: msg("tutorials.authorADrill.runGoal"),
-      done: msg("tutorials.authorADrill.runDone"),
-      check: { kind: "simulation", saved: { drill: "slow-dependency" } },
+      goal: () => t("tutorials.authorADrill.runGoalV2", { db: t("tutorials.authorADrill.dbName") }),
+      done: () => t("tutorials.authorADrill.runDoneV2", { db: t("tutorials.authorADrill.dbName") }),
+      check: {
+        kind: "all",
+        checks: [
+          {
+            kind: "simulation",
+            saved: { drill: "slow-dependency", fault: { node: "db", atMs: 0, kind: "slow" } },
+            traffic: true,
+          },
+          { kind: "fault", subject: "db", fault: "slow" },
+          { kind: "processed", subject: "db", atLeast: 1 },
+        ],
+      },
       targets: [
-        { testId: "sim-panel-close", tip: msg("tutorials.authorADrill.runGoal") },
-        { testId: "live-sim-picker", tip: msg("tutorials.authorADrill.runGoal") },
+        {
+          testId: "sim-panel-close",
+          tip: () => t("tutorials.authorADrill.runGoalV2", { db: t("tutorials.authorADrill.dbName") }),
+        },
+        {
+          testId: "live-sim-picker",
+          tip: () => t("tutorials.authorADrill.runGoalV2", { db: t("tutorials.authorADrill.dbName") }),
+        },
       ],
       demo: [
         // A learner may have saved a different id. Skip keeps it and ensures a runnable reference Drill.
@@ -97,12 +126,25 @@ export const authorADrill: Tutorial = {
           kind: "saveSimulation",
           id: "simulation",
           title: msg("tutorials.authorADrill.drillName"),
-          drills: [{ preset: "slow-dependency", atMs: 0 }],
+          durationMs: 600_000,
+          drills: [{ preset: "slow-dependency", atMs: 0, target: "db" }],
         },
         { kind: "runSimulation", id: "simulation" },
+        { kind: "traffic", on: true },
       ],
-      solution: [{ click: "sim-panel-close" }, { select: "live-sim-picker", value: "simulation" }],
+      solution: [
+        { click: "sim-panel-close" },
+        { select: "live-sim-picker", value: "simulation" },
+        { click: "live-more" },
+        { click: "live-traffic" },
+      ],
+      keyboardSolution: [
+        { press: "Escape" },
+        { choose: "live-sim-picker", value: "simulation" },
+        { activate: "live-more" },
+        { activate: "live-traffic" },
+      ],
     },
   ],
-  finish: { text: msg("tutorials.authorADrill.finish") },
+  finish: { text: () => t("tutorials.authorADrill.finishV2", { db: t("tutorials.authorADrill.dbName") }) },
 };

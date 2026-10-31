@@ -4,7 +4,7 @@ import type { MessageTrace } from "../sim/types";
 import { Dialog } from "../interop/ui/Dialog";
 import { Glyph } from "../interop/ui/glyphs";
 import { copyText } from "../interop/ui/copyText";
-import { createFileWriter, dataUrlToBlob, downloadBlob, slugify } from "../interop/files";
+import { dataUrlToBlob, slugify } from "../interop/files";
 import { svgToPng } from "../interop/image";
 import { toast } from "../interop/ui/toast";
 import { buildSequence } from "../trace/sequence";
@@ -12,6 +12,11 @@ import { formatOffset } from "../trace/journey";
 import { toMermaid } from "../trace/mermaid";
 import { SEQUENCE_THEMES, toSvg, type Measure } from "../trace/svg";
 import { LiveIcon } from "./icons";
+
+import { createSequenceExporter } from "./sequenceExport";
+import { currentObservationSource } from "../palette/observationSource";
+import { observationPorts } from "../lib/observations";
+import { t } from "../i18n";
 
 let canvas: HTMLCanvasElement | undefined;
 /** Real text widths in the app's fonts, so labels fit their boxes exactly. */
@@ -70,31 +75,54 @@ export function SequenceDialog({
     view.current?.scrollTo({ left: 0, top: 0 });
   }, [picture]);
 
-  const copyMermaid = async () => {
-    const ok = await copyText(toMermaid(model));
-    if (ok) toast.success("Copied the sequence diagram as Mermaid.");
-    else toast.error("The browser didn't allow copying. Try again, or download the SVG.");
-  };
-  const downloadSvg = () => downloadBlob(new Blob([picture.svg], { type: "image/svg+xml" }), `${file}.svg`);
-  const downloadPng = async () => {
-    const writer = createFileWriter();
-    try {
-      const png = await svgToPng(picture.svg, picture.width, picture.height, 2);
-      writer.blob(dataUrlToBlob(png), `${file}.png`);
-    } catch {
-      if (!writer.signal.aborted) toast.error("Couldn't render the PNG. Download the SVG instead.");
-    } finally {
-      writer.finish();
-    }
+  const exporter = useRef<ReturnType<typeof createSequenceExporter> | null>(null);
+  const arrows = model.items.filter((i) => i.kind === "arrow").length;
+  useLayoutEffect(() => {
+    const owner = createSequenceExporter(trace.rootId);
+    exporter.current = owner;
+    const source = currentObservationSource();
+    if (source) observationPorts.sequence.publish({ ...source, traceId: trace.rootId, open: true, arrows });
+    return () => {
+      owner.cancel();
+      if (exporter.current === owner) exporter.current = null;
+      if (source) observationPorts.sequence.publish({ ...source, traceId: trace.rootId, open: false, arrows });
+    };
+  }, [trace.rootId, arrows]);
+  const exportSequence = async (format: "svg" | "mermaid" | "png", owner = exporter.current) => {
+    if (!owner) return;
+    const result = await owner.run(format, async (writer, check) => {
+      if (format === "mermaid") {
+        const text = toMermaid(model);
+        if (!(await copyText(text))) throw new Error("Copy refused");
+        check();
+        return new Blob([text]).size;
+      }
+      const blob =
+        format === "svg"
+          ? new Blob([picture.svg], { type: "image/svg+xml" })
+          : dataUrlToBlob(await svgToPng(picture.svg, picture.width, picture.height, 2));
+      check();
+      writer.blob(blob, `${file}.${format}`);
+      return blob.size;
+    });
+    if (result.status === "failure")
+      toast.error(format === "mermaid" ? t("planning.sequence.copyFailed") : t("planning.sequence.exportFailed"), {
+        action: {
+          label: t("common.retry"),
+          run: () => void exportSequence(format, owner),
+          testId: "sequence-export-retry",
+        },
+      });
+    else if (result.status === "success" && format === "mermaid") toast.success(t("planning.sequence.copied"));
   };
 
   return (
     <Dialog
-      title="Sequence diagram"
+      title={t("planning.sequence.title")}
       subtitle={
         <>
-          The whole journey of {model.title}, every copy included, in the order things happened.
-          {model.done ? "" : " It's still travelling: this is the journey so far."}
+          {t("planning.sequence.subtitle", { title: model.title })}
+          {model.done ? "" : t("planning.sequence.travelling")}
         </>
       }
       icon={<LiveIcon name="sequence" size={16} />}
@@ -103,20 +131,20 @@ export function SequenceDialog({
       width={dialogWidth}
       footer={
         <>
-          <button className="btn" onClick={downloadSvg} data-testid="sequence-download-svg">
+          <button className="btn" onClick={() => void exportSequence("svg")} data-testid="sequence-download-svg">
             <Glyph name="download" size={14} /> SVG
           </button>
-          <button className="btn" onClick={() => void downloadPng()} data-testid="sequence-download-png">
+          <button className="btn" onClick={() => void exportSequence("png")} data-testid="sequence-download-png">
             <Glyph name="image" size={14} /> PNG
           </button>
           <span className="ix-grow" />
           <button
             className="btn btn-primary"
-            onClick={() => void copyMermaid()}
+            onClick={() => void exportSequence("mermaid")}
             data-testid="sequence-copy-mermaid"
             data-autofocus
           >
-            <Glyph name="copy" size={14} /> Copy as Mermaid
+            <Glyph name="copy" size={14} /> {t("planning.sequence.copy")}
           </button>
         </>
       }
@@ -125,8 +153,9 @@ export function SequenceDialog({
         ref={view}
         className="tr-seq"
         data-testid="sequence-view"
+        data-trace={trace.rootId}
         role="region"
-        aria-label="Sequence diagram"
+        aria-label={t("planning.sequence.title")}
         // Scrollable both ways: keyboard users scroll it with the arrow keys.
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={0}
@@ -151,14 +180,14 @@ export function SequenceDialog({
         {/* The SVG is built from escaped text (src/trace/svg.ts), never from raw markup. */}
         <div className="tr-seq-body" dangerouslySetInnerHTML={{ __html: picture.svg }} />
       </div>
-      <section className="sr-only" aria-label="Sequence details" data-testid="sequence-accessible">
-        <h3>Participants</h3>
+      <section className="sr-only" aria-label={t("planning.sequence.details")} data-testid="sequence-accessible">
+        <h3>{t("planning.sequence.participants")}</h3>
         <ul data-testid="sequence-participants">
           {model.participants.map((p) => (
             <li key={p.id}>{p.label}</li>
           ))}
         </ul>
-        <h3>Messages and timing</h3>
+        <h3>{t("planning.sequence.timing")}</h3>
         <ol data-testid="sequence-messages">
           {model.items.map((item, i) => (
             <li key={i}>

@@ -14,6 +14,8 @@ export type KeyboardUiStep =
   | { history: "undo" | "redo" }
   | { importFixture: true }
   | { activate: string }
+  | { close: string }
+  | { playing: boolean }
   | { focus: string }
   | { read: string }
   | { menu: string }
@@ -30,6 +32,7 @@ export type KeyboardUiStep =
 function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
   if ("history" in step) return [step];
   if ("importFixture" in step) return [step];
+  if ("close" in step || "playing" in step) return [step];
   if ("pan" in step) return [{ press: "Shift+0" }];
   if ("click" in step) {
     if (step.click === "live-toggle") return [{ command: "live:toggle", query: () => ">" }];
@@ -117,6 +120,7 @@ export function keyboardSolutionNow(tutorial: Tutorial, snap: RunnerSnapshot): R
   const words = (value: string | Words) => (typeof value === "string" ? value : value());
   return (tutorial.steps[snap.state.index].keyboardSolution ?? []).map((step): ResolvedKeyboardStep => {
     if ("activate" in step) return { activate: at(step.activate) };
+    if ("close" in step) return { close: at(step.close) };
     if ("focus" in step) return { focus: at(step.focus) };
     if ("read" in step) return { read: at(step.read) };
     if ("menu" in step) return { menu: at(step.menu) };

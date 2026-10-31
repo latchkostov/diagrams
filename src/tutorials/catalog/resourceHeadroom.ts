@@ -1,0 +1,185 @@
+import { msg, t } from "../../i18n";
+import { resourcePractice } from "../../lab/simulationPractice";
+import type { SimulationMatch, Tutorial } from "../types";
+export const resourceHeadroom: Tutorial = {
+  id: "resource-headroom",
+  version: 1,
+  track: "simulation",
+  level: 2,
+  minutes: 4,
+  title: msg("tutorials.resourceHeadroom.title"),
+  summary: msg("tutorials.resourceHeadroom.summary"),
+  start: resourcePractice,
+  subjects: {
+    client: { stencils: ["client.mobile"] },
+    queue: { stencils: ["generic.queue"] },
+    worker: { stencils: ["service.python"] },
+  },
+  steps: [
+    {
+      id: "assumptions",
+      title: msg("tutorials.resourceHeadroom.assumptionsTitle"),
+      goal: () => t("tutorials.resourceHeadroom.assumptionsGoal", { worker: t("tutorials.resourceHeadroom.worker") }),
+      done: msg("tutorials.resourceHeadroom.assumptionsDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "selection", subjects: ["worker"], exact: true },
+          { kind: "dock", tab: "properties" },
+          { kind: "prop", subject: "worker", prop: ["resources", "cpuMsPerMessage"], op: "=", value: 200 },
+          { kind: "prop", subject: "worker", prop: "concurrency", op: "=", value: 8 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "node-{worker}", tip: msg("tutorials.resourceHeadroom.assumptionsTitle") }],
+      demo: [],
+      solution: [{ dblclick: "node-{worker}" }, { press: "Escape" }],
+    },
+    {
+      id: "ceiling",
+      title: msg("tutorials.resourceHeadroom.ceilingTitle"),
+      goal: msg("tutorials.resourceHeadroom.ceilingGoal"),
+      done: msg("tutorials.resourceHeadroom.ceilingDone"),
+      check: { kind: "planning", subject: "worker", constraint: "cpu", capacity: 5 },
+      sticky: true,
+      targets: [{ testId: "planning-explanation-{worker}", tip: msg("tutorials.resourceHeadroom.ceilingTitle") }],
+      demo: [],
+      solution: [{ dblclick: "node-{worker}" }, { press: "Escape" }],
+    },
+    {
+      id: "predict",
+      title: msg("tutorials.resourceHeadroom.predictTitle"),
+      goal: () => t("tutorials.resourceHeadroom.predictGoal", { run: t("tutorials.resourceHeadroom.runName") }),
+      done: msg("tutorials.resourceHeadroom.predictDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "node-{queue}", tip: msg("tutorials.resourceHeadroom.predictTitle") }],
+      demo: [],
+      solution: [{ click: "tutorial-skip" }],
+    },
+    {
+      id: "backlog",
+      title: msg("tutorials.resourceHeadroom.backlogTitle"),
+      goal: () =>
+        t("tutorials.resourceHeadroom.backlogGoal", {
+          queue: t("tutorials.authorASimulation.queue"),
+          run: t("tutorials.resourceHeadroom.runName"),
+        }),
+      done: msg("tutorials.resourceHeadroom.backlogDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", saved: burst() },
+          { kind: "metric", subject: "queue", field: "backlog", op: ">=", value: 1 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "live-sim-picker", tip: msg("tutorials.resourceHeadroom.backlogTitle") }],
+      demo: [{ kind: "runSimulation", id: "image-burst" }],
+      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "image-burst" }],
+    },
+    {
+      id: "replicas",
+      title: msg("tutorials.resourceHeadroom.replicasTitle"),
+      goal: () => t("tutorials.resourceHeadroom.replicasGoal", { worker: t("tutorials.resourceHeadroom.worker") }),
+      done: msg("tutorials.resourceHeadroom.replicasDone"),
+      check: { kind: "prop", subject: "worker", prop: "replicas", op: "=", value: 2 },
+      targets: [{ testId: "node-{worker}", tip: msg("tutorials.resourceHeadroom.replicasTitle") }],
+      demo: [
+        {
+          kind: "patch",
+          subject: "worker",
+          patches: [{ op: "set", path: ["replicas"], value: 2 }],
+          runs: ["image-burst"],
+        },
+      ],
+      solution: [
+        { dblclick: "node-{worker}" },
+        { open: "dock-edit-properties" },
+        { open: "inspector-section-node-simulation" },
+        { fill: "inspector-field-replicas", text: "2" },
+        { press: "Enter" },
+      ],
+    },
+    {
+      id: "replay",
+      title: msg("tutorials.resourceHeadroom.replayTitle"),
+      goal: () => t("tutorials.resourceHeadroom.replayGoal", { run: t("tutorials.resourceHeadroom.runName") }),
+      done: msg("tutorials.resourceHeadroom.replayDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "newRun" },
+          { kind: "simulation", saved: burst() },
+          { kind: "inputs", input: "traffic", op: "=", value: 1 },
+          { kind: "inputs", input: "capacity", op: "=", value: 1 },
+          { kind: "inputs", input: "scale", op: "=", value: 1 },
+          { kind: "metric", subject: "worker", field: "fleet.ready", op: "=", value: 2 },
+          { kind: "processed", subject: "worker", atLeast: 20 },
+          { kind: "metric", subject: "queue", field: "backlog", op: "=", value: 0 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "live-restart", tip: msg("tutorials.resourceHeadroom.replayTitle") }],
+      demo: [{ kind: "runSimulation", id: "image-burst" }],
+      solution: [
+        { select: "live-sim-picker", value: "" },
+        { select: "live-sim-picker", value: "image-burst" },
+      ],
+    },
+    {
+      id: "demand",
+      title: msg("tutorials.resourceHeadroom.demandTitle"),
+      goal: msg("tutorials.resourceHeadroom.demandGoal"),
+      done: msg("tutorials.resourceHeadroom.demandDone"),
+      check: {
+        kind: "all",
+        checks: [{ kind: "inputs", input: "traffic", op: "=", value: 2 }],
+      },
+      sticky: true,
+      targets: [{ testId: "live-capacity", tip: msg("tutorials.resourceHeadroom.demandTitle") }],
+      demo: [{ kind: "inputs", input: "traffic", value: 2 }],
+      solution: [
+        { click: "live-capacity" },
+        { click: "capacity-traffic-mult" },
+        { press: "End" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+      ],
+    },
+    {
+      id: "revised",
+      title: msg("tutorials.resourceHeadroom.revisedTitle"),
+      goal: () => t("tutorials.resourceHeadroom.revisedGoal", { worker: t("tutorials.resourceHeadroom.worker") }),
+      done: msg("tutorials.resourceHeadroom.demandDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "inputs", input: "traffic", op: "=", value: 2 },
+          { kind: "planning", subject: "worker", constraint: "cpu", capacity: 10, offered: 40 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "node-{worker}", tip: msg("tutorials.resourceHeadroom.revisedTitle") }],
+      demo: [],
+      solution: [{ dblclick: "node-{worker}" }, { open: "dock-edit-properties" }],
+    },
+  ],
+  finish: { text: msg("tutorials.resourceHeadroom.finish") },
+};
+
+function burst(): SimulationMatch {
+  return {
+    id: "image-burst",
+    seed: 7,
+    scale: 1,
+    durationMs: 6000,
+    multipliers: { traffic: 1, capacity: 1 },
+    traffic: resourcePractice().simulations![0].traffic,
+  };
+}

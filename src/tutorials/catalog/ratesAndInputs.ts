@@ -4,12 +4,12 @@ import { practiceRun } from "./buildingBlocks";
 
 export const ratesAndInputs: Tutorial = {
   id: "rates-and-inputs",
-  version: 1,
+  version: 2,
   track: "simulation",
   level: 1,
   minutes: 3,
   title: msg("tutorials.ratesAndInputs.title"),
-  summary: msg("tutorials.ratesAndInputs.summary"),
+  summary: msg("tutorials.ratesAndInputs.summaryV2"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.ratesAndInputs.title"),
@@ -61,17 +61,38 @@ export const ratesAndInputs: Tutorial = {
       ],
     },
     {
+      id: "free-play",
+      title: msg("tutorials.ratesAndInputs.freePlayTitle"),
+      goal: () =>
+        t("tutorials.ratesAndInputs.freePlayGoal", {
+          client: t("tutorials.ratesAndInputs.clientName"),
+          service: t("tutorials.ratesAndInputs.serviceName"),
+        }),
+      done: msg("tutorials.ratesAndInputs.freePlayDone"),
+      check: { kind: "all", checks: [{ kind: "freePlay" }, { kind: "processed", subject: "service", atLeast: 1 }] },
+      sticky: true,
+      targets: [{ testId: "live-toggle", tip: msg("tutorials.ratesAndInputs.freePlayTitle") }],
+      demo: [{ kind: "live" }],
+      solution: [{ click: "live-toggle" }],
+    },
+    {
       id: "live",
       title: msg("tutorials.ratesAndInputs.liveTitle"),
-      goal: msg("tutorials.ratesAndInputs.liveGoal"),
-      done: msg("tutorials.ratesAndInputs.liveDone"),
+      goal: () => t("tutorials.ratesAndInputs.liveGoalV2", { run: t("tutorials.ratesAndInputs.runName") }),
+      done: () => t("tutorials.ratesAndInputs.liveDoneV2", { run: t("tutorials.ratesAndInputs.runName") }),
       check: { kind: "simulation", id: "tutorial-flow", traffic: false },
       targets: [
-        { testId: "live-sim-picker", tip: msg("tutorials.ratesAndInputs.liveGoal") },
-        { testId: "live-toggle", tip: msg("tutorials.ratesAndInputs.liveGoal") },
+        {
+          testId: "live-sim-picker",
+          tip: () => t("tutorials.ratesAndInputs.liveGoalV2", { run: t("tutorials.ratesAndInputs.runName") }),
+        },
+        {
+          testId: "live-toggle",
+          tip: () => t("tutorials.ratesAndInputs.liveGoalV2", { run: t("tutorials.ratesAndInputs.runName") }),
+        },
       ],
       demo: [{ kind: "runSimulation", id: "tutorial-flow" }],
-      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "tutorial-flow" }],
+      solution: [{ select: "live-sim-picker", value: "tutorial-flow" }],
     },
     {
       id: "inputs",
@@ -79,6 +100,7 @@ export const ratesAndInputs: Tutorial = {
       goal: msg("tutorials.ratesAndInputs.inputsGoal"),
       done: msg("tutorials.ratesAndInputs.inputsDone"),
       check: { kind: "liveView", view: "inputs", open: true },
+      sticky: true,
       targets: [{ testId: "live-capacity", tip: msg("tutorials.ratesAndInputs.inputsGoal") }],
       demo: [{ kind: "openView", view: "inputs" }],
       solution: [{ click: "live-capacity" }],
@@ -104,14 +126,58 @@ export const ratesAndInputs: Tutorial = {
     {
       id: "watch",
       title: msg("tutorials.ratesAndInputs.watchTitle"),
-      goal: msg("tutorials.ratesAndInputs.watchGoal"),
+      goal: () => t("tutorials.ratesAndInputs.watchGoalV2", { service: t("tutorials.ratesAndInputs.serviceName") }),
       done: msg("tutorials.ratesAndInputs.watchDone"),
       check: { kind: "processed", subject: "service", atLeast: 30 },
       sticky: true,
-      targets: [{ testId: "node-{service}", tip: msg("tutorials.ratesAndInputs.watchGoal"), dim: false }],
+      targets: [
+        {
+          testId: "node-{service}",
+          tip: () => t("tutorials.ratesAndInputs.watchGoalV2", { service: t("tutorials.ratesAndInputs.serviceName") }),
+          dim: false,
+        },
+      ],
       demo: [],
       solution: [{ hover: "node-{service}" }],
     },
+    {
+      id: "offered",
+      title: msg("tutorials.ratesAndInputs.offeredTitle"),
+      goal: () =>
+        t("tutorials.ratesAndInputs.offeredGoal", {
+          service: t("tutorials.ratesAndInputs.serviceName"),
+          run: t("tutorials.ratesAndInputs.runName"),
+        }),
+      done: msg("tutorials.ratesAndInputs.offeredDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "inputs", input: "traffic", op: "=", value: 3 },
+          { kind: "planning", subject: "service", constraint: "threads", offered: 18 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "node-{service}", tip: msg("tutorials.ratesAndInputs.offeredTitle") }],
+      demo: [],
+      solution: [{ dblclick: "node-{service}" }, { open: "dock-edit-properties" }],
+    },
+    {
+      id: "scale",
+      title: msg("tutorials.ratesAndInputs.scaleTitle"),
+      goal: msg("tutorials.ratesAndInputs.scaleGoal"),
+      done: msg("tutorials.ratesAndInputs.scaleDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "inputs", input: "scale", op: "=", value: 2 },
+          { kind: "inputs", input: "traffic", op: "=", value: 3 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "scale-override", tip: msg("tutorials.ratesAndInputs.scaleTitle") }],
+      demo: [{ kind: "inputs", input: "scale", value: 2 }],
+      solution: [{ click: "live-capacity" }, { select: "scale-override", value: "2" }],
+    },
   ],
-  finish: { text: msg("tutorials.ratesAndInputs.finish") },
+  finish: { text: msg("tutorials.ratesAndInputs.finishV2") },
 };

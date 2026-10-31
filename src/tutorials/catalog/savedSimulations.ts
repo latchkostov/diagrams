@@ -5,12 +5,12 @@ import type { Demo, Tutorial } from "../types";
 
 export const savedSimulations: Tutorial = {
   id: "saved-simulations",
-  version: 2,
+  version: 3,
   track: "simulation",
   level: 1,
   minutes: 3,
   title: msg("tutorials.savedSimulations.title"),
-  summary: msg("tutorials.savedSimulations.summary"),
+  summary: msg("tutorials.savedSimulations.summaryV2"),
   start: () => {
     const saveSimulation: Extract<Demo, { kind: "saveSimulation" }> = {
       kind: "saveSimulation",
@@ -19,7 +19,7 @@ export const savedSimulations: Tutorial = {
       expectations: [
         {
           id: "goodput",
-          label: t("tutorials.savedSimulations.expectationLabel"),
+          label: t("tutorials.savedSimulations.expectationLabelV2", { client: t("tutorials.loadShedding.clientName") }),
           metric: { node: "client", field: "goodput" },
           op: ">=",
           value: 1,
@@ -143,15 +143,22 @@ export const savedSimulations: Tutorial = {
     {
       id: "expectation",
       title: msg("tutorials.savedSimulations.expectationTitle"),
-      goal: msg("tutorials.savedSimulations.expectationGoal"),
-      done: msg("tutorials.savedSimulations.expectationDone"),
+      goal: () => t("tutorials.savedSimulations.expectationGoalV2", { client: t("tutorials.loadShedding.clientName") }),
+      done: msg("tutorials.savedSimulations.expectationDoneV2"),
       // eslint-disable-next-line local/no-literal-ui-text -- Stable saved expectation id, never displayed copy.
       check: { kind: "expectation", simulation: "three-quick-retries", label: "goodput", outcome: "either" },
       sticky: true,
-      targets: [{ testId: "live-speed", tip: msg("tutorials.savedSimulations.expectationGoal"), dim: false }],
+      targets: [
+        {
+          testId: "live-speed",
+          tip: () =>
+            t("tutorials.savedSimulations.expectationGoalV2", { client: t("tutorials.loadShedding.clientName") }),
+          dim: false,
+        },
+      ],
       demo: [],
       solution: [{ select: "live-speed", value: "8" }],
     },
   ],
-  finish: { text: msg("tutorials.savedSimulations.finish") },
+  finish: { text: msg("tutorials.savedSimulations.finishV2") },
 };

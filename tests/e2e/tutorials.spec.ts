@@ -18,6 +18,7 @@ import {
   emptyCanvasPoint,
   savedDiagram,
   waitForLiveSession,
+  animationFrames,
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
@@ -101,7 +102,15 @@ for (const [control, lesson] of [
 }
 
 async function play(page: Page, step: ResolvedUiStep) {
-  if ("history" in step) {
+  if ("close" in step) {
+    const close = page.getByTestId(step.close);
+    if (await close.isVisible()) await close.click();
+  } else if ("playing" in step) {
+    const control = page.getByTestId("live-play");
+    const state = await control.getAttribute("data-state");
+    const playing = state === "slowmo" ? (await control.getAttribute("data-playing")) === "1" : state === "playing";
+    if (state !== "waiting" && playing !== step.playing) await control.click();
+  } else if ("history" in step) {
     const current = await strip(page).getAttribute("data-step");
     for (let edits = 0; edits < 3 && (await strip(page).getAttribute("data-step")) === current; edits++) {
       const before = await page.evaluate(() => JSON.stringify(window.__tutorial?.diagram()));
@@ -394,8 +403,13 @@ async function advanceTutorialClock(page: Page, ready: () => Promise<boolean>) {
 
 async function skipAll(page: Page, clocked = false) {
   const steps = await page.evaluate(() => window.__tutorial?.snapshot().state.stepIds ?? []);
+  const lesson = await page.getByTestId("tutorial-app").evaluateAll((apps) => apps[0]?.getAttribute("data-tutorial"));
   while ((await strip(page).getAttribute("data-phase")) === "step") {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
+    if (lesson === "sequence-evidence" && (await page.getByTestId("sequence-dialog").isVisible())) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("sequence-dialog")).toHaveCount(0);
+    }
     await page.getByTestId("tutorial-skip").click();
     if (clocked)
       await advanceTutorialClock(page, async () => {
@@ -574,7 +588,7 @@ for (const entry of ["Skip Save", "Continue at Run"] as const)
       await page.addInitScript(() =>
         localStorage.setItem(
           "diagrams.tutorials.v1",
-          JSON.stringify({ progress: { "author-a-drill": { version: 1, step: 3, completed: false } } }),
+          JSON.stringify({ progress: { "author-a-drill": { version: 2, step: 3, completed: false } } }),
         ),
       );
     await openTutorial(page, "author-a-drill");
@@ -1143,21 +1157,44 @@ for (const { id, quarantined } of tutorialEntries)
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
     const capture = process.env.TUTORIAL_SCREENSHOTS;
-    if (capture && ["checks-and-fixes", "route-by-address", "network-policy"].includes(id)) {
+    if (
+      capture &&
+      [
+        "checks-and-fixes",
+        "route-by-address",
+        "network-policy",
+        "resource-headroom",
+        "sequence-evidence",
+        "author-a-simulation",
+      ].includes(id)
+    ) {
       mkdirSync(capture, { recursive: true });
       await page.screenshot({ path: join(capture, `${id}-intro.png`) });
     }
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
-    if (capture && ["checks-and-fixes", "route-by-address", "network-policy"].includes(id))
+    if (
+      capture &&
+      [
+        "checks-and-fixes",
+        "route-by-address",
+        "network-policy",
+        "resource-headroom",
+        "sequence-evidence",
+        "author-a-simulation",
+      ].includes(id)
+    )
       await page.screenshot({ path: join(capture, `${id}-completed.png`) });
     if (id === "rate-limit") expect(seen).toEqual(["quota-10", "run", "rejected"]);
     if (id === "backlog-lag") expect(seen).toEqual(["live", "backlog-50", "add-consumer", "consumer-progress"]);
     if (id === "shared-api-quotas")
       expect(seen).toEqual(["launch-burst", "shared-refusals", "local-refusals", "within-budget", "served"]);
     if (id === "capacity") expect(seen).toContain("overlay");
-    if (id === "trace-slowmo") expect(seen).toContain("finished");
+    if (id === "trace-slowmo") {
+      expect(seen).toContain("finished");
+      await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+    }
     if (id === "saved-simulations") expect(seen).toEqual(["live", "waiting", "continue", "expectation"]);
     if (id === "scale-to-zero") expect(seen).toContain("cold-start");
     if (id === "load-shedding")
@@ -2487,3 +2524,361 @@ test("tutorial sandbox privacy: a public-only lesson keeps sharing and exports p
   expect(JSON.parse(readFileSync(path, "utf8"))).not.toHaveProperty("private");
   await expectNothingSaved(page);
 });
+
+for (const [id, steps] of [
+  ["resource-headroom", ["assumptions", "ceiling", "predict", "backlog", "replicas", "replay", "demand", "revised"]],
+  ["sequence-evidence", ["live", "trace", "sequence", "export", "limits"]],
+  ["author-a-simulation", ["burst", "note", "save", "pause", "continue", "result", "replay"]],
+] as const)
+  for (let index = 1; index < steps.length; index++)
+    test(`batch4 Continue: ${id} at ${steps[index]} remains completable through the real UI`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      test.slow();
+      await page.addInitScript(
+        ({ id, index }) =>
+          localStorage.setItem(
+            "diagrams.tutorials.v1",
+            JSON.stringify({ progress: { [id]: { version: 1, step: index, completed: false } } }),
+          ),
+        { id, index },
+      );
+      await openTutorial(page, id);
+      await expect(page.getByTestId("tutorial-start")).toContainText("Continue");
+      await page.getByTestId("tutorial-start").click();
+      await expect(strip(page)).toHaveAttribute("data-step", steps[index]);
+      await expect(strip(page)).toHaveAttribute("data-state", "active");
+      await finishSolution(page);
+      await expectNothingSaved(page);
+      expectNoErrors(consoleErrors);
+    });
+
+async function skipToCheckpoint(page: Page, target: string) {
+  const count = await page.evaluate(() => window.__tutorial?.snapshot().state.stepIds.length ?? 0);
+  for (let step = 0; step < count; step++) {
+    const current = await strip(page).getAttribute("data-step");
+    if (current === target) return;
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).not.toHaveAttribute("data-step", current ?? "");
+  }
+  throw new Error(`Did not reach checkpoint ${target}`);
+}
+
+for (const [id, target] of [
+  ["trace-slowmo", "slowmo"],
+  ["sequence-evidence", "trace"],
+] as const)
+  test(`${id}: its tracing solution recovers after the saved traffic has ended`, async ({ page, consoleErrors }) => {
+    test.slow();
+    await openTutorial(page, id);
+    await page.getByTestId("tutorial-start").click();
+    await skipToCheckpoint(page, target);
+    const timeline = page.getByTestId("live-timeline-input");
+    await timeline.focus();
+    await page.keyboard.press("End");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "done");
+    await finishSolution(page);
+    expectNoErrors(consoleErrors);
+  });
+
+test("author-a-simulation: real Save Undo returns to authoring and the preserved definition can be saved again", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await openTutorial(page, "author-a-simulation");
+  await page.getByTestId("tutorial-start").click();
+  await skipToCheckpoint(page, "save");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-step", "pause");
+  await expect(page.getByTestId("sim-panel")).toBeVisible();
+  await page.getByTestId("undo-button").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "save");
+  expect(await page.evaluate(() => window.__tutorial?.diagram()?.simulations ?? [])).toHaveLength(0);
+  await expect(page.getByTestId("sim-panel-expectation-0-value")).toHaveValue("10");
+  await page.getByTestId("sim-panel-save").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "pause");
+  await finishSolution(page);
+  await expectNothingSaved(page);
+  expectNoErrors(consoleErrors);
+});
+
+test("author-a-simulation: saving an already-run matching draft still launches a fresh saved experiment", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await openTutorial(page, "author-a-simulation");
+  await page.getByTestId("tutorial-start").click();
+  await skipToCheckpoint(page, "save");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) {
+    if ("click" in action && action.click === "sim-panel-save") break;
+    await play(page, action);
+  }
+  await page.getByTestId("sim-panel-run").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "save");
+  expect(await page.evaluate(() => window.__tutorial?.diagram()?.simulations ?? [])).toHaveLength(0);
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await expect(page.getByTestId("sim-panel-expectation-0-value")).toHaveValue("10");
+  await page.getByTestId("sim-panel-save").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "pause");
+  await finishSolution(page);
+  await expectNothingSaved(page);
+  expectNoErrors(consoleErrors);
+});
+
+test("resource-headroom: real replica Undo returns to the edit and the replay remains completable", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await openTutorial(page, "resource-headroom");
+  await page.getByTestId("tutorial-start").click();
+  await skipToCheckpoint(page, "replicas");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-step", "replay");
+  await page.getByTestId("undo-button").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "replicas");
+  expect(
+    await page.evaluate(
+      () => window.__tutorial?.diagram()?.nodes.find((node) => node.id === "worker")?.props?.replicas,
+    ),
+  ).toBe(1);
+  await finishSolution(page);
+  await expectNothingSaved(page);
+  expectNoErrors(consoleErrors);
+});
+
+test("trace-slowmo: Continue at exit keeps the reconstructed run in Live", async ({ page, consoleErrors }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "diagrams.tutorials.v1",
+      JSON.stringify({ progress: { "trace-slowmo": { version: 2, step: 6, completed: false } } }),
+    ),
+  );
+  await openTutorial(page, "trace-slowmo");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "exit");
+  await expect(strip(page)).toHaveAttribute("data-state", "active");
+  expect(await page.evaluate(() => window.__tutorial?.snapshot().selected)).toEqual([]);
+  const actions = await page.evaluate(() => window.__tutorial?.keyboardSolution() ?? []);
+  for (const action of actions) {
+    if (!("press" in action)) throw new Error("Expected the Escape route");
+    await page.keyboard.press(action.press);
+    await animationFrames(page);
+    if ((await strip(page).getAttribute("data-phase")) === "finished") break;
+  }
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+  await expectNothingSaved(page);
+  expectNoErrors(consoleErrors);
+});
+
+test("batch4 Sequence: failed download stays current; Retry writes the same trace's SVG bytes", async ({
+  page,
+  consoleErrors,
+}) => {
+  await openTutorial(page, "sequence-evidence");
+  await page.getByTestId("tutorial-start").click();
+  for (const current of ["live", "trace", "sequence"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", current);
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+    await expect(strip(page)).not.toHaveAttribute("data-step", current);
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "export");
+  const root = await page.getByTestId("trace-card").getAttribute("data-root");
+  if (!root) throw new Error("Expected the traced root identity");
+  await expect(page.getByTestId("sequence-view")).toHaveAttribute("data-trace", root);
+  const before = await page.getByTestId("sequence-messages").textContent();
+  if (!before) throw new Error("Expected sequence messages");
+  await page.evaluate(() => {
+    const original = HTMLAnchorElement.prototype.click;
+    const url = URL.createObjectURL;
+    const capture = window as Window & { sequenceBlob?: Blob; restoreSequence(): void };
+    URL.createObjectURL = (blob) => {
+      if (blob instanceof Blob && blob.type === "image/svg+xml") capture.sequenceBlob = blob;
+      return url(blob);
+    };
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download.endsWith("-sequence.svg")) throw new Error("Download refused by test");
+      original.call(this);
+    };
+    capture.restoreSequence = () => {
+      HTMLAnchorElement.prototype.click = original;
+    };
+  });
+  await page.getByTestId("sequence-download-svg").click();
+  await expect(page.getByTestId("sequence-export-retry")).toBeVisible();
+  await expect(strip(page)).toHaveAttribute("data-step", "export");
+  await page.evaluate(() => (window as Window & { restoreSequence(): void }).restoreSequence());
+  const downloaded = page.waitForEvent("download");
+  await page.getByTestId("sequence-export-retry").click();
+  const file = await downloaded;
+  expect(await file.failure()).toBeNull();
+  const bytes = readFileSync(await file.path(), "utf8");
+  const captured = await page.evaluate(() => (window as Window & { sequenceBlob?: Blob }).sequenceBlob?.text());
+  expect(bytes).toBe(captured);
+  expect(bytes).toContain("Storefront");
+  expect(bytes).toContain('data-testid="seq-participant-orders"');
+  await expect(strip(page)).toHaveAttribute("data-step", "limits");
+  await expect(page.getByTestId("sequence-messages")).toHaveText(before);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expectNothingSaved(page);
+  expectNoErrors(consoleErrors);
+});
+
+for (const sample of [
+  { id: "resource-headroom", locale: "en", width: 1440, height: 900, dark: false },
+  { id: "sequence-evidence", locale: "en", width: 1440, height: 900, dark: true },
+  { id: "author-a-simulation", locale: "en-XA", width: 390, height: 844, dark: false },
+  { id: "trace-slowmo", locale: "ar", width: 780, height: 390, dark: true },
+])
+  test(`batch4 readability: ${sample.id} ${sample.locale} ${sample.width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: sample.width, height: sample.height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addInitScript(({ locale, dark }) => {
+      localStorage.setItem("diagrams.locale", locale);
+      localStorage.setItem(
+        "diagrams.settings.v1",
+        JSON.stringify({ theme: dark ? "dark" : "light", themePreference: dark ? "dark" : "light" }),
+      );
+    }, sample);
+    await openTutorial(page, sample.id);
+    await page.getByTestId("tutorial-start").click();
+    await page.getByTestId("tutorial-show-me").click();
+    for (const id of ["tutorial-exit", "tutorial-skip", "tutorial-show-me"])
+      await expect(page.getByTestId(id)).toBeInViewport();
+    await expectNoViolations(page, "tutorial-app");
+    const destination = process.env.TUTORIAL_SCREENSHOTS;
+    if (destination) mkdirSync(destination, { recursive: true });
+    await page.screenshot({
+      path: destination
+        ? join(destination, `${sample.id}-${sample.locale}-${sample.width}.png`)
+        : testInfo.outputPath(`${sample.id}-${sample.locale}-${sample.width}.png`),
+    });
+  });
+
+for (const outcome of ["Retry", "Close"] as const)
+  test(`batch4 Sequence load: ${outcome} preserves a completable lesson`, async ({ page, consoleErrors }) => {
+    const held = await holdChunk(page, chunk("SequenceDialog", "src/live/SequenceDialog.tsx"));
+    await openTutorial(page, "sequence-evidence");
+    await page.getByTestId("tutorial-start").click();
+    for (const current of ["live", "trace"]) {
+      await expect(strip(page)).toHaveAttribute("data-step", current);
+      for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+      await expect(strip(page)).not.toHaveAttribute("data-step", current);
+    }
+    await page.getByTestId("trace-sequence").click();
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("lazy-dialog")).toBeVisible();
+    await expect(strip(page)).toHaveAttribute("data-step", "sequence");
+    if (outcome === "Retry") {
+      const errorsBefore = consoleErrors.length;
+      held.fail = true;
+      held.release();
+      await expect(page.getByTestId("lazy-dialog-error")).toBeVisible();
+      expect(consoleErrors.slice(errorsBefore)).toEqual(["console.error: Failed to load resource: net::ERR_FAILED"]);
+      consoleErrors.splice(errorsBefore, 1);
+      await expect(strip(page)).toHaveAttribute("data-step", "sequence");
+      held.fail = false;
+      await page.getByTestId("lazy-dialog-retry").click();
+      await expect(page.getByTestId("sequence-dialog")).toBeVisible();
+      await expect(strip(page)).toHaveAttribute("data-step", "export");
+      await finishSolution(page);
+    } else {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("lazy-dialog")).toHaveCount(0);
+      held.release();
+      await expect(page.getByTestId("sequence-dialog")).toHaveCount(0);
+      await expect(strip(page)).toHaveAttribute("data-step", "sequence");
+      await finishSolution(page);
+    }
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
+
+for (const wrong of ["target", "time"] as const)
+  test(`author-a-drill: Skip repairs a saved wrong-${wrong} near miss`, async ({ page, consoleErrors }) => {
+    await openTutorial(page, "author-a-drill");
+    await page.getByTestId("tutorial-start").click();
+    for (const current of ["live", "open"]) {
+      await expect(strip(page)).toHaveAttribute("data-step", current);
+      for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+      await expect(strip(page)).not.toHaveAttribute("data-step", current);
+    }
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) {
+      if ("select" in action && action.select === "sim-panel-step-0-fault-target" && wrong === "target") continue;
+      if ("click" in action && action.click === "sim-panel-section-details" && wrong === "time")
+        await page.getByTestId("sim-panel-step-0-time").fill("1");
+      await play(page, action);
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "save");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "run");
+    const sim = await page.evaluate(() =>
+      window.__tutorial?.diagram()?.simulations?.find((sim) => sim.id === "simulation"),
+    );
+    expect(sim?.timeline).toEqual([
+      { atMs: 0, action: { do: "fault", drill: "slow-dependency", fault: { kind: "slow", node: "db", factor: 5 } } },
+    ]);
+    await finishSolution(page);
+    expectNoErrors(consoleErrors);
+  });
+
+test("author-a-simulation: a second expectation survives removing the first and completes result and replay", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await openTutorial(page, "author-a-simulation");
+  await page.getByTestId("tutorial-start").click();
+  await skipToCheckpoint(page, "save");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) {
+    if ("click" in action && action.click === "sim-panel-save") break;
+    if ("click" in action && action.click === "sim-panel-add-expectation") {
+      await play(page, action);
+      await play(page, action);
+      await page.getByTestId("sim-panel-expectation-0-remove").click();
+    } else await play(page, action);
+  }
+  await page.getByTestId("sim-panel-save").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "pause");
+  const saved = await page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "simulation"));
+  expect(saved?.expectations).toHaveLength(1);
+  expect(saved?.expectations?.[0].id).toBe("check-2");
+  await finishSolution(page);
+  expectNoErrors(consoleErrors);
+});
+
+for (const route of ["Right arrow", "Skip"] as const)
+  test(`trace-slowmo: ${route} completes the hop when playback finished during Pause`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await openTutorial(page, "trace-slowmo");
+    await page.getByTestId("tutorial-start").click();
+    await skipToCheckpoint(page, "pause");
+    // Seek to the end while still playing, just as the playback clock reaching the end does.
+    await page.getByTestId("slowmo-timeline-input").focus();
+    await page.keyboard.press("End");
+    await expect(strip(page)).toHaveAttribute("data-step", "hop");
+    await expect(page.getByTestId("slowmo-timeline-input")).toHaveValue("0");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-playing", "0");
+    // Finish the seek's camera work before testing a hop; the following checkpoint teaches manual pan.
+    await page.getByTestId("live-view-menu").click();
+    await page.getByTestId("view-follow").click();
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("live-view-menu")).toContainText("Following");
+    if (route === "Skip") await page.getByTestId("tutorial-skip").click();
+    else {
+      await page.getByTestId("live-play").focus();
+      await page.keyboard.press("ArrowRight");
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "camera");
+    expectNoErrors(consoleErrors);
+  });

@@ -1,4 +1,13 @@
-import type { AnnotationKind, DiagramFile, EdgeRelation, Expectation, Side, SimRole } from "../model/types";
+import type {
+  AnnotationKind,
+  DiagramFile,
+  Simulation,
+  TrafficProfile,
+  EdgeRelation,
+  Expectation,
+  Side,
+  SimRole,
+} from "../model/types";
 import type { EdgeSimState, NodeSimState } from "../sim/types";
 import type { EditorModeValue } from "../canvas/interaction/mode";
 import type { DrillPreset } from "../model/faults";
@@ -123,6 +132,14 @@ export interface SimulationMatch {
   id?: string;
   drill?: DrillPreset | "any";
   expectations?: number;
+  traffic?: readonly TrafficProfile[];
+  note?: { focus: string; pause: boolean; atMs: number };
+  expectation?: Pick<Expectation, "metric" | "op" | "value" | "when">;
+  fault?: { node: string; atMs: number; kind?: "slow" | "fail" };
+  seed?: number;
+  scale?: number;
+  durationMs?: number;
+  multipliers?: Simulation["multipliers"];
 }
 /** A Live panel or view, as Live publishes it (src/live/planningHost.ts, src/live/capacityOverlay.ts). */
 export type LiveView = "inputs" | "events" | "simulations" | "capacity";
@@ -131,6 +148,19 @@ export type LiveInput = "traffic" | "capacity" | "scale";
 
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
+  | {
+      kind: "planning";
+      subject: string;
+      constraint: "cpu" | "threads" | "unknown";
+      capacity?: number;
+      offered?: number;
+    }
+  | { kind: "sequence"; exported?: "svg" | "mermaid" | "either" }
+  | { kind: "newRun" }
+  | { kind: "draftSimulation"; match: SimulationMatch }
+  | { kind: "slowControl"; action: "paused" | "stepped" | "off" }
+  | { kind: "freePlay" }
+  | { kind: "event"; subject: string; event: "process" | "deliver" }
   | { kind: "navigation"; subject: string }
   | { kind: "toolSearch"; stencil: string; closed?: true }
   | { kind: "gallery"; feature: string; slug: string }
@@ -204,22 +234,24 @@ export type Check =
   /** The diagram has a saved simulation like this (authored in Simulations…), running or not. */
   | { kind: "savedSimulation"; match: SimulationMatch }
   /**
-   * A saved expectation id is stable across languages; Words also matches a chip's displayed label. outcome: what the
+   * Match an authored expectation by definition, or a saved chip by id/displayed label. outcome: what the
    * chip must say, "pass" by default; "either" once it's decided, met or failed.
    */
-  | { kind: "expectation"; simulation: string; label: string | Words; outcome?: "pass" | "fail" | "either" }
+  | ({ kind: "expectation"; simulation: string; outcome?: "pass" | "fail" | "either" } & (
+      { label: string | Words; match?: never } | { match: NonNullable<SimulationMatch["expectation"]>; label?: never }
+    ))
   /** A Fault is active on the subject; absent: none is (Restore cleared it), while Live runs. */
   | ({ kind: "fault"; fault?: FaultKind; absent?: true } & PropertyTarget)
-  | { kind: "trace" }
+  | { kind: "trace"; complete?: true; origin?: string }
   /** Slow motion is on; finished: its message's journey has played to the end (the machine's `finished`). */
-  | { kind: "slowmo"; finished?: true }
+  | { kind: "slowmo"; finished?: true; ready?: true }
   /** A Live panel or view is open (or closed), as Live publishes it. */
   | { kind: "liveView"; view: LiveView; open: boolean }
   /** A Live hover card is open: on this subject or connection, or on anything. */
   | ({ kind: "readout" } & (PropertyTarget | { subject?: never; edge?: never }))
   /** Live's what-if input (Inputs panel): Traffic × 3 is `{ input: "traffic", op: "=", value: 3 }`; unset is 1. */
   | { kind: "inputs"; input: LiveInput; op: MetricComparison; value: number }
-  | { kind: "note"; waiting: boolean }
+  | { kind: "note"; waiting: boolean; currentOnly?: true }
   | { kind: "mode"; value: EditorModeValue; subject?: string }
   | { kind: "selection"; subjects?: readonly string[]; atLeast?: number; exact?: boolean }
   | { kind: "aligned"; subjects?: readonly string[]; axis: "x" | "y"; atLeast?: number }
@@ -232,6 +264,9 @@ export type Check =
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
+  | { kind: "openSequence" }
+  | { kind: "draftSimulation"; simulation: Simulation }
+  | { kind: "slowControl"; action: "pause" | "step" | "end" }
   | { kind: "importFixture" }
   | { kind: "history"; action: "undo" | "redo"; absent?: string; present?: { subject: string; label: Words } }
   | { kind: "stencil"; subject: string; stencil: string }
@@ -258,7 +293,7 @@ export type Demo =
   /** Continuous traffic on or off, through Live's own control (the registry's "sim.traffic"). */
   | { kind: "traffic"; on: boolean }
   /** Follow the next message, through Live's own "Trace a message › Next message". */
-  | { kind: "trace" }
+  | { kind: "trace"; subject?: string }
   /**
    * Watch one message in slow motion, through Live's own action: from this subject ("Watch one message in slow motion"
    * on its menu), or the next anywhere ("Trace a message › Next message, in slow motion").
@@ -275,8 +310,8 @@ export type Demo =
    * continuing any note that pauses it on the way, so the run reaches the note the step is about.
    */
   | { kind: "continueNote"; simulation: string; atLeastMs?: number }
-  /** Open a Live panel or view, as its control does. */
-  | { kind: "openView"; view: LiveView }
+  /** Set a Live panel or view's visibility through its controls; open defaults to true. */
+  | { kind: "openView"; view: LiveView; subject?: string; open?: boolean }
   /**
    * Save a simulation, as Simulations… does: a Drill step per fault preset (on the diagram's own targets, as the
    * preset picks them) and these expectations. Edit-preserving: a saved simulation with this id keeps what it has
@@ -286,8 +321,10 @@ export type Demo =
       kind: "saveSimulation";
       id: string;
       title: Words;
-      drills?: readonly { preset: DrillPreset; atMs: number }[];
+      drills?: readonly { preset: DrillPreset; atMs: number; target?: string }[];
       expectations?: readonly Expectation[];
+      definition?: Simulation;
+      durationMs?: number;
     }
   | ({ kind: "fault"; fault: FaultKind; restore?: boolean } & PropertyTarget)
   | { kind: "select"; subjects: readonly string[] }
@@ -314,6 +351,10 @@ export type UiStep =
   | { importFixture: true }
   | { pan: true }
   | { click: string }
+  /** Close an optional panel; Continue may already have closed it. */
+  | { close: string }
+  /** Start/stop transport only when needed; narration Continue remains a separate action. */
+  | { playing: boolean }
   /** Open a disclosure, keeping it open when a previous lesson already opened it. */
   | { open: string }
   | { modClick: string; modifiers: readonly ("Shift" | "Control" | "Meta" | "Alt")[] }

@@ -178,6 +178,13 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
       await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
       await page.clock.resume();
       return;
+    case "live.sequence":
+      await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-shopper").click({ button: "right" });
+      await page.getByTestId("context-menu-item-sim.trace-next").click();
+      await page.getByTestId("trace-sequence").click();
+      return;
     case "live.slow-timeline":
       await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1");
       await waitForStableViewport(page);

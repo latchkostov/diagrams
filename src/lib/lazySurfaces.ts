@@ -42,6 +42,7 @@ export const lazySurfaces = [
   ["live.events", names ? "EventLog" : "", names ? "live/EventLog" : "", "skip"],
   ["live.inject", names ? "InjectDialog" : "", names ? "live/InjectDialog" : "", "skip"],
   ["live.note", names ? "NoteCallout" : "", names ? "live/NoteCallout" : "", "await"],
+  ["live.sequence", names ? "SequenceDialog" : "", names ? "live/SequenceDialog" : "", "skip"],
   ["live.trace", names ? "TraceCard" : "", names ? "live/TraceCard" : "", "skip"],
   ["edge.shaping", names ? "EdgeRouteHandles" : "", names ? "canvas/edges/EdgeRouteHandles" : "", "skip"],
   ["edge.reader", names ? "EdgeMessages" : "", names ? "canvas/edges/EdgeMessages" : "", "skip"],

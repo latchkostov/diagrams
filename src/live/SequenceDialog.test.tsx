@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
-import { act, type ReactNode } from "react";
+import { act, StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { cancelObservedWork, observationPorts } from "../lib/observations";
 import { svgToPng } from "../interop/image";
 import { SequenceDialog } from "./SequenceDialog";
+import { toast } from "../interop/ui/toast";
 
 const context = vi.hoisted(() => {
   const source = { documentId: "sequence-source", identity: {} };
@@ -12,6 +13,7 @@ const context = vi.hoisted(() => {
 });
 vi.mock("../palette/observationSource", () => ({ currentObservationSource: () => context.current }));
 vi.mock("../interop/image", () => ({ svgToPng: vi.fn() }));
+vi.mock("../interop/ui/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("../interop/ui/Dialog", () => ({
   Dialog: ({ children, footer }: { children: ReactNode; footer: ReactNode }) => (
     <div>
@@ -52,21 +54,23 @@ for (const cancelled of [false, true])
     try {
       await act(() =>
         root.render(
-          <SequenceDialog
-            diagram={{ format: "diagrams/v1", title: "Public sequence", nodes: [], edges: [] }}
-            trace={{
-              rootId: 1,
-              type: "Request",
-              origin: "source",
-              startedAt: 0,
-              done: true,
-              partial: false,
-              truncated: false,
-              steps: [],
-            }}
-            theme="light"
-            onClose={() => {}}
-          />,
+          <StrictMode>
+            <SequenceDialog
+              diagram={{ format: "diagrams/v1", title: "Public sequence", nodes: [], edges: [] }}
+              trace={{
+                rootId: 1,
+                type: "Request",
+                origin: "source",
+                startedAt: 0,
+                done: true,
+                partial: false,
+                truncated: false,
+                steps: [],
+              }}
+              theme="light"
+              onClose={() => {}}
+            />
+          </StrictMode>,
         ),
       );
       await act(() => host.querySelector<HTMLButtonElement>('[data-testid="sequence-download-png"]')!.click());
@@ -89,3 +93,53 @@ for (const cancelled of [false, true])
       stop();
     }
   });
+
+it("an old download Retry cannot export after a different trace replaces its dialog", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "scrollTo").mockImplementation(() => {});
+  vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:sequence");
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementationOnce(() => {
+    throw new Error("Download refused");
+  });
+  const listener = vi.fn();
+  const stop = observationPorts.sequenceExport.subscribe(listener);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const dialog = (rootId: number) => (
+    <StrictMode>
+      <SequenceDialog
+        diagram={{ format: "diagrams/v1", title: "Public sequence", nodes: [], edges: [] }}
+        trace={{
+          rootId,
+          type: "Request",
+          origin: "source",
+          startedAt: 0,
+          done: true,
+          partial: false,
+          truncated: false,
+          steps: [],
+        }}
+        theme="light"
+        onClose={() => {}}
+      />
+    </StrictMode>
+  );
+  try {
+    await act(() => root.render(dialog(17)));
+    await act(() => host.querySelector<HTMLButtonElement>('[data-testid="sequence-download-svg"]')!.click());
+    expect(click).toHaveBeenCalledOnce();
+    const retry = vi.mocked(toast.error).mock.calls.at(-1)?.[1]?.action?.run;
+    expect(retry).toBeTypeOf("function");
+    if (!retry) throw new Error("Expected download Retry");
+    await act(() => root.render(dialog(18)));
+    click.mockClear().mockImplementation(() => {});
+    await act(async () => retry());
+    expect(click).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+    stop();
+  }
+});

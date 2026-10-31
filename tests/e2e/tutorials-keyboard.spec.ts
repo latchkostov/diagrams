@@ -164,13 +164,14 @@ async function focus(page: Page, id: string) {
     // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
     if (!body) seen.add(state.active);
     const previous = state.active;
+    const roving = state.roving;
     await page.keyboard.press(state.roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
     // Roving focus and portal teardown can cross body before the destination lands on the next frame.
     if (body) state = await readState(true);
     else
       await expect
         .poll(async () => {
-          state = await readState(true);
+          state = await readState(roving);
           return state.active;
         })
         .not.toBe(previous);
@@ -206,6 +207,27 @@ async function menuItem(page: Page, id: string) {
 }
 
 async function play(page: Page, action: ResolvedKeyboardStep) {
+  if ("close" in action) {
+    const close = page.getByTestId(action.close);
+    if (await close.isVisible()) {
+      await page.keyboard.press("Escape");
+      await expect(close).toHaveCount(0);
+    }
+    return;
+  }
+  if ("playing" in action) {
+    const control = page.getByTestId("live-play");
+    const state = await control.getAttribute("data-state");
+    const playing = state === "slowmo" ? (await control.getAttribute("data-playing")) === "1" : state === "playing";
+    if (state !== "waiting" && playing !== action.playing) {
+      const nativeControl = await page.evaluate(() =>
+        ["BUTTON", "INPUT", "SELECT", "TEXTAREA", "A"].includes(document.activeElement?.tagName ?? ""),
+      );
+      if (state === "slowmo" && !nativeControl) await page.keyboard.press("Space");
+      else await activate(page, "live-play");
+    }
+    return;
+  }
   if ("history" in action) {
     const current = await page.getByTestId("tutorial-step").getAttribute("data-step");
     for (
@@ -308,7 +330,7 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
       await expect.poll(() => page.getByTestId(action.choose).evaluate((el) => el.matches(":open"))).toBe(false);
     }
     await expect(page.getByTestId(action.choose)).toHaveValue(
-      action.choose === "sim-panel-add-step" ? "" : action.value,
+      action.choose === "sim-panel-add-step" || /^sim-panel-step-\d+-focus$/.test(action.choose) ? "" : action.value,
     );
   } else if ("connect" in action) {
     const from = action.connect.slice(5),
@@ -350,6 +372,11 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
     if (action.press === "ControlOrMeta+d")
       await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
     await page.keyboard.press(action.press);
+    if (action.press === "Escape") {
+      await animationFrames(page);
+      if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished"))
+        throw new CompletedStep();
+    }
   }
 }
 
@@ -397,9 +424,68 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
       await expect(page.getByTestId("tutorial-step")).not.toHaveAttribute("data-step", current.id, { timeout: 20_000 });
     }
     await expect(page.getByTestId("tutorial-finished")).toBeVisible();
+    if (id === "trace-slowmo") await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
     expectNoErrors(consoleErrors);
   });
 }
+
+test("native keyboard controls use their focus observation without extra animation frames", async ({ page }) => {
+  await page.setContent(
+    '<button data-testid="first">First</button><button data-testid="target">Target</button><button data-testid="last">Last</button>',
+  );
+  await page.keyboard.press("Tab");
+  await page.evaluate(() => {
+    const raf = window.requestAnimationFrame.bind(window);
+    Object.assign(window, { __nativeFocusFrames: 0 });
+    window.requestAnimationFrame = (callback) => {
+      const state = window as unknown as { __nativeFocusFrames: number };
+      state.__nativeFocusFrames++;
+      return raf(callback);
+    };
+  });
+  await focus(page, "target");
+  await expect(page.getByTestId("target")).toBeFocused();
+  expect(await page.evaluate(() => (window as unknown as { __nativeFocusFrames: number }).__nativeFocusFrames)).toBe(0);
+});
+
+test("trace-slowmo: keyboard Play after a speed choice activates transport instead of the select", async ({ page }) => {
+  await page.setContent(
+    '<button data-testid="live-play" data-state="slowmo" data-playing="0">Play</button><select data-testid="live-speed"><option value="8">8×</option></select>',
+  );
+  await page
+    .getByTestId("live-play")
+    .evaluate((button) => button.addEventListener("click", () => button.setAttribute("data-playing", "1")));
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("live-speed")).toBeFocused();
+  await play(page, { playing: true });
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-playing", "1");
+});
+
+test("trace-slowmo: keyboard Escape stops when the lesson finishes, preserving Live", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="canvas-wrap" data-camera-state="idle"><button data-testid="live-toggle" aria-pressed="true">Live</button></div>',
+  );
+  await page.evaluate(() => {
+    let escaped = 0;
+    window.__tutorial = {
+      snapshot: () => ({ state: { value: escaped ? "finished" : "active" } }),
+    } as unknown as NonNullable<Window["__tutorial"]>;
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (++escaped > 1) document.querySelector('[data-testid="live-toggle"]')?.setAttribute("aria-pressed", "false");
+    });
+  });
+  let completed = false;
+  try {
+    for (let level = 0; level < 3; level++) await play(page, { press: "Escape" });
+  } catch (error) {
+    if (!(error instanceof CompletedStep)) throw error;
+    completed = true;
+  }
+  expect(completed).toBe(true);
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+});
 
 test("keyboard readout navigation leaves an earlier pinned card before selecting its next owner", async ({ page }) => {
   await page.goto("./?tutorial=shared-api-quotas");

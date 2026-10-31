@@ -17,7 +17,7 @@ import type {
   SubjectSpec,
   Tutorial,
 } from "./types";
-import { matchesSimulation } from "./simulations";
+import { matchesExpectation, matchesSimulation } from "./simulations";
 import type { Baseline } from "./machine";
 import { equal, readPath } from "./paths";
 import { checkProps } from "./configuration";
@@ -36,6 +36,8 @@ export interface SandboxView {
   session?: LiveState;
   /** Which Live session this is (a remounted session numbers its runs from 1 again). */
   sessionId?: number;
+  eventNodeId?: string | null;
+  draft?: import("../model/types").Simulation | null;
   /** False between an editor topology change and Live's rebuilt run. Other session state remains observable. */
   trafficReady?: boolean;
   mode?: EditorModeState;
@@ -169,6 +171,74 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       ? equal(actual, value)
       : typeof actual === "number" && typeof value === "number" && (op === ">=" ? actual >= value : actual <= value));
   switch (check.kind) {
+    case "freePlay":
+      return view.live && !!view.session && !view.session.running && view.session.traffic;
+    case "event":
+      return (
+        view.live &&
+        !!view.views?.events &&
+        !!subjects[check.subject] &&
+        view.eventNodeId === subjects[check.subject] &&
+        !!view.session?.snapshot.events.some((e) => e.nodeId === subjects[check.subject] && e.kind === check.event)
+      );
+    case "planning": {
+      const p = view.observations?.planning;
+      return (
+        !!subjects[check.subject] &&
+        !!p &&
+        p.nodeId === subjects[check.subject] &&
+        p.constraint === check.constraint &&
+        (check.capacity === undefined || p.capacity === check.capacity) &&
+        (check.offered === undefined || p.offered === check.offered)
+      );
+    }
+    case "sequence": {
+      const trace = view.session?.trace?.current;
+      const sequence = view.observations?.sequence;
+      const exported = view.observations?.sequenceExport;
+      return (
+        view.live &&
+        !!trace &&
+        !!sequence?.open &&
+        sequence.traceId === trace.rootId &&
+        sequence.arrows > 0 &&
+        (!check.exported ||
+          (exported?.traceId === trace.rootId &&
+            (check.exported === "either"
+              ? exported.format === "svg" || exported.format === "mermaid"
+              : exported.format === check.exported) &&
+            exported.bytes > 0))
+      );
+    }
+    case "newRun": {
+      const base = view.baseline?.newRun;
+      return (
+        view.live &&
+        !!view.session &&
+        !!base &&
+        !view.session.needsRestart &&
+        view.trafficReady !== false &&
+        (base[1] !== view.session.generation || base[2] !== view.sessionId)
+      );
+    }
+    case "draftSimulation":
+      return (
+        view.live &&
+        matchesSimulation(view.draft, check.match) &&
+        !!view.session?.running &&
+        matchesSimulation(view.session.running, check.match) &&
+        !view.diagram.simulations?.some((s) => s.id === view.session!.running!.id)
+      );
+    case "slowControl":
+      return (
+        view.live &&
+        (check.action === "off"
+          ? view.slowmo?.status === "off"
+          : view.slowmo?.status === "on" &&
+            view.slowmo.playing === false &&
+            (check.action !== "stepped" ||
+              (!!view.baseline?.slowStep && (view.slowmo.t ?? 0) > view.baseline.slowStep[0])))
+      );
     case "navigation":
       return !!subjects[check.subject] && view.observations?.navigation?.nodeId === subjects[check.subject];
     case "toolSearch":
@@ -349,7 +419,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "savedSimulation":
       return !!view.diagram.simulations?.some((sim) => matchesSimulation(sim, check.match));
     case "liveView":
-      return !!view.views?.[check.view] === check.open;
+      return view.views?.[check.view] === check.open;
     case "readout": {
       const open = view.live ? view.readout : null;
       if (!open) return false;
@@ -371,7 +441,11 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.session?.running?.id === check.simulation &&
         !!view.session.run?.expectations.some(
           (e) =>
-            (e.id === label || e.label === label) &&
+            (check.match
+              ? view.session?.running?.expectations?.some(
+                  (definition) => definition.id === e.id && matchesExpectation(definition, check.match),
+                )
+              : e.id === label || e.label === label) &&
             (outcome === "either" ? e.status !== "pending" : e.status === outcome),
         )
       );
@@ -412,14 +486,19 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       );
     }
     case "trace":
-      return view.live && !!view.session?.trace;
+      return (
+        view.live &&
+        !!view.session?.trace &&
+        (!check.complete || !!view.session.trace.current?.done) &&
+        (!check.origin || view.session.trace.current?.origin === subjects[check.origin])
+      );
     case "slowmo": {
       const slow = view.slowmo;
       if (!view.live || !slow) return false;
       // Finished: the machine's `finished`, which publishes as a stopped replay at the end of its script.
       if (check.finished)
         return slow.status === "on" && !!slow.script && !slow.playing && (slow.t ?? 0) >= slow.script.duration;
-      return slow.status === "on" || slow.status === "capturing";
+      return check.ready ? slow.status === "on" : slow.status === "on" || slow.status === "capturing";
     }
     case "note":
       return view.live && !!view.session?.run && view.session.run.waiting === check.waiting;
@@ -566,7 +645,9 @@ export const withoutSince = (check: Check): Check =>
     ? { ...check, checks: check.checks.map(withoutSince) }
     : check.kind === "compare" && sinceValues(check).length
       ? { kind: "all", checks: [] }
-      : check;
+      : check.kind === "newRun" || (check.kind === "slowControl" && check.action === "stepped")
+        ? { kind: "all", checks: [] }
+        : check;
 
 /** A delta since the step began. A rebuilt run (another generation) counts from zero: all of it came after. */
 function expressionValue(expr: MetricExpr, view: SandboxView, subjects: Record<string, string | undefined>) {

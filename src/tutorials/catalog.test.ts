@@ -58,6 +58,19 @@ const stencilIds = new Set(stencils.map((s) => s.id));
  */
 function knownTestId(id: string): boolean {
   if (!id) return true;
+  const faultRow = /^sim-panel-step-([0-9]+)-(fault-(?:kind|target|value))$/.exec(id);
+  if (faultRow)
+    return (
+      source.includes("`sim-panel-step-${index}`") && source.includes("data-testid={`${testId}-" + faultRow[2] + "`}")
+    );
+  const simRow = /^sim-panel-(traffic|step|expectation)-([0-9]+)-(.+)$/.exec(id);
+  if (simRow)
+    return (
+      source.includes("`sim-panel-" + simRow[1] + "-${index}`") &&
+      (source.includes("testId={`${t}-" + simRow[3] + "`}") ||
+        source.includes("data-testid={`${t}-" + simRow[3] + "`}"))
+    );
+
   if (id === "stencil-picker-search")
     return source.includes('testId="stencil-picker"') && source.includes("data-testid={`${p.testId}-search`}");
   // These parameterized child IDs compose two actual render templates; verify both before accepting the data IDs.
@@ -180,31 +193,35 @@ const demoSubjects = (d: Demo): string[] =>
                         ? [d.subject]
                         : [];
 const testIdsOf = (s: UiStep): string[] =>
-  "open" in s
-    ? [s.open]
-    : "modClick" in s
-      ? [s.modClick]
-      : "rightclick" in s
-        ? [s.rightclick]
-        : "boxSelect" in s
-          ? [s.boxSelect, ...s.around]
-          : "select" in s
-            ? [s.select]
-            : "pane" in s
-              ? ["canvas-pane"]
-              : "click" in s
-                ? [s.click]
-                : "dblclick" in s
-                  ? [s.dblclick]
-                  : "hover" in s
-                    ? [s.hover]
-                    : "fill" in s
-                      ? [s.fill]
-                      : "drag" in s
-                        ? [s.drag, s.to]
-                        : "type" in s && "text" in s
-                          ? [s.type]
-                          : [];
+  "close" in s
+    ? [s.close]
+    : "playing" in s
+      ? ["live-play"]
+      : "open" in s
+        ? [s.open]
+        : "modClick" in s
+          ? [s.modClick]
+          : "rightclick" in s
+            ? [s.rightclick]
+            : "boxSelect" in s
+              ? [s.boxSelect, ...s.around]
+              : "select" in s
+                ? [s.select]
+                : "pane" in s
+                  ? ["canvas-pane"]
+                  : "click" in s
+                    ? [s.click]
+                    : "dblclick" in s
+                      ? [s.dblclick]
+                      : "hover" in s
+                        ? [s.hover]
+                        : "fill" in s
+                          ? [s.fill]
+                          : "drag" in s
+                            ? [s.drag, s.to]
+                            : "type" in s && "text" in s
+                              ? [s.type]
+                              : [];
 /** The subjects a test id names: `{api}`, or both ends of `{api->config}`. */
 const templates = (testId: string) =>
   [...testId.matchAll(/\{(\w+)(?:->(\w+))?\}/g)].flatMap((m) => (m[2] ? [m[1], m[2]] : [m[1]]));
@@ -392,6 +409,8 @@ describe("tutorial catalog", () => {
           if (moment)
             expect(
               [
+                "planning",
+                "sequence",
                 "toolSearch",
                 "gallery",
                 "history",
@@ -484,8 +503,8 @@ describe("tutorial catalog", () => {
               ).toBe(true);
             if (demo.kind === "openView")
               expect(
-                checks.some((c) => c.kind === "liveView" && c.view === demo.view && c.open),
-                `${step.id}: opening ${demo.view} is checked as open`,
+                checks.some((c) => c.kind === "liveView" && c.view === demo.view && c.open === (demo.open ?? true)),
+                `${step.id}: ${demo.view} is checked at its requested visibility`,
               ).toBe(true);
             if (demo.kind === "inputs")
               expect(
@@ -496,7 +515,7 @@ describe("tutorial catalog", () => {
             if (demo.kind === "continueNote")
               expect(
                 checks.some((c) => c.kind === "note" && !c.waiting) &&
-                  checks.some((c) => c.kind === "simulation" && c.id === demo.simulation),
+                  checks.some((c) => c.kind === "simulation" && (c.id ?? c.saved?.id) === demo.simulation),
                 `${step.id}: a continued note is checked as continued, in its run`,
               ).toBe(true);
             if (demo.kind === "saveSimulation") {
