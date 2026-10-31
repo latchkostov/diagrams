@@ -49,13 +49,17 @@ export const tutorialRoute = {
     emit();
   },
   /** Leave for a document without dropping in-memory file handles or draft identity. */
-  openDiagram(slug: string): void {
-    tutorialRoute.openView("canvas", slug);
+  openDiagram(slug: string, simulation?: string): void {
+    tutorialRoute.openView("canvas", slug, simulation);
   },
   /** App views use the same in-document navigation as a saved copy or example. */
-  openView(view: View, slug?: string): void {
+  openView(view: View, slug?: string, simulation?: string): void {
     const query = new URLSearchParams({ view });
     if (view === "canvas" && slug) query.set("example", slug);
+    if (view === "canvas" && simulation) {
+      query.set("sim", simulation);
+      query.set("live", "1");
+    }
     window.history.pushState(null, "", `${window.location.pathname}?${query}`);
     emit();
   },

@@ -17,6 +17,8 @@ import type { ImportGraph, ImportReport, ReportGuess } from "../infra/graph";
 import type { ImportOutcome } from "../formats";
 import { Breakable } from "./Breakable";
 import { ImportPickSection } from "./ImportPickSection";
+import { observationPorts } from "../../lib/observations";
+import { currentObservationSource } from "../../palette/observationSource";
 
 // The Import report (docs/research/imports.md § UX): what the import drew as a guess (with one-click stencil
 // chips), the connections it found in settings and the variable behind each, what it chose not to draw and
@@ -126,6 +128,17 @@ export function ImportReportDialog({
     </button>
   );
   const privateNow = isPrivate();
+  useEffect(() => {
+    const source = currentObservationSource();
+    if (source)
+      observationPorts.importReport.publish({
+        ...source,
+        source: report.source,
+        guesses: report.guesses.length,
+        unread: report.unread.length,
+        privacy: privateNow,
+      });
+  }, [report, privateNow]);
   // Ask about Private when it matters: the first report offers New diagrams are private, beside Make it private.
   // Only while it's off, and once: it never turns on by itself (Private turns AI off, so it stays a choice).
   const [offer] = useState(() => !newDiagramsPrivate.get() && safeStorage.getItem(PRIVATE_OFFERED_KEY) !== "1");

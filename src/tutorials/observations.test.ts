@@ -15,7 +15,16 @@ const view: SandboxView = {
   live: false,
   processed: () => 0,
 };
-const facts: { [K in keyof ProductObservations]: ProductObservations[K] } = {
+type ExistingPort = "dock" | "checks" | "exports" | "imports" | "ai" | "collaboration";
+const facts: ProductObservations = {
+  navigation: { ...source, nodeId: "api" },
+  tools: { ...source, query: "service", stencils: ["generic.service"] },
+  gallery: { ...source, feature: "partitions", slugs: ["kafka-order-pipeline"] },
+  history: { ...source, action: "undo" },
+  copied: { ...source, slug: "owned-copy" },
+  library: { ...source, slugs: ["owned-copy"] },
+  camera: { ...source, view: "focus" },
+  importReport: { ...source, source: "tutorial-status-compose.yaml", guesses: 2, unread: 1, privacy: false },
   dock: { ...source, tab: "checks", snap: "half", live: false, presenting: false },
   checks: { ...source, status: "done", result: { findings: [], ignored: [], off: [], ran: [] } },
   exports: { ...source, format: "svg", bytes: 20 },
@@ -23,7 +32,7 @@ const facts: { [K in keyof ProductObservations]: ProductObservations[K] } = {
   ai: { ...source, kind: "change", changed: ["api"] },
   collaboration: { ...source, status: "joined", role: "joiner" },
 };
-const checks: Record<keyof ProductObservations, Check> = {
+const checks: Record<ExistingPort, Check> = {
   dock: { kind: "dock", tab: "checks", snap: "half" },
   checks: { kind: "checks", status: "done", findings: 0 },
   exports: { kind: "export", format: "svg" },
@@ -33,7 +42,7 @@ const checks: Record<keyof ProductObservations, Check> = {
 };
 afterEach(() => vi.restoreAllMocks());
 
-function portCase<K extends keyof ProductObservations>(key: K) {
+function portCase<K extends ExistingPort>(key: K) {
   it(`${key}: fake publications satisfy typed checks and unsubscribe cleanly`, () => {
     const observations: Partial<ProductObservations> = {};
     const listener = vi.fn((event: ProductObservations[K]) => {

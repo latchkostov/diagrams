@@ -58,6 +58,8 @@ const stencilIds = new Set(stencils.map((s) => s.id));
  */
 function knownTestId(id: string): boolean {
   if (!id) return true;
+  if (id === "stencil-picker-search")
+    return source.includes('testId="stencil-picker"') && source.includes("data-testid={`${p.testId}-search`}");
   // These parameterized child IDs compose two actual render templates; verify both before accepting the data IDs.
   const routeTarget = /^routes-(rule-([^-]+)-targets|default-targets)-(.+)$/.exec(id);
   if (
@@ -133,6 +135,9 @@ const subjectsIn = (check: Check): string[] =>
               : check.kind === "metric"
                 ? [check.subject, ...(check.edge ?? [])]
                 : check.kind === "node" ||
+                    check.kind === "stencil" ||
+                    check.kind === "absentNode" ||
+                    check.kind === "navigation" ||
                     check.kind === "label" ||
                     check.kind === "processed" ||
                     check.kind === "field"
@@ -141,7 +146,9 @@ const subjectsIn = (check: Check): string[] =>
                     ? [check.from, check.to]
                     : check.kind === "all"
                       ? check.checks.flatMap(subjectsIn)
-                      : [];
+                      : check.kind === "history" && check.subject
+                        ? [check.subject]
+                        : [];
 const demoSubjects = (d: Demo): string[] =>
   (d.kind === "slowmo" || d.kind === "inject") && d.subject
     ? [d.subject]
@@ -165,7 +172,11 @@ const demoSubjects = (d: Demo): string[] =>
                     ? [...d.edge, d.subject]
                     : d.kind === "reconnect"
                       ? [...d.edge, d.to]
-                      : d.kind === "field" || d.kind === "name" || d.kind === "rename" || d.kind === "remove"
+                      : d.kind === "field" ||
+                          d.kind === "name" ||
+                          d.kind === "rename" ||
+                          d.kind === "remove" ||
+                          d.kind === "stencil"
                         ? [d.subject]
                         : [];
 const testIdsOf = (s: UiStep): string[] =>
@@ -381,6 +392,13 @@ describe("tutorial catalog", () => {
           if (moment)
             expect(
               [
+                "toolSearch",
+                "gallery",
+                "history",
+                "ownedCopy",
+                "camera",
+                "importReport",
+                "navigation",
                 "processed",
                 "live",
                 "metric",

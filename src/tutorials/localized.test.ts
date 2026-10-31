@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { catalogLocales } from "../../scripts/i18n-plugin";
-import { afterEach, expect, it } from "vitest";
+import { afterAll, afterEach, expect, it } from "vitest";
 import { catalogs } from "virtual:i18n/catalogs";
 import { state, type Catalog } from "../i18n";
 import { stencils } from "../stencils/registry";
@@ -15,6 +15,15 @@ import type { DiagramFile } from "../model/types";
 import type { Tutorial, TutorialStep, Words } from "./types";
 import { allTutorials } from "./catalog";
 import type { Check } from "./types";
+import { builtinActions } from "../editor/builtinActions";
+import { fileActions } from "../interop/fileActions";
+import type { InteropApi } from "../interop/useInterop";
+
+const stopCommands = actionRegistry.register([
+  ...builtinActions(),
+  ...fileActions(() => ({ importReport: {}, privacy: () => null }) as InteropApi),
+]);
+afterAll(stopCommands);
 
 afterEach(() => {
   state.l = "en";
@@ -150,6 +159,10 @@ function replay(editor: ReturnType<typeof lessonEditor>, tutorial: Tutorial, ste
     if (demo.kind === "select") editor.select({ nodeIds: demo.subjects.map((s) => subjects[s]!) });
     editor.commit();
   }
+  if (step.check.kind === "navigation") {
+    editor.select({ nodeIds: [resolveSubjects(tutorial, editor.getDiagram())[step.check.subject]!] });
+    editor.commit();
+  }
 }
 
 it("German consumer-group instructions name the consumers created by the lesson", async () => {
@@ -200,7 +213,11 @@ it.each(locales)("localized tutorial searches find their intended target (%s)", 
       for (const query of queries) {
         const context = `${code}/${tutorial.id}/${step.id}: ${JSON.stringify(query.text)}`;
         if (query.command) {
-          const target = query.target ?? `stencil:${intended[stencilIndex++].stencil}`;
+          const target =
+            query.target ??
+            (tutorial.id === "import-and-review"
+              ? "action:file.import-report"
+              : `stencil:${intended[stencilIndex++].stencil}`);
           const found = flatten(rank(commands(editor), query.text)).map((c) => c.id);
           expect.soft(found, context).toContain(target);
           expect.soft(step.goal(), context).toContain(commands(editor).find((c) => c.id === target)!.label);
@@ -212,7 +229,8 @@ it.each(locales)("localized tutorial searches find their intended target (%s)", 
             ["quick-add/add-app", "api-gateway/add-app", "insert-on-edge/insert"].includes(`${tutorial.id}/${step.id}`)
           )
             expect.soft(step.goal(), `${context}: instructed search`).toContain(query.text);
-          const target = intended[stencilIndex++]?.stencil;
+          const toolCheck = leaves(step.check).find((check) => check.kind === "toolSearch");
+          const target = intended[stencilIndex++]?.stencil ?? toolCheck?.stencil;
           expect(target, `${context}: every stencil search has a target`).toBeTruthy();
           const found = searchStencils(stencils, query.text).map((s) => s.id);
           expect.soft(found, context).toContain(target);

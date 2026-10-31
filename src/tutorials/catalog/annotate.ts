@@ -3,19 +3,19 @@ import type { Tutorial } from "../types";
 const path = (tool: string) => ({ annotate: t("menu.annotate"), tool, escape: t("keys.escape") });
 export const annotate: Tutorial = {
   id: "annotate",
-  version: 1,
+  version: 2,
   track: "basics",
   level: 1,
   minutes: 3,
   title: msg("tutorials.annotate.title"),
-  summary: msg("tutorials.annotate.summary"),
+  summary: msg("tutorials.annotate.summaryV2"),
   start: () => ({ format: "diagrams/v1", title: t("tutorials.annotate.diagramTitle"), nodes: [], edges: [] }),
   subjects: {},
   steps: [
     {
       id: "title",
       title: msg("tutorials.annotate.titleTitle"),
-      goal: () => t("tutorials.annotate.titleGoal", path(t("library.text"))),
+      goal: () => t("tutorials.annotate.titleGoalV2", path(t("library.text"))),
       done: msg("tutorials.annotate.titleDone"),
       check: { kind: "annotation", annotation: "text" },
       settle: "annotation",
@@ -34,7 +34,7 @@ export const annotate: Tutorial = {
     {
       id: "note",
       title: msg("tutorials.annotate.noteTitle"),
-      goal: () => t("tutorials.annotate.noteGoal", path(t("library.note"))),
+      goal: () => t("tutorials.annotate.noteGoalV2", path(t("library.note"))),
       done: msg("tutorials.annotate.noteDone"),
       check: { kind: "annotation", annotation: "note" },
       settle: "annotation",
@@ -52,8 +52,9 @@ export const annotate: Tutorial = {
     },
     {
       id: "zone",
+      hint: msg("tutorials.annotate.zoneHint"),
       title: msg("tutorials.annotate.zoneTitle"),
-      goal: () => t("tutorials.annotate.zoneGoal", path(t("library.zone"))),
+      goal: () => t("tutorials.annotate.zoneGoalV2", path(t("library.zone"))),
       done: msg("tutorials.annotate.zoneDone"),
       check: { kind: "annotation", annotation: "zone" },
       settle: "annotation",
@@ -62,8 +63,13 @@ export const annotate: Tutorial = {
         { testId: "palette-annotate-zone", tip: () => t("tutorials.annotate.zoneTip", path(t("library.zone"))) },
       ],
       demo: [{ kind: "annotate", annotation: "zone" }],
-      solution: [{ click: "rail-annotate" }, { click: "palette-annotate-zone" }, { press: "Escape" }],
+      solution: [
+        { click: "rail-annotate" },
+        { click: "palette-annotate-zone" },
+        { fill: "annotation-editor", text: msg("tutorials.annotate.zoneText") },
+        { press: "Escape" },
+      ],
     },
   ],
-  finish: { text: msg("tutorials.annotate.finish") },
+  finish: { text: msg("tutorials.annotate.finishV2") },
 };

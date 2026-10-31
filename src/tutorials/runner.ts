@@ -44,6 +44,7 @@ import {
   type ProductObservations,
 } from "../lib/observations";
 import { workbenchDock } from "../canvas/inspector/dockState";
+import { tools } from "../canvas/chrome/tools";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -100,7 +101,14 @@ type Host = Pick<typeof paletteHost, "get" | "subscribe"> &
 
 export function createTutorialRunner(
   tutorial: Tutorial,
-  ports: { close(): void; host?: Host; initial?: DiagramFile; documentId?: string; present?(on: boolean): void },
+  ports: {
+    close(): void;
+    host?: Host;
+    initial?: DiagramFile;
+    documentId?: string;
+    present?(on: boolean): void;
+    importPractice?(signal: AbortSignal): Promise<void>;
+  },
 ) {
   const host = ports.host ?? paletteHost;
   const authored = typeof tutorial.start === "function" ? tutorial.start() : undefined;
@@ -109,6 +117,14 @@ export function createTutorialRunner(
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
     [
+      "navigation",
+      "toolSearch",
+      "gallery",
+      "history",
+      "ownedCopy",
+      "camera",
+      "importReport",
+      "absentNode",
       "dock",
       "view",
       "checks",
@@ -141,7 +157,20 @@ export function createTutorialRunner(
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const moment = (check: Tutorial["steps"][number]["check"]): boolean =>
-    ["export", "import", "aiTurn", "collaboration", "checks"].includes(check.kind) ||
+    [
+      "export",
+      "import",
+      "aiTurn",
+      "collaboration",
+      "checks",
+      "gallery",
+      "history",
+      "ownedCopy",
+      "camera",
+      "importReport",
+      "toolSearch",
+      "navigation",
+    ].includes(check.kind) ||
     (check.kind === "all" && check.checks.some(moment));
   const momentChecks = tutorial.steps.map((step) => moment(step.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
@@ -245,6 +274,7 @@ export function createTutorialRunner(
       },
       readout: canvasInteraction.get()?.readouts?.get() ?? null,
       ...app,
+      toolSurface: tools.get(),
       observations: {
         ...observations,
         dock: observations.dock ??
@@ -300,11 +330,21 @@ export function createTutorialRunner(
   }
 
   /** The current step's guide for the canvas (quick-add opens searched for its pick); data, never a focus move. */
+  let observationStep = -1;
   function guide() {
-    delete observations.exports;
-    delete observations.imports;
-    delete observations.ai;
-    delete observations.collaboration;
+    const nextStep = inStep(state) ? state.index : -1;
+    if (observationStep !== nextStep) {
+      observationStep = nextStep;
+      delete observations.exports;
+      delete observations.imports;
+      delete observations.ai;
+      delete observations.collaboration;
+      delete observations.importReport;
+      delete observations.camera;
+      delete observations.history;
+      delete observations.tools;
+      delete observations.navigation;
+    }
     const step = inStep(state) ? tutorial.steps[state.index] : undefined;
     const quickAdd = step?.guide?.quickAdd?.();
     canvasInteraction.get()?.setGuide(quickAdd ? { quickAdd } : null);
@@ -441,6 +481,34 @@ export function createTutorialRunner(
       liveOn: !!h.canvas?.live,
     });
     switch (demo.kind) {
+      case "history": {
+        const run = generation;
+        return (async () => {
+          const done = () => {
+            view();
+            return demo.absent
+              ? !subjects[demo.absent]
+              : demo.present
+                ? holds({ kind: "label", subject: demo.present.subject, is: demo.present.label }, view(), subjects)
+                : false;
+          };
+          do {
+            if (done()) return;
+            if (!(demo.action === "undo" ? ed.canUndo() : ed.canRedo())) throw new Error("History unavailable");
+            const before = ed.getDocumentVersion().revision;
+            ed[demo.action]();
+            if (!(await until(() => ed.getDocumentVersion().revision !== before, run))) return false;
+          } while (demo.absent || demo.present);
+        })();
+      }
+      case "importFixture":
+        if (!ports.importPractice) throw new Error("Import unavailable");
+        return ports.importPractice(operation.signal);
+      case "stencil": {
+        const id = subjects[demo.subject];
+        if (id) ed.updateNode(id, { stencil: demo.stencil });
+        return;
+      }
       case "remove": {
         const id = subjects[demo.subject];
         // The editor may reuse this id on reapply; its next add must await a fresh canvas publication.
@@ -695,7 +763,9 @@ export function createTutorialRunner(
         if (after) id = ed.createConnected({ from: after, stencil: demo.stencil })?.id;
         else {
           ed.clearSelection();
-          id = h.canvas?.addStencil(demo.stencil);
+          // A rail action may still see React's previous selection after clearSelection.
+          // An independent demo must use the editor's unconnected creation operation.
+          id = ed.addNode(demo.stencil);
         }
         if (id) {
           demoBindings.set(demo.subject, id);
@@ -714,6 +784,7 @@ export function createTutorialRunner(
         const id = subjects[demo.subject];
         if (id) {
           if (ed.getDiagram().groups?.some((g) => g.id === id)) ed.updateGroup(id, { label: demo.label() });
+          else if (ed.getDiagram().edges.some((edge) => edge.id === id)) ed.updateEdge(id, { label: demo.label() });
           else ed.updateNode(id, { label: demo.label() });
         }
         return;
@@ -771,7 +842,11 @@ export function createTutorialRunner(
       for (const i of steps) {
         if (run !== generation) return;
         if (!state.observed[i]) {
-          for (const d of tutorial.steps[i].demo) {
+          const actions =
+            purpose === "reconstruct"
+              ? (tutorial.steps[i].reconstruct ?? tutorial.steps[i].demo)
+              : tutorial.steps[i].demo;
+          for (const d of actions) {
             // Present once per demo, rather than again on each session acknowledgement.
             // Re-selecting during a pending repair can publish another canvas commit.
             if (d.kind === "patch" && !d.edge && host.get().canvas?.live) {
@@ -802,6 +877,14 @@ export function createTutorialRunner(
               if (run !== generation) return;
               if (result === false) throw new Error("Demo refused");
             }
+            // A following history operation must see the committed name, not the preceding render.
+            if (
+              purpose === "reconstruct" &&
+              tutorial.steps.some((step) => step.reconstruct) &&
+              d.kind === "rename" &&
+              !(await until(() => holds({ kind: "label", subject: d.subject, is: d.label }, view(), subjects), run))
+            )
+              return;
             // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
             // waits for that run, so it's pressed in the run the check reads.
             if (
@@ -818,7 +901,7 @@ export function createTutorialRunner(
           // counted since it began (Continue), what it counted is history: the rest of its check is what must hold.
           const replayed = purpose === "reconstruct" && (since[i].length > 0 || momentChecks[i]);
           const done = () => state.observed[i] || (replayed && !!editor() && holds(historical[i], view(), subjects));
-          if (tutorial.steps[i].demo.length && !(await until(done, run))) return;
+          if (actions.length && !(await until(done, run))) return;
         }
         if (!(await settle(i, run))) return;
       }
@@ -872,7 +955,7 @@ export function createTutorialRunner(
         h.session?.slowmo?.end();
         if (!simulation && h.canvas?.live) h.live?.toggle();
         host.cancelRun?.();
-        if (initial) ed.applyDiagram(structuredClone(initial));
+        if (initial) ed.applyDiagram(structuredClone(initial), { resetHistory: true });
         if (simulation) {
           const run = generation;
           const ready = () => !host.get().session?.disabledHint;
@@ -961,9 +1044,15 @@ export function createTutorialRunner(
     const offDependencies = dependencyVisibility.subscribe(observe);
     const offPlanning = planningHost.subscribe(observe);
     const offOverlay = capacityOverlay.subscribe(observe);
+    const offTools = tools.subscribe(observe);
     const watch = <K extends keyof ProductObservations>(key: K) =>
       observationPorts[key].subscribe((event: ProductObservations[K]) => {
-        if (["exports", "imports", "ai", "collaboration"].includes(key) && !inStep(state)) return;
+        if (
+          ["exports", "imports", "ai", "collaboration"].includes(key) &&
+          !inStep(state) &&
+          !(key === "imports" && state.value === "reconstructing" && tutorial.id === "import-and-review")
+        )
+          return;
         const canvas = host.get().canvas;
         if (!canvas || event.documentId !== canvas.documentId) return;
         if (
@@ -978,6 +1067,14 @@ export function createTutorialRunner(
         observe();
       });
     const offObservations = [
+      watch("navigation"),
+      watch("tools"),
+      watch("gallery"),
+      watch("history"),
+      watch("copied"),
+      watch("library"),
+      watch("camera"),
+      watch("importReport"),
       watch("dock"),
       watch("checks"),
       watch("exports"),
@@ -993,6 +1090,7 @@ export function createTutorialRunner(
       offDependencies();
       offPlanning();
       offOverlay();
+      offTools();
       offObservations.forEach((off) => off());
       offReadouts?.();
       offSession?.();

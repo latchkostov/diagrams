@@ -958,10 +958,10 @@ export function createEditor(
       cancelLayout();
       const before = api.getDiagram();
       const diff = diagramDiff(before, checked.diagram);
-      if (!diff.hasChanges) return diff;
+      if (!diff.hasChanges && !opts?.resetHistory) return diff;
       documentEdited();
       lastDuplicate = null;
-      flushSync(() => deps().history.replace(toFlow(checked.diagram), opts?.merge, toFlow(before)));
+      flushSync(() => deps().history.replace(toFlow(checked.diagram), opts?.merge, toFlow(before), opts?.resetHistory));
       return diff;
     },
     getNode: (id) => diagram().nodes.find((n) => n.id === id),

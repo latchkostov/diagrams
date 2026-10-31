@@ -27,6 +27,14 @@ export interface ObservationSource {
   identity: object;
 }
 export interface ProductObservations {
+  navigation: ObservationSource & { nodeId: string };
+  tools: ObservationSource & { query: string; stencils: readonly string[] };
+  gallery: ObservationSource & { feature: string; slugs: readonly string[] };
+  history: ObservationSource & { action: "undo" | "redo" };
+  copied: ObservationSource & { slug: string };
+  library: ObservationSource & { slugs: readonly string[] };
+  camera: ObservationSource & { view: "overview" | "focus" | "follow" | "custom" };
+  importReport: ObservationSource & { source: string; guesses: number; unread: number; privacy: boolean };
   dock: ObservationSource & {
     tab: "closed" | "properties" | "checks" | "ai";
     snap: "peek" | "half" | "full";
@@ -41,7 +49,7 @@ export interface ProductObservations {
     simulations?: readonly { id: string; playedMs: number; capped: boolean }[];
   };
   exports: ObservationSource & { format: ExportFormat; bytes: number };
-  imports: ObservationSource & { format: FormatId };
+  imports: ObservationSource & { format: FormatId; source?: string };
   ai: ObservationSource & { kind: "change" | "explain" | "revert"; changed: readonly string[] };
   collaboration: ObservationSource & {
     status: "joining" | "joined" | "left";
@@ -51,6 +59,14 @@ export interface ProductObservations {
 export const observationPorts: {
   [K in keyof ProductObservations]: ReturnType<typeof createObservationPort<ProductObservations[K]>>;
 } = {
+  navigation: createObservationPort<ProductObservations["navigation"]>(),
+  tools: createObservationPort<ProductObservations["tools"]>(),
+  gallery: createObservationPort<ProductObservations["gallery"]>(),
+  history: createObservationPort<ProductObservations["history"]>(),
+  copied: createObservationPort<ProductObservations["copied"]>(),
+  library: createObservationPort<ProductObservations["library"]>(),
+  camera: createObservationPort<ProductObservations["camera"]>(),
+  importReport: createObservationPort<ProductObservations["importReport"]>(),
   dock: createObservationPort<ProductObservations["dock"]>(),
   checks: createObservationPort<ProductObservations["checks"]>(),
   exports: createObservationPort<ProductObservations["exports"]>(),

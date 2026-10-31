@@ -4,6 +4,7 @@ import {
   expect,
   expectNoErrors,
   waitForCameraIdle,
+  waitForSelectionSettled,
   waitForLiveSession,
   pageLoadTimeout,
   animationFrames,
@@ -130,7 +131,11 @@ async function focus(page: Page, id: string) {
           ["toolbar", "tablist", "menu", "radiogroup"].includes(parent.getAttribute("role") ?? "") ||
           parent.hasAttribute("data-live-readout")
         ) {
-          roving = !!active && parent.contains(active);
+          const nativeMenu =
+            parent.getAttribute("role") === "menu" &&
+            Array.from(parent.children).filter((child) => child instanceof HTMLElement && child.tabIndex >= 0).length >
+              1;
+          roving = !!active && parent.contains(active) && !nativeMenu;
           break;
         }
       }
@@ -201,6 +206,26 @@ async function menuItem(page: Page, id: string) {
 }
 
 async function play(page: Page, action: ResolvedKeyboardStep) {
+  if ("history" in action) {
+    const current = await page.getByTestId("tutorial-step").getAttribute("data-step");
+    for (
+      let edits = 0;
+      edits < 3 && (await page.getByTestId("tutorial-step").getAttribute("data-step")) === current;
+      edits++
+    ) {
+      const before = await page.evaluate(() => JSON.stringify(window.__tutorial?.diagram()));
+      await activate(page, `${action.history}-button`);
+      await expect.poll(() => page.evaluate(() => JSON.stringify(window.__tutorial?.diagram()))).not.toBe(before);
+      await waitForSelectionSettled(page);
+    }
+    return;
+  }
+  if ("importFixture" in action) {
+    const chooser = page.waitForEvent("filechooser");
+    await page.keyboard.press("ControlOrMeta+o");
+    await (await chooser).setFiles("public/tutorial-status-compose.yaml");
+    return;
+  }
   if ("activate" in action) return activate(page, action.activate);
   if ("focus" in action) return focus(page, action.focus);
   if ("read" in action) {
@@ -322,12 +347,18 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
     await page.keyboard.insertText(action.type);
   } else {
     await waitForCameraIdle(page);
+    if (action.press === "ControlOrMeta+d")
+      await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
     await page.keyboard.press(action.press);
   }
 }
 
 for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry.id])) {
   test(`${id}: keyboard solution plays through the real UI`, async ({ page, consoleErrors }) => {
+    if (id === "import-and-review")
+      await page.addInitScript(() =>
+        Object.defineProperty(window, "showOpenFilePicker", { value: undefined, configurable: true }),
+      );
     test.slow();
     // Any accidental pointer operation in this driver fails the test at the call site.
     for (const operation of ["click", "dblclick", "move", "down", "up"] as const)
@@ -391,7 +422,7 @@ test("keyboard canvas navigation exits when the lesson has already finished", as
   await expect(page.getByTestId("tutorial-start")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
-  for (let skipped = 0; skipped < 4 && !(await page.getByTestId("tutorial-finished").isVisible()); skipped++) {
+  for (let skipped = 0; skipped < 5 && !(await page.getByTestId("tutorial-finished").isVisible()); skipped++) {
     const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
     if (!step) throw new Error("Missing property-sheet step");
     await activate(page, "tutorial-skip");
@@ -437,4 +468,14 @@ test("keyboard control traversal reads a bounded amount of browser state per key
   expect(keys).toBeGreaterThan(0);
   expect(reads).toBeLessThanOrEqual(keys + 3);
   await expect(page.getByTestId("last")).toBeFocused();
+});
+
+test("keyboard control traversal uses Tab for a menu with native button stops", async ({ page }) => {
+  await page.setContent(
+    '<div role="menu"><button data-testid="first">Overview</button><button data-testid="middle">Focus</button><button data-testid="last">Following</button></div>',
+  );
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("first")).toBeFocused();
+  await focus(page, "middle");
+  await expect(page.getByTestId("middle")).toBeFocused();
 });

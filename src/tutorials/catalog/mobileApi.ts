@@ -6,15 +6,15 @@ import type { DiagramFile } from "../../model/types";
 const apiName = msg("tutorials.mobileApi.apiName");
 const appWord = stencilSearch("client.mobile");
 
-/** The pilot: static drawing (rail, the "+", dots, naming) and a first look at Live. */
+/** The pilot: independent placement, a real connection, naming and a first look at Live. */
 export const mobileApi: Tutorial & { start(): DiagramFile } = {
   id: "mobile-api",
-  version: 1,
+  version: 2,
   track: "basics",
   level: 1,
   minutes: 3,
   title: msg("tutorials.mobileApi.title"),
-  summary: msg("tutorials.mobileApi.summary"),
+  summary: msg("tutorials.mobileApi.summaryV2"),
   start: () => ({ format: "diagrams/v1", title: t("tutorials.mobileApi.diagramTitle"), nodes: [], edges: [] }),
   subjects: {
     app: { stencils: ["client.mobile"] },
@@ -43,24 +43,17 @@ export const mobileApi: Tutorial & { start(): DiagramFile } = {
     {
       id: "add-api",
       title: msg("tutorials.mobileApi.addApiTitle"),
-      goal: msg("tutorials.mobileApi.addApiGoal"),
-      hint: msg("tutorials.mobileApi.addApiHint"),
-      done: msg("tutorials.mobileApi.addApiDone"),
+      goal: msg("tutorials.mobileApi.addApiGoalV2"),
+      hint: msg("tutorials.mobileApi.addApiHintV2"),
+      done: msg("tutorials.mobileApi.addApiDoneV2"),
       check: { kind: "node", subject: "api" },
-      guide: { quickAdd: stencilSearch("generic.service") },
-      targets: [
-        // Quick-add lists a stencil used lately under Recent, with its own id.
-        { testId: "context-menu-item-quick-add:recent:generic.service", tip: msg("tutorials.mobileApi.addApiTipPick") },
-        { testId: "context-menu-item-quick-add:generic.service", tip: msg("tutorials.mobileApi.addApiTipPick") },
-        { testId: "grow-chip-{app}", tip: msg("tutorials.mobileApi.addApiTipPlus"), selected: "app" },
-        { testId: "node-{app}", tip: msg("tutorials.mobileApi.addApiTipNode") },
-      ],
-      demo: [{ kind: "add", subject: "api", stencil: "generic.service", after: "app" }],
+      targets: [{ testId: "rail-add", tip: msg("tutorials.mobileApi.addApiTitle") }],
+      demo: [{ kind: "add", subject: "api", stencil: "generic.service" }],
       solution: [
-        { click: "node-{app}" },
-        { click: "grow-chip-{app}" },
-        // No typing: the step's guide opens quick-add already searched for Service (the e2e proves it).
-        { click: "context-menu-item-quick-add:generic.service" },
+        { click: "canvas-pane" },
+        { click: "rail-add" },
+        { fill: "palette-search", text: stencilSearch("generic.service") },
+        { click: "palette-item-generic.service" },
       ],
     },
     {
@@ -113,7 +106,7 @@ export const mobileApi: Tutorial & { start(): DiagramFile } = {
     },
   ],
   finish: {
-    text: msg("tutorials.mobileApi.finish"),
+    text: msg("tutorials.mobileApi.finishV2"),
     example: { slug: "kafka-order-pipeline", label: msg("tutorials.mobileApi.example") },
   },
 };
