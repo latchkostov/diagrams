@@ -8,6 +8,7 @@ import {
   waitForLiveSession,
   pageLoadTimeout,
   animationFrames,
+  pauseClock,
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { keyboardExceptions, type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
@@ -106,11 +107,22 @@ async function edge(page: Page, id: string) {
   throw new Error(`Keyboard could not reach edge ${id}`);
 }
 
+async function waitForScheduledNote(page: Page) {
+  await expect
+    .poll(async () => {
+      if (await page.getByTestId("live-note-continue").isVisible()) return true;
+      await page.clock.runFor(1000);
+      return page.getByTestId("live-note-continue").isVisible();
+    })
+    .toBe(true);
+}
+
 async function focus(page: Page, id: string) {
   if (id.startsWith("node-")) return node(page, id.slice(5));
   if (id.startsWith("edge-label-")) return edge(page, id.slice(11));
   if (id.startsWith("edge-")) return edge(page, id.slice(5));
   if (id.startsWith("command-item-") || id.startsWith("context-menu-item-")) return chooseRow(page, id);
+  if (id === "live-note-continue") await waitForScheduledNote(page);
   if (id.startsWith("inspector-") && (await page.evaluate(() => !!document.activeElement?.getAttribute("data-id")))) {
     await page.keyboard.press("F2");
     await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBeNull();
@@ -398,6 +410,7 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
       page.mouse[operation] = (() => {
         throw new Error("A keyboard solution used the pointer");
       }) as (typeof page.mouse)[typeof operation];
+    await page.clock.install();
     await page.goto(`./?tutorial=${id}`);
     await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -491,6 +504,21 @@ test("trace-slowmo: keyboard Escape stops when the lesson finishes, preserving L
   }
   expect(completed).toBe(true);
   await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("keyboard scheduled-note navigation advances the simulation until its real pause", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("./?tutorial=webhooks");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await play(page, { activate: "live-toggle" });
+  await play(page, { choose: "live-sim-picker", value: "outage-replay" });
+  await pauseClock(page);
+  await waitForScheduledNote(page);
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
 });
 
 test("keyboard readout navigation leaves an earlier pinned card before selecting its next owner", async ({ page }) => {
