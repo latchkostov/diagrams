@@ -8,6 +8,8 @@ import type { CanvasHost, LiveHost, SessionHost } from "./host";
 import type { Command } from "./rank";
 import { t } from "../i18n";
 import { shapeMenu } from "../canvas/shapes/menu";
+import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "./observationSource";
 
 /*
  * Where palette commands come from. Everything is derived from what the app already exposes: the
@@ -308,7 +310,11 @@ export function collectCommands(input: SourceInput): Command[] {
         hint: n.sublabel,
         stencil: n.stencil,
         keywords: `${n.id} ${n.sublabel ?? ""}`,
-        run: () => canvas.focusNode(n.id),
+        run: () => {
+          canvas.focusNode(n.id);
+          const source = currentObservationSource();
+          if (source) observationPorts.navigation.publish({ ...source, nodeId: n.id });
+        },
       });
     }
   }

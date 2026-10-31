@@ -3,11 +3,19 @@ import { useStore } from "@xyflow/react";
 import { useCameraController } from "../canvas/camera/useCameraCore";
 import { t, useLocale } from "../i18n";
 import { useLivePopover } from "./useLivePopover";
+import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 
 export function ViewMenu() {
   useLocale();
   const camera = useCameraController();
   const view = useSyncExternalStore(camera?.subscribe ?? (() => () => {}), () => camera?.state.view ?? "overview");
+  useEffect(() => {
+    return camera?.subscribe(() => {
+      const source = currentObservationSource();
+      if (source) observationPorts.camera.publish({ ...source, view: camera.state.view });
+    });
+  }, [camera]);
   const zoom = useStore((s) => s.transform[2]);
   const trigger = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);

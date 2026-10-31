@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import type { ImportResult } from "./importResult";
 import type { DiagramFile } from "../model/types";
 import type { CanvasHandle } from "../canvas/CanvasView";
 import type { View } from "../lib/urlState";
@@ -122,6 +123,10 @@ interface Options {
   openShared: (d: DiagramFile) => void;
   /** Public examples can be embedded by name. */
   isPublicExample: (slug: string) => boolean;
+  /** Explicit practice destination. Normal Open retains its ownership, handle and provenance behavior. */
+  importDestination?: Options["openDiagram"];
+  /** Temporary documents supply provenance and privacy changes without acquiring ownership. */
+  temporaryPrivacy?: { get(): CanvasPrivacyState; setPrivate(on: boolean): void };
 }
 
 /** PNG / SVG export choices (the image dialog's Options). The title is in by default. */
@@ -217,6 +222,8 @@ export function useInterop({
   openDiagram,
   openShared,
   isPublicExample,
+  importDestination,
+  temporaryPrivacy,
 }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   // Dialog imports belong to the dialog that submitted them, including while operation messages download.
@@ -292,10 +299,10 @@ export function useInterop({
    */
   const privacyState = useCallback(
     (source: string = slug): CanvasPrivacyState => ({
-      ...getPrivacyFlags(source),
+      ...(temporaryPrivacy && source === slug ? temporaryPrivacy.get() : getPrivacyFlags(source)),
       ...(import.meta.env.DEV && source === openSlug.current ? { diagram: canvasRef.current?.getDiagram() } : {}),
     }),
-    [canvasRef, slug],
+    [canvasRef, slug, temporaryPrivacy],
   );
   /** Local-only (built in), Private (the switch) or null. Read when asked, never cached. */
   const privacy = (): Privacy => privacyOf(privacyState());
@@ -305,11 +312,11 @@ export function useInterop({
   useEffect(() => {
     if (view !== "canvas") return;
     const check = () => {
-      if (isLocalOnly(getPrivacyFlags(slug))) clearUrlFragment();
+      if (isLocalOnly(privacyState())) clearUrlFragment();
     };
     window.addEventListener(DIAGRAMS_CHANGED, check);
     return () => window.removeEventListener(DIAGRAMS_CHANGED, check);
-  }, [view, slug]);
+  }, [view, privacyState]);
 
   // ---------------------------------------------------------------- export
 
@@ -649,33 +656,36 @@ export function useInterop({
   // ---------------------------------------------------------------- import
 
   const handleOutcome = useCallback(
-    async (outcome: ImportOutcome, source: Source, valid: () => boolean = () => true) => {
+    async (outcome: ImportOutcome, source: Source, valid: () => boolean = () => true): Promise<ImportResult> => {
       const origin = currentObservationSource();
       // Resolve messages before changing the document. A failed chunk leaves a paste/page dialog available to retry.
       const words = await loadFileMessages(valid);
-      if (!valid() || !words) return;
+      if (!valid()) return { status: "cancelled" };
+      if (!words) return { status: "failure" };
       if (outcome.ok === false) {
         toast.error(t("fileToast.couldntImportValue0Value1", { value0: source.name, value1: outcome.error }));
-        return;
+        return { status: "failure" };
       }
       if (outcome.ok === "pages") {
         setDialog({ kind: "pages", fileName: source.name, pages: outcome.pages, pick: outcome.pick, source });
-        return;
+        return { status: "cancelled" };
       }
       let created: string | undefined;
       try {
         // Only our own format saves back to where it came from (a .drawio file is converted).
-        created = openDiagram(
+        created = (importDestination ?? openDiagram)(
           outcome.diagram,
           outcome.format === "native" ? source.target : undefined,
           source.sourceSlug,
         );
       } catch (err) {
         toast.error(t("fileToast.couldntImportValue0Value1", { value0: source.name, value1: message(err) }));
-        return;
+        return { status: "failure" };
       }
+      if (!created) return { status: "cancelled" };
       // The destination policy stays with openDiagram. This fact does not grant sandbox ownership or save a copy.
-      if (origin && created) observationPorts.imports.publish({ ...origin, format: outcome.format });
+      if (origin && created)
+        observationPorts.imports.publish({ ...origin, format: outcome.format, source: source.name });
       setDialog(null);
       const r = outcome.report;
       if (r && created) {
@@ -690,24 +700,25 @@ export function useInterop({
           // Long enough to read when there's something to check.
           duration: r.guesses.length || r.unread.length || r.pick ? 7000 : undefined,
         });
-        return;
+        return { status: "success" };
       }
       toast.info(words.importedFile(outcome.diagram.title, outcome.format, outcome.warnings), {
         duration: outcome.warnings.length ? 7000 : undefined,
       });
+      return { status: "success" };
     },
-    [openDiagram],
+    [openDiagram, importDestination],
   );
 
   /** Files from a drop, the file input or Open…: one, or several (a compose file and its overrides). */
   const importFileList = useCallback(
-    async (files: readonly File[], target?: SaveTarget) => {
-      if (!files.length) return;
+    async (files: readonly File[], target?: SaveTarget, signal?: AbortSignal): Promise<ImportResult> => {
+      if (!files.length || signal?.aborted) return { status: "cancelled" };
       const origin = currentObservationSource();
       const work = beginObservedWork(origin);
       const valid = () => {
         const now = currentObservationSource();
-        return !work.signal.aborted && (!origin || (!!now && sameObservationSource(origin, now)));
+        return !signal?.aborted && !work.signal.aborted && (!origin || (!!now && sameObservationSource(origin, now)));
       };
       try {
         const name = files.length === 1 ? files[0].name : t("fileToast.files", { count: files.length });
@@ -716,17 +727,21 @@ export function useInterop({
         if (size > LIMITS.maxTextChars) {
           const words = await loadFileMessages(valid);
           if (words) toast.error(words.importTooLarge(name, size));
-          return;
+          return { status: valid() ? "failure" : "cancelled" };
         }
         let read: { name: string; text: string }[];
         try {
           read = await Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() })));
         } catch {
           if (valid()) toast.error(t("fileToast.couldntReadName", { name: name }));
-          return;
+          return { status: valid() ? "failure" : "cancelled" };
         }
-        if (!valid()) return;
-        await handleOutcome(await importFiles(read), { name, target: files.length === 1 ? target : undefined }, valid);
+        if (!valid()) return { status: "cancelled" };
+        return await handleOutcome(
+          await importFiles(read),
+          { name, target: files.length === 1 ? target : undefined },
+          valid,
+        );
       } finally {
         work.finish();
       }
@@ -946,6 +961,12 @@ export function useInterop({
         return;
       }
       if (kind) return;
+      if (temporaryPrivacy) {
+        temporaryPrivacy.setPrivate(true);
+        clearUrlFragment();
+        toast.success(t("fileToast.private"));
+        return;
+      }
       if (isLibrarySlug(slug) || slug === DRAFT_SLUG) {
         setDiagramPrivate(slug, true);
         clearUrlFragment();
@@ -973,7 +994,8 @@ export function useInterop({
     attempt("privacy", () => {
       setDialog(null);
       if (source !== openSlug.current) return;
-      if (setDiagramPrivate(source, false)) toast.success(t("fileToast.thisDiagramIsNoLongerPrivate"));
+      const changed = temporaryPrivacy ? (temporaryPrivacy.setPrivate(false), true) : setDiagramPrivate(source, false);
+      if (changed) toast.success(t("fileToast.thisDiagramIsNoLongerPrivate"));
       // The badge that opened the dialog is gone with it: keep the keyboard on the canvas, not the page.
       requestAnimationFrame(() => {
         const active = document.activeElement;
@@ -1017,11 +1039,11 @@ export function useInterop({
   // The badge beside the title asks for the dialog: it explains, and turns Private off on confirmation.
   useEffect(() => {
     const onRequest = () => {
-      if (privacyOf(getPrivacyFlags(slug)) === "private") setDialog({ kind: "privacy", source: slug });
+      if (privacy() === "private") setDialog({ kind: "privacy", source: slug });
     };
     window.addEventListener(PRIVACY_REQUEST, onRequest);
     return () => window.removeEventListener(PRIVACY_REQUEST, onRequest);
-  }, [slug]);
+  });
 
   // ---------------------------------------------------------------- keyboard
 
@@ -1040,6 +1062,13 @@ export function useInterop({
     saveAs: () => saveToDevice(true),
     saveTo,
     openFile,
+    importFiles: importFileList,
+    /** Discard in-memory practice import UI on Restart; this never changes ordinary Open's saved binding. */
+    resetImports: () => {
+      importSession.current++;
+      setImported(null);
+      setDialog(null);
+    },
     openFrom,
     openPaste: () => setDialog({ kind: "paste" }),
     /** The open diagram's Import report, when it came from an infrastructure import in this tab. */
@@ -1068,7 +1097,7 @@ export function useInterop({
       // be saved to the cloud anyway). Asked again once the provider's code has loaded, of the diagram open then: it
       // may have turned private, or another one opened, meanwhile. Open from ▸ a provider still loads them, on that
       // click.
-      const privateNow = () => isLocalOnly(getPrivacyFlags(openSlug.current));
+      const privateNow = () => isLocalOnly(privacyState(openSlug.current));
       if (privateNow()) return;
       for (const info of CLOUD_PROVIDERS)
         void info.load().then(

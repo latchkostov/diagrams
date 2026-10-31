@@ -7,6 +7,8 @@ import { DiagramThumbnail } from "./DiagramThumbnail";
 import { NEARLY_FULL, storageUsage, type LibraryEntry } from "../lib/diagramIO";
 import { formatAgo, formatBytes, formatPercent, formatNumber } from "../i18n/format";
 import { t, useLocale } from "../i18n";
+import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 
 /** Show the storage meter from this share of the budget (it always shows once nearly full). */
 const SHOW_USAGE_FROM = 0.5;
@@ -66,6 +68,11 @@ export function LibraryDialog({
   if (page > lastPage) setPage(lastPage);
   const shownPage = Math.min(page, lastPage);
   const visible = ordered.slice(shownPage * PAGE_SIZE, (shownPage + 1) * PAGE_SIZE);
+  const visibleSlugs = visible.map((entry) => entry.slug).join("\n");
+  useLayoutEffect(() => {
+    const source = currentObservationSource();
+    if (source) observationPorts.library.publish({ ...source, slugs: visibleSlugs ? visibleSlugs.split("\n") : [] });
+  }, [visibleSlugs]);
   const content = useRef<HTMLDivElement>(null);
   const focus = useRef<HTMLElement | null>(null);
   const previous = useRef(visible);

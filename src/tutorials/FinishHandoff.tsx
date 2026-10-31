@@ -42,14 +42,20 @@ export function FinishHandoff({
   };
   useEffect(() => {
     if (dismissed) return;
-    heading.current?.focus();
     const dismiss = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
       dismissSheet();
     };
-    window.addEventListener("keydown", dismiss);
-    return () => window.removeEventListener("keydown", dismiss);
+    // A modal can close on this same Escape. Focus and listen after its cleanup and that event finish.
+    const frame = requestAnimationFrame(() => {
+      heading.current?.focus();
+      window.addEventListener("keydown", dismiss);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", dismiss);
+    };
   }, [dismissed]);
   if (dismissed) return null;
   return (

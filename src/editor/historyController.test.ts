@@ -131,3 +131,19 @@ describe("undo entry identity", () => {
     expect(ctl.undoEntryId()).not.toBe(step);
   });
 });
+
+it.each([false, true])("fresh replacements discard undo, redo and naming transactions (same document: %s)", (same) => {
+  const initial = snap(SEED);
+  const ctl = new HistoryController(initial, 0);
+  ctl.commit(added, TAG, 1);
+  ctl.commit(named, undefined, 2);
+  ctl.step("undo", { nodes: [], edges: [] });
+  ctl.begin(TAG);
+  const next = same ? added : initial;
+  ctl.replace(added, TAG, next, undefined, { nodes: [], edges: [] }, 3, true);
+  expect(ctl.openTransaction).toBeUndefined();
+  expect(ctl.history.entries).toHaveLength(1);
+  expect(ctl.step("undo", { nodes: [], edges: [] })).toBeNull();
+  expect(ctl.step("redo", { nodes: [], edges: [] })).toBeNull();
+  expect(present(ctl.history).value).toEqual(next);
+});

@@ -22,6 +22,9 @@ export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedU
     return id;
   };
   return tutorial.steps[snap.state.index].solution.map((s): ResolvedUiStep => {
+    if ("history" in s) return s;
+    if ("importFixture" in s) return s;
+    if ("pan" in s) return s;
     if ("click" in s) return { click: at(s.click) };
     if ("open" in s) return { open: at(s.open) };
     if ("modClick" in s) return { modClick: at(s.modClick), modifiers: s.modifiers };

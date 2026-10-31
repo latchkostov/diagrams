@@ -3,14 +3,14 @@ import { observationPorts, type ProductObservations } from "../lib/observations"
 import { currentObservationSource } from "../palette/observationSource";
 import type { Check, Tutorial } from "../tutorials/types";
 
-const checks: Record<keyof ProductObservations, Check> = {
+const checks = {
   dock: { kind: "dock", tab: "checks" },
   checks: { kind: "checks", status: "done", rule: "no-reader" },
   exports: { kind: "export", format: "native" },
   imports: { kind: "import", format: "native" },
   ai: { kind: "aiTurn", turn: "change" },
   collaboration: { kind: "collaboration", status: "joined" },
-};
+} satisfies Partial<Record<keyof ProductObservations, Check>>;
 
 /** Temporary, unregistered integration lessons; the import destination/save policy remains with the normal app. */
 export const tutorialObservationFixtures: readonly Tutorial[] = Object.entries(checks).map(([port, check]) => ({

@@ -1,4 +1,6 @@
-import type { KeyboardEvent } from "react";
+import { useLayoutEffect, type KeyboardEvent } from "react";
+import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import { exampleFeatures, exampleThemeLabel, filterExamples, gallerySummary } from "./gallery";
 import { withExampleDetails } from "./details";
@@ -9,6 +11,11 @@ import { tutorialRoute } from "../tutorials/route";
 
 export function GalleryDetails({ catalog, query, feature, onOpen, onTutorials }: DiscoveryGalleryProps) {
   const sections = filterExamples(withExampleDetails(catalog), query, feature);
+  const slugs = sections.flatMap((section) => section.items.map((item) => item.slug)).join("\n");
+  useLayoutEffect(() => {
+    const source = currentObservationSource();
+    if (source) observationPorts.gallery.publish({ ...source, feature, slugs: slugs ? slugs.split("\n") : [] });
+  }, [feature, slugs]);
   const navigate = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!(event.target instanceof HTMLButtonElement) || !event.target.hasAttribute("data-example-action")) return;
     const actions = Array.from(

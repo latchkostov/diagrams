@@ -1,4 +1,6 @@
 import { surfaceCatalogs } from "../i18n/surfaces";
+import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 import { getNodeVariant } from "./nodes/variantRegistry";
 import { stencilLabel, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { stencilDescription } from "../i18n/stencilDescriptions";
@@ -9,6 +11,7 @@ import { t, useLocale } from "../i18n";
 import {
   memo,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -143,6 +146,11 @@ export const Palette = memo(function Palette({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- shared search metadata resolves the current locale
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q, locale]);
   const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q, locale) : []), [q, locale]);
+  useLayoutEffect(() => {
+    const source = currentObservationSource();
+    if (source && !collapsed && q.trim())
+      observationPorts.tools.publish({ ...source, query: q, stencils: results?.map((s) => s.id) ?? [] });
+  }, [collapsed, q, results]);
   const common = useMemo(() => {
     const generic = stencils.filter((s) => familyOf(s) === "generic");
     const pick = (role: Stencil["simRole"], subtitle?: string) =>

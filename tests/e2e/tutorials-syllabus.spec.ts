@@ -10,9 +10,9 @@ import { chunk, holdChunk } from "./chunk";
 test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page, consoleErrors }) => {
   await page.goto("./?view=tutorials");
   await expect(page.getByTestId("tutorials-resume")).toContainText("Start here: 1.1", { timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 52 lessons · 0 of 7 seals");
+  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 55 lessons · 0 of 7 seals");
   await expect(page.getByTestId("tutorials-chapter-basics")).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveAccessibleName(/^Start 1\.1 .*Not started/);
+  await expect(page.getByTestId("tutorial-open-workbench-tour")).toHaveAccessibleName(/^Start 1\.1 .*Not started/);
   await expectNoViolations(page, "tutorials-view");
   await page.getByTestId("tutorials-resume-open").click();
   await page.getByTestId("tutorial-start").click();
@@ -26,7 +26,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorial-handoff-logged")).toHaveText("Logged · today");
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
   await expect(page.getByTestId("tutorial-handoff-steps")).toHaveText(
-    "Add a browserGrow the flowName the APIAdd PostgreSQL",
+    "Add a mobile appAdd the API it callsConnect themName the APIGo liveWatch requests flow",
   );
   await expect(page.getByTestId("tutorial-next")).toHaveText("Start 1.2");
   await expectNoViolations(page, "tutorial-handoff");
@@ -34,11 +34,11 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorial-next")).toBeFocused();
   await page.getByTestId("tutorial-done-exit").click();
   const today = await page.evaluate(() => new Date().toLocaleDateString("en", { day: "numeric", month: "short" }));
-  await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
-  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveAccessibleName(/^Review 1\.1 .*Done/);
+  await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
+  await expect(page.getByTestId("tutorial-open-workbench-tour")).toHaveAccessibleName(/^Review 1\.1 .*Done/);
   await page.getByTestId("tutorials-seals").click();
-  await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Not yet · 1 of 12");
-  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 52");
+  await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Not yet · 1 of 15");
+  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 55");
   await expectNoViolations(page, "tutorials-view");
   await page.getByTestId("tutorials-seals-back").click();
   await page.getByTestId("tutorials-reset-basics").click();
@@ -56,15 +56,15 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   );
   await expectNoViolations(page, "tutorials-reset-dialog");
   await page.getByTestId("tutorials-reset-confirm").click();
-  await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText("3 min · Level 1");
+  await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText("3 min · Level 1");
   // Undo is still useful after another surface unmounts and remounts the hub.
   await page.getByTestId("view-gallery").click();
   await page.getByTestId("view-tutorials").click();
   await page.getByTestId("tutorials-reset-undo").click();
-  await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
-  await expect(page.getByTestId("tutorials-overall")).toContainText("1 of 52 lessons");
+  await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
+  await expect(page.getByTestId("tutorials-overall")).toContainText("1 of 55 lessons");
   await page.reload();
-  await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
+  await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
   // The header opens the same dialog, with an explicit Everything scope.
   await page.getByTestId("tutorials-more").click();
   await page.getByTestId("context-menu-item-tutorials-reset").click();
@@ -76,7 +76,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await page.getByTestId("context-menu-item-tutorials-reset").click();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("tutorials-more")).toBeFocused();
-  await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
+  await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
   expectNoErrors(consoleErrors);
 });
 
@@ -150,7 +150,7 @@ for (const whole of [false, true]) {
   }) => {
     const id = whole ? "study-cells" : "share-present";
     const ids = tutorialEntries.filter((lesson) => !lesson.quarantined).map((lesson) => lesson.id);
-    const done = whole ? ids.filter((lesson) => lesson !== id) : ids.slice(0, 11);
+    const done = whole ? ids.filter((lesson) => lesson !== id) : ids.slice(0, ids.indexOf(id));
     const versions = Object.fromEntries(
       readdirSync("src/tutorials/catalog")
         .filter((name) => name.endsWith(".ts"))

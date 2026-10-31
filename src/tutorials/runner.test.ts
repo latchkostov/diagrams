@@ -25,6 +25,7 @@ import { checksAndFixes } from "./catalog/checksAndFixes";
 import { runChecks } from "../checks/run";
 import { HistoryController } from "../editor/historyController";
 import { toFlow, fromFlow } from "../canvas/convert";
+import { importAndReview } from "./catalog/importAndReview";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -45,6 +46,7 @@ function sandbox(
   tutorial: Tutorial = mobileApi,
   initial: DiagramFile = typeof tutorial.start === "function" ? tutorial.start() : mobileApi.start(),
   deferAdds = false,
+  importPractice?: (signal: AbortSignal) => Promise<void>,
 ) {
   let diagram = initial;
   let version = { identity: {}, revision: 0 };
@@ -71,6 +73,7 @@ function sandbox(
   };
   const getDiagram = vi.fn(() => diagram);
   const editor = {
+    addNode: add,
     getDiagram,
     getDocumentVersion: () => version,
     clearSelection: () => {},
@@ -142,7 +145,7 @@ function sandbox(
     },
   };
   const close = vi.fn();
-  const runner = createTutorialRunner(tutorial, { close, host, initial });
+  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice });
   const disconnect = runner.connect();
   cleanup.push(disconnect);
   return {
@@ -162,6 +165,24 @@ function sandbox(
     tick: () => sessions.forEach((f) => f()),
   };
 }
+
+it("independent add demos do not reuse a rail action's stale selected anchor", async () => {
+  const s = sandbox();
+  const rail = vi.spyOn(s.hostState.canvas, "addStencil").mockImplementation((stencil) => {
+    const from = s.getDiagram().nodes[0]?.id;
+    const id = s.editor.addNode(stencil);
+    if (from) s.editor.connect(from, id);
+    return id;
+  });
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: "add-app" });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.index).toBe(1));
+  s.runner.send({ type: "skip", stepId: "add-api" });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.index).toBe(2));
+  expect(s.getDiagram().nodes).toHaveLength(2);
+  expect(s.getDiagram().edges).toEqual([]);
+  expect(rail).not.toHaveBeenCalled();
+});
 
 it("a successful export belongs to one active step and never advances a later identical step", () => {
   const template = mobileApi.steps[0];
@@ -203,6 +224,36 @@ for (const event of ["restart", "exit", "replacement"] as const)
       s.publish();
     } else s.runner.send({ type: event });
     expect(work.signal.aborted).toBe(true);
+  });
+
+for (const event of ["restart", "exit", "replacement"] as const)
+  it(`${event} cancels a delayed practice import without writing or advancing`, async () => {
+    const tutorial = { ...importAndReview, steps: [importAndReview.steps[0]] };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let signal: AbortSignal | undefined;
+    const apply = vi.fn();
+    const s = sandbox(tutorial, undefined, false, async (next) => {
+      signal = next;
+      await held;
+      next.throwIfAborted();
+      apply();
+    });
+    s.runner.send({ type: "start" });
+    s.runner.send({ type: "skip", stepId: "import" });
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    if (event === "replacement") {
+      s.hostState.canvas.documentId = "replacement";
+      s.publish();
+    } else s.runner.send({ type: event });
+    expect(signal!.aborted).toBe(true);
+    release();
+    await Promise.resolve();
+    expect(apply).not.toHaveBeenCalled();
+    expect(s.runner.getSnapshot().state.value).not.toBe("finished");
+    expect(s.getDiagram().nodes).toEqual([]);
   });
 
 const named = (): DiagramFile => ({
@@ -709,7 +760,12 @@ it("preserves completion only within the current tutorial version", () => {
   const s = sandbox(newer);
   expect(s.runner.getSnapshot().state.resumeAt).toBe(0);
   s.runner.send({ type: "start" });
-  expect(savedProgress(newer)).toEqual({ version: 2, step: 0, completed: false, completedAt: expect.any(Number) });
+  expect(savedProgress(newer)).toEqual({
+    version: newer.version,
+    step: 0,
+    completed: false,
+    completedAt: expect.any(Number),
+  });
 });
 
 it("announces Show me's hint through the runner's status and leaves focus to the controller", () => {
@@ -1052,11 +1108,16 @@ it("keeps adding from Ctrl+K complete when Go to selects the topic", () => {
   s.runner.send({ type: "start" });
   s.mode({ selection: ["topic"] });
   s.edit(initial);
-  expect(s.runner.getSnapshot().state.index).toBe(0);
+  expect(s.runner.getSnapshot().state.index).toBe(1);
   s.mode({ selection: ["api"] });
   expect(s.runner.getSnapshot().state).toMatchObject({ index: 1, value: "active" });
   s.mode({ selection: ["topic"] });
-  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  observationPorts.navigation.publish({
+    documentId: "sandbox",
+    identity: s.editor.getDocumentVersion().identity,
+    nodeId: "topic",
+  });
+  expect(s.runner.getSnapshot().state).toMatchObject({ value: "active", index: 2 });
 });
 
 it("reopens adding from Ctrl+K when the topic is undone before Go to", () => {
@@ -1498,4 +1559,12 @@ it("Skip settles a boundary selection using its editor flow ID", async () => {
   s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
   await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
   expect(select).toHaveBeenCalledWith({ nodeIds: [], groupIds: ["box"], edgeIds: [] });
+});
+
+it("Restart requests a fresh history rather than an undoable document replacement", () => {
+  const s = sandbox();
+  s.runner.send({ type: "start" });
+  const apply = vi.spyOn(s.editor, "applyDiagram");
+  s.runner.send({ type: "restart" });
+  expect(apply).toHaveBeenCalledExactlyOnceWith(mobileApi.start(), { resetHistory: true });
 });

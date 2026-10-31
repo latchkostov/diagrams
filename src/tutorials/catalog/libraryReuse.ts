@@ -1,0 +1,152 @@
+import { msg, t } from "../../i18n";
+import { stencilSearch } from "./searchValues";
+import type { Tutorial } from "../types";
+
+export const libraryReuse: Tutorial = {
+  id: "library-reuse",
+  version: 1,
+  track: "basics",
+  level: 1,
+  minutes: 4,
+  chrome: "app",
+  title: msg("tutorials.libraryReuse.title"),
+  summary: msg("tutorials.libraryReuse.summary"),
+  start: () => ({
+    format: "diagrams/v1",
+    title: t("tutorials.libraryReuse.diagramTitle"),
+    nodes: [
+      { id: "status", stencil: "generic.service", label: t("tutorials.libraryReuse.status"), x: 0, y: 0 },
+      { id: "renderer", stencil: "generic.service", label: t("tutorials.libraryReuse.renderer"), x: 360, y: 0 },
+    ],
+    edges: [{ id: "update", from: "status", to: "renderer", kind: "async" }],
+  }),
+  subjects: {
+    status: { role: "processor" },
+    renderer: { role: "processor" },
+    original: { role: "processor" },
+    copy: { role: "processor" },
+  },
+  steps: [
+    {
+      id: "gallery",
+      title: msg("tutorials.libraryReuse.galleryTitle"),
+      goal: msg("tutorials.libraryReuse.galleryGoal"),
+      hint: msg("tutorials.libraryReuse.galleryHint"),
+      done: msg("tutorials.libraryReuse.galleryDone"),
+      check: { kind: "gallery", feature: "partitions", slug: "kafka-order-pipeline" },
+      sticky: true,
+      targets: [{ testId: "example-picker", tip: msg("tutorials.libraryReuse.galleryTitle") }],
+      demo: [],
+      solution: [
+        { click: "example-picker" },
+        { click: "picker-browse-examples" },
+        { select: "examples-feature", value: "partitions" },
+        { hover: "example-open-kafka-order-pipeline" },
+        { press: "Escape" },
+      ],
+    },
+    {
+      id: "add",
+      title: msg("tutorials.libraryReuse.addTitle"),
+      goal: msg("tutorials.libraryReuse.addGoal"),
+      hint: msg("tutorials.libraryReuse.addHint"),
+      done: msg("tutorials.libraryReuse.addDone"),
+      check: { kind: "node", subject: "original" },
+      targets: [{ testId: "rail-add", tip: msg("tutorials.libraryReuse.addTitle") }],
+      demo: [{ kind: "add", subject: "original", stencil: "generic.service" }],
+      solution: [
+        { click: "rail-add" },
+        { fill: "palette-search", text: stencilSearch("generic.service") },
+        { click: "palette-item-generic.service" },
+      ],
+    },
+    {
+      id: "duplicate",
+      title: msg("tutorials.libraryReuse.duplicateTitle"),
+      goal: () => t("tutorials.libraryReuse.duplicateGoal", { name: t("tutorials.libraryReuse.copyName") }),
+      hint: msg("tutorials.libraryReuse.duplicateHint"),
+      done: msg("tutorials.libraryReuse.duplicateDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "node", subject: "original" },
+          { kind: "node", subject: "copy" },
+          { kind: "label", subject: "copy", is: msg("tutorials.libraryReuse.copyName") },
+        ],
+      },
+      settle: "naming",
+      sticky: true,
+      targets: [{ testId: "node-{original}", tip: msg("tutorials.libraryReuse.duplicateTitle") }],
+      demo: [
+        { kind: "add", subject: "copy", stencil: "generic.service" },
+        { kind: "rename", subject: "copy", label: msg("tutorials.libraryReuse.copyName") },
+      ],
+      solution: [
+        { click: "node-{original}" },
+        { press: "ControlOrMeta+d" },
+        { press: "F2" },
+        { fill: "inspector-field-label", text: msg("tutorials.libraryReuse.copyName") },
+        { press: "Enter" },
+      ],
+    },
+    {
+      id: "undo",
+      title: msg("tutorials.libraryReuse.undoTitle"),
+      goal: msg("tutorials.libraryReuse.undoGoal"),
+      done: msg("tutorials.libraryReuse.undoDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "history", action: "undo" },
+          { kind: "absentNode", subject: "copy" },
+          { kind: "node", subject: "original" },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "undo-button", tip: msg("tutorials.libraryReuse.undoTitle") }],
+      demo: [],
+      reconstruct: [{ kind: "history", action: "undo", absent: "copy" }],
+      solution: [{ history: "undo" }],
+    },
+    {
+      id: "redo",
+      title: msg("tutorials.libraryReuse.redoTitle"),
+      goal: () => t("tutorials.libraryReuse.redoGoal", { name: t("tutorials.libraryReuse.copyName") }),
+      done: msg("tutorials.libraryReuse.redoDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "history", action: "redo", subject: "copy", label: msg("tutorials.libraryReuse.copyName") },
+          { kind: "node", subject: "copy" },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "redo-button", tip: msg("tutorials.libraryReuse.redoTitle") }],
+      demo: [],
+      reconstruct: [
+        {
+          kind: "history",
+          action: "redo",
+          present: { subject: "copy", label: msg("tutorials.libraryReuse.copyName") },
+        },
+      ],
+      solution: [{ history: "redo" }],
+    },
+    {
+      id: "keep",
+      title: msg("tutorials.libraryReuse.keepTitle"),
+      goal: msg("tutorials.libraryReuse.keepGoal"),
+      hint: msg("tutorials.libraryReuse.keepHint"),
+      done: msg("tutorials.libraryReuse.keepDone"),
+      check: { kind: "ownedCopy" },
+      sticky: true,
+      targets: [{ testId: "tutorial-save-copy", tip: msg("tutorials.libraryReuse.keepTitle") }],
+      demo: [],
+      solution: [{ click: "tutorial-save-copy" }, { click: "file-button" }, { click: "file-library" }],
+    },
+  ],
+  finish: {
+    text: msg("tutorials.libraryReuse.finish"),
+    example: { slug: "kafka-order-pipeline", label: msg("tutorials.mobileApi.example") },
+  },
+};

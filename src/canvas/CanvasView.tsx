@@ -1,5 +1,6 @@
 import { Icon } from "../components/Icon";
 import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
 import { activateDock, closeWorkbenchDock } from "./inspector/dockActions";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
@@ -76,7 +77,7 @@ import {
   setOnDeviceAllowed,
   TUTORIAL_SLUG,
 } from "../lib/diagramIO";
-import { privacyOf } from "../lib/localOnly";
+import { privacyOf, type CanvasPrivacyState } from "../lib/localOnly";
 import { usePrivacyFlags } from "../lib/usePrivacy";
 import type { DiagramFile } from "../model/types";
 
@@ -201,6 +202,9 @@ const CRAMPED = 1280;
 export type { CanvasHandle } from "./document/useCanvasDocument";
 
 interface Props {
+  /** In-memory provenance for a temporary canvas. All privacy gates use these flags. */
+  temporaryPrivacy?: CanvasPrivacyState;
+  onAllowOnDevice?: (on: boolean) => void;
   transport?: HTMLElement | null;
   bezel?: boolean;
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
@@ -272,6 +276,8 @@ function CanvasInner({
   focusRequest,
   viewer,
   room,
+  temporaryPrivacy,
+  onAllowOnDevice,
 }: Props) {
   const locale = useLocale();
   const settings = useSettings();
@@ -431,8 +437,12 @@ function CanvasInner({
   const libraryPrivacy = usePrivacyFlags(slug);
   const [roomPrivate, setRoomPrivate] = useState(false);
   const privacyFlags = useMemo(
-    () => ({ ...libraryPrivacy, private: libraryPrivacy.private || roomPrivate }),
-    [libraryPrivacy, roomPrivate],
+    () => ({
+      ...libraryPrivacy,
+      ...temporaryPrivacy,
+      private: libraryPrivacy.private || temporaryPrivacy?.private || roomPrivate,
+    }),
+    [libraryPrivacy, temporaryPrivacy, roomPrivate],
   );
   /** A peer's change arrived: the camera hears of it (set up with the camera, below). */
   const onRemote = useRef(() => {});
@@ -485,7 +495,11 @@ function CanvasInner({
       setNodes(s.nodes);
       setEdges(s.edges);
     },
-    (direction, selection) => onHistoryStep.current(direction, selection),
+    (direction, selection) => {
+      const source = currentObservationSource();
+      if (source) observationPorts.history.publish({ ...source, action: direction });
+      onHistoryStep.current(direction, selection);
+    },
     room,
     privacyFlags,
   );
@@ -683,7 +697,13 @@ function CanvasInner({
   useEffect(() => {
     stopSimulations.current = checks.stopSimulations;
   }, [checks]);
-  const allowOnDevice = useCallback((on: boolean) => void setOnDeviceAllowed(slug, on), [slug]);
+  const allowOnDevice = useCallback(
+    (on: boolean) => {
+      if (onAllowOnDevice) onAllowOnDevice(on);
+      else void setOnDeviceAllowed(slug, on);
+    },
+    [slug, onAllowOnDevice],
+  );
   // Only development builds read content for privacy (privacyOf); production reads provenance alone.
   const privacy = privacyOf({
     ...privacyFlags,
