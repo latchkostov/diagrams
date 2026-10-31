@@ -21,6 +21,7 @@ Windows and macOS finish their complete inventory. Linux Build shard 1 hits the 
 - Raw keyboard recipe keys respect explicit menu-owned camera deferral. Canvas keys still require camera idle; the menu's Enter/Escape must be able to release its own deferral.
 - Latency scrolling acknowledges real wheel/key delivery even at an existing boundary, then native completion. Exact Home/End/page-key assertions are unchanged.
 - Boundary copy snapshots use the existing current-document autosave acknowledgement before exact original/copy and Undo/Redo comparisons.
+- Collaboration's positive joined assertions await the actual document-ready publication and exact creator/joiner role; cancellation and pending-consent assertions still require no publication. Peer presence alone is not document readiness.
 
 Each behavioral driver repair has a regression that fails with its scoped fix temporarily restored to the previous implementation. Partition discovery is identical before/after; duplicating a partition fails its inventory unit. Per-cause backlog and UX review fragments contain the evidence and rejected alternatives.
 
@@ -34,7 +35,7 @@ Application build, startup/reserve heavy tests, size and full output parity pass
 SUMMARY: f843d13ac61333b9270c6668620f1ea06e930dea | unit={"passed":30,"failed":0,"skipped":0} parity={"goldens":3178,"changed":0,"added":0,"missing":0,"stale":0} e2e={"passed":0,"failed":0,"flaky":0,"skipped":0} gate_failures=0
 ```
 
-All eight changes are confined to browser drivers, test declarations, measured scheduling weights and documentation. Application output is unchanged; no golden is re-recorded. There is no new simulation, planning or stencil feature requiring a showcase example.
+All nine changes are confined to browser drivers, test declarations, measured scheduling weights and documentation. Application output is unchanged; no golden is re-recorded. There is no new simulation, planning or stencil feature requiring a showcase example.
 
 Completed Linux cohorts before the final combined checks:
 
@@ -55,11 +56,19 @@ SUMMARY: 26ba1af45c49ec0625068f7dea3588d5089ffcb4 | unit="not run" parity="not r
 SUMMARY: 92f06235143cae02b2a9d0a215fca6a6b64e4a63 | unit="not run" parity="not run" e2e={"passed":104,"failed":0,"flaky":0,"skipped":0} gate_failures=0
 ```
 
-Together with the 236 pointer and 24 camera executions, these final affected cohorts pass 510 Linux executions, with zero failures or flakes. Final lint, `pnpm typecheck`, `pnpm format:check` and `pnpm exec prettier --check .` run after the final edit before the signed commit. Lint retains 11 existing warnings and no errors. The ready PR records the final native dispatch separately.
+Together with the 236 pointer and 24 camera executions, these affected cohorts pass 510 Linux executions, with zero failures or flakes. The complete tutorial-port spec then passes two Linux repetitions after the collaboration-publication repair:
+
+```text
+SUMMARY: 47846ec71b3e5397fdf8212bb9f02579fd2cce3a | unit="not run" parity="not run" e2e={"passed":40,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+The final affected total is 550 Linux executions with zero failures or flakes. Final lint, `pnpm typecheck`, `pnpm format:check` and `pnpm exec prettier --check .` run after the final edit before the signed commit. Lint retains 11 existing warnings and no errors. The ready PR records the final native dispatch separately.
 
 ## Native dispatch and remaining evidence
 
 Diagnostic [41249763740](https://github.com/latchkostov/diagrams/actions/runs/41249763740), source 6452c5b35, contains only the first compound-connection repair. Windows completes with 3,193 passed, 25 failed, 15 existing skips and zero unfinished. It is red and does not verify the later changes.
+
+[41253297434](https://github.com/latchkostov/diagrams/actions/runs/41253297434), source 47846ec71, verifies the first eight changes and predates the collaboration-publication repair. That final repair follows the diagnostic Linux guest assertion at tutorials-ports.spec.ts:212: the chip can report a peer before the lifecycle has a shared document and publishes joined. Its held-publication regression and complete consent/join/leave case pass six Windows executions; nine observation-contract units pass. Restoring the immediate positive reader fails the new regression.
 
 The ready PR links the final-head Nightly dispatch, its exact per-OS passed/failed/unfinished counts and remaining failure groups. Native confirmation is distinct from the local regressions; no unconfirmed native failure is declared fixed or proven to pre-exist on clean master.
 
