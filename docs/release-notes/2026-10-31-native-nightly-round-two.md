@@ -12,6 +12,8 @@ Entry-point Undo checks wait for the complete restored topology after React Flow
 
 Cancelled-script checks control the live clock during late code arrival, then explicitly advance it to prove playback still works. Download time cannot accidentally finish the fixture's authored run.
 
+Worker frame measurements use actual paint acknowledgements, and paused-clock stop/resume checks flush previously posted work before comparing counts. All original zero, growth and ratio assertions remain; visible-particle checks keep their existing UI meaning.
+
 macOS peer tests also compare mDNS and direct host candidates in a server-free diagnostic; this is test-runner evidence, not a change to the application's network services. The original peer admission assertions remain enabled. An isolated select diagnostic records the native popup input boundary; unsuccessful popup-key experiments are removed. The select-driver decision, Control-drag/context-menu conflict and remaining native failures are explicitly tracked for the orchestrator in the PR and dated backlog fragments.
 
 ## Output parity
