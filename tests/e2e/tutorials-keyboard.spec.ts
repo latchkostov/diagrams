@@ -164,13 +164,14 @@ async function focus(page: Page, id: string) {
     // Native Tab traversal can cross more than one browser-chrome stop while activeElement stays body.
     if (!body) seen.add(state.active);
     const previous = state.active;
+    const roving = state.roving;
     await page.keyboard.press(state.roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
     // Roving focus and portal teardown can cross body before the destination lands on the next frame.
     if (body) state = await readState(true);
     else
       await expect
         .poll(async () => {
-          state = await readState(true);
+          state = await readState(roving);
           return state.active;
         })
         .not.toBe(previous);
@@ -427,6 +428,25 @@ for (const { id } of tutorialEntries.filter((entry) => !keyboardExceptions[entry
     expectNoErrors(consoleErrors);
   });
 }
+
+test("native keyboard controls use their focus observation without extra animation frames", async ({ page }) => {
+  await page.setContent(
+    '<button data-testid="first">First</button><button data-testid="target">Target</button><button data-testid="last">Last</button>',
+  );
+  await page.keyboard.press("Tab");
+  await page.evaluate(() => {
+    const raf = window.requestAnimationFrame.bind(window);
+    Object.assign(window, { __nativeFocusFrames: 0 });
+    window.requestAnimationFrame = (callback) => {
+      const state = window as unknown as { __nativeFocusFrames: number };
+      state.__nativeFocusFrames++;
+      return raf(callback);
+    };
+  });
+  await focus(page, "target");
+  await expect(page.getByTestId("target")).toBeFocused();
+  expect(await page.evaluate(() => (window as unknown as { __nativeFocusFrames: number }).__nativeFocusFrames)).toBe(0);
+});
 
 test("trace-slowmo: keyboard Play after a speed choice activates transport instead of the select", async ({ page }) => {
   await page.setContent(
