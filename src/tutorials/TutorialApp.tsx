@@ -18,9 +18,12 @@ import { loadingDialog } from "../interop/ui/lazyDialogs";
 import { CommandPalette } from "../palette/CommandPalette";
 import { t, useLocale } from "../i18n";
 import { tRich } from "../i18n/rich";
-import { trackLabel, tutorials } from "./catalog";
+import { trackLabel, tracks, tutorials } from "./catalog";
 import { lazyComponent, loadOnce } from "../lib/lazyLoad";
-import { nextTutorial } from "./progress";
+import { readTutorials, subscribeTutorials, tutorialsSnapshot } from "./progress";
+import { FinishHandoff } from "./FinishHandoff";
+import { justEarnedSeals, leaveLesson, lessonReturn } from "./handoff";
+import { seals } from "./seals";
 import { createTutorialStart } from "./start";
 import { TopBar } from "../components/TopBar";
 import { ToolRail } from "../canvas/chrome/ToolRail";
@@ -98,7 +101,7 @@ function Prepared({ tutorial, catalog }: { tutorial: Tutorial; catalog: readonly
           {t("common.retry")}
         </button>
       )}
-      <button className="btn" data-testid="tutorial-exit" onClick={tutorialRoute.close}>
+      <button className="btn" data-testid="tutorial-exit" onClick={() => leaveLesson(tutorial)}>
         {t("tutorials.exit")}
       </button>
     </div>
@@ -114,6 +117,9 @@ function Running({
   initial: DiagramFile;
   catalog: readonly Tutorial[];
 }) {
+  const [before, setBefore] = useState(readTutorials);
+  const raw = useSyncExternalStore(subscribeTutorials, tutorialsSnapshot);
+  const progress = readTutorials(raw);
   const [presenting, setPresenting] = useState(false);
   useEffect(() => {
     if (!presenting) return;
@@ -126,7 +132,7 @@ function Running({
   const [runner] = useState(() => {
     startFresh();
     return createTutorialRunner(tutorial, {
-      close: () => tutorialRoute.close(),
+      close: () => leaveLesson(tutorial),
       initial,
       documentId: getDiagramIdentity(TUTORIAL_SLUG),
       present: setPresenting,
@@ -194,6 +200,11 @@ function Running({
   const canvasRef = useInteropCanvasActions(canvas, files);
   useEffect(() => runner.connect(), [runner]);
   useEffect(() => {
+    if (lessonReturn.start !== tutorial.id) return;
+    delete lessonReturn.start;
+    runner.send({ type: "start" });
+  }, [runner, tutorial]);
+  useEffect(() => {
     if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return;
     window.__tutorial = {
       snapshot: runner.getSnapshot,
@@ -258,7 +269,14 @@ function Running({
             {t("tutorials.highlights")}
           </label>
           {state.value !== "intro" && (
-            <button className="btn" onClick={() => runner.send({ type: "restart" })} data-testid="tutorial-restart">
+            <button
+              className="btn"
+              onClick={() => {
+                setBefore(readTutorials());
+                runner.send({ type: "restart" });
+              }}
+              data-testid="tutorial-restart"
+            >
               <Icon name="reset" size={14} /> {t("tutorials.restart")}
             </button>
           )}
@@ -268,11 +286,14 @@ function Running({
         </header>
       )}
       <div hidden={presenting}>
-        <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} catalog={catalog} />
+        <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} />
       </div>
       <div className="app-body">
         {!presenting && <ToolRail view="canvas" onView={tutorialRoute.openView} />}
-        <div className="app-main">
+        <div className="app-main tutorial-practice">
+          {state.value === "finished" && !presenting && (
+            <FinishHandoff tutorial={tutorial} catalog={catalog} before={before} progress={progress} />
+          )}
           <Suspense fallback={<div className="view-loading" data-testid="view-loading" />}>
             <CanvasView
               bezel
@@ -339,6 +360,17 @@ function Running({
       )}
       <div className="sr-only" role="status" aria-live="polite" data-testid="tutorial-announce">
         {snap.announcement}
+        {state.value === "finished" &&
+          seals
+            .filter((seal) => justEarnedSeals(before, progress, catalog).includes(seal.id))
+            .map((seal) =>
+              t("tutorials.handoff.sealEarned", {
+                name: seal.track
+                  ? tracks.find((track) => track.id === seal.track)!.label()
+                  : t("tutorials.syllabus.whole"),
+              }),
+            )
+            .join(". ")}
       </div>
     </div>
   );
@@ -434,19 +466,16 @@ function Strip({
   snap,
   send,
   saveCopy,
-  catalog,
 }: {
   tutorial: Tutorial;
   snap: RunnerSnapshot;
   send: (e: RunnerEvent) => void;
   saveCopy(): void;
-  catalog: readonly Tutorial[];
 }) {
   const { state } = snap;
   const phase = state.value;
   const step = inStep(state) ? tutorial.steps[state.index] : undefined;
   const last = state.last !== null ? tutorial.steps[state.last] : undefined;
-  const next = phase === "finished" ? nextTutorial(tutorial, catalog) : undefined;
   return (
     <section
       className="tutorial-strip"
@@ -526,15 +555,6 @@ function Strip({
             </p>
           </div>
           <div className="tutorial-actions">
-            {next && (
-              <button
-                className="btn btn-primary"
-                data-testid="tutorial-next"
-                onClick={() => tutorialRoute.open(next.id, true)}
-              >
-                {t("tutorials.next")}
-              </button>
-            )}
             <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
               {t("tutorials.saveCopy")}
             </button>
@@ -547,13 +567,6 @@ function Strip({
                 {tutorial.finish.example.label()}
               </button>
             )}
-            <button
-              className={`btn${next ? "" : " btn-primary"}`}
-              onClick={() => send({ type: "exit" })}
-              data-testid="tutorial-done-exit"
-            >
-              {t("tutorials.done")}
-            </button>
           </div>
         </>
       )}

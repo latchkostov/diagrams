@@ -1,4 +1,9 @@
-import { test, expect, expectNoErrors, pageLoadTimeout } from "./fixtures";
+import { test, expect, expectNoErrors, pageLoadTimeout, pauseClock } from "./fixtures";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import type { Page } from "@playwright/test";
+import { CATCH_UP_MS } from "../../src/live/frameClock";
+import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import { expectNoViolations } from "./a11y-helpers";
 
 test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page, consoleErrors }) => {
@@ -16,6 +21,15 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
     await expect(page.getByTestId("tutorial-step")).not.toHaveAttribute("data-step", step ?? "");
   }
   await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
+  await expect(page.getByTestId("tutorial-handoff-logged")).toHaveText("Logged · today");
+  await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+  await expect(page.getByTestId("tutorial-handoff-steps")).toHaveText(
+    "Add a browserGrow the flowName the APIAdd PostgreSQL",
+  );
+  await expect(page.getByTestId("tutorial-next")).toHaveText("Start 1.2");
+  await expectNoViolations(page, "tutorial-handoff");
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("tutorial-next")).toBeFocused();
   await page.getByTestId("tutorial-done-exit").click();
   const today = await page.evaluate(() => new Date().toLocaleDateString("en", { day: "numeric", month: "short" }));
   await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
@@ -51,3 +65,113 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
   expectNoErrors(consoleErrors);
 });
+
+async function finishBySkipping(page: Page, clocked = false) {
+  const steps = await page.evaluate(() => window.__tutorial?.snapshot().state.stepIds ?? []);
+  const strip = page.getByTestId("tutorial-step");
+  while ((await strip.getAttribute("data-phase")) === "step") {
+    const step = await strip.getAttribute("data-step");
+    await page.getByTestId("tutorial-skip").click();
+    if (clocked)
+      await expect
+        .poll(
+          async () => {
+            await page.clock.fastForward(CATCH_UP_MS);
+            if ((await strip.getAttribute("data-phase")) === "finished") return true;
+            const next = (await strip.getAttribute("data-step")) ?? "";
+            return steps.indexOf(next) > steps.indexOf(step ?? "");
+          },
+          { intervals: [0] },
+        )
+        .toBe(true);
+    await expect(strip).not.toHaveAttribute("data-step", step ?? "");
+  }
+  await expect(strip).toHaveAttribute("data-phase", "finished");
+}
+
+test("handoff starts the next lesson directly and Escape leaves the canvas usable", async ({ page }) => {
+  await page.goto("./?tutorial=mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await finishBySkipping(page);
+  await page.getByTestId("tutorial-next").click();
+  await expect(page.getByTestId("tutorial-app")).toHaveAttribute("data-tutorial", "quick-add");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "step");
+  await finishBySkipping(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
+  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
+  await page.getByTestId("canvas-wrap").click({ position: { x: 40, y: 40 }, button: "right" });
+  await expect(page.getByTestId("context-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("tutorial-exit").click();
+  await expect(page.getByTestId("tutorials-chapter-basics")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("tutorial-open-quick-add")).toBeInViewport();
+});
+
+for (const whole of [false, true]) {
+  test(`handoff shows ${whole ? "the final syllabus seal" : "the chapter seal"} only when newly earned`, async ({
+    page,
+  }) => {
+    const id = whole ? "study-cells" : "share-present";
+    const ids = tutorialEntries.filter((lesson) => !lesson.quarantined).map((lesson) => lesson.id);
+    const done = whole ? ids.filter((lesson) => lesson !== id) : ids.slice(0, 11);
+    const versions = Object.fromEntries(
+      readdirSync("src/tutorials/catalog")
+        .filter((name) => name.endsWith(".ts"))
+        .flatMap((name) => {
+          const source = readFileSync(join("src/tutorials/catalog", name), "utf8");
+          const id = /id: "([^"]+)"/.exec(source)?.[1];
+          const version = /version: (\d+)/.exec(source)?.[1];
+          return id && version ? [[id, Number(version)]] : [];
+        }),
+    );
+    await page.addInitScript(
+      ({ done, versions }) => {
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({
+            progress: Object.fromEntries(done.map((id) => [id, { version: versions[id], completed: true, step: 0 }])),
+          }),
+        );
+      },
+      { done, versions },
+    );
+    if (whole) await page.clock.install();
+    await page.goto(`./?tutorial=${id}`);
+    await page.getByTestId("tutorial-start").click();
+    if (whole) await pauseClock(page);
+    await finishBySkipping(page, whole);
+    if (whole) await page.clock.resume();
+    const seal = whole ? "whole-syllabus" : "chapter-basics";
+    await expect(page.getByTestId(`tutorial-handoff-seal-${seal}`)).toBeVisible();
+    await expect(page.getByTestId("tutorial-announce")).toContainText("Seal earned:");
+    await expect(page.getByTestId("tutorial-handoff-heading")).toHaveText(
+      whole ? "You've finished the syllabus" : "Chapter I complete",
+    );
+    if (whole) await expect(page.getByTestId("tutorial-next")).toHaveCount(0);
+    else await expect(page.getByTestId("tutorial-next")).toHaveText("Start 2.1");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId("tutorial-handoff-heading")).toBeInViewport();
+    await expect(page.getByTestId("tutorial-done-exit")).toBeInViewport();
+    expect(await page.getByTestId("tutorial-handoff").evaluate((el) => getComputedStyle(el).animationName)).toBe(
+      "none",
+    );
+    await expectNoViolations(page, "tutorial-handoff");
+    if (!whole) {
+      await page.getByTestId("tutorial-handoff-heading").focus();
+      await page.keyboard.press("Tab");
+      await expect(page.getByTestId("tutorial-next")).toBeFocused();
+    }
+    await page.getByTestId("tutorial-pick-chapter").click();
+    await expect(page.getByTestId(`tutorial-open-${id}`)).toBeInViewport();
+    if (!whole) {
+      await page.getByTestId(`tutorial-open-${id}`).click();
+      await page.getByTestId("tutorial-start").click();
+      await finishBySkipping(page);
+      await expect(page.getByTestId(`tutorial-handoff-seal-${seal}`)).toHaveCount(0);
+      await expect(page.getByTestId("tutorial-announce")).not.toContainText("Seal earned:");
+    }
+  });
+}

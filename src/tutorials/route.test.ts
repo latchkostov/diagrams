@@ -72,3 +72,27 @@ it("opens app views under the current sub-path without reloading or retaining tu
     vi.unstubAllGlobals();
   }
 });
+
+it("returns to the hub through the existing history entry when a lesson requests it", () => {
+  const listeners: (() => void)[] = [];
+  const back = vi.fn();
+  const replaceState = vi.fn();
+  vi.stubGlobal("window", {
+    location: new URL("https://example.test/tools/?tutorial=lesson"),
+    history: { state: { "livediagrams-tutorial": true }, back, replaceState },
+    addEventListener: (name: string, listener: () => void, options: unknown) => {
+      expect(name).toBe("popstate");
+      expect(options).toEqual({ once: true });
+      listeners.push(listener);
+    },
+  });
+  try {
+    tutorialRoute.close("tutorials");
+    expect(back).toHaveBeenCalledOnce();
+    expect(replaceState).not.toHaveBeenCalled();
+    listeners[0]();
+    expect(replaceState).toHaveBeenCalledWith(window.history.state, "", "/tools/?view=tutorials");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

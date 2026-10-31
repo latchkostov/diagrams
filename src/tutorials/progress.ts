@@ -1,5 +1,5 @@
 import { safeStorage } from "../lib/storage";
-import { tutorials } from "./catalog";
+import { tracks, tutorials } from "./catalog";
 import { chapterSeals, earnedSeals, lessonProgress, type SealLesson } from "./seals";
 import type { TrackId, Tutorial } from "./types";
 export { earnedSeals } from "./seals";
@@ -47,10 +47,16 @@ export function savedProgress(t: Pick<Tutorial, "id" | "version" | "quarantined"
   return lessonProgress(readTutorials(), { ...t, track: "basics" });
 }
 
-/** First unfinished lesson in this track, in catalog order. */
-export function nextTutorial(current: Tutorial, catalog: readonly Tutorial[]): Tutorial | undefined {
-  return catalog.find(
-    (t) => !t.quarantined && t.id !== current.id && t.track === current.track && !savedProgress(t)?.completed,
+/** Follow chapter order, then wrap to any unfinished lessons left earlier in the syllabus. */
+export function nextTutorial(
+  current: Tutorial,
+  catalog: readonly Tutorial[],
+  progress = readTutorials(),
+): Tutorial | undefined {
+  const ordered = tracks.flatMap((track) => catalog.filter((lesson) => lesson.track === track.id));
+  const index = ordered.findIndex((lesson) => lesson.id === current.id);
+  return [...ordered.slice(index + 1), ...ordered.slice(0, index)].find(
+    (lesson) => !lesson.quarantined && lesson.id !== current.id && !lessonProgress(progress, lesson)?.completed,
   );
 }
 

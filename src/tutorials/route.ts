@@ -44,10 +44,25 @@ export const tutorialRoute = {
     window.history.pushState(null, "", `${window.location.pathname}?${query}`);
     emit();
   },
-  /** Back where the tutorial was opened from; a tutorial reached by its link goes to the app instead. */
-  close(): void {
-    if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) return window.history.back();
-    window.history.replaceState(null, "", `${window.location.pathname}?view=canvas${window.location.hash}`);
+  /** Pop the lesson entry when present; an explicit destination replaces the restored view, keeping Back intact. */
+  close(view?: View): void {
+    if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) {
+      if (view)
+        window.addEventListener(
+          "popstate",
+          () => {
+            window.history.replaceState(window.history.state, "", `${window.location.pathname}?view=${view}`);
+            emit();
+          },
+          { once: true },
+        );
+      return window.history.back();
+    }
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?view=${view ?? "canvas"}${window.location.hash}`,
+    );
     emit();
   },
 };

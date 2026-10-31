@@ -158,7 +158,7 @@ async function play(page: Page, step: ResolvedUiStep) {
       await fitDiagram(page);
       await waitForCameraIdle(page);
     }
-    await page.getByTestId(step.hover).hover();
+    await hoverPractice(page, step.hover);
   } else if ("fill" in step) {
     if (step.fill === "inspector-field-label") {
       // Quick-add can render the new field before its queued reveal and naming focus arrive. Filling it early
@@ -211,6 +211,19 @@ async function play(page: Page, step: ResolvedUiStep) {
 const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
 
 const strip = (page: Page) => page.getByTestId("tutorial-step");
+
+/** A completed lesson may open the sheet before a final readout hover returns. Dismiss it as a learner would. */
+async function hoverPractice(page: Page, id: string) {
+  const handoff = page.getByTestId("tutorial-handoff");
+  await page.addLocatorHandler(handoff, async () => {
+    await page.getByTestId("tutorial-handoff-dismiss").click();
+  });
+  try {
+    await page.getByTestId(id).hover();
+  } finally {
+    await page.removeLocatorHandler(handoff);
+  }
+}
 
 async function finishSolution(page: Page, highlightsOff = false) {
   const seen: string[] = [];
@@ -594,7 +607,7 @@ test("threads-block: watch steps wait for their readout even after the run has m
     .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
     .toBeGreaterThanOrEqual(2000);
   await expect(strip(page)).toHaveAttribute("data-step", "no-threads-waiting");
-  await page.getByTestId("node-caller").hover();
+  await hoverPractice(page, "node-caller");
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
 
@@ -614,7 +627,7 @@ test("rate-limit: playback waits for the limiter readout before completing", asy
   await page.clock.runFor(10000);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "10000");
   await expect(strip(page)).toHaveAttribute("data-step", "rejected");
-  await page.getByTestId("node-limiter").hover();
+  await hoverPractice(page, "node-limiter");
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   expectNoErrors(consoleErrors);
 });
@@ -630,7 +643,7 @@ test("scale-to-zero: the cold-start note holds the readout for a late learner", 
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
   await expect(strip(page)).toHaveAttribute("data-step", "cold-start");
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "6000");
-  await page.getByTestId("node-worker").hover();
+  await hoverPractice(page, "node-worker");
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   expectNoErrors(consoleErrors);
 });
@@ -1299,11 +1312,11 @@ test("Lab runtime preview loads an example and its simulation, keeps app chrome 
   await expectNothingSaved(page);
   await page.getByTestId("tutorial-next").click();
   await expect(page.getByTestId("tutorial-title")).toHaveText("Try the next practice diagram");
-  await page.getByTestId("tutorial-start").click();
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
   await skipAll(page);
   await expect(page.getByTestId("tutorial-next")).toHaveCount(0);
   await page.getByTestId("tutorial-done-exit").click();
-  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
 });
 
