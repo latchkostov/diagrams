@@ -7,6 +7,60 @@ import { toast } from "../interop/ui/toast";
 import { toast as interaction } from "../interop/ui/toastRuntime";
 import { HistoryController } from "./historyController";
 import { useHistory, type CanvasSnapshot } from "./useHistory";
+import { MERGE_WINDOW_MS } from "./history";
+
+it("a local copy drag stays one undo step across intermediate commits and a long hold", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.createElement("div"));
+  const snapshot = (copyX?: number): CanvasSnapshot =>
+    toFlow({
+      format: "diagrams/v1",
+      title: "Copy drag",
+      edges: [],
+      nodes: [
+        { id: "original", stencil: "service.node", label: "Original", x: 0, y: 0 },
+        ...(copyX === undefined ? [] : [{ id: "copy", stencil: "service.node", label: "Copy", x: copyX, y: 50 }]),
+      ],
+    });
+  let api!: ReturnType<typeof useHistory>;
+  let applied: CanvasSnapshot | undefined;
+  function Harness({ state }: { state: CanvasSnapshot }) {
+    api = useHistory(state, (next) => {
+      applied = next;
+      root.render(<Harness state={next} />);
+    });
+    return null;
+  }
+  const render = (state: CanvasSnapshot) => act(() => root.render(<Harness state={state} />));
+  const hold = () => act(() => void vi.advanceTimersByTime(MERGE_WINDOW_MS * 2));
+  try {
+    await render(snapshot());
+    await act(() => api.beginGesture());
+    // A copy exists before React Flow marks its first position change as dragging.
+    await render(snapshot(0));
+    await hold();
+    await render(snapshot(100));
+    await hold();
+    await act(() => api.endGesture());
+    await act(() => void vi.runOnlyPendingTimers());
+    await act(() => api.undo());
+    expect(applied?.nodes.map((node) => node.id)).toEqual(["original"]);
+    await act(() => api.redo());
+    expect(applied?.nodes.find((node) => node.id === "copy")?.position).toEqual({ x: 100, y: 50 });
+    // Ending the gesture releases its merge key: the next edit has its own Undo.
+    await render(snapshot(200));
+    await hold();
+    await act(() => api.undo());
+    expect(applied?.nodes.find((node) => node.id === "copy")?.position).toEqual({ x: 100, y: 50 });
+    await act(() => api.undo());
+    expect(applied?.nodes.map((node) => node.id)).toEqual(["original"]);
+  } finally {
+    await act(() => root.unmount());
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
 
 it("reuses the rendered snapshot key when validating a retained Undo on selection changes", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
