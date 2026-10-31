@@ -45,6 +45,12 @@ for (const platform of ["MacIntel", "Win32"]) {
     await expect.poll(async () => await zoom()).toBeGreaterThan(before);
     await page.keyboard.press("ControlOrMeta+k");
     await expect(page.getByTestId("command-input")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("?");
+    const mouse = page.getByTestId("shortcuts-mouse");
+    const modifier = platform === "MacIntel" ? "⌘" : "Ctrl";
+    await expect(mouse).toContainText(`${modifier} while dragging`);
+    await expect(mouse).toContainText(`(${modifier}: no snapping)`);
   });
 }
 
