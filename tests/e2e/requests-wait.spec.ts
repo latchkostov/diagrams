@@ -9,6 +9,7 @@ import {
   pauseClock,
   waitForStableViewport,
   savedDiagram,
+  savedCurrentDiagram,
   STORAGE_KEYS,
   expectNoErrors,
 } from "./fixtures";
@@ -113,7 +114,7 @@ test("older diagrams preview changed capacity, upgrade once and undo the complet
   await expect(page.getByTestId("planning-upgrade-preview")).toContainText("Decision service");
   await expect(page.getByTestId("planning-upgrade-preview")).toContainText("400");
   await page.getByTestId("planning-upgrade").click();
-  expect((await savedDiagram(page)).planning?.revision).toBe("p3-w1");
+  expect((await savedCurrentDiagram(page)).planning?.revision).toBe("p3-w1");
   await page.getByTestId("undo-button").click();
   await expect.poll(async () => (await savedDiagram(page)).planning?.revision).toBe("p3-a1");
 });

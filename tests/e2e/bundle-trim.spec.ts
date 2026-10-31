@@ -10,6 +10,7 @@ import {
   waitForAutosave,
   pauseClock,
   savedDiagram,
+  savedCurrentDiagram as savedQuickAdd,
   STORAGE_KEYS,
 } from "./fixtures";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
@@ -22,10 +23,6 @@ async function seed(page: Page) {
     diagram: lazySurfacesFixture(),
     key: STORAGE_KEYS.autosavePrefix + "blocking-call",
   });
-}
-async function savedQuickAdd(page: Page) {
-  await waitForAutosave(page);
-  return savedDiagram(page);
 }
 async function hold(page: Page, name: string, source: string) {
   let release!: () => void;

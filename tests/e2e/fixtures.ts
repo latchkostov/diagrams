@@ -327,6 +327,12 @@ export async function waitForAutosave(page: Page) {
   await expect.poll(() => page.evaluate(() => window.__documentProbe?.().saved)).toBe(true);
 }
 
+/** Read the current edit after its autosave acknowledgement. */
+export async function savedCurrentDiagram(page: Page): Promise<DiagramFile> {
+  await waitForAutosave(page);
+  return savedDiagram(page);
+}
+
 /** Crypto and decompression finished, then the consumer got its result and React could commit. */
 export async function waitForPasswordWork(page: Page) {
   await expect.poll(() => page.evaluate(() => window.__passwordWork?.pending)).toBe(0);
