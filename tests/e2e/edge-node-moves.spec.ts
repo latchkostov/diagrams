@@ -97,12 +97,12 @@ async function saved(page: Page) {
 }
 
 test("a drag fit waits for the camera while its animation clock is paused", async ({ page }) => {
+  await page.clock.install();
   await open(page);
   await selectBoth(page);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
   await waitForCameraIdle(page);
-  await page.clock.install();
   await pauseClock(page);
   let requested!: () => void;
   const reached = new Promise<void>((resolve) => (requested = resolve));
