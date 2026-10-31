@@ -43,6 +43,36 @@ test("keyboard connection hands off when creation completes the step before opti
   ).toBe(1);
 });
 
+test("keyboard Live command waits for the requested session before its next input", async ({ page }) => {
+  let requested = false;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/(?:assets\/LiveSession-[\w-]+\.js|src\/live\/LiveSession\.tsx)(?:\?.*)?$/, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await page.goto("./?tutorial=timeouts-pools");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  let settled = false;
+  const entering = command(page, "live:toggle", ">").then(() => (settled = true));
+  try {
+    await expect.poll(() => requested).toBe(true);
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-busy", "true");
+    await animationFrames(page);
+    expect(settled).toBe(false);
+    release();
+    await entering;
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-busy", "false");
+    await expect(page.getByTestId("live-sim-picker")).toBeVisible();
+  } finally {
+    release();
+    await entering;
+  }
+});
+
 test("native keyboard controls use their focus observation without extra animation frames", async ({ page }) => {
   await page.setContent(
     '<button data-testid="first">First</button><button data-testid="target">Target</button><button data-testid="last">Last</button>',

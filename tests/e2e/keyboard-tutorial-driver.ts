@@ -40,11 +40,20 @@ async function chooseRow(page: Page, id: string) {
 
 export async function command(page: Page, id: string, query: string) {
   if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")) throw new CompletedStep();
+  const enteringLive =
+    id === "live:toggle" && (await page.getByTestId("live-toggle").getAttribute("aria-pressed")) === "false";
   await page.keyboard.press("ControlOrMeta+k");
   await expect(page.getByTestId("command-input")).toBeFocused();
   await write(page, query);
   await chooseRow(page, `command-item-${id}`);
   await page.keyboard.press("Enter");
+  if (id === "live:toggle") {
+    if (enteringLive) await waitForLiveSession(page);
+    else {
+      await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
+      await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    }
+  }
 }
 
 export async function node(page: Page, id: string) {
