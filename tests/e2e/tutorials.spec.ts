@@ -24,7 +24,6 @@ import { CATCH_UP_MS } from "../../src/live/frameClock";
 import { tutorialKey } from "../../scripts/e2e-keys";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
-import { chunk, holdChunk } from "./chunk";
 
 // Tutorials (src/tutorials): one generated test per tutorial plays its solution path through the real UI, step by
 // step, and waits on the runner's state (the strip's data-step) to move on. Then the entry point, Skip ("do it for
