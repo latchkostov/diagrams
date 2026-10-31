@@ -34,6 +34,15 @@ const MOD = "ControlOrMeta";
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 const annotation = (page: Page, id: string) => page.getByTestId(`annotation-${id}`);
 
+async function searchAnnotation(page: Page, query: string, id: string) {
+  await waitForCameraIdle(page);
+  await openLibrary(page);
+  await page.getByTestId("palette-search").fill(query);
+  const results = page.getByTestId("palette-results");
+  await expect(results).toBeVisible();
+  return results.getByTestId(`palette-annotate-${id}`);
+}
+
 async function box(locator: Locator) {
   const b = await locator.boundingBox();
   if (!b) throw new Error("Expected a visible element");
@@ -1036,16 +1045,26 @@ test.describe("annotations", () => {
     await page.getByTestId("inspector-shape-diamond").click();
     await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "diamond");
     // The search finds the Annotate items too, each outline by name.
-    await openLibrary(page);
-    await page.getByTestId("palette-search").fill("sticky");
-    await openAnnotate(page);
-    await expect(page.getByTestId("palette-annotate-note")).toBeVisible();
-    await openLibrary(page);
-    await page.getByTestId("palette-search").fill("ellipse");
-    await openAnnotate(page);
-    await page.getByTestId("palette-annotate-shape-ellipse").click();
+    await expect(await searchAnnotation(page, "sticky", "note")).toBeVisible();
+    await (await searchAnnotation(page, "ellipse", "shape-ellipse")).click();
     await expect(annotation(page, "shape-2")).toHaveAttribute("data-shape", "ellipse");
     expectNoErrors(consoleErrors);
+  });
+
+  test("annotation search keeps its results when the separate Annotate group has not been observed", async ({
+    page,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    // A plain visibility read can precede the search render. It must not switch
+    // the library to the separate four-tile Annotate flyout.
+    const getByTestId = page.getByTestId.bind(page);
+    page.getByTestId = (id) => {
+      const locator = getByTestId(id);
+      if (id === "palette-annotate") locator.isVisible = () => Promise.resolve(false);
+      return locator;
+    };
+    await (await searchAnnotation(page, "ellipse", "shape-ellipse")).click();
+    await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "ellipse");
   });
 
   test("a click in the rail places each annotation in free space, never on a node or the last one", async ({
