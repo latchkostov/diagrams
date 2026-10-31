@@ -1015,6 +1015,8 @@ for (const { replicas, partitions } of [
     await expect(strip(page)).toHaveAttribute("data-step", "fix-partition-ceiling");
     await page.getByTestId("tutorial-skip").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await page.getByTestId("tutorial-handoff-dismiss").click();
+    await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
     await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-replicas-dispatcher")).toHaveValue("4");
     await expect(page.getByTestId("capacity-partitions-pings")).toHaveValue("4");
@@ -2055,6 +2057,8 @@ test("tutorial Restart ends slow motion and restarts its saved simulation", asyn
   await page.getByTestId("tutorial-start").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   await waitForCameraIdle(page);
+  await page.getByTestId("tutorial-handoff-dismiss").click();
+  await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
   await page.getByTestId("node-shop").click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.slowmo-from").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");

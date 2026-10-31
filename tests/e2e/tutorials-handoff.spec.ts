@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect, pageLoadTimeout, waitForCameraIdle, waitForSelectionSettled } from "./fixtures";
 import { expectNoViolations } from "./a11y-helpers";
+import { runKeyboardTutorial } from "./keyboard-tutorial-driver";
 
 async function begin(page: Page, id = "mobile-api") {
   await page.goto(`./?tutorial=${id}`);
@@ -17,6 +18,18 @@ async function finish(page: Page) {
   }
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
 }
+
+test("keyboard-only completion reaches the sheet and starts the next lesson", async ({ page, consoleErrors }) => {
+  await runKeyboardTutorial(page, consoleErrors, "quick-add");
+  await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("tutorial-handoff-body")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("tutorial-next")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-app")).toHaveAttribute("data-tutorial", "dots-and-sides");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+});
 for (const [width, height, theme] of [
   [2560, 1440, "light"],
   [2560, 1440, "dark"],
