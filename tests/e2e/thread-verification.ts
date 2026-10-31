@@ -125,6 +125,11 @@ export async function waitForThreadVerification(page: Page) {
   });
 }
 
+/** Inspector preparation does not depend on the independent fix verification reply. */
+export async function verifyWhileInspecting(page: Page, inspect: () => Promise<void>) {
+  await Promise.all([waitForThreadVerification(page), inspect()]);
+}
+
 export async function installScenarioPlan(page: Page, holdFirst = false) {
   await page.addInitScript(installThreadVerificationInPage, { holdFirst, kind: "plan" as const });
 }

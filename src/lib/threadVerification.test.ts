@@ -1,5 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { installThreadVerificationInPage, releaseVerificationOnce } from "../../tests/e2e/thread-verification";
+import {
+  installThreadVerificationInPage,
+  releaseVerificationOnce,
+  verifyWhileInspecting,
+} from "../../tests/e2e/thread-verification";
+import type { Page } from "@playwright/test";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -60,6 +65,23 @@ function harness(holdFirst = false) {
     },
   };
 }
+
+it("opens the inspector while the genuine verification reply is pending and waits for both", async () => {
+  const h = harness();
+  const worker = h.worker();
+  worker.postMessage({ id: 1, threadFix: {} });
+  const page = { evaluate: async (callback: () => Promise<void>) => callback() } as unknown as Page;
+  const inspect = vi.fn(async () => {});
+  let prepared = false;
+  const preparation = verifyWhileInspecting(page, inspect).then(() => (prepared = true));
+  expect(inspect).toHaveBeenCalledTimes(1);
+  await Promise.resolve();
+  expect(prepared).toBe(false);
+  worker.reply(1);
+  h.flush();
+  await preparation;
+  expect(prepared).toBe(true);
+});
 
 it("waits for the cold verifier's first real request and reply", async () => {
   const h = harness();

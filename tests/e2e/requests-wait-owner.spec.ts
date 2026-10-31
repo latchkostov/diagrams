@@ -6,7 +6,7 @@ import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "j
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import {
   installThreadVerification,
-  waitForThreadVerification,
+  verifyWhileInspecting,
   installScenarioPlan,
   waitForScenarioPlan,
   releaseVerificationOnce,
@@ -34,9 +34,10 @@ async function openVerifiedCallout(page: Page, holdPlan = false, inspectorReques
   await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "15000");
   await page.getByTestId("live-play").click();
   const action = page.getByTestId("trouble-action");
-  await waitForThreadVerification(page);
+  await verifyWhileInspecting(page, async () => {
+    await page.getByTestId("node-caller").dblclick();
+  });
   await expect(action).toHaveAttribute("data-action", "scale-threads");
-  await page.getByTestId("node-caller").dblclick();
   inspectorRequested?.();
   await waitForScenarioPlan(page);
   return action;
