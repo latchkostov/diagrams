@@ -6,8 +6,9 @@ no completion check reads rendered text or calls a test hook. Configuration chec
 document and effective properties.
 
 A download counts after its real writer completes. Failed or cancelled writes, dismissed dialogs, rejected
-imports, and incomplete joins do not count. Restart, Exit and document replacement cancel pending file and
-join work. Momentary facts belong to the active step, so one export cannot complete two export steps.
+imports, and incomplete joins do not count. Restart, Exit and document replacement cancel pending file,
+Checks and join work. Superseded Checks jobs cannot deliver findings to a replacement document. Momentary
+facts belong to the active step, so one export cannot complete two export steps.
 Temporary, unregistered Lab lessons cover the ports without adding curriculum registrations.
 
 ## Keyboard solutions

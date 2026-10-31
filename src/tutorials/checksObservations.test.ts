@@ -1,6 +1,6 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { CheckRuns, NOTHING_TO_CHECK } from "../canvas/checks/useChecks";
-import { observationPorts, type ProductObservations } from "../lib/observations";
+import { cancelObservedWork, observationPorts, type ProductObservations } from "../lib/observations";
 
 it("publishes completion for every Checks job, including identical findings", async () => {
   let run!: () => Promise<void>;
@@ -25,4 +25,35 @@ it("publishes completion for every Checks job, including identical findings", as
   } finally {
     off();
   }
+});
+
+it.each(["cancel", "replace"] as const)("drops an in-flight Checks result after %s", async (action) => {
+  let run!: () => Promise<void>;
+  let resolve!: (result: typeof NOTHING_TO_CHECK) => void;
+  const deliver = vi.fn();
+  const report = vi.fn();
+  let source = { documentId: "checks", identity: {} };
+  const jobs = new CheckRuns(
+    deliver,
+    () => new Promise((done) => (resolve = done)),
+    (task) => {
+      run = task;
+      return { schedule() {}, now() {}, cancel() {}, busy: () => false };
+    },
+  );
+  jobs.setRead(() => ({
+    format: "diagrams/v1",
+    title: "",
+    nodes: [{ id: "a", stencil: "service", label: "A", x: 0, y: 0 }],
+    edges: [],
+  }));
+  jobs.setSource(() => source);
+  jobs.setReport(report);
+  const pending = run();
+  if (action === "cancel") cancelObservedWork(source);
+  else source = { ...source, identity: {} };
+  resolve(NOTHING_TO_CHECK);
+  await pending;
+  expect(deliver).not.toHaveBeenCalled();
+  expect(report.mock.calls.map(([status]) => status)).toEqual(["running"]);
 });

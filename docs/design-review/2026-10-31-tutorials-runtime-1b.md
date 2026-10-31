@@ -7,7 +7,7 @@ keyboard routes; the original pointer solutions and completion contracts remain 
 ## Review findings addressed
 
 - Capture operation ownership before pickers, parser loads and writers wait. Prevent late imports,
-  downloads and joins after Restart, Exit or document replacement; preserve ordinary Open provenance.
+  downloads, Checks results and joins after Restart, Exit or document replacement; preserve ordinary Open provenance.
 - Consume momentary evidence per active step rather than certifying later matching steps with one action.
 - Use F2 for Properties/name routes because Enter also serves narration and readouts.
 - Open native select popups before navigating so intermediate simulations are not launched.

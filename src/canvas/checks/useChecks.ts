@@ -7,7 +7,13 @@ import { runChecksOffThread } from "./runner";
 import { NO_EVIDENCE, SimulationRuns, type EvidenceSink, type EvidenceView, type SimContent } from "./simulationRuns";
 import { setEditingRuns } from "./editingRuns";
 import { FindingSelection } from "./findingSelection";
-import { observationPorts, type ObservationSource, type ProductObservations } from "../../lib/observations";
+import {
+  beginObservedWork,
+  sameObservationSource,
+  observationPorts,
+  type ObservationSource,
+  type ProductObservations,
+} from "../../lib/observations";
 
 // The canvas's checks: re-run after edits pause, in idle time, off the main thread (runner.ts). The first
 // run waits for the canvas to settle. Diagrams over 1,500 nodes are checked only while the Checks card is
@@ -211,7 +217,10 @@ export function useChecks(opts: {
   useEffect(() => {
     const source = opts.source;
     if (!source) return;
-    runs.setReport((status, result) => observationPorts.checks.publish({ ...source(), status, result }));
+    runs.setSource(source);
+    runs.setReport((status, result, origin) =>
+      observationPorts.checks.publish({ ...(origin ?? source()), status, result }),
+    );
     const stop = store.subscribe(() => {
       const state = store.get();
       if (state.result)
@@ -224,6 +233,7 @@ export function useChecks(opts: {
     return () => {
       stop();
       runs.setReport(undefined);
+      runs.setSource(undefined);
     };
   });
   const sims = store.simulations;
@@ -304,7 +314,15 @@ export function installCheckRunControls(runs: CheckRuns): () => void {
 
 /** The runs behind useChecks: the scheduler, what to read, and which results are still wanted. */
 export class CheckRuns {
-  private report?: (status: ProductObservations["checks"]["status"], result?: CheckResult) => void;
+  private source?: () => ObservationSource;
+  setSource(source: CheckRuns["source"]) {
+    this.source = source;
+  }
+  private report?: (
+    status: ProductObservations["checks"]["status"],
+    result?: CheckResult,
+    source?: ObservationSource,
+  ) => void;
   setReport(report: CheckRuns["report"]) {
     this.report = report;
   }
@@ -327,7 +345,14 @@ export class CheckRuns {
       }
       const gen = this.generation;
       const diagram = this.read();
-      this.report?.("running");
+      const origin = this.source?.();
+      const work = beginObservedWork(origin);
+      const current = () =>
+        gen === this.generation &&
+        !work.signal.aborted &&
+        (!origin || (!!this.source && sameObservationSource(origin, this.source())));
+      const report = this.report;
+      report?.("running", undefined, origin);
       checkRunStats.started++;
       // An empty diagram has nothing to check: that's a finished check, not one still running.
       let next: CheckResult;
@@ -335,17 +360,19 @@ export class CheckRuns {
         next = diagram.nodes.length ? await run(diagram) : NOTHING_TO_CHECK;
         this.failed = false;
       } catch (error) {
-        if (gen === this.generation) this.report?.("failed");
+        if (current()) report?.("failed", undefined, origin);
         this.failed = true;
         throw error;
+      } finally {
+        work.finish();
       }
       checkRunStats.finished++;
       // A result for a diagram that has since been replaced (another one opened, checks off) is dropped; one
       // for an older edit of this diagram still shows (marked stale) until the newer run lands.
-      if (gen === this.generation) {
+      if (current()) {
         deliver(next, diagram);
         // Identical results need no store redraw, but this job still completed.
-        this.report?.("done", next);
+        report?.("done", next, origin);
       }
     };
     this.scheduler = scheduler ? scheduler(task) : createCheckScheduler(task);
