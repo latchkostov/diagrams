@@ -2,6 +2,7 @@ import { openLiveNodeDetails } from "./fixtures";
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import type { Page } from "@playwright/test";
 import { chunk, holdChunk } from "./chunk";
+import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
 import {
   test,
   expect,
@@ -13,6 +14,64 @@ import {
   waitForStableViewport,
   waitForInteractionIdle,
 } from "./fixtures";
+
+function timeoutFixture(disabled = false) {
+  const d = waitingFixture();
+  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
+  // Verification replays the diagram's own free-play traffic.
+  d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 120 };
+  if (disabled) d.edges[1].props = { ...d.edges[1].props, caller: { deadlineMs: 600 } };
+  d.simulations = [
+    {
+      id: "slow",
+      title: "Slow call",
+      durationMs: 20000,
+      ...(disabled ? { setup: { edges: { call: { caller: { deadlineMs: null } } } } } : {}),
+      traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 120, durationMs: 20000 } }],
+      timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
+    },
+  ];
+  return d;
+}
+
+async function verifiedTrouble(page: Page, holdFirst = false, paused?: () => void) {
+  await installThreadVerification(page, holdFirst);
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(11000);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  expect(Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time"))).toBeGreaterThan(10000);
+  paused?.();
+  await waitForThreadVerification(page);
+}
+
+test("deadline setup cannot finish before the real verification response with the frame clock paused", async ({
+  page,
+}) => {
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d: timeoutFixture(),
+  });
+  const paused = Promise.withResolvers<undefined>();
+  let finished = false;
+  const opening = verifiedTrouble(page, true, () => paused.resolve(undefined)).then(() => {
+    finished = true;
+  });
+  try {
+    await Promise.race([paused.promise, opening]);
+    await page.evaluate(() => window.__threadVerification?.whenRequested());
+    expect(finished, "advancing the page clock does not complete a real worker replay").toBe(false);
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await opening;
+    await expect(page.getByTestId("trouble-action")).toHaveText("Add a timeout");
+  } finally {
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await opening;
+  }
+});
 
 async function openCallSettings(page: Page) {
   await page.getByTestId("edge-call").dblclick();
@@ -145,32 +204,12 @@ test("an external timeout update replaces invalid feedback with the restored val
 
 for (const disabled of [false, true]) {
   test(`the callout adds a timeout as one undo step (saved no-timeout override: ${disabled})`, async ({ page }) => {
-    const d = waitingFixture();
-    d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
-    // A timeout is offered only once a replay of the diagram's own (free-play) traffic shows it keeps every normal
-    // reply: give the source the simulation's rate, so there are calls to judge it by.
-    d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 120 };
-    if (disabled) d.edges[1].props = { ...d.edges[1].props, caller: { deadlineMs: 600 } };
-    d.simulations = [
-      {
-        id: "slow",
-        title: "Slow call",
-        durationMs: 20000,
-        ...(disabled ? { setup: { edges: { call: { caller: { deadlineMs: null } } } } } : {}),
-        traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 120, durationMs: 20000 } }],
-        timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
-      },
-    ];
+    const d = timeoutFixture(disabled);
     await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
       key: STORAGE_KEYS.autosavePrefix + "blocking-call",
       d,
     });
-    await page.clock.install();
-    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
-    await pauseClock(page);
-    await page.getByTestId("live-play").click();
-    await page.clock.runFor(11000);
-    await page.getByTestId("live-play").click();
+    await verifiedTrouble(page);
     await expect(page.getByTestId("trouble-action")).toHaveText("Add a timeout");
     await page.getByTestId("trouble-action").click();
     await page.clock.runFor(400);
@@ -209,12 +248,7 @@ test("simulation-only traffic withholds an unverified timeout and applies the ne
     key: STORAGE_KEYS.autosavePrefix + "blocking-call",
     d,
   });
-  await page.clock.install();
-  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
-  await pauseClock(page);
-  await page.getByTestId("live-play").click();
-  await page.clock.runFor(11000);
-  await page.getByTestId("live-play").click();
+  await verifiedTrouble(page);
   const action = page.getByTestId("trouble-action");
   await expect(action).toHaveAttribute("data-action", "free-thread");
   await expect(action).toHaveText("Free the thread while waiting");
