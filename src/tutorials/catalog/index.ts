@@ -107,13 +107,13 @@ export const allTutorials: readonly Tutorial[] = [
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
 export const tutorials = allTutorials.filter((t) => !t.quarantined);
 
-export const tracks: readonly { id: TrackId; label: Words }[] = [
-  { id: "basics", label: msg("tutorials.trackBasics") },
-  { id: "blocks", label: msg("tutorials.trackBlocks") },
-  { id: "simulation", label: msg("tutorials.trackSimulation") },
-  { id: "waiting", label: msg("tutorials.trackWaiting") },
-  { id: "resilience", label: msg("tutorials.trackResilience") },
-  { id: "studies", label: msg("tutorials.trackStudies") },
+export const tracks: readonly { id: TrackId; label: Words; blurb: Words }[] = [
+  { id: "basics", label: msg("tutorials.trackBasics"), blurb: msg("tutorials.syllabus.blurbBasics") },
+  { id: "blocks", label: msg("tutorials.trackBlocks"), blurb: msg("tutorials.syllabus.blurbBlocks") },
+  { id: "simulation", label: msg("tutorials.trackSimulation"), blurb: msg("tutorials.syllabus.blurbSimulation") },
+  { id: "waiting", label: msg("tutorials.trackWaiting"), blurb: msg("tutorials.syllabus.blurbWaiting") },
+  { id: "resilience", label: msg("tutorials.trackResilience"), blurb: msg("tutorials.syllabus.blurbResilience") },
+  { id: "studies", label: msg("tutorials.trackStudies"), blurb: msg("tutorials.syllabus.blurbStudies") },
 ];
 
 export const findTutorial = (id: string | null): Tutorial | undefined => tutorials.find((x) => x.id === id);

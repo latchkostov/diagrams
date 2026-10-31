@@ -1,30 +1,50 @@
 import { safeStorage } from "../lib/storage";
-import type { Tutorial } from "./types";
+import { tutorials } from "./catalog";
+import { chapterSeals, earnedSeals, lessonProgress, type SealLesson } from "./seals";
+import type { TrackId, Tutorial } from "./types";
+export { earnedSeals } from "./seals";
 
-/** This browser's tutorial progress and the Highlights switch. "Clear everything" forgets it (a `diagrams.` key). */
+/** Optional additions keep older builds compatible with this browser-only key. */
 const STORE = "diagrams.tutorials.v1";
 export interface StoredTutorials {
   highlights?: boolean;
-  progress?: Record<string, { version: number; step: number; completed: boolean }>;
+  progress?: Record<string, { version: number; step: number; completed: boolean; completedAt?: number }>;
+  marks?: Record<string, number>;
+}
+export type ResetScope = { all: true } | { track: TrackId } | { lesson: string };
+
+const listeners = new Set<() => void>();
+/** A stable primitive snapshot also lets Undo refresh a hub remounted after a navigation. */
+export const tutorialsSnapshot = () => safeStorage.getItem(STORE) ?? "{}";
+export function subscribeTutorials(listener: () => void): () => void {
+  listeners.add(listener);
+  const changed = (event: StorageEvent) => {
+    if (event.key === STORE || event.key === null) listener();
+  };
+  window.addEventListener("storage", changed);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", changed);
+  };
 }
 
-export function readTutorials(): StoredTutorials {
+export function readTutorials(raw?: string): StoredTutorials {
   try {
-    const parsed = JSON.parse(safeStorage.getItem(STORE) ?? "{}") as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as StoredTutorials) : {};
+    const parsed = JSON.parse(raw ?? tutorialsSnapshot()) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as StoredTutorials) : {};
   } catch {
     return {};
   }
 }
 
-export const writeTutorials = (edit: (s: StoredTutorials) => StoredTutorials) =>
-  void safeStorage.setItem(STORE, JSON.stringify(edit(readTutorials())));
+export function writeTutorials(edit: (s: StoredTutorials) => StoredTutorials): void {
+  safeStorage.setItem(STORE, JSON.stringify(edit(readTutorials())));
+  listeners.forEach((listener) => listener());
+}
 
-/** Completed, or the step to continue from; progress saved for another version of the tutorial doesn't count. */
+/** Progress saved for another version does not count toward lessons. Seals keep their dates. */
 export function savedProgress(t: Pick<Tutorial, "id" | "version" | "quarantined">) {
-  if (t.quarantined) return undefined;
-  const p = readTutorials().progress?.[t.id];
-  return p && p.version === t.version ? p : undefined;
+  return lessonProgress(readTutorials(), { ...t, track: "basics" });
 }
 
 /** First unfinished lesson in this track, in catalog order. */
@@ -34,18 +54,71 @@ export function nextTutorial(current: Tutorial, catalog: readonly Tutorial[]): T
   );
 }
 
-/** Completion survives a restart only while the tutorial's meaning (version) is unchanged. */
+/** Backfill awards for old completed shapes without inventing lesson completion dates. */
+export function recordSeals(
+  snapshot: StoredTutorials,
+  catalog: readonly SealLesson[],
+  now = Date.now(),
+): StoredTutorials {
+  const marks = { ...snapshot.marks };
+  for (const id of earnedSeals(snapshot, catalog)) marks[id] ??= now;
+  return { ...snapshot, marks };
+}
+
 export function saveProgress(tutorial: Pick<Tutorial, "id" | "version">, step: number, completed: boolean) {
-  writeTutorials((s) => ({
-    ...s,
-    progress: {
-      ...s.progress,
-      [tutorial.id]: {
-        version: tutorial.version,
-        step,
-        completed:
-          completed || (s.progress?.[tutorial.id]?.version === tutorial.version && !!s.progress[tutorial.id].completed),
+  writeTutorials((s) => {
+    const previous = s.progress?.[tutorial.id];
+    const finished = completed || (previous?.version === tutorial.version && !!previous.completed);
+    // A legacy completed entry has no known date. Replaying it must not invent one.
+    const completedAt = previous?.completedAt ?? (completed && !previous?.completed ? Date.now() : undefined);
+    return recordSeals(
+      {
+        ...s,
+        progress: {
+          ...s.progress,
+          [tutorial.id]: {
+            version: tutorial.version,
+            step,
+            completed: finished,
+            ...(completedAt === undefined ? {} : { completedAt }),
+          },
+        },
       },
-    },
-  }));
+      tutorials,
+    );
+  });
+}
+
+/** Intentional reset also forgets the affected chapter seal and the whole-syllabus seal. */
+export function withoutProgress(
+  snapshot: StoredTutorials,
+  scope: ResetScope,
+  catalog: readonly SealLesson[] = tutorials,
+): StoredTutorials {
+  if ("all" in scope) return { ...snapshot, progress: {}, marks: {} };
+  const selected = catalog.filter((lesson) =>
+    "track" in scope ? lesson.track === scope.track : lesson.id === scope.lesson,
+  );
+  const ids = new Set(selected.map((lesson) => lesson.id));
+  const affectedTracks = new Set(selected.map((lesson) => lesson.track));
+  const removedMarks = new Set<string>([
+    "whole-syllabus",
+    ...chapterSeals.filter((seal) => affectedTracks.has(seal.track)).map((seal) => seal.id),
+  ]);
+  return {
+    ...snapshot,
+    progress: Object.fromEntries(Object.entries(snapshot.progress ?? {}).filter(([id]) => !ids.has(id))),
+    marks: Object.fromEntries(Object.entries(snapshot.marks ?? {}).filter(([id]) => !removedMarks.has(id))),
+  };
+}
+
+export function resetProgress(scope: ResetScope): StoredTutorials {
+  const previous = readTutorials();
+  writeTutorials(() => withoutProgress(previous, scope));
+  return previous;
+}
+
+/** Undo's snapshot stays in memory; no second persistent key is created. */
+export function restoreProgress(snapshot: StoredTutorials): void {
+  writeTutorials(() => snapshot);
 }

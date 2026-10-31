@@ -557,7 +557,7 @@ it("preserves completion only within the current tutorial version", () => {
   const s = sandbox(newer);
   expect(s.runner.getSnapshot().state.resumeAt).toBe(0);
   s.runner.send({ type: "start" });
-  expect(savedProgress(newer)).toEqual({ version: 2, step: 0, completed: false });
+  expect(savedProgress(newer)).toEqual({ version: 2, step: 0, completed: false, completedAt: expect.any(Number) });
 });
 
 it("announces Show me's hint through the runner's status and leaves focus to the controller", () => {
