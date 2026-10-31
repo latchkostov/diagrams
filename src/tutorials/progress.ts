@@ -122,3 +122,23 @@ export function resetProgress(scope: ResetScope): StoredTutorials {
 export function restoreProgress(snapshot: StoredTutorials): void {
   writeTutorials(() => snapshot);
 }
+
+/** Held by the toast, so navigation does not discard Undo or stop watching for newer saves. */
+export function progressUndo(previous: StoredTutorials) {
+  const expected = tutorialsSnapshot();
+  let valid = true;
+  const dispose = subscribeTutorials(() => {
+    if (tutorialsSnapshot() !== expected) valid = false;
+  });
+  return {
+    dispose,
+    restore() {
+      // Check storage too: another tab's write may precede delivery of its storage event.
+      const canRestore = valid && tutorialsSnapshot() === expected;
+      valid = false;
+      if (!canRestore) return false;
+      restoreProgress(previous);
+      return true;
+    },
+  };
+}

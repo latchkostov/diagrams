@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 4133,
-    "fallback": 1134,
+    "messages": 4134,
+    "fallback": 1135,
     "areas": {
       "admission": "121edeb22016",
       "ai": "ff5a7a5d025f",
@@ -74,7 +74,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "4da44658f789",
       "trouble": "9f8dcfa8ac2a",
-      "tutorials": "fafdcfd4aebf",
+      "tutorials": "b049d836d5b1",
       "view": "c4fc417ad54a",
       "viewerForge": "4d3bcbf516ea",
       "waitChecks": "60157056f935",
@@ -86,8 +86,8 @@
     }
   },
   "bg": {
-    "messages": 4133,
-    "fallback": 1286,
+    "messages": 4134,
+    "fallback": 1287,
     "areas": {
       "admission": "def06fe38e15",
       "ai": "be21a15fe0c2",
@@ -160,7 +160,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "dbefc69135ec",
       "trouble": "1d0a6039476d",
-      "tutorials": "6848bcf6a0a0",
+      "tutorials": "599d26013bae",
       "view": "584e25e11a7c",
       "viewerForge": "64bee278d220",
       "waitChecks": "dd6a426cc5b6",
@@ -172,8 +172,8 @@
     }
   },
   "cs": {
-    "messages": 4133,
-    "fallback": 1291,
+    "messages": 4134,
+    "fallback": 1292,
     "areas": {
       "admission": "066588ffecd0",
       "ai": "cdac78f5eabc",
@@ -246,7 +246,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "997f6b0fa264",
       "trouble": "c96c007daf09",
-      "tutorials": "5420dca68e32",
+      "tutorials": "8ae99bd144fe",
       "view": "0ad0289db97f",
       "viewerForge": "5e26de923e3f",
       "waitChecks": "dd6a426cc5b6",
@@ -258,8 +258,8 @@
     }
   },
   "da": {
-    "messages": 4133,
-    "fallback": 1268,
+    "messages": 4134,
+    "fallback": 1269,
     "areas": {
       "admission": "8d54b2ff603b",
       "ai": "30c366fbcaa3",
@@ -332,7 +332,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "cabde7ae8cde",
       "trouble": "40c5d94bf9a6",
-      "tutorials": "cbd9eef059d3",
+      "tutorials": "cdff66720782",
       "view": "81799e312a30",
       "viewerForge": "f94da429f104",
       "waitChecks": "dd6a426cc5b6",
@@ -344,8 +344,8 @@
     }
   },
   "de": {
-    "messages": 4133,
-    "fallback": 1273,
+    "messages": 4134,
+    "fallback": 1274,
     "areas": {
       "admission": "168ce3bd30f9",
       "ai": "857638035ad7",
@@ -418,7 +418,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "cd9cc0259bbd",
       "trouble": "e5e2f7091a4b",
-      "tutorials": "0fcf73588460",
+      "tutorials": "3de78d936289",
       "view": "9c266495cfb8",
       "viewerForge": "8848d4978e10",
       "waitChecks": "dd6a426cc5b6",
@@ -430,8 +430,8 @@
     }
   },
   "el": {
-    "messages": 4133,
-    "fallback": 1283,
+    "messages": 4134,
+    "fallback": 1284,
     "areas": {
       "admission": "a9b1a9673fb3",
       "ai": "c7556c1b9ccf",
@@ -504,7 +504,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "a2409c158506",
       "trouble": "46e7e51a1708",
-      "tutorials": "d329c062164a",
+      "tutorials": "0c106613c243",
       "view": "9768da1398c2",
       "viewerForge": "8dd98344588f",
       "waitChecks": "dd6a426cc5b6",
@@ -516,7 +516,7 @@
     }
   },
   "en-XA": {
-    "messages": 4133,
+    "messages": 4134,
     "fallback": 0,
     "areas": {
       "admission": "1da83bed3b5a",
@@ -590,7 +590,7 @@
       "toast": "b5f29d012538",
       "topbar": "b7fddc9b6d21",
       "trouble": "8fd79596b605",
-      "tutorials": "ae0ea1b15202",
+      "tutorials": "c86467fd1e91",
       "view": "9a1eebb66b6e",
       "viewerForge": "9f91d360961f",
       "waitChecks": "04abb63af9c0",
@@ -602,8 +602,8 @@
     }
   },
   "es": {
-    "messages": 4133,
-    "fallback": 1296,
+    "messages": 4134,
+    "fallback": 1297,
     "areas": {
       "admission": "dacc268e5f2c",
       "ai": "5f18f254b452",
@@ -676,7 +676,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "78bdea724ab6",
       "trouble": "1c041241f168",
-      "tutorials": "492aedd12641",
+      "tutorials": "5e309f6ee7be",
       "view": "ca61fccea3e0",
       "viewerForge": "57601855d5cf",
       "waitChecks": "dd6a426cc5b6",
@@ -688,8 +688,8 @@
     }
   },
   "et": {
-    "messages": 4133,
-    "fallback": 1290,
+    "messages": 4134,
+    "fallback": 1291,
     "areas": {
       "admission": "0ae56a092762",
       "ai": "d66d3769adc9",
@@ -762,7 +762,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "9866bed63dd2",
       "trouble": "2a1f429287f8",
-      "tutorials": "a999d4d645db",
+      "tutorials": "91c26b157676",
       "view": "1ca5fe8e446d",
       "viewerForge": "b90b85595733",
       "waitChecks": "dd6a426cc5b6",
@@ -774,8 +774,8 @@
     }
   },
   "fi": {
-    "messages": 4133,
-    "fallback": 1284,
+    "messages": 4134,
+    "fallback": 1285,
     "areas": {
       "admission": "bf60c3fe037d",
       "ai": "e9b23cd51b4e",
@@ -848,7 +848,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "9cf65300cc6c",
       "trouble": "7e94038738c5",
-      "tutorials": "cc879aff8151",
+      "tutorials": "0bb87068c948",
       "view": "9731ec8da6eb",
       "viewerForge": "e91fe1f64b97",
       "waitChecks": "dd6a426cc5b6",
@@ -860,8 +860,8 @@
     }
   },
   "fr": {
-    "messages": 4133,
-    "fallback": 1284,
+    "messages": 4134,
+    "fallback": 1285,
     "areas": {
       "admission": "bb0eadf5ab52",
       "ai": "8372266af473",
@@ -934,7 +934,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "26c0ce0fa3ab",
       "trouble": "e4817ae41d94",
-      "tutorials": "015190a284d1",
+      "tutorials": "2ee51c963dfa",
       "view": "80a8faf01d71",
       "viewerForge": "a36422dc6bd7",
       "waitChecks": "dd6a426cc5b6",
@@ -946,8 +946,8 @@
     }
   },
   "he": {
-    "messages": 4133,
-    "fallback": 1296,
+    "messages": 4134,
+    "fallback": 1297,
     "areas": {
       "admission": "602fa127a059",
       "ai": "1c4de3ee24a5",
@@ -1020,7 +1020,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "5a44d80c3c13",
       "trouble": "6d35a925b65b",
-      "tutorials": "67c7108aaed5",
+      "tutorials": "25bced7d0d45",
       "view": "cd31b0f75835",
       "viewerForge": "8d70607e9494",
       "waitChecks": "dd6a426cc5b6",
@@ -1032,8 +1032,8 @@
     }
   },
   "hi": {
-    "messages": 4133,
-    "fallback": 1292,
+    "messages": 4134,
+    "fallback": 1293,
     "areas": {
       "admission": "4ec4a9cccfbb",
       "ai": "c2134710abdb",
@@ -1106,7 +1106,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "34ceed57d926",
       "trouble": "28458fa2569a",
-      "tutorials": "ad0298d30707",
+      "tutorials": "33f200ef5c9b",
       "view": "461573e69e61",
       "viewerForge": "8f4009516378",
       "waitChecks": "dd6a426cc5b6",
@@ -1118,8 +1118,8 @@
     }
   },
   "hr": {
-    "messages": 4133,
-    "fallback": 1275,
+    "messages": 4134,
+    "fallback": 1276,
     "areas": {
       "admission": "1b8bc555e482",
       "ai": "41b8c5bd02f8",
@@ -1192,7 +1192,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "9f7b612472e5",
       "trouble": "62e13192ef2e",
-      "tutorials": "0f17dd1518b2",
+      "tutorials": "69a753b19913",
       "view": "370fba9f2e1d",
       "viewerForge": "588351633f4e",
       "waitChecks": "dd6a426cc5b6",
@@ -1204,8 +1204,8 @@
     }
   },
   "hu": {
-    "messages": 4133,
-    "fallback": 1269,
+    "messages": 4134,
+    "fallback": 1270,
     "areas": {
       "admission": "8e346cdb7fce",
       "ai": "999015b453fc",
@@ -1278,7 +1278,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "3c7d62fcb42e",
       "trouble": "5d24a4a01470",
-      "tutorials": "8be056d6ed93",
+      "tutorials": "b09dafb92b30",
       "view": "720ee6692d5f",
       "viewerForge": "f830295118d9",
       "waitChecks": "dd6a426cc5b6",
@@ -1290,8 +1290,8 @@
     }
   },
   "id": {
-    "messages": 4133,
-    "fallback": 1290,
+    "messages": 4134,
+    "fallback": 1291,
     "areas": {
       "admission": "8f0966817eba",
       "ai": "7508253d3643",
@@ -1364,7 +1364,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "a4296b4e4f78",
       "trouble": "4e3673134258",
-      "tutorials": "6eccc149a445",
+      "tutorials": "02113a422f32",
       "view": "53c962267399",
       "viewerForge": "e7d37c99e2d6",
       "waitChecks": "dd6a426cc5b6",
@@ -1376,8 +1376,8 @@
     }
   },
   "it": {
-    "messages": 4133,
-    "fallback": 1271,
+    "messages": 4134,
+    "fallback": 1272,
     "areas": {
       "admission": "fb4977929365",
       "ai": "b1bdb1b943f2",
@@ -1450,7 +1450,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "525f8abd5937",
       "trouble": "f68a7ce02a7a",
-      "tutorials": "4ed9f4a2b1c5",
+      "tutorials": "37202f816879",
       "view": "f3c5dd66e8a7",
       "viewerForge": "a70484a837bd",
       "waitChecks": "dd6a426cc5b6",
@@ -1462,8 +1462,8 @@
     }
   },
   "ja": {
-    "messages": 4133,
-    "fallback": 1268,
+    "messages": 4134,
+    "fallback": 1269,
     "areas": {
       "admission": "70c62834aa0d",
       "ai": "16916e4a6466",
@@ -1536,7 +1536,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "1f590f5a6ae0",
       "trouble": "47e2d2231385",
-      "tutorials": "fea62612b4ff",
+      "tutorials": "b8c44dff1ec2",
       "view": "41683011b4a8",
       "viewerForge": "476667bc1597",
       "waitChecks": "dd6a426cc5b6",
@@ -1548,8 +1548,8 @@
     }
   },
   "ko": {
-    "messages": 4133,
-    "fallback": 1245,
+    "messages": 4134,
+    "fallback": 1246,
     "areas": {
       "admission": "fb802d28f5cc",
       "ai": "b9713b0ebc36",
@@ -1622,7 +1622,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "4aa2acdefe38",
       "trouble": "8318cc44f1e3",
-      "tutorials": "cad30a9d82f2",
+      "tutorials": "8fd4d25f5a31",
       "view": "a524e7670a1d",
       "viewerForge": "7cc445d8d713",
       "waitChecks": "dd6a426cc5b6",
@@ -1634,8 +1634,8 @@
     }
   },
   "lt": {
-    "messages": 4133,
-    "fallback": 1305,
+    "messages": 4134,
+    "fallback": 1306,
     "areas": {
       "admission": "b8be855f86e3",
       "ai": "a60d18c72aca",
@@ -1708,7 +1708,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "65d5f1a22203",
       "trouble": "34a2f134ec70",
-      "tutorials": "fd67213aac31",
+      "tutorials": "c4b45c3e7182",
       "view": "bd0f81625b77",
       "viewerForge": "22c899349986",
       "waitChecks": "dd6a426cc5b6",
@@ -1720,8 +1720,8 @@
     }
   },
   "lv": {
-    "messages": 4133,
-    "fallback": 1301,
+    "messages": 4134,
+    "fallback": 1302,
     "areas": {
       "admission": "cc8ad95b3519",
       "ai": "7abcc8e0fca5",
@@ -1794,7 +1794,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "ca074b665a12",
       "trouble": "030d172167fb",
-      "tutorials": "f8056d426dcb",
+      "tutorials": "02c4087bcad3",
       "view": "26dec6cefd4d",
       "viewerForge": "d0f7be3bf9a2",
       "waitChecks": "dd6a426cc5b6",
@@ -1806,8 +1806,8 @@
     }
   },
   "nb": {
-    "messages": 4133,
-    "fallback": 1280,
+    "messages": 4134,
+    "fallback": 1281,
     "areas": {
       "admission": "69c76ff37ebc",
       "ai": "1f5a7dd90494",
@@ -1880,7 +1880,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "d4b7f2bd2ee8",
       "trouble": "de4e07cd75c8",
-      "tutorials": "be40c7894df4",
+      "tutorials": "638b9474fef1",
       "view": "e8ed4c3e2cfe",
       "viewerForge": "e8981ee121bf",
       "waitChecks": "dd6a426cc5b6",
@@ -1892,8 +1892,8 @@
     }
   },
   "nl": {
-    "messages": 4133,
-    "fallback": 1275,
+    "messages": 4134,
+    "fallback": 1276,
     "areas": {
       "admission": "a0d535143838",
       "ai": "9c887bebfb5c",
@@ -1966,7 +1966,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "85d3f9f78bbc",
       "trouble": "5fa53067e1e5",
-      "tutorials": "839f2efae1fd",
+      "tutorials": "30d32bf0da1f",
       "view": "7090c0d9d7ac",
       "viewerForge": "dac110756068",
       "waitChecks": "dd6a426cc5b6",
@@ -1978,8 +1978,8 @@
     }
   },
   "pl": {
-    "messages": 4133,
-    "fallback": 1288,
+    "messages": 4134,
+    "fallback": 1289,
     "areas": {
       "admission": "e997456a041d",
       "ai": "0076fec882b3",
@@ -2052,7 +2052,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "0cab1c9581c8",
       "trouble": "30f6bc20186b",
-      "tutorials": "ad20240c4319",
+      "tutorials": "6e6587c54748",
       "view": "52245f57ee3c",
       "viewerForge": "12c126390fac",
       "waitChecks": "dd6a426cc5b6",
@@ -2064,8 +2064,8 @@
     }
   },
   "pt-BR": {
-    "messages": 4133,
-    "fallback": 1292,
+    "messages": 4134,
+    "fallback": 1293,
     "areas": {
       "admission": "e6ad0a691675",
       "ai": "a599e0c7104c",
@@ -2138,7 +2138,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "299ad6afe7d8",
       "trouble": "072808d1ee01",
-      "tutorials": "bdf71d713d77",
+      "tutorials": "5c5ec749b85a",
       "view": "78c66bf35c24",
       "viewerForge": "e0b3251bfa40",
       "waitChecks": "dd6a426cc5b6",
@@ -2150,8 +2150,8 @@
     }
   },
   "pt-PT": {
-    "messages": 4133,
-    "fallback": 1292,
+    "messages": 4134,
+    "fallback": 1293,
     "areas": {
       "admission": "81395bb7060b",
       "ai": "da44ea732c3a",
@@ -2224,7 +2224,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "55cc68c96d9f",
       "trouble": "072808d1ee01",
-      "tutorials": "994960eb328e",
+      "tutorials": "33da55f12bc9",
       "view": "91a652688523",
       "viewerForge": "839ba9b26afe",
       "waitChecks": "dd6a426cc5b6",
@@ -2236,8 +2236,8 @@
     }
   },
   "ro": {
-    "messages": 4133,
-    "fallback": 1266,
+    "messages": 4134,
+    "fallback": 1267,
     "areas": {
       "admission": "3fcadcd08687",
       "ai": "690dd0af944f",
@@ -2310,7 +2310,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "b468dce1cb21",
       "trouble": "183c2e4099e8",
-      "tutorials": "d58cab9599c2",
+      "tutorials": "b82c0583ce4a",
       "view": "7a5365f6d38a",
       "viewerForge": "4648a1fbd346",
       "waitChecks": "dd6a426cc5b6",
@@ -2322,8 +2322,8 @@
     }
   },
   "ru": {
-    "messages": 4133,
-    "fallback": 1309,
+    "messages": 4134,
+    "fallback": 1310,
     "areas": {
       "admission": "7813e4e0dc3e",
       "ai": "419829673723",
@@ -2396,7 +2396,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "2902968f8171",
       "trouble": "7ef23492c594",
-      "tutorials": "d81a892bb93c",
+      "tutorials": "c04f68baab38",
       "view": "25d7e0addfa3",
       "viewerForge": "e791eeb89ed3",
       "waitChecks": "dd6a426cc5b6",
@@ -2408,8 +2408,8 @@
     }
   },
   "sk": {
-    "messages": 4133,
-    "fallback": 1297,
+    "messages": 4134,
+    "fallback": 1298,
     "areas": {
       "admission": "a2f3f4ec56a8",
       "ai": "b584a1750e62",
@@ -2482,7 +2482,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "430b5d834fe7",
       "trouble": "856e3a7e98b1",
-      "tutorials": "d608babf4827",
+      "tutorials": "435428510f8e",
       "view": "0aa61ce55954",
       "viewerForge": "f4eb36e8ae21",
       "waitChecks": "dd6a426cc5b6",
@@ -2494,8 +2494,8 @@
     }
   },
   "sl": {
-    "messages": 4133,
-    "fallback": 1278,
+    "messages": 4134,
+    "fallback": 1279,
     "areas": {
       "admission": "d812b216e3d3",
       "ai": "844c5fe53eda",
@@ -2568,7 +2568,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "3950ab3a6255",
       "trouble": "a58dab607577",
-      "tutorials": "aa58a64b53f8",
+      "tutorials": "0f2154065fa6",
       "view": "6fb21d2e1c8e",
       "viewerForge": "080a4e49daf3",
       "waitChecks": "dd6a426cc5b6",
@@ -2580,8 +2580,8 @@
     }
   },
   "sr-Latn": {
-    "messages": 4133,
-    "fallback": 1290,
+    "messages": 4134,
+    "fallback": 1291,
     "areas": {
       "admission": "5c6599b6aad0",
       "ai": "571bcb1e2693",
@@ -2654,7 +2654,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "0144bfe1aef3",
       "trouble": "62e13192ef2e",
-      "tutorials": "7e58e0872e59",
+      "tutorials": "71811c11bc91",
       "view": "40a3a35f1d53",
       "viewerForge": "a07f86b5bf62",
       "waitChecks": "dd6a426cc5b6",
@@ -2666,8 +2666,8 @@
     }
   },
   "sv": {
-    "messages": 4133,
-    "fallback": 1276,
+    "messages": 4134,
+    "fallback": 1277,
     "areas": {
       "admission": "b6d059ceea0b",
       "ai": "488379e2ee77",
@@ -2740,7 +2740,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "741650b06efd",
       "trouble": "0e872629c83a",
-      "tutorials": "65dff7a94ead",
+      "tutorials": "70a4357373b3",
       "view": "b969f3f3b733",
       "viewerForge": "5c8b593ab979",
       "waitChecks": "dd6a426cc5b6",
@@ -2752,8 +2752,8 @@
     }
   },
   "th": {
-    "messages": 4133,
-    "fallback": 1303,
+    "messages": 4134,
+    "fallback": 1304,
     "areas": {
       "admission": "5c9e712f50f6",
       "ai": "25e5a5758e0a",
@@ -2826,7 +2826,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "616145b83262",
       "trouble": "4a612bab9a87",
-      "tutorials": "fab6cacea1ba",
+      "tutorials": "7f2874e3272f",
       "view": "24a0b35079e8",
       "viewerForge": "ec9d4bc7213f",
       "waitChecks": "dd6a426cc5b6",
@@ -2838,8 +2838,8 @@
     }
   },
   "tr": {
-    "messages": 4133,
-    "fallback": 1295,
+    "messages": 4134,
+    "fallback": 1296,
     "areas": {
       "admission": "b1fe3a48378c",
       "ai": "2c45c177a3eb",
@@ -2912,7 +2912,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "e36918eef669",
       "trouble": "2a180480dd8a",
-      "tutorials": "97c8424edc10",
+      "tutorials": "f1a041b53470",
       "view": "581204ffb774",
       "viewerForge": "677f4f4b227b",
       "waitChecks": "dd6a426cc5b6",
@@ -2924,8 +2924,8 @@
     }
   },
   "uk": {
-    "messages": 4133,
-    "fallback": 1281,
+    "messages": 4134,
+    "fallback": 1282,
     "areas": {
       "admission": "b52b23521706",
       "ai": "00c91ebd48c1",
@@ -2998,7 +2998,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "3df1f4c0094c",
       "trouble": "f329b076b08e",
-      "tutorials": "9678cc5d6cc7",
+      "tutorials": "4c87f3e6a136",
       "view": "85fc18d651c8",
       "viewerForge": "684acb05142a",
       "waitChecks": "dd6a426cc5b6",
@@ -3010,8 +3010,8 @@
     }
   },
   "vi": {
-    "messages": 4133,
-    "fallback": 1285,
+    "messages": 4134,
+    "fallback": 1286,
     "areas": {
       "admission": "c9572d0ee7aa",
       "ai": "88456409d7c5",
@@ -3084,7 +3084,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "33cb7e4144b1",
       "trouble": "4e3547f7ea62",
-      "tutorials": "44c3b60dd8a3",
+      "tutorials": "458a24d1b45f",
       "view": "7ee2243cf8b7",
       "viewerForge": "60d0f3ab0fac",
       "waitChecks": "dd6a426cc5b6",
@@ -3096,8 +3096,8 @@
     }
   },
   "zh-CN": {
-    "messages": 4133,
-    "fallback": 1285,
+    "messages": 4134,
+    "fallback": 1286,
     "areas": {
       "admission": "73ac7006d6ca",
       "ai": "3ef50488a156",
@@ -3170,7 +3170,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "68882424f948",
       "trouble": "85fc197b9ba9",
-      "tutorials": "6fccf6d85192",
+      "tutorials": "7cdb673246ef",
       "view": "513660a908ec",
       "viewerForge": "cc2f5374e68d",
       "waitChecks": "dd6a426cc5b6",
@@ -3182,8 +3182,8 @@
     }
   },
   "zh-TW": {
-    "messages": 4133,
-    "fallback": 1287,
+    "messages": 4134,
+    "fallback": 1288,
     "areas": {
       "admission": "8cd77def2e44",
       "ai": "aa167b14e4aa",
@@ -3256,7 +3256,7 @@
       "toast": "fd9f2b2ae079",
       "topbar": "0c815c0f43a5",
       "trouble": "0529e24a6ce2",
-      "tutorials": "78aca5ecb9c1",
+      "tutorials": "8e8417d2e3b7",
       "view": "d21359af73e2",
       "viewerForge": "490e554bfa68",
       "waitChecks": "dd6a426cc5b6",

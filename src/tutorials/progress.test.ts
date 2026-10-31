@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tutorials } from "./catalog";
 import {
   earnedSeals,
+  progressUndo,
   readTutorials,
   recordSeals,
   resetProgress,
@@ -16,6 +17,7 @@ import {
 import { chapterSeals, seals } from "./seals";
 
 beforeEach(() => {
+  vi.stubGlobal("window", new EventTarget());
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) ?? null,
@@ -127,6 +129,96 @@ for (const scope of [{ all: true }, { track: "basics" }, { lesson: first.id }] a
     restoreProgress(previous);
     expect(readTutorials()).toEqual(snapshot);
     expect(previous).toEqual(snapshot);
+  });
+}
+
+it("scoped resets preserve every unselected progress entry including versions, steps and dates", () => {
+  const snapshot = completed();
+  for (const [index, lesson] of tutorials.entries()) {
+    snapshot.progress![lesson.id] = {
+      version: lesson.version + (index % 2),
+      step: index % lesson.steps.length,
+      completed: index % 2 === 0,
+      completedAt: 1000 + index,
+    };
+  }
+  for (const scope of [{ track: "basics" }, { lesson: first.id }] as const) {
+    writeTutorials(() => snapshot);
+    resetProgress(scope);
+    const survivors = tutorials.filter((lesson) =>
+      "track" in scope ? lesson.track !== scope.track : lesson.id !== scope.lesson,
+    );
+    expect(readTutorials().progress).toEqual(
+      Object.fromEntries(survivors.map((lesson) => [lesson.id, snapshot.progress![lesson.id]])),
+    );
+  }
+});
+
+it("keeps reset Undo available across subscriptions and unchanged writes, and consumes it once", () => {
+  const snapshot = completed([first]);
+  writeTutorials(() => snapshot);
+  const undo = progressUndo(resetProgress({ all: true }));
+  try {
+    const unsubscribe = subscribeTutorials(vi.fn());
+    unsubscribe();
+    writeTutorials((s) => s);
+    expect(undo.restore()).toBe(true);
+    expect(readTutorials()).toEqual(snapshot);
+    expect(undo.restore()).toBe(false);
+  } finally {
+    undo.dispose();
+  }
+});
+
+for (const change of ["save", "highlights", "storage", "clear", "pending storage"] as const) {
+  it(`invalidates reset Undo after ${change} without overwriting newer storage`, () => {
+    writeTutorials(() => completed([first]));
+    const undo = progressUndo(resetProgress({ track: "basics" }));
+    const afterReset = tutorialsSnapshot();
+    try {
+      if (change === "save")
+        saveProgress(
+          tutorials.find((lesson) => lesson.track !== "basics")!,
+          1,
+          true,
+        );
+      else if (change === "highlights") writeTutorials((s) => ({ ...s, highlights: true }));
+      else {
+        localStorage.setItem("diagrams.tutorials.v1", JSON.stringify({ progress: {}, highlights: true }));
+        if (change !== "pending storage")
+          window.dispatchEvent(
+            Object.assign(new Event("storage"), { key: change === "clear" ? null : "diagrams.tutorials.v1" }),
+          );
+      }
+      const newer = tutorialsSnapshot();
+      expect(undo.restore()).toBe(false);
+      expect(tutorialsSnapshot()).toBe(newer);
+      // Invalidated recovery stays invalid even if a later save puts the reset state back.
+      localStorage.setItem("diagrams.tutorials.v1", afterReset);
+      expect(undo.restore()).toBe(false);
+    } finally {
+      undo.dispose();
+    }
+  });
+}
+
+for (const change of ["local", "storage"] as const) {
+  it(`never revives Undo after a ${change} change returns to the post-reset snapshot`, () => {
+    writeTutorials(() => completed([first]));
+    const undo = progressUndo(resetProgress({ all: true }));
+    const afterReset = readTutorials();
+    try {
+      if (change === "local") writeTutorials((s) => ({ ...s, highlights: true }));
+      else {
+        localStorage.setItem("diagrams.tutorials.v1", JSON.stringify({ highlights: true }));
+        window.dispatchEvent(Object.assign(new Event("storage"), { key: "diagrams.tutorials.v1" }));
+      }
+      writeTutorials(() => afterReset);
+      expect(undo.restore()).toBe(false);
+      expect(readTutorials()).toEqual(afterReset);
+    } finally {
+      undo.dispose();
+    }
   });
 }
 
