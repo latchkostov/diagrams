@@ -120,14 +120,14 @@ async function play(page: Page, step: ResolvedUiStep) {
       });
       await page.mouse.click(point.x, point.y);
     } else {
+      // React can publish the pressed state after click() resolves. Capture the requested transition first.
+      const enteringLive =
+        step.click === "live-toggle" &&
+        (await page.getByTestId("live-toggle").getAttribute("aria-pressed")) === "false";
       await page.getByTestId(step.click).click();
       // A click requests Live before its lazy session and picker exist. Keep the next recipe input
       // behind the session's real mount signal, as gotoLive does for direct navigation.
-      if (
-        step.click === "live-toggle" &&
-        (await page.getByTestId("live-toggle").getAttribute("aria-pressed")) === "true"
-      )
-        await waitForLiveSession(page);
+      if (enteringLive) await waitForLiveSession(page);
     }
   } else if ("modClick" in step) {
     await fitDiagram(page);
@@ -317,6 +317,18 @@ test("dead-letters: solution input waits for the requested Live session to mount
   const session = await holdChunk(page, chunk("LiveSession", "src/live/LiveSession.tsx"));
   await openTutorial(page, "dead-letters");
   await page.getByTestId("tutorial-start").click();
+  // Native macOS observed false immediately after click, before React published the requested state.
+  // Keep that snapshot deterministic while the actual session download remains held.
+  const getByTestId = page.getByTestId.bind(page);
+  page.getByTestId = (id) => {
+    const locator = getByTestId(id);
+    if (id === "live-toggle") {
+      const getAttribute = locator.getAttribute.bind(locator);
+      locator.getAttribute = (name, options) =>
+        name === "aria-pressed" ? Promise.resolve("false") : getAttribute(name, options);
+    }
+    return locator;
+  };
   let finished = false;
   const clicking = play(page, { click: "live-toggle" }).then(() => {
     finished = true;
