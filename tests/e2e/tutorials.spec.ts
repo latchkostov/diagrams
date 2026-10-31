@@ -302,7 +302,7 @@ async function finishSolution(page: Page, highlightsOff = false) {
     expect(["active", "hinting", "completing"]).toContain(value);
     expect(seen, `step ${current} came back`).not.toContain(current);
     seen.push(current);
-    if (highlightsOff) await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+    if (highlightsOff) await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
     for (const step of steps) await play(page, step);
     await expect(strip(page)).not.toHaveAttribute("data-step", current, { timeout: 20_000 });
   }
@@ -1276,7 +1276,11 @@ test("annotate keeps each instruction current until the annotation's editor clos
   await page.getByTestId("palette-annotate-note").click();
   await expect(page.getByTestId("annotation-editor")).toBeFocused();
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
-  await expect(page.getByTestId("tutorial-completing")).toContainText("Escape or Ctrl/Cmd+Enter");
+  await expect(page.getByTestId("tutorial-completing").getByTestId("coach-key")).toHaveText([
+    "Esc",
+    process.platform === "darwin" ? "⌘" : "Ctrl",
+    "Enter",
+  ]);
   await page.getByTestId("annotation-editor").fill("Keep this learner note");
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-step", "zone");
@@ -1491,7 +1495,7 @@ test("mobile-api plays with Highlights off throughout", async ({ page }) => {
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("tutorial-highlights").uncheck();
   await finishSolution(page, true);
-  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
   await expectNothingSaved(page);
 });
 
@@ -1512,7 +1516,7 @@ test("mobile-api plays in Arabic, with tips on the inline-end side", async ({ pa
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "handle-mobile-1-right");
   await expect
     .poll(async () => {
-      const tip = await page.getByTestId("tutorial-tip").boundingBox();
+      const tip = await page.getByTestId("coach-card").boundingBox();
       const target = await page.getByTestId("handle-mobile-1-right").boundingBox();
       return !!tip && !!target && tip.x + tip.width < target.x;
     })
@@ -1602,7 +1606,7 @@ test("app chrome Present hides teaching chrome and returns to the same tutorial"
   await page.getByTestId("present-toggle").click();
   await expect(page.getByTestId("tutorial-bar")).toHaveCount(0);
   await expect(page.getByTestId("tutorial-step")).toBeHidden();
-  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
   await page.getByTestId("present-exit").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   await expect(page.getByTestId("topbar")).toBeVisible();
@@ -1713,7 +1717,7 @@ test("quick-add opens already searched for the step's pick, and the name step wa
   await page.keyboard.type("Web API");
   // The name matches, but it's still being typed: completing, and nothing moves the keyboard.
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
-  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(strip(page)).toHaveAttribute("data-step", "grow-db");
@@ -1777,7 +1781,7 @@ test("Undo goes back a step; Show me reveals the hint and highlights still point
   await expect(strip(page)).toHaveAttribute("data-step", "add-app");
   // Highlights off: no coach mark, the words stay.
   await page.getByTestId("tutorial-highlights").uncheck();
-  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
   await expect(page.getByTestId("tutorial-goal")).toBeVisible();
 });
 

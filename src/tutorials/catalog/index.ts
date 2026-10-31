@@ -1,3 +1,4 @@
+import { withCoachRoutes } from "../coachRoutes";
 import { authorASimulation } from "./authorASimulation";
 import { sequenceEvidence } from "./sequenceEvidence";
 import { resourceHeadroom } from "./resourceHeadroom";
@@ -120,7 +121,9 @@ export const allTutorials: readonly Tutorial[] = [
   studyFanout,
   studyRag,
   studyCells,
-].map(withKeyboardSolutions);
+]
+  .map(withKeyboardSolutions)
+  .map(withCoachRoutes);
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
 export const tutorials = allTutorials.filter((t) => !t.quarantined);

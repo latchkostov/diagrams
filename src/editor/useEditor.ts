@@ -855,9 +855,18 @@ export function createEditor(
         : destination === "shape"
           ? defaultSize.shape
           : latest.nodeSize;
-    return at
-      ? { x: snap10(at.x - size.width / 2), y: snap10(at.y - size.height / 2), ...size }
-      : spotBeside(from, toward, size);
+    if (!at) return spotBeside(from, toward, size);
+    const dropped = { x: snap10(at.x - size.width / 2), y: snap10(at.y - size.height / 2), ...size };
+    // A short grow drag must still leave a visible connector, just like clicking the grow chip.
+    if (!isClear(dropped, [from], COPY_MARGIN)) {
+      const dx = at.x - (from.x + from.width / 2),
+        dy = at.y - (from.y + from.height / 2);
+      const side = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? "right" : "left") : dy >= 0 ? "down" : "up";
+      return spotBeside(from, side, size);
+    }
+    const others = obstacles();
+    const move = snappedClear(dropped, clearOffset(dropped, others), others);
+    return { ...dropped, x: dropped.x + move.x, y: dropped.y + move.y };
   };
   /**
    * A new edge from `a` to `b`, its relationship inferred from their stencils (an edge into Key Vault is a

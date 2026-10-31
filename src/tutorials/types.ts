@@ -378,8 +378,18 @@ export interface Target {
   tip: Words;
   /** Only while this subject is the one selected. */
   selected?: string;
-  /** false: ring it without dimming the rest (a step about watching the whole canvas). */
+  /** Display only: wait until the real Live switch has this state. */
+  live?: boolean;
+  /** Legacy lesson metadata; the coach always keeps the canvas at full strength. */
   dim?: false;
+}
+
+/** One way to do a step (pointer, keyboard or a menu). Its targets are tried in order; each tip is the next move. */
+export interface CoachRoute {
+  kind: "pointer" | "keyboard" | "menu";
+  /** The whole route in one line, keys marked [Alt]. */
+  summary: Words;
+  targets: readonly Target[];
 }
 
 export interface TutorialStep {
@@ -408,6 +418,11 @@ export interface TutorialStep {
   settle?: "naming" | "annotation" | { kind: "selection"; subjects: readonly string[]; tip: Words };
   /** What the canvas is guided to while this step is current: quick-add opens searched for this (its pick). */
   guide?: { quickAdd?: Words };
+  /**
+   * Display-only: ways to do the step, each pointing at its exact control as the learner goes.
+   * Optional and presentation only: checks, demos and solutions don't read it. Words may mark keys as [Alt], [→].
+   */
+  coach?: { routes: readonly CoachRoute[] };
   targets: readonly Target[];
   demo: readonly Demo[];
   /** Completed gestures whose history must be reconstructed when continuing later. */

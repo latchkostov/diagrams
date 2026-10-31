@@ -9,17 +9,22 @@ export function useTutorialLayout() {
     const observed = new WeakSet<Element>();
     const measure = () => {
       frame = 0;
-      const strip = root.querySelector('[data-testid="tutorial-step"]');
+      const bar = root.querySelector('[data-testid="tutorial-bar"]');
+      const tools = root.querySelector('[data-testid="tutorial-tools"]');
       const caption = root.querySelector('[data-testid="live-caption-mount"]');
-      if (!strip || !caption) return;
-      for (const el of [strip, caption]) {
+      if (!bar || !caption) return;
+      for (const el of [bar, caption, ...(tools ? [tools] : [])]) {
         if (!observed.has(el)) {
           sizes.observe(el);
           observed.add(el);
         }
       }
       const visual = window.visualViewport;
-      const top = Math.max(strip.getBoundingClientRect().bottom, visual?.offsetTop ?? 0);
+      const top = Math.max(
+        bar.getBoundingClientRect().bottom,
+        tools?.getBoundingClientRect().bottom ?? 0,
+        visual?.offsetTop ?? 0,
+      );
       const bottom = Math.min(
         caption.getBoundingClientRect().bottom,
         (visual?.offsetTop ?? 0) + (visual?.height ?? window.innerHeight),
