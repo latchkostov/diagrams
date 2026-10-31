@@ -24,8 +24,9 @@ async function openVerifiedCallout(page: Page, holdPlan = false, inspectorReques
   await page.getByTestId("live-play").click();
   const simulation = busy.simulations.find((simulation) => simulation.id === "blocking");
   if (!simulation) throw new Error("Fixture needs the blocking simulation");
-  // Preserve the trouble watcher's ten-second trend without coupling this agreement check to 900 paints.
-  for (let second = 1; second <= 15; second += 2) {
+  // Keep eight samples and the same 15-second endpoint, spanning the ten-second trouble window at the final state.
+  // An earlier crossing verifies an intermediate revision, then makes that complete replay stale on the next seek.
+  for (const second of [5, 6, 7, 8, 9, 10, 12, 15]) {
     await page.getByTestId("live-timeline-input").fill(String((second * 1_000_000) / simulation.durationMs));
     await page.getByTestId("live-play").focus();
   }
@@ -52,6 +53,7 @@ test("agreement setup waits for real scenario sizing while the page clock is pau
     await Promise.race([inspector, opening]);
     await page.evaluate(() => window.__scenarioPlan?.whenRequested());
     await expect(page.getByTestId("inspector-live-section-resources")).toBeVisible();
+    expect(await page.evaluate(() => window.__threadVerification?.requests.map(({ time }) => time))).toEqual([15000]);
     expect(finished, "fix verification does not establish that scenario sizing has replied").toBe(false);
     await page.evaluate(() => window.__scenarioPlan?.release?.());
     const action = await opening;
