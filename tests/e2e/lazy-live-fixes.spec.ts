@@ -366,8 +366,12 @@ test("a failed slow-motion download returns to live with a focused Retry that st
 
 test("pending script download freezes live controls and says so; Esc gives them back", async ({ page }) => {
   const script = await gate(page, SCRIPT);
+  await page.clock.install();
   await gotoLive(page, `${KAFKA}&sim=payments-outage&speed=8`);
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  await waitForCameraIdle(page);
+  await pauseClock(page);
+  const heldClock = await page.evaluate(() => performance.now());
   const at = (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) ?? "";
   // The note frames Payments: slow motion from there.
   await slowMotionFromStorefront(page, "payments");
@@ -399,9 +403,11 @@ test("pending script download freezes live controls and says so; Esc gives them 
   await page.evaluate(async (url) => {
     await import(url);
   }, module.url());
-  await page.evaluate(
-    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
-  );
+  // Code download/evaluation has no simulation-time budget. Advance playback only after it has arrived.
+  expect(await page.evaluate(() => performance.now())).toBe(heldClock);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", at);
+  await page.clock.runFor(250);
+  expect(Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time"))).toBeGreaterThan(Number(at));
   await expect(page.getByTestId("live-canvas")).not.toHaveAttribute("data-slowmo", /./);
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
   await expect(page.getByTestId("slowmo-loading")).toHaveCount(0);

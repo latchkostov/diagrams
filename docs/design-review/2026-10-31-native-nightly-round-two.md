@@ -14,6 +14,8 @@ The bend-carry fixture similarly waits for the camera controller after Fit befor
 
 Entry-point Undo checks also distinguish document mutation from the renderer's restored topology. Holding real node measurements reproduces the missing-edge intermediate state; releasing them must produce the exact original topology, including all original edges.
 
+The late-script cancellation fixture likewise controls simulation time while code arrives, then proves progress after an explicit clock advance. It preserves the product's real playback behavior and checks the cancelled action cannot take over the live controls.
+
 ## Decisions still requiring evidence
 
 macOS Control+click is a native secondary click; the retained modified-drag test conflicts with that convention. The orchestrator must choose the modifier contract before changing the gesture or its test. The native-select boundary also needs an input-driver or coverage decision, documented separately. The same-run peer diagnostic confirms mDNS fails while direct candidates deliver on macOS; branch Nightly 41183332686 has none of the 31 persistent peer-admission failures. No new network service, quarantine, tolerance increase or additional chrome is introduced here.

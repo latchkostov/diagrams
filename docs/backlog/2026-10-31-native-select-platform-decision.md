@@ -9,3 +9,7 @@ Required synchronization brought in master #402's new keyboard tutorial suite. I
 `scripts/ci/native-select.mjs` isolates arrow/Enter, Space/End/Enter, Alt+ArrowDown/Home/ArrowDown/Enter and printable typeahead on an otherwise empty document using the pinned browser and shared launch flags. It records trusted/default-prevented events, selected indices and popup state after actual animation frames. Every mode closes its browser. Native shard 1 uploads the same-run evidence as `native-select.json`; no test result is replaced or reclassified by the diagnostic, and no deadline is increased.
 
 Proposed decision: provide a native macOS input driver for OS-menu keyboard coverage, or explicitly adopt renderer typeahead coverage for the existing native controls. Replacing product selects with custom controls would require an accessibility and UX decision. Programmatic selection is rejected as evidence for the existing arrow-key oracle. No skip or quarantine is introduced.
+
+## Isolated native confirmation
+
+Nightly 41188667639, macOS shard 1, records all three popup-key modes retaining Alpha: Enter leaves the menu open and Tab closes it without changing the value. Every recorded key is trusted and unprevented. Printable `b` selects Beta without opening the menu. The identical four-mode Windows probe selects Beta in every mode. These observations reproduce the boundary outside the application using the pinned browser; the final branch dispatch retains this diagnostic and the original failing keyboard coverage.
