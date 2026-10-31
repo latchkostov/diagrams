@@ -10,6 +10,7 @@ async function begin(page: Page, port: keyof ProductObservations) {
   await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
   await page.getByTestId("tutorial-start").click();
   await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__observationLab?.ready())).toBe(true);
 }
 const latest = (page: Page) =>
   page.evaluate(() => {
@@ -37,6 +38,27 @@ const fake: Record<keyof ProductObservations, Record<string, unknown>> = {
   ai: { kind: "change", changed: ["source"] },
   collaboration: { status: "joined", role: "joiner" },
 };
+
+test("port setup waits for the actual canvas host before publishing", async ({ page }) => {
+  const held = await holdChunk(page, chunk("CanvasView", "src/canvas/CanvasView.tsx"));
+  let returned = false;
+  const starting = begin(page, "checks").then(() => {
+    returned = true;
+  });
+  try {
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+    expect(await page.evaluate(() => window.__observationLab?.ready())).toBe(false);
+    expect(returned).toBe(false);
+    held.release();
+    await starting;
+    await page.evaluate((event) => window.__observationLab?.publish("checks", event), fake.checks);
+    await finished(page);
+  } finally {
+    held.release();
+    await starting;
+  }
+});
 for (const port of Object.keys(fake) as (keyof ProductObservations)[])
   test(`${port}: fake publication reaches the real runner`, async ({ page }) => {
     await begin(page, port);
