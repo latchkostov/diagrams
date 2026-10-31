@@ -64,6 +64,7 @@ it.each(["all", "track", "lesson"] as const)(
           progress={{}}
           onClose={() => {}}
           onConfirm={() => {}}
+          restoreFocus={(opener) => opener?.focus()}
         />,
       ),
     );

@@ -12,6 +12,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorials-resume")).toContainText("Start here: 1.1", { timeout: pageLoadTimeout() });
   await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 49 lessons · 0 of 7 seals");
   await expect(page.getByTestId("tutorials-chapter-basics")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveAccessibleName(/^Start 1\.1 .*Not started/);
   await expectNoViolations(page, "tutorials-view");
   await page.getByTestId("tutorials-resume-open").click();
   await page.getByTestId("tutorial-start").click();
@@ -34,7 +35,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await page.getByTestId("tutorial-done-exit").click();
   const today = await page.evaluate(() => new Date().toLocaleDateString("en", { day: "numeric", month: "short" }));
   await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
-  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveAccessibleName(/Done/);
+  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveAccessibleName(/^Review 1\.1 .*Done/);
   await page.getByTestId("tutorials-seals").click();
   await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Not yet · 1 of 12");
   await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 49");
@@ -70,6 +71,11 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorials-reset-scope-all")).toBeChecked();
   await page.getByTestId("tutorials-reset-scope-lesson").check();
   await page.getByTestId("tutorials-reset-cancel").click();
+  await expect(page.getByTestId("tutorials-more")).toBeFocused();
+  await page.getByTestId("tutorials-more").click();
+  await page.getByTestId("context-menu-item-tutorials-reset").click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("tutorials-more")).toBeFocused();
   await expect(page.getByTestId("tutorial-status-mobile-api")).toHaveText(`Done · ${today}`);
   expectNoErrors(consoleErrors);
 });

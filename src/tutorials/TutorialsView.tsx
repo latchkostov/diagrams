@@ -4,7 +4,7 @@ import { Icon } from "../components/Icon";
 import { ContextMenu } from "../components/ContextMenu";
 import { t, useLocale } from "../i18n";
 import { formatDate } from "../i18n/format";
-import { toast } from "../interop/ui/toast";
+import { notify, toast } from "../interop/ui/toast";
 import { tracks, tutorials } from "./catalog";
 import {
   earnedSeals,
@@ -13,7 +13,7 @@ import {
   tutorialsSnapshot,
   recordSeals,
   resetProgress,
-  restoreProgress,
+  progressUndo,
   writeTutorials,
   type ResetScope,
   type StoredTutorials,
@@ -45,6 +45,7 @@ export function TutorialsView() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const resetOpener = useRef<HTMLElement | null>(null);
   const done = tutorials.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
   const awards = earnedSeals(progress, tutorials);
   useEffect(() => {
@@ -62,17 +63,20 @@ export function TutorialsView() {
   };
   const confirmReset = (scope: ResetScope) => {
     const previous = resetProgress(scope);
+    const undo = progressUndo(previous);
     setReset(null);
-    toast.info(t("tutorials.syllabus.resetDone"), {
+    notify(t("tutorials.syllabus.resetDone"), {
+      onDismiss: undo.dispose,
       action: {
         label: t("tutorials.syllabus.undo"),
         testId: "tutorials-reset-undo",
         run: () => {
-          restoreProgress(previous);
+          if (!undo.restore()) toast.info(t("tutorials.syllabus.undoUnavailable"));
         },
       },
     });
   };
+  const resumeStep = current ? Math.min(lessonProgress(progress, current)?.step ?? 0, current.steps.length - 1) : 0;
   return (
     <div className="tutorials-view" data-testid="tutorials-view">
       <div className="tutorials-wrap">
@@ -152,12 +156,9 @@ export function TutorialsView() {
                     {lessonProgress(progress, current)
                       ? t("tutorials.syllabus.resumeStep", {
                           chapter: tracks.find((x) => x.id === current.track)!.label(),
-                          step: Math.min((lessonProgress(progress, current)?.step ?? 0) + 1, current.steps.length),
+                          step: resumeStep + 1,
                           total: current.steps.length,
-                          title:
-                            current.steps[
-                              Math.min(lessonProgress(progress, current)?.step ?? 0, current.steps.length - 1)
-                            ].title(),
+                          title: current.steps[resumeStep].title(),
                         })
                       : t("tutorials.syllabus.resumeIntro", { summary: current.summary(), minutes: current.minutes })}
                   </p>
@@ -243,7 +244,10 @@ export function TutorialsView() {
                       <button
                         className="tutorials-link"
                         data-testid={`tutorials-reset-${track.id}`}
-                        onClick={() => setReset({ track: track.id })}
+                        onClick={(event) => {
+                          resetOpener.current = event.currentTarget;
+                          setReset({ track: track.id });
+                        }}
                       >
                         {t("tutorials.syllabus.resetChapter")}
                       </button>
@@ -270,7 +274,10 @@ export function TutorialsView() {
               type: "item",
               id: "tutorials-reset",
               label: t("tutorials.syllabus.reset"),
-              run: () => setReset({ all: true }),
+              run: () => {
+                resetOpener.current = menuButton.current;
+                setReset({ all: true });
+              },
             },
           ]}
           onClose={() => setMenu(null)}
@@ -283,6 +290,10 @@ export function TutorialsView() {
           progress={progress}
           onClose={() => setReset(null)}
           onConfirm={confirmReset}
+          restoreFocus={() => {
+            const target = resetOpener.current;
+            (target?.isConnected ? target : heading.current)?.focus({ preventScroll: true });
+          }}
         />
       )}
     </div>
@@ -304,6 +315,7 @@ function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson
 function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: StoredTutorials; onOpen: () => void }) {
   const p = lessonProgress(progress, lesson);
   const going = !!p && !p.completed && p.step > 0;
+  const action = going ? t("tutorials.continue") : p?.completed ? t("tutorials.syllabus.review") : t("tutorials.start");
   const state = p?.completed
     ? t("tutorials.syllabus.done")
     : going
@@ -331,6 +343,7 @@ function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: S
         className={`btn ${going ? "" : "btn-ghost"}`}
         data-testid={`tutorial-open-${lesson.id}`}
         aria-label={t("tutorials.syllabus.openLesson", {
+          action,
           number: lessonNumber(lesson),
           title: lesson.title(),
           state,
@@ -338,7 +351,7 @@ function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: S
         })}
         onClick={onOpen}
       >
-        {going ? t("tutorials.continue") : p?.completed ? t("tutorials.syllabus.review") : t("tutorials.start")}
+        {action}
       </button>
     </li>
   );

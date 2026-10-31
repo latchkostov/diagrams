@@ -13,16 +13,18 @@ export function ResetProgressDialog({
   progress,
   onClose,
   onConfirm,
+  restoreFocus,
 }: {
   initialScope: ResetScope;
   current: Tutorial;
   progress: StoredTutorials;
   onClose: () => void;
   onConfirm: (scope: ResetScope) => void;
+  restoreFocus: (opener: HTMLElement | null) => void;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
-  useDialogInteraction(panel, backdrop, onClose);
+  useDialogInteraction(panel, backdrop, onClose, restoreFocus);
   const [kind, setKind] = useState<"all" | "track" | "lesson">(
     "track" in initialScope ? "track" : "lesson" in initialScope ? "lesson" : "all",
   );
