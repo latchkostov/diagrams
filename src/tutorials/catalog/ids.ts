@@ -5,6 +5,7 @@
 import type { TutorialMetadata } from "../types";
 
 export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantined">[] = [
+  { id: "workbench-tour" },
   { id: "mobile-api" },
   { id: "quick-add" },
   { id: "dots-and-sides" },
@@ -16,6 +17,8 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "dependencies" },
   { id: "arrange" },
   { id: "command-palette" },
+  { id: "library-reuse" },
+  { id: "import-and-review" },
   { id: "share-present" },
   { id: "api-gateway" },
   { id: "route-by-address" },

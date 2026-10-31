@@ -49,7 +49,7 @@ it("resolves keyboard subjects and connection identities without executing a dem
   expect(keyboardSolutionNow(lesson, snapshot)).toEqual([
     { connect: "node-browser", to: "node-api", side: undefined, fromSide: "right" },
   ]);
-  expect(keyboardSolutionNow(lesson, { ...snapshot, state: { ...snapshot.state, index: 2 } })).toEqual([
+  expect(keyboardSolutionNow(lesson, { ...snapshot, state: { ...snapshot.state, index: 3 } })).toEqual([
     { activate: "edge-wire" },
     { reconnect: "edge-wire", to: "node-other" },
   ]);

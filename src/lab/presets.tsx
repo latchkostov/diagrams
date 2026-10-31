@@ -1,4 +1,6 @@
 import { addressPractice, policyPractice, checksPractice } from "./buildingBlockSeeds";
+import { workbenchTour } from "../tutorials/catalog/workbenchTour";
+import { libraryReuse } from "../tutorials/catalog/libraryReuse";
 import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixture";
 import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
@@ -308,6 +310,17 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
+  ...[workbenchTour, libraryReuse].map((lesson): Preset => ({
+    kind: "diagram",
+    id: `tutorial-${lesson.id}-practice`,
+    title: lesson.title(),
+    group: "Diagrams",
+    description: lesson.summary(),
+    diagram: () => {
+      if (typeof lesson.start !== "function") throw new Error("Expected local practice");
+      return lesson.start();
+    },
+  })),
   ...[addressPractice, policyPractice, checksPractice].map((diagram, index): Preset => ({
     kind: "diagram",
     id: ["tutorial-address-practice", "tutorial-policy-practice", "tutorial-checks-practice"][index],

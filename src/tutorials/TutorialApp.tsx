@@ -42,6 +42,9 @@ import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
 import { solutionNow, type ResolvedUiStep } from "./solution";
 import { keyboardSolutionNow, type ResolvedKeyboardStep } from "./keyboard";
+import { createPracticeImport, tutorialFilePolicy } from "./filePolicy";
+import { cancelObservedWork, observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 import "./tutorials.css";
 
 /** Live's address keys belong to the diagram that set them: a tutorial starts in editing, on its own diagram. */
@@ -86,6 +89,10 @@ const LibraryDialog = lazyComponent(
   () => import("../components/LibraryDialog").then((m) => m.LibraryDialog),
   loadingDialog(() => t("topbar.yourDiagrams")),
 );
+const ExamplesDialog = lazyComponent(
+  () => import("../components/ExamplesDialog").then((m) => m.ExamplesDialog),
+  loadingDialog(() => t("topbar.examples")),
+);
 const loadRuntimeFixtures = loadOnce(() =>
   import("../lab/tutorialRuntimeFixture").then((m) => m.tutorialRuntimeCatalog),
 );
@@ -124,6 +131,7 @@ function Running({
   const raw = useSyncExternalStore(subscribeTutorials, tutorialsSnapshot);
   const progress = readTutorials(raw);
   const [presenting, setPresenting] = useState(false);
+  const [practiceImport] = useState(createPracticeImport);
   useEffect(() => {
     if (!presenting) return;
     const key = (event: KeyboardEvent) => {
@@ -139,6 +147,7 @@ function Running({
       initial,
       documentId: getDiagramIdentity(TUTORIAL_SLUG),
       present: setPresenting,
+      importPractice: practiceImport.run,
     });
   });
   const [start] = useState(() => structuredClone(initial));
@@ -146,6 +155,7 @@ function Running({
   const canvas = useRef<CanvasHandle | null>(null);
   const library = useLibrary();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [examplesOpen, setExamplesOpen] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryUndo, setLibraryUndo] = useState<{ message: string; run: () => void } | null>(null);
   const openCopy = tutorialRoute.openDiagram;
@@ -170,7 +180,10 @@ function Running({
     const diagram = paletteHost.get().canvas?.editor.getDiagram();
     if (!diagram) return;
     try {
-      const slug = createLibraryDiagram(diagram);
+      const slug = filePolicy.saveCopy(diagram);
+      if (!slug) return;
+      const source = currentObservationSource();
+      if (source) observationPorts.copied.publish({ ...source, slug });
       toast.success(t("tutorials.saved"), {
         action: { label: t("tutorials.openCopy"), run: () => openCopy(slug), testId: "tutorial-open-copy" },
       });
@@ -178,6 +191,20 @@ function Running({
       toast.error(t("tutorials.saveFailed"));
     }
   };
+  const [filePolicy] = useState(() =>
+    tutorialFilePolicy(tutorial.id, {
+      replace: (diagram) => {
+        const editor = paletteHost.get().canvas?.editor;
+        if (!editor) throw new Error(t("common.tryAgain"));
+        editor.applyDiagram(diagram);
+      },
+      copy: createLibraryDiagram,
+      cancel: () => {
+        const source = currentObservationSource();
+        if (source) cancelObservedWork(source);
+      },
+    }),
+  );
   const interop = useInterop({
     view: "canvas",
     slug: TUTORIAL_SLUG,
@@ -185,11 +212,28 @@ function Running({
     openDiagram,
     openShared,
     isPublicExample: () => false,
+    importDestination: tutorial.id === "import-and-review" ? filePolicy.import : undefined,
   });
   const sharing = "dialogKind" in interop && interop.dialogKind === "chooser";
+  const importFiles = interop.importFiles;
+  useEffect(() => {
+    return practiceImport.connect(async (signal) => {
+      const response = await fetch(`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`, { signal });
+      if (!response.ok) throw new Error("Fixture unavailable");
+      const text = await response.text();
+      signal.throwIfAborted();
+      await importFiles([new File([text], "tutorial-status-compose.yaml", { type: "text/yaml" })]);
+    });
+  }, [importFiles, practiceImport]);
   useEffect(() => runner.appChanged({ presenting, sharing }), [runner, presenting, sharing]);
-  // File Save / Save as explicitly keeps a library copy. No tutorial edit auto-saves.
-  const files = { ...interop, tutorial: true as const, save: async () => saveCopy(), saveAs: async () => saveCopy() };
+  // Ownership requires the library lesson's named Save a copy action. File shortcuts never save practice edits.
+  const files = {
+    ...interop,
+    tutorial: true as const,
+    save: interop.exportNative,
+    saveAs: interop.exportNative,
+    saveTo: async () => {},
+  };
   useEffect(() => {
     const save = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== "s") return;
@@ -238,7 +282,7 @@ function Running({
           exampleOptions={[{ slug: TUTORIAL_SLUG, title: tutorial.title(), group: "yours" }]}
           example={TUTORIAL_SLUG}
           onExample={noop}
-          onBrowseExamples={() => tutorialRoute.openView("canvas")}
+          onBrowseExamples={() => setExamplesOpen(true)}
           interop={files}
           onPresent={() => setPresenting(true)}
           onNewDiagram={newDiagram}
@@ -275,17 +319,26 @@ function Running({
           {state.value !== "intro" && (
             <button
               className="btn"
+              aria-label={t("tutorials.restart")}
+              title={t("tutorials.restart")}
               onClick={() => {
                 setBefore(readTutorials());
                 runner.send({ type: "restart" });
+                interop.resetImports();
               }}
               data-testid="tutorial-restart"
             >
-              <Icon name="reset" size={14} /> {t("tutorials.restart")}
+              <Icon name="reset" size={14} /> <span className="tutorial-action-label">{t("tutorials.restart")}</span>
             </button>
           )}
-          <button className="btn" onClick={() => runner.send({ type: "exit" })} data-testid="tutorial-exit">
-            <Icon name="close" size={14} /> {t("tutorials.exit")}
+          <button
+            className="btn"
+            aria-label={t("tutorials.exit")}
+            title={t("tutorials.exit")}
+            onClick={() => runner.send({ type: "exit" })}
+            data-testid="tutorial-exit"
+          >
+            <Icon name="close" size={14} /> <span className="tutorial-action-label">{t("tutorials.exit")}</span>
           </button>
         </header>
       )}
@@ -330,6 +383,7 @@ function Running({
         onTutorials={() => tutorialRoute.openView("tutorials")}
       />
       {interop.layer}
+      {examplesOpen && <ExamplesDialog onClose={() => setExamplesOpen(false)} onOpen={tutorialRoute.openDiagram} />}
       {libraryOpen && (
         <LibraryDialog
           entries={library.entries}
@@ -510,7 +564,19 @@ function Strip({
       {/* The intro says it all in its card: the strip waits, at its height. */}
       {step && (
         <>
-          <div className="tutorial-words">
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Native scroll keys must stay in the instruction region, away from canvas shortcuts. */}
+          <div
+            className="tutorial-words"
+            role="region"
+            aria-label={t("tutorials.steps")}
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing instructions need a keyboard scroll target.
+            tabIndex={0}
+            data-testid="tutorial-words"
+            onKeyDown={(event) => {
+              if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key))
+                event.stopPropagation();
+            }}
+          >
             <p className="tutorial-goal" data-testid="tutorial-goal">
               <strong>
                 {step.title()}. {step.goal()}
@@ -554,6 +620,21 @@ function Strip({
             )}
           </div>
           <div className="tutorial-actions" key={step.id}>
+            {tutorial.id === "library-reuse" && step.check.kind === "ownedCopy" && (
+              <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
+                {t("tutorials.saveCopy")}
+              </button>
+            )}
+            {tutorial.id === "import-and-review" && step.id === "import" && (
+              <a
+                className="btn"
+                data-testid="tutorial-fixture"
+                href={`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`}
+                download
+              >
+                {t("tutorials.importAndReview.download")}
+              </a>
+            )}
             {(phase === "active" || phase === "hinting") && (
               <button
                 className="btn"
@@ -592,9 +673,11 @@ function Strip({
             </p>
           </div>
           <div className="tutorial-actions">
-            <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
-              {t("tutorials.saveCopy")}
-            </button>
+            {tutorial.id === "library-reuse" && (
+              <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
+                {t("tutorials.saveCopy")}
+              </button>
+            )}
             {tutorial.finish.example && (
               <button
                 className="btn"

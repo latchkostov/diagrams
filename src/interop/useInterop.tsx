@@ -122,6 +122,8 @@ interface Options {
   openShared: (d: DiagramFile) => void;
   /** Public examples can be embedded by name. */
   isPublicExample: (slug: string) => boolean;
+  /** Explicit practice destination. Normal Open retains its ownership, handle and provenance behavior. */
+  importDestination?: Options["openDiagram"];
 }
 
 /** PNG / SVG export choices (the image dialog's Options). The title is in by default. */
@@ -217,6 +219,7 @@ export function useInterop({
   openDiagram,
   openShared,
   isPublicExample,
+  importDestination,
 }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   // Dialog imports belong to the dialog that submitted them, including while operation messages download.
@@ -665,7 +668,7 @@ export function useInterop({
       let created: string | undefined;
       try {
         // Only our own format saves back to where it came from (a .drawio file is converted).
-        created = openDiagram(
+        created = (importDestination ?? openDiagram)(
           outcome.diagram,
           outcome.format === "native" ? source.target : undefined,
           source.sourceSlug,
@@ -675,7 +678,8 @@ export function useInterop({
         return;
       }
       // The destination policy stays with openDiagram. This fact does not grant sandbox ownership or save a copy.
-      if (origin && created) observationPorts.imports.publish({ ...origin, format: outcome.format });
+      if (origin && created)
+        observationPorts.imports.publish({ ...origin, format: outcome.format, source: source.name });
       setDialog(null);
       const r = outcome.report;
       if (r && created) {
@@ -696,7 +700,7 @@ export function useInterop({
         duration: outcome.warnings.length ? 7000 : undefined,
       });
     },
-    [openDiagram],
+    [openDiagram, importDestination],
   );
 
   /** Files from a drop, the file input or Open…: one, or several (a compose file and its overrides). */
@@ -1040,6 +1044,13 @@ export function useInterop({
     saveAs: () => saveToDevice(true),
     saveTo,
     openFile,
+    importFiles: importFileList,
+    /** Discard in-memory practice import UI on Restart; this never changes ordinary Open's saved binding. */
+    resetImports: () => {
+      importSession.current++;
+      setImported(null);
+      setDialog(null);
+    },
     openFrom,
     openPaste: () => setDialog({ kind: "paste" }),
     /** The open diagram's Import report, when it came from an infrastructure import in this tab. */

@@ -1,3 +1,6 @@
+import { importAndReview } from "./importAndReview";
+import { libraryReuse } from "./libraryReuse";
+import { workbenchTour } from "./workbenchTour";
 import { routeByAddress } from "./routeByAddress";
 import { networkPolicy } from "./networkPolicy";
 import { checksAndFixes } from "./checksAndFixes";
@@ -56,6 +59,7 @@ import { withKeyboardSolutions } from "../keyboard";
 
 /** Every tutorial, in the order the list shows them within a track. */
 export const allTutorials: readonly Tutorial[] = [
+  workbenchTour,
   mobileApi,
   quickAdd,
   dotsAndSides,
@@ -67,6 +71,8 @@ export const allTutorials: readonly Tutorial[] = [
   dependencies,
   arrange,
   commandPalette,
+  libraryReuse,
+  importAndReview,
   sharePresent,
   apiGateway,
   routeByAddress,

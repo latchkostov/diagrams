@@ -16,7 +16,12 @@ it("follows chapter order even when the catalog's tracks are interleaved", () =>
   for (let i = 0; i < ordered.length - 1; i++) {
     expect(nextTutorial(ordered[i], tutorials, {})).toBe(ordered[i + 1]);
   }
-  expect(lessonNumber(ordered[12], tutorials)).toBe("2.1");
+  expect(
+    lessonNumber(
+      ordered.find((lesson) => lesson.track === "blocks")!,
+      tutorials,
+    ),
+  ).toBe("2.1");
 });
 
 it("skips done and quarantined lessons, but offers an unfinished current version", () => {

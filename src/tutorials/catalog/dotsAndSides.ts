@@ -3,12 +3,12 @@ import type { Tutorial } from "../types";
 
 export const dotsAndSides: Tutorial = {
   id: "dots-and-sides",
-  version: 1,
+  version: 2,
   track: "basics",
   level: 1,
   minutes: 3,
   title: msg("tutorials.dotsAndSides.title"),
-  summary: msg("tutorials.dotsAndSides.summary"),
+  summary: msg("tutorials.dotsAndSides.summaryV2"),
   start: () => ({
     format: "diagrams/v1",
     title: t("tutorials.dotsAndSides.diagramTitle"),
@@ -38,38 +38,84 @@ export const dotsAndSides: Tutorial = {
       sticky: true,
     },
     {
+      id: "describe",
+      title: msg("tutorials.dotsAndSides.describeTitle"),
+      goal: () => t("tutorials.dotsAndSides.describeGoal", { name: t("tutorials.dotsAndSides.edgeName") }),
+      done: msg("tutorials.dotsAndSides.describeDone"),
+      check: { kind: "label", subject: "link", is: msg("tutorials.dotsAndSides.edgeName") },
+      settle: "naming",
+      sticky: true,
+      targets: [{ testId: "edge-{link}", tip: msg("tutorials.dotsAndSides.describeTitle") }],
+      demo: [{ kind: "rename", subject: "link", label: msg("tutorials.dotsAndSides.edgeName") }],
+      solution: [
+        { click: "edge-{link}" },
+        { press: "Enter" },
+        { fill: "inspector-field-label", text: msg("tutorials.dotsAndSides.edgeName") },
+        { press: "Enter" },
+      ],
+    },
+    {
       id: "side",
       title: msg("tutorials.dotsAndSides.sideTitle"),
-      goal: msg("tutorials.dotsAndSides.sideGoal"),
+      goal: () => t("tutorials.dotsAndSides.sideGoalV2", { destination: t("tutorials.dotsAndSides.aName") }),
       done: msg("tutorials.dotsAndSides.sideDone"),
       check: { kind: "prop", edge: ["app", "a"], prop: "targetSide", op: "=", value: "top" },
       targets: [
-        { testId: "handle-{a}-top", tip: msg("tutorials.dotsAndSides.sideGoal") },
-        { testId: "node-{a}", tip: msg("tutorials.dotsAndSides.sideGoal") },
+        {
+          testId: "handle-{a}-top",
+          tip: () => t("tutorials.dotsAndSides.sideGoalV2", { destination: t("tutorials.dotsAndSides.aName") }),
+        },
+        {
+          testId: "node-{a}",
+          tip: () => t("tutorials.dotsAndSides.sideGoalV2", { destination: t("tutorials.dotsAndSides.aName") }),
+        },
       ],
       demo: [{ kind: "connect", from: "app", to: "a", sourceSide: "right", targetSide: "top" }],
-      solution: [{ drag: "handle-{app}-right", to: "handle-{a}-top" }],
+      solution: [{ click: "canvas-pane" }, { drag: "handle-{app}-right", to: "handle-{a}-top" }],
       sticky: true,
     },
     {
       id: "reconnect",
+      settle: "naming",
+      hint: () => t("tutorials.dotsAndSides.reconnectHint", { destination: t("tutorials.dotsAndSides.bName") }),
       title: msg("tutorials.dotsAndSides.reconnectTitle"),
-      goal: msg("tutorials.dotsAndSides.reconnectGoal"),
+      goal: () =>
+        t("tutorials.dotsAndSides.reconnectGoalV2", {
+          name: t("tutorials.dotsAndSides.edgeName"),
+          destination: t("tutorials.dotsAndSides.bName"),
+        }),
       done: msg("tutorials.dotsAndSides.reconnectDone"),
       check: {
         kind: "all",
         checks: [
           { kind: "edge", from: "app", to: "b" },
+          { kind: "label", subject: "link", is: msg("tutorials.dotsAndSides.edgeName") },
+          { kind: "relation", from: "app", to: "b", edgeKind: "sync", relation: "flow" },
+          { kind: "prop", edge: ["app", "b"], prop: "sourceSide", op: "=", value: "right" },
           { kind: "relation", from: "app", to: "a", absent: true },
         ],
       },
       targets: [
-        { testId: "reconnect-{link}-target", tip: msg("tutorials.dotsAndSides.reconnectGoal") },
-        { testId: "edge-{link}", tip: msg("tutorials.dotsAndSides.reconnectGoal") },
+        {
+          testId: "reconnect-{link}-target",
+          tip: () =>
+            t("tutorials.dotsAndSides.reconnectGoalV2", {
+              name: t("tutorials.dotsAndSides.edgeName"),
+              destination: t("tutorials.dotsAndSides.bName"),
+            }),
+        },
+        {
+          testId: "edge-{link}",
+          tip: () =>
+            t("tutorials.dotsAndSides.reconnectGoalV2", {
+              name: t("tutorials.dotsAndSides.edgeName"),
+              destination: t("tutorials.dotsAndSides.bName"),
+            }),
+        },
       ],
       demo: [{ kind: "reconnect", edge: ["app", "a"], to: "b" }],
       solution: [{ click: "edge-{link}" }, { drag: "reconnect-{link}-target", to: "node-{b}" }],
     },
   ],
-  finish: { text: msg("tutorials.dotsAndSides.finish") },
+  finish: { text: msg("tutorials.dotsAndSides.finishV2") },
 };

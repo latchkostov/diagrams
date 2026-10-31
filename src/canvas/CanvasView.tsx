@@ -1,5 +1,6 @@
 import { Icon } from "../components/Icon";
 import { observationPorts } from "../lib/observations";
+import { currentObservationSource } from "../palette/observationSource";
 import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
 import { activateDock, closeWorkbenchDock } from "./inspector/dockActions";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
@@ -485,7 +486,11 @@ function CanvasInner({
       setNodes(s.nodes);
       setEdges(s.edges);
     },
-    (direction, selection) => onHistoryStep.current(direction, selection),
+    (direction, selection) => {
+      const source = currentObservationSource();
+      if (source) observationPorts.history.publish({ ...source, action: direction });
+      onHistoryStep.current(direction, selection);
+    },
     room,
     privacyFlags,
   );

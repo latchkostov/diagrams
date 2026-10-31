@@ -131,6 +131,16 @@ export type LiveInput = "traffic" | "capacity" | "scale";
 
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
+  | { kind: "navigation"; subject: string }
+  | { kind: "toolSearch"; stencil: string; closed?: true }
+  | { kind: "gallery"; feature: string; slug: string }
+  | { kind: "history"; action: "undo" | "redo"; subject?: string; label?: Words }
+  | { kind: "documentSize"; nodes: number; edges: number }
+  | { kind: "ownedCopy" }
+  | { kind: "camera"; view: ProductObservations["camera"]["view"] }
+  | { kind: "importReport"; source: string; privacy?: boolean }
+  | { kind: "absentNode"; subject: string }
+  | { kind: "stencil"; subject: string; is: string }
   | { kind: "dock"; tab: ProductObservations["dock"]["tab"]; snap?: ProductObservations["dock"]["snap"] }
   | {
       kind: "checks";
@@ -153,7 +163,7 @@ export type Check =
     }
   | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
   | { kind: "export"; format: ProductObservations["exports"]["format"] }
-  | { kind: "import"; format: ProductObservations["imports"]["format"] }
+  | { kind: "import"; format: ProductObservations["imports"]["format"]; source?: string }
   | { kind: "aiTurn"; turn?: ProductObservations["ai"]["kind"]; subject?: string }
   | { kind: "collaboration"; status: "joined" | "left"; role?: ProductObservations["collaboration"]["role"] }
   | { kind: "node"; subject: string }
@@ -222,6 +232,8 @@ export type Check =
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
+  | { kind: "importFixture" }
+  | { kind: "stencil"; subject: string; stencil: string }
   | { kind: "add"; subject: string; stencil: string; after?: string }
   /** Restore an absent subject, independent of the editor's undo history. */
   | { kind: "remove"; subject: string }
@@ -297,6 +309,9 @@ export type Demo =
  * to the other, whatever its saved id.
  */
 export type UiStep =
+  | { history: "undo" | "redo" }
+  | { importFixture: true }
+  | { pan: true }
   | { click: string }
   /** Open a disclosure, keeping it open when a previous lesson already opened it. */
   | { open: string }

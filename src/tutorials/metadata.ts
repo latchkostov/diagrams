@@ -5,6 +5,7 @@ import type { TutorialMetadata } from "./types";
 /** Titles only. Entry points must never import the catalog's steps into startup or canvas. */
 export const tutorialMetadata: readonly TutorialMetadata[] = (
   [
+    { id: "workbench-tour", title: msg("tutorials.workbenchTour.title") },
     { id: "mobile-api", title: msg("tutorials.mobileApi.title") },
     { id: "quick-add", title: msg("tutorials.quickAdd.title") },
     { id: "dots-and-sides", title: msg("tutorials.dotsAndSides.title") },
@@ -16,6 +17,8 @@ export const tutorialMetadata: readonly TutorialMetadata[] = (
     { id: "dependencies", title: msg("tutorials.dependencies.title") },
     { id: "arrange", title: msg("tutorials.arrange.title") },
     { id: "command-palette", title: msg("tutorials.commandPalette.title") },
+    { id: "library-reuse", title: msg("tutorials.libraryReuse.title") },
+    { id: "import-and-review", title: msg("tutorials.importAndReview.title") },
     { id: "share-present", title: msg("tutorials.sharePresent.title") },
     { id: "api-gateway", title: msg("tutorials.apiGateway.title") },
     { id: "route-by-address", title: msg("tutorials.routeByAddress.title") },

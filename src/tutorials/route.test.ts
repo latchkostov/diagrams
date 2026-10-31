@@ -59,6 +59,24 @@ it("opens an explicit draft without reloading or retaining tutorial, Live or sha
   }
 });
 
+it("a gallery Run action leaves the tutorial for the chosen example and simulation", () => {
+  const pushState = vi.fn();
+  vi.stubGlobal("window", {
+    location: new URL("https://example.test/?tutorial=library-reuse"),
+    history: { pushState },
+  });
+  try {
+    tutorialRoute.openDiagram("kafka-order-pipeline", "small-burst");
+    expect(pushState).toHaveBeenCalledExactlyOnceWith(
+      null,
+      "",
+      "/?view=canvas&example=kafka-order-pipeline&sim=small-burst&live=1",
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 it("opens app views under the current sub-path without reloading or retaining tutorial state", () => {
   const pushState = vi.fn();
   vi.stubGlobal("window", {

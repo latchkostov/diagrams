@@ -1,4 +1,6 @@
 import { runChecks } from "../checks/run";
+import { importFiles } from "../interop/formats";
+import { importCompose } from "../interop/infra/pipeline";
 import { observationPorts } from "../lib/observations";
 /* eslint-disable local/no-literal-ui-text -- Labels these fake edits write are test input, not UI copy. */
 import { visibilityFixtures } from "./visibility.fixture";
@@ -487,6 +489,9 @@ function sandbox(
           (e) => !edgeIds.includes(e.id) && !nodeIds.includes(e.from) && !nodeIds.includes(e.to),
         ),
       }),
+    addNode(stencil: string): string {
+      return editor.addStencil(stencil);
+    },
     addStencil(stencil: string) {
       const node = newNode(stencil);
       commit(() => ({ ...diagram, nodes: [...diagram.nodes, node] }));
@@ -687,6 +692,15 @@ function sandbox(
     close: vi.fn(),
     host,
     initial: savedDocument ?? startOf(tutorial),
+    importPractice: async (signal) => {
+      const outcome = await importFiles([
+        { name: "tutorial-status-compose.yaml", text: readFileSync("public/tutorial-status-compose.yaml", "utf8") },
+      ]);
+      signal.throwIfAborted();
+      if (outcome.ok !== true) throw new Error("Fixture import failed");
+      write(outcome.diagram);
+      observationPorts.imports.publish({ ...source, format: outcome.format, source: "tutorial-status-compose.yaml" });
+    },
     present: (on) => {
       app.presenting = on;
       runner.appChanged({ ...app });
@@ -762,6 +776,21 @@ function sandbox(
       const edge = (pair: readonly [string, string]) =>
         diagram.edges.find((e) => e.from === id(pair[0]) && e.to === id(pair[1]))!;
       switch (demo.kind) {
+        case "importFixture": {
+          const outcome = importCompose([
+            { name: "tutorial-status-compose.yaml", text: readFileSync("public/tutorial-status-compose.yaml", "utf8") },
+          ]);
+          if (outcome.ok !== true) throw new Error("Fixture import failed");
+          write(outcome.diagram);
+          observationPorts.imports.publish({
+            ...source,
+            format: outcome.format,
+            source: "tutorial-status-compose.yaml",
+          });
+          return;
+        }
+        case "stencil":
+          return editor.updateNode(id(demo.subject), { stencil: demo.stencil });
         case "remove":
           return editor.deleteElements({ nodeIds: [id(demo.subject)] });
         case "add":
@@ -782,9 +811,11 @@ function sandbox(
         case "name":
           return editor.startEditing({ kind: "node", id: id(demo.subject) });
         case "rename":
-          return isGroup(id(demo.subject))
-            ? editor.updateGroup(id(demo.subject), { label: demo.label() })
-            : editor.updateNode(id(demo.subject), { label: demo.label() });
+          return diagram.edges.some((e) => e.id === id(demo.subject))
+            ? patchEdge(id(demo.subject), { label: demo.label() })
+            : isGroup(id(demo.subject))
+              ? editor.updateGroup(id(demo.subject), { label: demo.label() })
+              : editor.updateNode(id(demo.subject), { label: demo.label() });
         case "prop":
           return demo.edge
             ? editor.setEdgeProps(edge(demo.edge).id, demo.props)
@@ -1632,9 +1663,12 @@ describe("every tutorial's completion contract", () => {
                 s.diagram.simulations!.find((sim) => sim.id === run)!,
                 run,
               );
-            expect(s.diagram.nodes).toHaveLength(before + missing.size - removed.size);
+            const replacesPractice = step.demo.some((demo) => demo.kind === "importFixture");
+            if (replacesPractice)
+              expect(s.diagram.nodes.map((node) => node.id).sort()).toEqual(["api", "redis", "worker"]);
+            else expect(s.diagram.nodes).toHaveLength(before + missing.size - removed.size);
             for (const [name, id] of Object.entries(bindings))
-              if (id && !tutorial.subjects[name].edge) {
+              if (id && !tutorial.subjects[name].edge && !replacesPractice) {
                 if (removed.has(id)) expect(s.diagram.nodes.some((node) => node.id === id)).toBe(false);
                 else expect(s.subject(name)).toBe(id);
               }
@@ -2564,15 +2598,20 @@ describe("completion regressions", () => {
     },
   );
 
-  it("Skip after adding the topic, before selecting Service 1, selects it without a second topic", async () => {
+  it("adding a topic keeps it selected and waits for explicit palette navigation without a duplicate", async () => {
     const s = sandbox(commandPalette);
     s.runner.send({ type: "start" });
     s.editor.addStencil("kafka.topic");
-    expect(state(s)).toMatchObject({ index: 0, value: "completing" });
-    await skip(s, commandPalette);
     expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    expect(s.mode.selection).toEqual([s.subject("topic")]);
+    observationPorts.navigation.publish({
+      documentId: "tutorial-sandbox",
+      identity: s.editor.getDocumentVersion().identity,
+      nodeId: s.subject("topic"),
+    });
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
     expect(s.diagram.nodes.filter((n) => n.stencil === "kafka.topic")).toHaveLength(1);
-    expect(s.mode.selection).toEqual([s.subject("anchor")]);
+    expect(s.mode.selection).toEqual([s.subject("topic")]);
   });
 
   it("Present, reload, then Continue from Leave lands on Share: the fresh app is not presenting", async () => {

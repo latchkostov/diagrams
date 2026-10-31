@@ -9,14 +9,14 @@ const addAppGoalWords = () => t("tutorials.quickAdd.addAppGoal", { query: stenci
 
 export const quickAdd: Tutorial = {
   id: "quick-add",
-  version: 1,
+  version: 2,
   track: "basics",
   level: 1,
   minutes: 2,
   title: msg("tutorials.quickAdd.title"),
-  summary: msg("tutorials.quickAdd.summary"),
+  summary: msg("tutorials.quickAdd.summaryV2"),
   start: () => ({ format: "diagrams/v1", title: t("tutorials.quickAdd.diagramTitle"), nodes: [], edges: [] }),
-  subjects: { app: { stencils: ["client.browser"] }, api: { role: "processor" }, db: { role: "store" } },
+  subjects: { app: { stencils: ["client.browser"] }, api: { role: "processor" }, db: { stencils: ["postgres"] } },
   steps: [
     {
       id: "add-app",
@@ -73,7 +73,7 @@ export const quickAdd: Tutorial = {
       id: "grow-db",
       title: msg("tutorials.quickAdd.growDbTitle"),
       goal: growDbGoalWords,
-      done: msg("tutorials.quickAdd.growDbDone"),
+      done: msg("tutorials.quickAdd.growDbDoneV2"),
       check: {
         kind: "all",
         checks: [
@@ -86,9 +86,13 @@ export const quickAdd: Tutorial = {
         { testId: "node-{api}", tip: growDbGoalWords },
       ],
       demo: [{ kind: "add", subject: "db", stencil: "postgres", after: "api" }],
-      solution: [{ click: "node-{api}" }, { press: "Alt+ArrowRight" }, { press: "Enter" }],
-      guide: { quickAdd: stencilSearch("postgres") },
+      solution: [
+        { click: "node-{api}" },
+        { press: "Alt+ArrowRight" },
+        { fill: "quick-add-search", text: stencilSearch("postgres") },
+        { press: "Enter" },
+      ],
     },
   ],
-  finish: { text: msg("tutorials.quickAdd.finish") },
+  finish: { text: msg("tutorials.quickAdd.finishV2") },
 };

@@ -10,6 +10,196 @@
 // stays.
 
 const en = {
+  "tutorials.commandPalette.finishV2":
+    "You added a topic, found it and used a Properties command; its description records the result. Commands depend on selection and mode: which would be available on an edge?",
+  "tutorials.annotate.zoneGoalV2":
+    "{annotate} → {tool}. Name the region, then press {escape}. A zone is visual only: its nodes do not become members.",
+  "tutorials.annotate.noteGoalV2":
+    "{annotate} → {tool}. Explain one assumption, then press {escape}. A Note keeps that context in a visible card.",
+  "tutorials.annotate.titleGoalV2":
+    "{annotate} → {tool}. Write a short title for the system, then press {escape}. Text labels the diagram without a card.",
+  "tutorials.annotate.finishV2":
+    "You added a title, an assumption and a visual region; their words explain the diagram without changing traffic. A zone does not own nodes: when would you need a boundary instead?",
+  "tutorials.propertySheet.descriptionGoalV2":
+    "In Description, explain the responsibility: Payments authorizes charges and records their outcome. Use your own words if you prefer.",
+  "tutorials.propertySheet.openGoalV2":
+    "Open Properties by double-clicking the API. Label is its name in Edit; Live puts vitals before the Edit properties disclosure.",
+  "tutorials.propertySheet.finishV2":
+    "You named the service and documented its responsibility; Properties and the card showed that context. A description explains intent, not measured behavior.",
+  "tutorials.dotsAndSides.sideGoalV2":
+    "Connect the app to the top dot of {destination}. Choosing a side can untangle a crowded diagram; it changes the route, not the relationship.",
+  "tutorials.dotsAndSides.finishV2":
+    "You chose a connection side and reconnected the same named Request; its label, relationship and side setting survived. Routing clarifies the drawing, not the destination service’s behavior.",
+  "tutorials.quickAdd.growDbDoneV2": "Your own search found a database and added it after the API, connected.",
+  "tutorials.quickAdd.finishV2":
+    "You placed a browser, grew an API and searched for its database; the connections show the resulting flow. Inferred defaults are a starting point: which relationship would you review?",
+  "tutorials.mobileApi.finishV2":
+    "You placed an app and API, connected and named them; Live showed requests reaching the API. This is an illustrative model: what would you add to explain where its data lives?",
+  "tutorials.mobileApi.addApiDoneV2": "The app and API are separate nodes. The next action will connect them.",
+  "tutorials.mobileApi.addApiHintV2":
+    "Click empty canvas to clear the app selection. Add → search Service → choose it. Adding with one node selected would connect automatically.",
+  "tutorials.mobileApi.addApiGoalV2":
+    "Clear the selection, then add Service from Add. Place it independently so you can connect it yourself next.",
+  "tutorials.commandPalette.summaryV2":
+    "Find a stencil, a node and a command with Ctrl+K. One search helps you discover actions in context. Prerequisite: select a node; about three minutes.",
+  "tutorials.annotate.summaryV2":
+    "Add a title, an assumption and a visual region. Annotations explain intent without creating traffic or membership. Prerequisite: use Add; about three minutes.",
+  "tutorials.propertySheet.summaryV2":
+    "Document a service’s responsibility and inspect its card. Names and context make the diagram useful to a reader. Prerequisite: select a node; about three minutes.",
+  "tutorials.dotsAndSides.summaryV2":
+    "Choose a connection side and reconnect the same named Request. Clear routes make crowded diagrams easier to read. Prerequisite: add nodes; about three minutes.",
+  "tutorials.quickAdd.summaryV2":
+    "Place a browser and grow its API and database. Quick-add keeps a drawing connected while you name it. Prerequisite: select a node; about two minutes.",
+  "tutorials.mobileApi.summaryV2":
+    "Build an app-to-API flow and see its requests arrive. A small connected model makes the system easy to explain. No prerequisites; about three minutes.",
+  "tutorials.commandPalette.addTipV2": "Ctrl+K → {query} → {command}.",
+  "tutorials.commandPalette.addGoalV2":
+    "Open Ctrl+K, search {query} and choose {command}. The new topic stays selected; the palette also finds existing nodes.",
+  "tutorials.importAndReview.reportTip": "Search {report} in Ctrl+K.",
+  "tutorials.commandPalette.actionTip": "Search {command} in Ctrl+K.",
+  "tutorials.dotsAndSides.reconnectGoalV2":
+    "Select the connection and move its target end to {destination}. Keep its name {name}, Request relationship and source side; do not draw a second connection.",
+  "tutorials.dotsAndSides.reconnectHint":
+    "Keyboard: select the edge, open its context menu with Shift+F10, then Reconnect → To and search for {destination}. Route → To side sets a side without dragging.",
+  "tutorials.dotsAndSides.edgeName": "Bookings query",
+  "tutorials.dotsAndSides.describeDone": "The connection has a name worth preserving.",
+  "tutorials.dotsAndSides.describeGoal":
+    "Open the connection Label and name it {name}. This meaning should survive a reconnect.",
+  "tutorials.dotsAndSides.describeTitle": "Name the connection",
+  "tutorials.annotate.zoneHint":
+    "A boundary owns members and moves them together; a zone does neither. Optional: Annotate → Shape adds an outline; its Properties choose shape and colour.",
+  "tutorials.annotate.zoneText": "Status publishing region",
+  "tutorials.propertySheet.readDone":
+    "The documented service has an inspectable Live card. No traffic measurement was required here.",
+  "tutorials.propertySheet.readGoal":
+    "Go Live and inspect Payments. Its readout is separate from Edit properties; compare the card with the responsibility you wrote.",
+  "tutorials.propertySheet.readTitle": "View the documented card",
+  "tutorials.commandPalette.description": "Carries status updates to readers.",
+  "tutorials.commandPalette.actionDone":
+    "The topic now has a description explaining its purpose. Available commands depend on your selection and mode.",
+  "tutorials.commandPalette.actionGoal":
+    "With the topic selected, use Ctrl+K to find {command}. In Description write: {description}",
+  "tutorials.commandPalette.actionTitle": "Find an action for the selection",
+  "tutorials.importAndReview.finish":
+    "You imported Compose, reviewed its report and corrected a worker; the document kept its connection and source report. Inference is not infrastructure discovery: what would you verify against the real system?",
+  "tutorials.importAndReview.confirmDone": "You acknowledged the privacy and provenance limits of this import.",
+  "tutorials.importAndReview.confirmGoal":
+    "Read that nothing was uploaded. Close the report, then Done. This disposable practice is not an owned file or a discovery of deployed infrastructure.",
+  "tutorials.importAndReview.confirmTitle": "Keep the inference in context",
+  "tutorials.importAndReview.privacyDone": "The source report survived your edits. Reading happened on this device.",
+  "tutorials.importAndReview.privacyGoal":
+    "Reopen {report}. After correcting {name}, check the public practice source and read the privacy footer.",
+  "tutorials.importAndReview.privacyTitle": "Inspect provenance and privacy",
+  "tutorials.importAndReview.correctDone":
+    "The worker is a named Python service and its imported Redis connection remains.",
+  "tutorials.importAndReview.correctHint":
+    "F2 opens Label. The Stencil picker has its own search. This fixture's image name does not reveal the runtime; choose Python for our invented scenario.",
+  "tutorials.importAndReview.correctGoal":
+    "Select worker. In Properties change its Stencil to {stencil}, then name it {name}. Keep its Redis connection.",
+  "tutorials.importAndReview.correctTitle": "Correct the ambiguous worker",
+  "tutorials.importAndReview.readDone": "You acknowledged the report. Its guesses still need your judgment.",
+  "tutorials.importAndReview.readGoal":
+    "Read Guesses, connections found in settings and items not drawn or not read. Close the report, then Done to acknowledge reading; this does not certify the guesses.",
+  "tutorials.importAndReview.readTitle": "Review the guesses",
+  "tutorials.importAndReview.reportDone": "The report shows the source file and what the importer inferred.",
+  "tutorials.importAndReview.reportGoal":
+    "Use Ctrl+K to find {report}, or Details on the import toast. The report belongs to this imported practice.",
+  "tutorials.importAndReview.reportTitle": "Open the import report",
+  "tutorials.importAndReview.importDone":
+    "The real Compose parser created the practice diagram without acquiring ownership.",
+  "tutorials.importAndReview.importHint":
+    "Ctrl+O opens the device file picker. Use tutorial-status-compose.yaml, not a file from your own infrastructure. Native diagrams, Mermaid, draw.io, Compose, AsyncAPI, Kubernetes and Terraform are supported by Open.",
+  "tutorials.importAndReview.importGoal":
+    "Download the practice YAML, then File → Open it. It contains an invented API, worker and Redis. Import goes into this disposable practice, never Your diagrams.",
+  "tutorials.importAndReview.importTitle": "Open the public practice file",
+  "tutorials.importAndReview.workerName": "Status worker",
+  "tutorials.importAndReview.download": "Download practice file",
+  "tutorials.importAndReview.summary":
+    "Import an invented Compose system and review its guesses before trusting the diagram. Source files describe a model, not discovered infrastructure. Prerequisite: Properties and naming; about four minutes, fully offline.",
+  "tutorials.importAndReview.title": "Review what an import inferred",
+  "tutorials.libraryReuse.finish":
+    "You duplicated, reversed and restored a service, then explicitly kept a copy; Your diagrams showed that owned entry. Browser storage is not a backup: where would you keep a portable diagram file?",
+  "tutorials.libraryReuse.keepDone": "The successful copy is listed in Your diagrams; the tutorial is still open.",
+  "tutorials.libraryReuse.keepHint":
+    "Practice never autosaves. Save a copy is the explicit exception in this lesson. Device or configured cloud file destinations are separate choices after you open your owned copy; no account is needed here.",
+  "tutorials.libraryReuse.keepGoal":
+    "Choose Save a copy here, then open Your diagrams from File and find Status page practice. This action deliberately keeps one copy in this browser.",
+  "tutorials.libraryReuse.keepTitle": "Keep an explicit copy",
+  "tutorials.libraryReuse.redoDone": "Redo restored the distinct, named copy.",
+  "tutorials.libraryReuse.redoGoal": "Redo until the duplicate and its name {name} return beside the original.",
+  "tutorials.libraryReuse.redoTitle": "Restore the copy",
+  "tutorials.libraryReuse.undoDone": "Undo removed the copy and kept the original.",
+  "tutorials.libraryReuse.undoGoal":
+    "Undo until the duplicate disappears; its name may be a separate edit. Keep the original service.",
+  "tutorials.libraryReuse.undoTitle": "Reverse the copy",
+  "tutorials.libraryReuse.duplicateDone": "Two distinct nodes remain, and the copy has its own responsibility.",
+  "tutorials.libraryReuse.duplicateHint":
+    "On a Mac use Command+D. Duplicate keeps the original; the copy lands in free space. F2 opens its Label in Properties.",
+  "tutorials.libraryReuse.duplicateGoal":
+    "Select the new service, press Ctrl+D, then F2 and name the copy {name}. Keep both services.",
+  "tutorials.libraryReuse.duplicateTitle": "Copy and name it",
+  "tutorials.libraryReuse.addDone": "A new service is available to copy.",
+  "tutorials.libraryReuse.addHint":
+    "Add searches Stencils. Ctrl+K can also add a Service; examples and stencils are different libraries.",
+  "tutorials.libraryReuse.addGoal": "Find Service in Add and place one in this practice diagram.",
+  "tutorials.libraryReuse.addTitle": "Add a reusable service",
+  "tutorials.libraryReuse.galleryDone":
+    "The gallery displayed a matching public example. Your practice diagram stayed here.",
+  "tutorials.libraryReuse.galleryHint":
+    "Open the diagram picker, then Browse examples. Use the Shows list and Escape to return without opening a result.",
+  "tutorials.libraryReuse.galleryGoal":
+    "Browse Examples, filter Shows to Partitions and find the order pipeline, then cancel. Previewing an example does not replace this practice.",
+  "tutorials.libraryReuse.galleryTitle": "Find a public starting point",
+  "tutorials.libraryReuse.copyName": "Status notifier",
+  "tutorials.libraryReuse.renderer": "Page renderer",
+  "tutorials.libraryReuse.status": "Status API",
+  "tutorials.libraryReuse.diagramTitle": "Status page practice",
+  "tutorials.libraryReuse.summary":
+    "Turn temporary practice into a copy you own in this browser. Examples are starting points; saving is a deliberate choice. Prerequisite: add and name a node; about four minutes.",
+  "tutorials.libraryReuse.title": "Keep and reuse a diagram",
+  "tutorials.workbenchTour.finish":
+    "You found tools, read service vitals and changed camera modes; the readout and View menu showed the results. These are model readings: which real measurements would you compare them with?",
+  "tutorials.workbenchTour.customDone": "Your camera action returned the view to Custom.",
+  "tutorials.workbenchTour.customGoal":
+    "Pan the canvas deliberately to return to Custom. Keyboard: Shift+0 sets 100% zoom and takes control.",
+  "tutorials.workbenchTour.customTitle": "Take the view back",
+  "tutorials.workbenchTour.followDone": "Following owns the automatic view until you take it back.",
+  "tutorials.workbenchTour.followGoal":
+    "Choose Following in the View menu. This gives the camera permission to follow activity.",
+  "tutorials.workbenchTour.followTitle": "Follow the work",
+  "tutorials.workbenchTour.focusDone": "Focus gives active work more room without deleting quiet nodes.",
+  "tutorials.workbenchTour.focusGoal": "Choose Focus in the View menu. Compare the active path with the whole map.",
+  "tutorials.workbenchTour.focusTitle": "Focus on activity",
+  "tutorials.workbenchTour.overviewDone": "Overview fits the whole diagram, including the distant worker.",
+  "tutorials.workbenchTour.overviewGoal":
+    "Choose Overview in the View menu. Find the distant worker inside its boundary; zoom changes detail, not the model.",
+  "tutorials.workbenchTour.overviewTitle": "See the whole diagram",
+  "tutorials.workbenchTour.readDone": "The service processed traffic and its readout showed the model's vitals.",
+  "tutorials.workbenchTour.readHint":
+    "Hover the service, or focus it and press Enter for its readout. Edit properties is a separate disclosure below its vitals.",
+  "tutorials.workbenchTour.readGoal":
+    "Go Live, then inspect Bookings API while it serves a request. Live keeps your current view until you ask to move it.",
+  "tutorials.workbenchTour.readTitle": "Read Live vitals",
+  "tutorials.workbenchTour.toolsDone": "You found a matching stencil and closed the flyout without adding it.",
+  "tutorials.workbenchTour.toolsHint":
+    "Add searches the Stencils library. Escape closes its flyout; choosing a result would edit the diagram.",
+  "tutorials.workbenchTour.toolsGoal":
+    "Open Add, search for Service, then press Escape twice: first clear the search, then close Add. Keep the four practice nodes.",
+  "tutorials.workbenchTour.toolsTitle": "Find without adding",
+  "tutorials.workbenchTour.propertiesDone": "Properties follows your selection. It does not create a second panel.",
+  "tutorials.workbenchTour.propertiesHint":
+    "Selecting the service opens its Properties dock. Keyboard: reach the service with Tab; Properties follows the selection. Checks and AI are other dock tabs.",
+  "tutorials.workbenchTour.propertiesGoal":
+    "Select Bookings API and open Properties. The dock describes the selection; Checks and AI share this space.",
+  "tutorials.workbenchTour.propertiesTitle": "Read the selected service",
+  "tutorials.workbenchTour.background": "Background jobs",
+  "tutorials.workbenchTour.worker": "Background worker",
+  "tutorials.workbenchTour.db": "Bookings DB",
+  "tutorials.workbenchTour.api": "Bookings API",
+  "tutorials.workbenchTour.client": "Client",
+  "tutorials.workbenchTour.summary":
+    "Find tools, read a service and take control of the view. Knowing where context lives keeps drawing simple. No prerequisites; about three minutes.",
+  "tutorials.workbenchTour.title": "Find your way around",
   "toast.undoUnavailable": "Undo unavailable: the diagram changed.",
   // Short rail copy: two lines at 10.5px minimum. Full names stay in tooltips and accessible labels.
   "rail.select": "Select",

@@ -1,0 +1,28 @@
+# Invented, disposable tutorial fixture. No deployed infrastructure or credentials.
+name: tutorial-status
+services:
+  api:
+    image: example.invalid/status-api:1
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    ports:
+      - "8080:8080"
+  worker:
+    image: example.invalid/status-task:1
+    env_file: ./tutorial-status-optional.env
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+  redis:
+    image: redis:7
+  debug-viewer:
+    image: example.invalid/status-debug:1
+    profiles: [debug]

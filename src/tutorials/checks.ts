@@ -28,6 +28,7 @@ import type { ProductObservations } from "../lib/observations";
 
 /** What a step can see: the sandbox diagram, whether it's live, and Live's counters (real messages). */
 export interface SandboxView {
+  toolSurface?: string;
   observations?: Partial<ProductObservations>;
   diagram: DiagramFile;
   live: boolean;
@@ -141,9 +142,11 @@ export function nearMiss(
   const id = subjects[check.subject];
   const node = id ? view.diagram.nodes.find((n) => n.id === id) : undefined;
   const group = id ? view.diagram.groups?.find((g) => g.id === id) : undefined;
-  const typed = (node?.label ?? group?.label)?.trim() ?? "";
+  const edge = id ? view.diagram.edges.find((e) => e.id === id) : undefined;
+  const typed = (node?.label ?? group?.label ?? edge?.label)?.trim() ?? "";
   const expected = check.is();
-  if ((!node && !group) || !typed || same(typed, expected)) return null;
+  if ((!node && !group && !edge) || !typed || same(typed, expected)) return null;
+  if (edge) return { expected, typed };
   if (!node)
     return same(typed, t("chrome.untitledBoundary")) || Object.values(toneLabel).some((label) => same(typed, label))
       ? null
@@ -166,6 +169,42 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       ? equal(actual, value)
       : typeof actual === "number" && typeof value === "number" && (op === ">=" ? actual >= value : actual <= value));
   switch (check.kind) {
+    case "navigation":
+      return !!subjects[check.subject] && view.observations?.navigation?.nodeId === subjects[check.subject];
+    case "toolSearch":
+      return (
+        !!view.observations?.tools?.query.trim() &&
+        !!view.observations.tools.stencils.includes(check.stencil) &&
+        (!check.closed || view.toolSurface === "closed")
+      );
+    case "gallery":
+      return (
+        view.observations?.gallery?.feature === check.feature && view.observations.gallery.slugs.includes(check.slug)
+      );
+    case "history":
+      return (
+        view.observations?.history?.action === check.action &&
+        (!check.subject ||
+          view.diagram.nodes.some(
+            (node) => node.id === subjects[check.subject!] && (!check.label || same(node.label, check.label())),
+          ))
+      );
+    case "documentSize":
+      return view.diagram.nodes.length === check.nodes && view.diagram.edges.length === check.edges;
+    case "ownedCopy":
+      return (
+        !!view.observations?.copied?.slug && !!view.observations.library?.slugs.includes(view.observations.copied.slug)
+      );
+    case "camera":
+      return view.observations?.camera?.view === check.view;
+    case "importReport": {
+      const report = view.observations?.importReport;
+      return report?.source === check.source && (check.privacy === undefined || report.privacy === check.privacy);
+    }
+    case "absentNode":
+      return !subjects[check.subject];
+    case "stencil":
+      return view.diagram.nodes.some((node) => node.id === subjects[check.subject] && node.stencil === check.is);
     case "view":
       return view.observations?.dock?.view === check.view;
     case "dock":
@@ -193,7 +232,10 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "export":
       return view.observations?.exports?.format === check.format && view.observations.exports.bytes > 0;
     case "import":
-      return view.observations?.imports?.format === check.format;
+      return (
+        view.observations?.imports?.format === check.format &&
+        (check.source === undefined || view.observations.imports.source === check.source)
+      );
     case "aiTurn": {
       const event = view.observations?.ai;
       return (
@@ -404,9 +446,11 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "label": {
       const id = subjects[check.subject];
       const node = id
-        ? (view.diagram.nodes.find((n) => n.id === id) ?? view.diagram.groups?.find((g) => g.id === id))
+        ? (view.diagram.nodes.find((n) => n.id === id) ??
+          view.diagram.groups?.find((g) => g.id === id) ??
+          view.diagram.edges.find((e) => e.id === id))
         : undefined;
-      return !!node && same(node.label, check.is());
+      return !!node && same(node.label ?? "", check.is());
     }
     case "live":
       return view.live;

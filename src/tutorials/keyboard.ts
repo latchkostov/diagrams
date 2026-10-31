@@ -11,6 +11,8 @@ export const keyboardExceptions: Readonly<Record<string, string>> = {
 };
 
 export type KeyboardUiStep =
+  | { history: "undo" | "redo" }
+  | { importFixture: true }
   | { activate: string }
   | { focus: string }
   | { read: string }
@@ -26,6 +28,9 @@ export type KeyboardUiStep =
   | { command: string; query: Words };
 
 function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
+  if ("history" in step) return [step];
+  if ("importFixture" in step) return [step];
+  if ("pan" in step) return [{ press: "Shift+0" }];
   if ("click" in step) {
     if (step.click === "live-toggle") return [{ command: "live:toggle", query: () => ">" }];
     if (step.click === "fit-view-button") return [{ command: "action:canvas.fit", query: msg("menu.fitView") }];
@@ -43,7 +48,9 @@ function route(step: UiStep, readSection: boolean): KeyboardUiStep[] {
     if (step.hover.startsWith("context-menu-item-")) return [{ menu: step.hover }];
     if (/^(node-|edge-)/.test(step.hover)) return [readSection ? { read: step.hover } : { focus: step.hover }];
     // Timeline/transport hovers only keep the pointer away while traffic runs.
-    return /^(node-|edge-|hover-|inspector-|quick-add-)/.test(step.hover) ? [{ focus: step.hover }] : [];
+    return /^(node-|edge-|hover-|inspector-|quick-add-|palette-item-|example-open-)/.test(step.hover)
+      ? [{ focus: step.hover }]
+      : [];
   }
   if ("pane" in step) return [{ press: "ControlOrMeta+k" }];
   if ("drag" in step) {
