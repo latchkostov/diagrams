@@ -241,11 +241,10 @@ async function play(page: Page, action: ResolvedKeyboardStep) {
     await write(page, action.text);
   } else if ("choose" in action) {
     await focus(page, action.choose);
-    const values = await page.getByTestId(action.choose).evaluate((el) =>
-      Array.from((el as HTMLSelectElement).options)
-        .filter((option) => !option.disabled)
-        .map((option) => option.value),
-    );
+    const values = await page
+      .getByTestId(action.choose)
+      .locator("option:not([disabled])")
+      .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
     const index = values.indexOf(action.value);
     expect(index).toBeGreaterThanOrEqual(0);
     await page.keyboard.press("Alt+ArrowDown");
