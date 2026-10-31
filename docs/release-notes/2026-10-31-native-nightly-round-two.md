@@ -8,6 +8,8 @@ Accessibility scans wait for the real view entrance to finish before measuring c
 
 Bend-carry fixtures also wait for the fit controller before reading drag coordinates, so a briefly stable animation frame cannot place the pointer beneath the editor rail.
 
+Native-file geometry checks wait for the imported document's initial fit before reading annotation positions.
+
 Entry-point Undo checks wait for the complete restored topology after React Flow measures its nodes. The exact node and edge equality checks remain intact.
 
 Cancelled-script checks control the live clock during late code arrival, then explicitly advance it to prove playback still works. Download time cannot accidentally finish the fixture's authored run.
