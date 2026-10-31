@@ -6,7 +6,8 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
-import { test, expect, STORAGE_KEYS, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
+import { expect, STORAGE_KEYS, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
+import { captureTest as test } from "./capture-browser";
 import { installFakeSpeech, openAdvanced } from "./ai-helpers";
 import { recordFor } from "./recording-clock";
 import { emulateTracker } from "./collab-tracker";
@@ -20,9 +21,6 @@ import { contentSecurityPolicy } from "../../scripts/security-headers";
 // Selectors are data-testid only.
 
 test.skip(E2E_TARGET !== "build", "the CSP is sent by the production build's server only");
-
-// Record video takes a real tab capture, accepted automatically (full Chromium's headless mode).
-test.use({ channel: "chromium", launchOptions: { args: ["--auto-accept-this-tab-capture"] } });
 
 const KAFKA = "kafka-order-pipeline";
 

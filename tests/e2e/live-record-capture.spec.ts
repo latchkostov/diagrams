@@ -1,7 +1,9 @@
 import { waitForCameraIdle } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
+import { expect, expectNoErrors, gotoLive } from "./fixtures";
+import { captureTest as test } from "./capture-browser";
 import { installCaptureReady } from "./capture-ready";
+import { chromiumLaunchArgs } from "../../scripts/e2e-chromium";
 
 // Record video captures the tab, so whatever the compositor shows is in the video, worker canvases
 // included. A real tab capture, accepted automatically (full Chromium's headless mode supports it).
@@ -24,7 +26,23 @@ const KAFKA = "kafka-order-pipeline";
 const canvas = (page: Page) => page.getByTestId("live-canvas");
 const count = async (page: Page, name: string) => Number(await canvas(page).getAttribute(`data-${name}`));
 
-test.use({ channel: "chromium", launchOptions: { args: ["--auto-accept-this-tab-capture"] } });
+// Chromium exposes its command line only with this diagnostic flag. Scope it to the contract test.
+const launchContractTest = test.extend({
+  launchOptions: async ({ launchOptions }, use) => {
+    await use({ ...launchOptions, args: [...(launchOptions.args ?? []), "--enable-automation"] });
+  },
+});
+
+launchContractTest("tab capture retains the shared native Chromium flags", async ({ browser }) => {
+  const session = await browser.newBrowserCDPSession();
+  try {
+    const { arguments: args } = await session.send("Browser.getBrowserCommandLine");
+    expect(args).toEqual(expect.arrayContaining(chromiumLaunchArgs("127.0.0.1")));
+    expect(args).toContain("--auto-accept-this-tab-capture");
+  } finally {
+    await session.detach();
+  }
+});
 
 async function goLive(page: Page, renderer: "worker" | "main") {
   await page.addInitScript(installCaptureReady);
