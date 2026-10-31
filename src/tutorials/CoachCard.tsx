@@ -58,6 +58,7 @@ export function CoachCard({
   const card = useRef<HTMLDivElement>(null);
   const previousTarget = useRef<string | null>(null);
   const aiming = useRef(false);
+  const holding = useRef(false);
   const previous = useRef<Layout | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
   const [completionHost, setCompletionHost] = useState<HTMLElement | null>(null);
@@ -143,8 +144,8 @@ export function CoachCard({
         const rtl = document.documentElement.dir === "rtl";
         const old = previous.current;
         const held =
-          aiming.current && old?.mode === "card"
-            ? keepCard({ ...size, x: old.place.x, y: old.place.y }, external, area, hard)
+          (aiming.current || holding.current) && old?.mode === "card"
+            ? keepCard({ ...size, x: old.place.x, y: old.place.y }, external, area, hard, holding.current)
             : null;
         let place = held || (external && placeCard(external, size, panes, area, rtl, soft));
         if (external && !place) {
@@ -209,9 +210,21 @@ export function CoachCard({
         ref={card}
         onPointerEnter={() => {
           aiming.current = true;
+          // Pointer movement precedes pointer-down: hold before a click can miss the moving help button.
+          holding.current = true;
         }}
         onPointerLeave={() => {
           aiming.current = false;
+          holding.current = false;
+        }}
+        onPointerDownCapture={() => {
+          holding.current = true;
+        }}
+        onPointerUp={() => {
+          holding.current = false;
+        }}
+        onPointerCancel={() => {
+          holding.current = false;
         }}
         className={[
           "coach-card",

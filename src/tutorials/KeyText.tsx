@@ -32,8 +32,8 @@ const LABELS: Record<string, () => string> = {
 };
 const GLYPH: Record<string, string> = { ArrowRight: "→", ArrowLeft: "←", ArrowUp: "↑", ArrowDown: "↓" };
 const TURN: Record<string, number> = { "→": 0, "↓": 90, "←": 180, "↑": 270 };
-const KEY = String.raw`(?:ControlOrMeta|Ctrl\/Cmd|Ctrl|Cmd|Meta|Mod|Alt|Shift|Option|Enter|Escape|Esc|Tab|Delete|Backspace|Space|Arrow(?:Right|Left|Up|Down)|F(?:1[0-2]|[1-9])|[→←↑↓]|[A-Z0-9])`;
-const MOD = String.raw`(?:ControlOrMeta|Ctrl\/Cmd|Ctrl|Cmd|Meta|Mod|Alt|Shift|Option)`;
+const KEY = String.raw`(?:ControlOrMeta|Ctrl/Cmd|Ctrl|Cmd|Meta|Mod|Alt|Shift|Option|Enter|Escape|Esc|Tab|Delete|Backspace|Space|Arrow(?:Right|Left|Up|Down)|F(?:1[0-2]|[1-9])|[→←↑↓]|[A-Z0-9])`;
+const MOD = String.raw`(?:ControlOrMeta|Ctrl/Cmd|Ctrl|Cmd|Meta|Mod|Alt|Shift|Option)`;
 const PATTERN = new RegExp(
   String.raw`\[([^\]]+)\](?:\+\[([^\]]+)\])*|\b${MOD}(?:\+${KEY})+|\b${MOD}(?=[+-](?:drag|click))|\b(?:Enter|Escape|Esc|Tab|Delete|Backspace)\b|(?<=\b(?:press|Press)\s)[A-Z0-9]\b|[→←↑↓]`,
   "g",
@@ -110,15 +110,18 @@ export function KeyText({ text, mac = isMac() }: { text: string; mac?: boolean }
   return out;
 }
 
-/** Legacy tips often repeat the heading; keep the actionable goal prominent instead. */
+/** The objective persists while route mechanics change. Space complete sentences, keeping chips inline. */
 export function CoachText({ title, goal, tip }: { title: string; goal: string; tip: string | null }) {
-  const primary = tip && tip !== title ? tip : goal;
+  const next = tip?.startsWith(`${goal} `) ? tip.slice(goal.length).trimStart() : tip;
+  const instruction = next && next !== title && next !== goal ? next : null;
   return (
     <>
-      <KeyText text={primary} />
-      {primary !== goal && (
-        <span className="coach-summary">
-          <KeyText text={goal} />
+      <span data-testid="coach-objective">
+        <KeyText text={goal} />
+      </span>
+      {instruction && (
+        <span className="coach-now" data-testid="coach-now">
+          <KeyText text={instruction} />
         </span>
       )}
     </>

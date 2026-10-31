@@ -24,7 +24,7 @@ export interface SheetPlace {
 }
 
 const GAP = 14;
-const MARGIN = 12;
+const MARGIN = 8;
 const NUB_INSET = 18;
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n));
 const overlap = (a: Box, b: Box) => {
@@ -138,11 +138,18 @@ export function leaderBetween(card: Box, target: Box) {
 }
 
 /** Keep help buttons still while the learner aims, provided the target stays nearby and the chrome remains clear. */
-export function keepCard(card: Box, target: Box | null, area: Box, obstacles: readonly Box[]): CardPlace | null {
+export function keepCard(
+  card: Box,
+  target: Box | null,
+  area: Box,
+  obstacles: readonly Box[],
+  interacting = false,
+): CardPlace | null {
   if (card.x < area.x || card.y < area.y || right(card) > right(area) || bottom(card) > bottom(area)) return null;
   if ((target && intersects(card, target)) || obstacles.some((o) => intersects(card, o))) return null;
   const leader = target ? leaderBetween(card, target) : null;
-  if (leader && Math.hypot(leader.x2 - leader.x1, leader.y2 - leader.y1) > 240) return null;
+  // Let the pointer arrive and finish its click before following a distant target.
+  if (!interacting && leader && Math.hypot(leader.x2 - leader.x1, leader.y2 - leader.y1) > 240) return null;
   return { x: card.x, y: card.y, side: null, nub: null, leader };
 }
 

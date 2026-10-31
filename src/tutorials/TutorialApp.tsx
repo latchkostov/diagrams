@@ -860,23 +860,12 @@ type CardProps = Parameters<typeof CoachInstructions>[0]["card"];
 type Step = Tutorial["steps"][number];
 const otherRoute = (step: Step, route: number) => step.coach?.routes.find((_, i) => i !== route);
 
-/** Coach: the goal; with routes, a switch between them, the next move on the chosen one, and its whole line. */
+/** Keep the lesson objective beside the chosen route's next move; use its summary when no target is available. */
 function CardGoal({ step, card }: { step: Step; card: CardProps }) {
   const routes = step.coach?.routes;
   if (!routes) return <CoachText title={step.title()} goal={step.goal()} tip={card.now} />;
   const chosen = routes[card.route] ?? routes[0];
-  return (
-    <>
-      <span className="coach-now" data-testid="coach-now">
-        <KeyText text={card.now ?? chosen.summary()} />
-      </span>
-      {card.now && (
-        <span className="coach-summary">
-          <KeyText text={chosen.summary()} />
-        </span>
-      )}
-    </>
-  );
+  return <CoachText title={step.title()} goal={step.goal()} tip={card.now ?? chosen.summary()} />;
 }
 
 function CardRoutes({ step, card }: { step: Step; card: CardProps }) {

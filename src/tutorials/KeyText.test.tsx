@@ -26,6 +26,12 @@ it.each([false, true])("uses the product's platform modifiers, retaining literal
   expect(html).toContain("Alt</kbd>");
 });
 
+it.each([false, true])("recognises the whole Ctrl/Cmd modifier without leaving prose behind (%s)", (mac) => {
+  const html = renderToStaticMarkup(<KeyText text="Finish with Ctrl/Cmd+Enter." mac={mac} />);
+  expect(html.replace(/<[^>]*>/g, "")).toBe(`Finish with ${mac ? "⌘" : "Ctrl"}+Enter.`);
+  expect(html.match(/<kbd/g)).toHaveLength(2);
+});
+
 it("draws named arrows in existing unmarked combinations", () => {
   const html = renderToStaticMarkup(<KeyText text="Alt+ArrowRight, Shift+F10" mac={false} />);
   expect(html).toContain('aria-label="Right arrow"');
@@ -39,8 +45,30 @@ it("shows the instruction once when a legacy tip repeats the heading, while reta
     goal: t("tutorials.workbenchTour.propertiesGoal"),
   };
   const plain = renderToStaticMarkup(<CoachText {...words} tip={words.title} />);
-  expect(plain).toBe(words.goal);
+  expect(plain).toBe(`<span data-testid="coach-objective">${words.goal}</span>`);
   const precise = renderToStaticMarkup(<CoachText {...words} tip="Click this dot." />);
   expect(precise).toContain("Click this dot.");
   expect(precise).toContain(words.goal);
+});
+
+it("keeps a complete instruction and its shortcut chips in one inline block", () => {
+  const goal = "Name it Web API, then press Enter.";
+  expect(renderToStaticMarkup(<CoachText title={t("tutorials.quickAdd.nameApiTitle")} goal={goal} tip={goal} />)).toBe(
+    `<span data-testid="coach-objective">${renderToStaticMarkup(<KeyText text={goal} />)}</span>`,
+  );
+});
+
+it("shows distinct mechanics alongside the goal and deduplicates a route summary that repeats it", () => {
+  const title = t("tutorials.dotsAndSides.connectTitle");
+  const html = renderToStaticMarkup(<CoachText title={title} goal="Connect Service A." tip="Choose Service A." />);
+  expect(html.match(/Connect Service A\./g)).toHaveLength(1);
+  expect(html.match(/Choose Service A\./g)).toHaveLength(1);
+  expect(renderToStaticMarkup(<CoachText title={title} goal="Connect Service A." tip="Connect Service A." />)).toBe(
+    '<span data-testid="coach-objective">Connect Service A.</span>',
+  );
+  expect(
+    renderToStaticMarkup(
+      <CoachText title={title} goal="Connect Service A." tip="Connect Service A. Choose Service A." />,
+    ),
+  ).toBe(html);
 });

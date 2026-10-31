@@ -19,7 +19,7 @@ export function withCoachRoutes(tutorial: Tutorial): Tutorial {
           },
           {
             kind: "keyboard",
-            summary: msg("tutorials.coach.growKeyboard"),
+            summary: () => `${step.goal()} ${msg("tutorials.coach.growKeyboard")()}`,
             targets: [...fields, search, { testId: node, tip: msg("tutorials.coach.growKeyboard") }],
           },
         ],
@@ -43,7 +43,7 @@ export function withCoachRoutes(tutorial: Tutorial): Tutorial {
         },
         {
           kind: "keyboard",
-          summary: keyboardWords,
+          summary: () => `${step.goal()} ${keyboardWords()}`,
           targets: [
             {
               testId: `context-menu-item-${source ? "connect" : "reconnect-target"}:${destination}`,

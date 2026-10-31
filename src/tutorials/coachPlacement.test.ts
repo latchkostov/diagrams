@@ -5,6 +5,21 @@ import { keepCard, placeCard, placeHome, placeSheet } from "./coachPlacement";
 const area = { x: 0, y: 50, width: 1440, height: 850 };
 const size = { width: 340, height: 200 };
 const target = { x: 700, y: 420, width: 40, height: 40 };
+it("keeps a full objective and next action close to a grow chip beside the tablet dock", () => {
+  const viewport = { x: 0, y: 94, width: 1024, height: 674 };
+  const obstacles = [
+    { x: 0, y: 94, width: 62, height: 674 },
+    { x: 728, y: 94, width: 296, height: 674 },
+    { x: 426, y: 394, width: 220, height: 72 },
+    { x: 405, y: 702, width: 293, height: 36 },
+  ];
+  const chip = { x: 656, y: 414, width: 32, height: 32 };
+  const words = { width: 340, height: 277 };
+  const placed = placeCard(chip, words, clearPanes(viewport, obstacles), viewport, false)!;
+  for (const obstacle of [...obstacles, chip]) expect(intersects({ ...placed, ...words }, obstacle)).toBe(false);
+  const leader = placed.leader!;
+  expect(Math.hypot(leader.x2 - leader.x1, leader.y2 - leader.y1)).toBeLessThan(240);
+});
 it("holds help still as a hover target disappears, but moves off new menus and targets", () => {
   const card = { x: 800, y: 400, ...size };
   expect(keepCard(card, null, area, [])).toMatchObject({ x: 800, y: 400 });
@@ -13,6 +28,15 @@ it("holds help still as a hover target disappears, but moves off new menus and t
   expect(keepCard(card, card, area, [])).toBeNull();
   expect(keepCard(card, null, area, [card])).toBeNull();
   expect(keepCard({ ...card, y: 850 }, null, area, [])).toBeNull();
+});
+it("holds help as the pointer arrives and clicks, retaining viewport and obstacle guards", () => {
+  const card = { x: 380, y: 100, ...size };
+  const next = { x: 0, y: 170, width: 72, height: 48 };
+  expect(keepCard(card, next, area, [])).toBeNull();
+  expect(keepCard(card, next, area, [], true)).toMatchObject({ x: card.x, y: card.y });
+  expect(keepCard(card, card, area, [], true)).toBeNull();
+  expect(keepCard(card, next, area, [card], true)).toBeNull();
+  expect(keepCard({ ...card, y: 850 }, next, area, [], true)).toBeNull();
 });
 it.each([false, true])("prefers the logical side when room is equal (RTL=%s)", (rtl) => {
   const placed = placeCard(target, size, [area], area, rtl)!;

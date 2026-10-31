@@ -19,17 +19,71 @@ async function clearTarget(page: Page, distance?: number) {
       const a = await page.getByTestId("coach-card").boundingBox();
       const b = await page.getByTestId(id).boundingBox();
       if (!a || !b) return false;
+      const viewport = await page.evaluate(() => ({
+        x: visualViewport?.offsetLeft ?? 0,
+        y: visualViewport?.offsetTop ?? 0,
+        width: visualViewport?.width ?? innerWidth,
+        height: visualViewport?.height ?? innerHeight,
+      }));
+      if (
+        viewport.width <= 600 &&
+        (a.x < viewport.x ||
+          a.y < viewport.y ||
+          a.x + a.width > viewport.x + viewport.width ||
+          a.y + a.height > viewport.y + viewport.height)
+      )
+        return false;
       const dx = Math.max(a.x - b.x - b.width, b.x - a.x - a.width, 0);
       const dy = Math.max(a.y - b.y - b.height, b.y - a.y - a.height, 0);
       const separate = a.x >= b.x + b.width || b.x >= a.x + a.width || a.y >= b.y + b.height || b.y >= a.y + a.height;
       return separate && (distance === undefined || Math.hypot(dx, dy) < distance);
     })
     .toBe(true);
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("Missing viewport");
+  if (viewport.width <= 600) {
+    for (const id of ["coach-hint", "tutorial-show-me", "tutorial-skip"]) {
+      await expect(page.getByTestId(id)).toBeInViewport({ ratio: 1 });
+      await expect(page.getByTestId(id)).toBeEnabled();
+    }
+  }
 }
 async function shot(page: Page, name: string) {
   if (!process.env.COACH_SHOTS) return;
   mkdirSync(process.env.COACH_SHOTS, { recursive: true });
   await page.screenshot({ path: join(process.env.COACH_SHOTS, `${name}.png`) });
+}
+
+for (const [lesson, stepId, previous, required] of [
+  ["dots-and-sides", "connect", [], ["Service A", "right dot"]],
+  [
+    "dots-and-sides",
+    "reconnect",
+    ["connect", "describe", "side"],
+    ["Service B", "Bookings query", "Request", "source side"],
+  ],
+  ["api-gateway", "add-users", ["add-app", "add-gw", "add-orders"], ["Service", "gateway", "Users"]],
+  ["quick-add", "grow", ["add-app"], ["browser", "Service"]],
+  ["quick-add", "grow-db", ["add-app", "grow", "name-api"], ["Web API", "PostgreSQL"]],
+] as const) {
+  test(`lesson objective persists beside both routes: ${lesson}/${stepId}`, async ({ page }) => {
+    await begin(page, lesson);
+    for (const step of previous) {
+      await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", step);
+      await page.getByTestId("tutorial-skip").click();
+    }
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", stepId);
+    let objective: string | null = null;
+    for (const mode of ["pointer", "keyboard", "pointer"]) {
+      await page.getByTestId(`coach-route-${mode}`).click();
+      const goal = page.getByTestId("coach-objective");
+      await expect(goal).toBeVisible();
+      for (const name of required) await expect(goal).toContainText(name);
+      objective ??= await goal.textContent();
+      if (objective === null) throw new Error("Missing lesson objective");
+      await expect(goal).toHaveText(objective);
+    }
+  });
 }
 
 for (const [device, width, height] of [
