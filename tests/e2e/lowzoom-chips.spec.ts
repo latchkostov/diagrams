@@ -70,32 +70,44 @@ for (const [slug, diagram] of [
       }
     });
 
-test("chips publish a tier only after zoom settles and reuse it through pan", async ({ page }) => {
-  await page.clock.install();
-  await gotoCanvas(page, "recommendations-feature-store");
-  await zoomIdentity(page, 0.65);
-  await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom");
-  await pauseClock(page);
-  const pane = page.getByTestId("canvas-pane");
-  const root = page.getByTestId("canvas-wrap");
-  const fits = await root.getAttribute("data-chip-fits");
-  for (const deltaY of [100, 20, 10]) {
-    await pane.dispatchEvent("wheel", { deltaY, ctrlKey: true, bubbles: true });
-    await page.clock.runFor(16);
-    await expect(root).toHaveAttribute("data-viewport-moving", "");
-    expect(await root.getAttribute("data-chip-fits")).toBe(fits);
-    await expect(root).not.toHaveAttribute("data-low-zoom");
-  }
-  await page.clock.runFor(400);
-  await expect(root).toHaveAttribute("data-low-zoom", "mid");
-  const settled = Number(await root.getAttribute("data-chip-fits"));
-  expect(settled - Number(fits)).toBe(1);
-  for (let n = 0; n < 8; n++) {
-    await pane.dispatchEvent("wheel", { deltaY: 10, bubbles: true });
-    await page.clock.runFor(16);
-  }
-  expect(Number(await root.getAttribute("data-chip-fits"))).toBe(settled);
-});
+for (const platform of [undefined, "MacIntel"])
+  test(`chips publish a tier only after zoom settles and reuse it through pan${platform ? ` (${platform})` : ""}`, async ({
+    page,
+  }) => {
+    if (platform)
+      await page.addInitScript((platform) => {
+        // The app helper reads platform; React Flow's pinch gain reads userAgent.
+        const userAgent = navigator.userAgent.replace(/\([^)]*\)/, "(Macintosh; Intel Mac OS X 10_15_7)");
+        Object.defineProperty(navigator, "platform", { get: () => platform });
+        Object.defineProperty(navigator, "userAgent", { get: () => userAgent });
+      }, platform);
+    await page.clock.install();
+    await gotoCanvas(page, "recommendations-feature-store");
+    await zoomIdentity(page, 0.65);
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom");
+    await pauseClock(page);
+    const pane = page.getByTestId("canvas-pane");
+    const root = page.getByTestId("canvas-wrap");
+    const fits = await root.getAttribute("data-chip-fits");
+    // Use the same relative pinch as zoomIdentity; macOS applies ten times the wheel gain.
+    const pinchScale = await page.evaluate(() => (/Mac/.test(navigator.platform) ? 0.1 : 1));
+    for (const deltaY of [100, 20, 10]) {
+      await pane.dispatchEvent("wheel", { deltaY: deltaY * pinchScale, ctrlKey: true, bubbles: true });
+      await page.clock.runFor(16);
+      await expect(root).toHaveAttribute("data-viewport-moving", "");
+      expect(await root.getAttribute("data-chip-fits")).toBe(fits);
+      await expect(root).not.toHaveAttribute("data-low-zoom");
+    }
+    await page.clock.runFor(400);
+    await expect(root).toHaveAttribute("data-low-zoom", "mid");
+    const settled = Number(await root.getAttribute("data-chip-fits"));
+    expect(settled - Number(fits)).toBe(1);
+    for (let n = 0; n < 8; n++) {
+      await pane.dispatchEvent("wheel", { deltaY: 10, bubbles: true });
+      await page.clock.runFor(16);
+    }
+    expect(Number(await root.getAttribute("data-chip-fits"))).toBe(settled);
+  });
 
 test("low zoom removes most card and edge drawing elements", async ({ page }) => {
   await gotoCanvas(page, "black-friday-commerce");
