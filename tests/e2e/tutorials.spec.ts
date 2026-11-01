@@ -586,6 +586,7 @@ test("scale-to-zero: the cold-start note holds the readout for a late learner", 
 });
 
 test("where-time-goes: Latency can be expanded and read before Done finishes", async ({ page }) => {
+  await page.clock.install();
   await page.addInitScript(() =>
     localStorage.setItem(
       "diagrams.tutorials.v1",
@@ -596,7 +597,11 @@ test("where-time-goes: Latency can be expanded and read before Done finishes", a
   );
   await openTutorial(page, "where-time-goes");
   await page.getByTestId("tutorial-start").click();
+  await pauseClock(page);
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "read-breakdown");
   await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
+  await page.clock.resume();
   const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
   for (const action of solution.slice(0, -1)) await play(page, action);
   await expect(page.getByTestId("hover-section-latency")).toHaveAttribute("aria-expanded", "true");
@@ -2549,6 +2554,7 @@ test("where-time-goes: a late reader can still inspect the held waiting comparis
   await page.clock.fastForward(20000);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await page.clock.resume();
   await hoverPractice(page, "node-billing");
   await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
   await finishSolution(page);

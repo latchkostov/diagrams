@@ -32,3 +32,8 @@ playback. The finish-during-navigation regression uses the existing short Lab fi
 so it retains its exact completion assertion without depending on the breaker's new
 reading pauses. Practice snapshots are bundled independently from the public gallery's
 lazy downloads, preserving the existing failed-download Retry boundary.
+
+Billing's run checkpoint now waits for its real nine-second narration hold, so Continue
+reconstructs the waiting comparison before opening the breakdown. Keyboard traversal
+waits for the canvas's existing interaction and camera readiness signals before another
+Tab; it preserves the exact destination assertion and adds a pending-focus regression.

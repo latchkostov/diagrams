@@ -35,10 +35,17 @@ const lesson: Tutorial = {
       "slow-billing-drill",
       {
         title: msg("tutorials.whereTimeGoes.runTitle"),
-        goal: msg("tutorials.whereTimeGoes.runGoal"),
-        done: msg("tutorials.whereTimeGoes.runDone"),
+        goal: msg("tutorials.whereTimeGoes.runGoalV3"),
+        done: msg("tutorials.whereTimeGoes.runDoneV3"),
       },
       true,
+      {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "slow-billing-drill", atLeastMs: 9000 },
+          { kind: "note", waiting: true },
+        ],
+      },
     ),
     moment(
       "read-p95",

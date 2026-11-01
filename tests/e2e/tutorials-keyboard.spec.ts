@@ -321,3 +321,36 @@ test("keyboard control traversal uses Tab for a menu with native button stops", 
   await focus(page, "middle");
   await expect(page.getByTestId("middle")).toBeFocused();
 });
+
+test("keyboard control traversal waits for a pending canvas focus transaction before Tab", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="canvas-wrap" data-interaction-state="focus-pending" data-camera-state="idle"><button data-testid="rf__node-fixture">Canvas node</button></div><button data-testid="last">Transport</button>',
+  );
+  await page.getByTestId("rf__node-fixture").focus();
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
+    if (!canvas) throw new Error("Missing focus fixture");
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Tab" && canvas.dataset.interactionState !== "idle") event.preventDefault();
+    });
+  });
+  const byTestId = page.getByTestId.bind(page);
+  let release: Promise<unknown> | undefined;
+  // Publish the fixture's pending commit when the driver observes its readiness signal.
+  page.getByTestId = (id) => {
+    if (id === "canvas-wrap" && !release)
+      release = page.evaluate(() => {
+        const canvas = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
+        if (!canvas) throw new Error("Missing focus fixture");
+        canvas.dataset.interactionState = "idle";
+      });
+    return byTestId(id);
+  };
+  try {
+    await focus(page, "last");
+    await expect(byTestId("last")).toBeFocused();
+  } finally {
+    page.getByTestId = byTestId;
+    await release;
+  }
+});

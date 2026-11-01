@@ -5568,5 +5568,9 @@ const en = {
     "Double-click Decision service to open Properties. Next, inspect the signal, target and bounds.",
   "tutorials.autoscaling.selectDoneV3":
     "Decision service is selected; the configured target and bounds match this experiment.",
+  "tutorials.whereTimeGoes.runGoalV3":
+    "Go Live, pick Slow Billing drill in Simulations and wait for the reading pause at 9 s. The held card will let you compare the sampled tail with waiting and work.",
+  "tutorials.whereTimeGoes.runDoneV3":
+    "The seeded slowdown is paused on a real reading. Compare Billing’s latency and waiting/work totals next.",
 } as const;
 export default en;

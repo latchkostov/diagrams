@@ -4,6 +4,7 @@ import {
   expect,
   expectNoErrors,
   waitForCameraIdle,
+  waitForInteractionIdle,
   waitForSelectionSettled,
   waitForLiveSession,
   pageLoadTimeout,
@@ -216,6 +217,12 @@ export async function focus(page: Page, id: string) {
     if (!body) seen.add(state.active);
     const previous = state.active;
     const roving = state.roving;
+    // Canvas Tab publishes its destination before the reveal/focus transaction settles.
+    // A second key during that transaction is intentionally ignored by the canvas.
+    if (/^(rf__node-|node-live-focus-)/.test(previous)) {
+      await waitForInteractionIdle(page);
+      await waitForCameraIdle(page);
+    }
     await page.keyboard.press(state.roving ? "ArrowDown" : backwards ? "Shift+Tab" : "Tab");
     // Roving focus and portal teardown can cross body before the destination lands on the next frame.
     if (body) state = await readState(true);

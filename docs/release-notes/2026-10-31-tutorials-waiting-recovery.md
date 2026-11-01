@@ -21,8 +21,8 @@ the same product controls; no simulation-engine algorithms, budgets or reserves 
 
 ## Output parity
 
-The only changed golden is `tests/parity/goldens/node/i18n/catalogs.json`: 118 new
-messages increase all 38 catalog counts from 4,578 to 4,696. All 37 translated catalogs
-gain 118 English fallbacks; the pseudo-locale gains none. Only tutorials fingerprints
+The only changed golden is `tests/parity/goldens/node/i18n/catalogs.json`: 120 new
+messages increase all 38 catalog counts from 4,578 to 4,698. All 37 translated catalogs
+gain 120 English fallbacks; the pseudo-locale gains none. Only tutorials fingerprints
 change, including the pseudo-locale. No existing translation is stamped. No public
 example, simulation, diagram, layout or export golden changes.

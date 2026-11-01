@@ -68,13 +68,16 @@ describe("waiting lessons against their seeded runs", () => {
   it("Billing's p95 needs the slowdown, and the waiting comparison needs a real backlog", () => {
     run(whereTimeGoes, "slow-billing-drill", (c, diagram) => {
       play(c, 2000);
+      expect(met(whereTimeGoes, "run", c, diagram)).toBe(false);
       expect(met(whereTimeGoes, "read-p95", c, diagram, "billing")).toBe(false);
       play(c, 3000);
+      expect(met(whereTimeGoes, "run", c, diagram)).toBe(false);
       expect(c.getState().snapshot.nodes.billing.latency!.p95).toBeGreaterThanOrEqual(1050 / 0.7);
       expect(met(whereTimeGoes, "read-p95", c, diagram)).toBe(false);
       expect(met(whereTimeGoes, "read-p95", c, diagram, "billing")).toBe(true);
       expect(met(whereTimeGoes, "waiting-vs-working", c, diagram, "billing")).toBe(false);
       play(c, 4000);
+      expect(met(whereTimeGoes, "run", c, diagram)).toBe(true);
       expect(met(whereTimeGoes, "waiting-vs-working", c, diagram, "billing")).toBe(true);
     });
   });
