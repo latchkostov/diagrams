@@ -30,16 +30,19 @@ async function chooseRow(page: Page, id: string) {
       .poll(() => row.evaluate((el) => el.closest("[data-testid][data-depth]")?.contains(document.activeElement)))
       .toBe(true);
   const seen = new Set<string>();
-  while ((await row.getAttribute("data-active")) !== "true") {
-    const active = await page.getByTestId(/^(command-item-|context-menu-item-)/).evaluateAll((items) =>
+  const activeRow = () =>
+    page.getByTestId(/^(command-item-|context-menu-item-)/).evaluateAll((items) =>
       items
         .filter((item) => item.getAttribute("data-active") === "true")
         .map((item) => item.getAttribute("data-testid"))
         .join(),
     );
+  while ((await row.getAttribute("data-active")) !== "true") {
+    const active = await activeRow();
     if (seen.has(active)) throw new Error(`Keyboard row is unreachable: ${id} (${active})`);
     seen.add(active);
     await page.keyboard.press("ArrowDown");
+    await expect.poll(activeRow).not.toBe(active);
   }
 }
 

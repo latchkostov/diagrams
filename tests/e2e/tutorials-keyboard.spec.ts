@@ -70,6 +70,48 @@ test("keyboard menu navigation waits for the placed menu's actual focus", async 
   }
 });
 
+test("keyboard row navigation waits for the previous arrow's published destination", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1");
+  await node(page, "orders");
+  await page.keyboard.press("Shift+F10");
+  await focus(page, "context-menu-item-sim.slowmo-from");
+  const publication = await page.evaluateHandle(() => {
+    const set = Element.prototype.setAttribute;
+    const pending: (() => void)[] = [];
+    let requested!: () => void;
+    const started = new Promise<void>((resolve) => (requested = resolve));
+    Element.prototype.setAttribute = function (name, value) {
+      if (name === "data-active" && this.getAttribute("data-testid")?.startsWith("context-menu-item-")) {
+        pending.push(() => set.call(this, name, value));
+        requested();
+      } else set.call(this, name, value);
+    };
+    return {
+      started,
+      release() {
+        Element.prototype.setAttribute = set;
+        for (const publish of pending.splice(0)) publish();
+      },
+    };
+  });
+  let returned = false;
+  const navigating = focus(page, "context-menu-item-sim.fault").finally(() => (returned = true));
+  // Observe errors in the held operation without turning a rejected driver into an unhandled promise.
+  const outcome = navigating.catch((error: unknown) => error);
+  try {
+    await publication.evaluate(({ started }) => started);
+    await animationFrames(page);
+    expect(returned, "an acknowledged key does not establish the committed active row").toBe(false);
+    await publication.evaluate(({ release }) => release());
+    await navigating;
+    await expect(page.getByTestId("context-menu-item-sim.fault")).toHaveAttribute("data-active", "true");
+  } finally {
+    await publication.evaluate(({ release }) => release());
+    await outcome;
+    await publication.dispose();
+  }
+});
+
 test("keyboard row navigation recognises a searchable menu's focused search field", async ({ page }) => {
   await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1");
   await page.getByTestId("live-toggle").click();
