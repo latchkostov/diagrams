@@ -55,7 +55,11 @@ export function agentPractice(editor: EditorApi, documentId: string, action: "ad
       const current = editor.getDiagram();
       if (!turn.before || !turn.after) throw new Error("Practice checkpoint unavailable");
       const nodes = reverseItems(current.nodes, turn.before.nodes, turn.after.nodes);
-      const remaining = new Set(nodes.map((n) => n.id));
+      // Shape annotations are connectable too, so an unrelated connection to one must survive the inverse.
+      const remaining = new Set([
+        ...nodes.map((n) => n.id),
+        ...(current.annotations ?? []).filter((a) => a.kind === "shape").map((a) => a.id),
+      ]);
       const baseline = {
         ...current,
         nodes,

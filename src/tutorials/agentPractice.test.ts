@@ -147,3 +147,20 @@ it("an equivalent existing worker remains intact through assisted Apply and Undo
   expect(h.api.getDiagram().nodes).toEqual(initial.nodes);
   expect(h.api.getDiagram().edges).toEqual(initial.edges);
 });
+
+it("assisted Undo keeps an unrelated connection to a shape annotation", () => {
+  const { h, run } = practice();
+  run("add");
+  const shape = { id: "learner-shape", kind: "shape" as const, text: "Notes", x: 600, y: 0, width: 120, height: 60 };
+  const link = { id: "to-shape", from: "api", to: "learner-shape", kind: "sync" as const };
+  h.api.applyDiagram({
+    ...h.api.getDiagram(),
+    annotations: [...(h.api.getDiagram().annotations ?? []), shape],
+    edges: [...h.api.getDiagram().edges, link],
+  });
+  h.commit();
+  run("undo");
+  expect(h.api.getDiagram().nodes).toEqual(start().nodes);
+  expect(h.api.getDiagram().annotations).toContainEqual(shape);
+  expect(h.api.getDiagram().edges).toEqual([link]);
+});
