@@ -1055,6 +1055,10 @@ export function useInterop({
   // ---------------------------------------------------------------- keyboard
 
   const api = {
+    /** Real Share chooser state, available to product consumers in production too. */
+    sharing: dialog?.kind === "chooser",
+    /** The same privacy-aware snapshot used by the normal export dialogs. */
+    exportSnapshot: current,
     exportNative,
     exportPng: (opts: ImageExportOptions = {}) => exportImage("png", opts),
     exportSvg: () => exportImage("svg"),
@@ -1300,7 +1304,7 @@ export function useInterop({
     </>
   );
 
-  // Tutorial checks observe the actual dialog state while tutorials are gated to dev/E2E.
+  // Detailed dialog diagnostics remain limited to dev/E2E.
   if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") return { ...api, layer, dialogKind: dialog?.kind };
   return { ...api, layer };
 }

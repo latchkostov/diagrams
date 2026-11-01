@@ -128,13 +128,8 @@ export const reviewAgentChanges: Tutorial = {
       msg("tutorials.agentReview.undoGoal"),
       msg("tutorials.agentReview.undoDone"),
       "undo",
-      {
-        kind: "all",
-        checks: [
-          { kind: "aiTurn", turn: "undo" },
-          { kind: "absentNode", subject: "worker" },
-        ],
-      },
+      // Apply may update a learner's existing worker. Genuine Undo evidence covers both inverses.
+      { kind: "aiTurn", turn: "undo" },
       [{ click: "ai-turn-0-undo" }],
     ),
     turn(

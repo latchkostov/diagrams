@@ -9,11 +9,16 @@ import { currentObservationSource } from "../../palette/observationSource";
 export function undoAiTurn(editor: EditorApi, documentId: string, turn: ThreadTurn): boolean {
   if (!turn.historyKey || editor.undoTarget() !== turn.historyKey) return false;
   editor.undo();
+  observeAiUndo(documentId, turn);
+  return true;
+}
+
+/** Records Undo evidence after the turn's inverse has actually been reached. */
+export function observeAiUndo(documentId: string, turn: ThreadTurn): void {
   threads.update(documentId, (all) => all.map((t) => (t.id === turn.id ? { ...t, undone: true } : t)));
   const source = currentObservationSource();
   if (source?.documentId === documentId)
     observationPorts.ai.publish({ ...source, kind: "undo", changed: turn.changed });
-  return true;
 }
 
 export function revertAiTurn(editor: EditorApi, documentId: string, turn: ThreadTurn): boolean {

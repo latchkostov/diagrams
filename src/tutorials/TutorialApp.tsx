@@ -266,8 +266,7 @@ function Running({
             format === "html"
               ? await import("../export/exportHtml").then((m) => {
                   signal.throwIfAborted();
-                  const diagram = paletteHost.get().canvas?.editor.getDiagram();
-                  if (!diagram) throw new Error("Diagram unavailable");
+                  const diagram = interop.exportSnapshot();
                   return m.exportInteractiveHtml(diagram, {
                     theme: "light",
                     simulations: diagram.simulations?.map((s) => s.id),
@@ -283,7 +282,7 @@ function Running({
       },
     });
   }, [interop, practiceExports]);
-  const sharing = "dialogKind" in interop && interop.dialogKind === "chooser";
+  const sharing = interop.sharing;
   const importFiles = interop.importFiles;
   useEffect(() => {
     return practiceImport.connect(async (runnerSignal) => {
@@ -806,27 +805,6 @@ function CoachInstructions({
                 )}
               </label>
             )}
-            {step.check.kind === "localPeer" && (
-              <div>
-                <p data-testid="tutorial-peer-notice">{t("tutorials.sharing.demo")}</p>
-                <button
-                  className="btn btn-primary"
-                  data-testid={`tutorial-peer-${step.check.action}`}
-                  disabled={peerState.value === "busy"}
-                  onClick={() => {
-                    if (step.check.kind === "localPeer") void runPeer(step.check.action);
-                  }}
-                >
-                  {step.check.action === "join"
-                    ? t("tutorials.workTogether.start")
-                    : step.check.action === "edit"
-                      ? t("tutorials.workTogether.edit")
-                      : step.check.action === "watch"
-                        ? t("tutorials.workTogether.watch")
-                        : t("tutorials.workTogether.leave")}
-                </button>
-              </div>
-            )}
             {peerState.copy && (
               <p data-testid="tutorial-peer-recovery">
                 {peerState.copy.title}: {peerState.copy.nodes.map((n) => n.label).join(", ")}
@@ -882,6 +860,27 @@ function CoachInstructions({
               )
             )}
           </div>
+          {step.check.kind === "localPeer" && (
+            <div className="tutorial-actions">
+              <p data-testid="tutorial-peer-notice">{t("tutorials.sharing.demo")}</p>
+              <button
+                className="btn btn-primary"
+                data-testid={`tutorial-peer-${step.check.action}`}
+                disabled={peerState.value === "busy"}
+                onClick={() => {
+                  if (step.check.kind === "localPeer") void runPeer(step.check.action);
+                }}
+              >
+                {step.check.action === "join"
+                  ? t("tutorials.workTogether.start")
+                  : step.check.action === "edit"
+                    ? t("tutorials.workTogether.edit")
+                    : step.check.action === "watch"
+                      ? t("tutorials.workTogether.watch")
+                      : t("tutorials.workTogether.leave")}
+              </button>
+            </div>
+          )}
           <CardRoutes step={step} card={card} />
           {step.check.kind !== "acknowledge" && (phase === "active" || phase === "hinting") ? (
             <CardHelp step={step} phase={phase} send={send} card={card}>

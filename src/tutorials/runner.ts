@@ -229,7 +229,18 @@ export function createTutorialRunner(
     tutorial.id === "review-agent-changes" && ports.documentId
       ? import("./agentPractice").then((m) => m.resetAgentPractice(ports.documentId!))
       : Promise.resolve();
-  let agentReady = resetAgent();
+  let agentReady: Promise<void> | undefined;
+  const prepareAgent = () => {
+    if (agentReady) return agentReady;
+    const pending = resetAgent();
+    agentReady = pending;
+    // Observe eager chunk failures immediately, and let Retry initialize afresh.
+    void pending.catch(() => {
+      if (agentReady === pending) agentReady = undefined;
+    });
+    return pending;
+  };
+  void prepareAgent();
   let generation = 0;
   let operation = new AbortController();
   const activeJobs = new Map<string, object>();
@@ -242,7 +253,8 @@ export function createTutorialRunner(
     operation = new AbortController();
     activeJobs.clear();
     repairs.reset();
-    agentReady = resetAgent();
+    agentReady = undefined;
+    void prepareAgent();
     changed.forEach((f) => f());
   };
   const changed = new Set<() => void>();
@@ -611,7 +623,7 @@ export function createTutorialRunner(
         if (ports.agentFixture) return ports.agentFixture(demo.action, operation.signal);
         const signal = operation.signal;
         return import("./agentPractice").then(async (practice) => {
-          await agentReady;
+          await prepareAgent();
           signal.throwIfAborted();
           if (!ports.documentId) throw new Error("Document unavailable");
           if (!canUseAiTools(host.get().canvas)) throw new Error("Practice AI unavailable for this diagram");

@@ -258,3 +258,74 @@ for (const [id, index] of [
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });
+
+test("batch6 assisted and dialog HTML exports retain Private provenance", async ({ page }) => {
+  await openTutorial(page, "export-for-audience");
+  await page.getByTestId("tutorial-start").click();
+  for (const format of ["svg", "png"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", format);
+    const pending = page.waitForEvent("download");
+    await page.getByTestId("tutorial-skip").click();
+    await pending;
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "html");
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").hover();
+  await page.getByTestId("privacy-diagram").click();
+  await page.keyboard.press("Escape");
+  const assisted = page.waitForEvent("download");
+  await page.getByTestId("tutorial-skip").click();
+  const first = await assisted;
+  const firstPath = await first.path();
+  if (!firstPath) throw new Error("Missing assisted export");
+  expect(JSON.parse(filePayloadText(await readFile(firstPath, "utf8"))).diagram.private).toBe(true);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-html").click();
+  const normal = page.waitForEvent("download");
+  await page.getByTestId("html-export-download").click();
+  const second = await normal;
+  const secondPath = await second.path();
+  if (!secondPath) throw new Error("Missing dialog export");
+  expect(JSON.parse(filePayloadText(await readFile(secondPath, "utf8"))).diagram.private).toBe(true);
+});
+
+test("batch6 peer actions stay usable with a full-height phone Properties sheet", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openTutorial(page, "work-together");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("coach-fold").click();
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("dock-snap-full").click();
+  await page.getByTestId("coach-fold").click();
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-sheet-snap", "full");
+  await expect(page.getByTestId("coach-card")).toHaveAttribute("data-compact", "true");
+  await expect(page.getByTestId("tutorial-words")).toBeHidden();
+  const join = page.getByTestId("tutorial-peer-join");
+  await expect(join).toBeVisible();
+  await join.focus();
+  await expect(join).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(strip(page)).toHaveAttribute("data-step", "edit");
+  await expect(page.getByTestId("tutorial-peer-edit")).toBeVisible();
+});
+
+test("batch6 assisted Undo completes after the learner already used toolbar Undo", async ({ page, consoleErrors }) => {
+  await openTutorial(page, "review-agent-changes");
+  await page.getByTestId("tutorial-start").click();
+  for (const step of ["open", "read", "context"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", step);
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).not.toHaveAttribute("data-step", step);
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "apply");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-step", "undo");
+  await page.getByTestId("undo-button").click();
+  expect(await page.evaluate(() => window.__tutorial?.diagram().nodes.map((n) => n.id))).toEqual(["api"]);
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "again");
+  await expect(page.getByTestId("tutorial-retry")).toHaveCount(0);
+  await expectNothingSaved(page);
+  expectNoErrors(consoleErrors);
+});

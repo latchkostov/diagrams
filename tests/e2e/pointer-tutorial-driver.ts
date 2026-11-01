@@ -276,6 +276,9 @@ export async function skipAll(page: Page, clocked = false) {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
     if (lesson === "share-present" && (await page.getByTestId("present-exit").isVisible()))
       await page.keyboard.press("Escape");
+    // The Share state advances the lesson before its lazy dialog has mounted. Await that surface before Escape.
+    if (lesson === "share-present" && current === "audience")
+      await expect(page.getByTestId("share-chooser")).toBeVisible();
     if (lesson === "share-present" && (await page.getByTestId("share-chooser").isVisible()))
       await page.keyboard.press("Escape");
     if (lesson === "sequence-evidence" && (await page.getByTestId("sequence-dialog").isVisible())) {

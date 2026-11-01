@@ -71,7 +71,7 @@ export function withoutConversationSnapshots(raw: string): string {
     return JSON.stringify({
       turns: value.turns.map((turn: unknown) => {
         if (!turn || typeof turn !== "object") return turn;
-        const { after: _after, ...rest } = turn as Record<string, unknown>;
+        const { after: _after, before: _before, ...rest } = turn as Record<string, unknown>;
         return rest;
       }),
     });

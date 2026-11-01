@@ -52,6 +52,7 @@ function sandbox(
   initial: DiagramFile = typeof tutorial.start === "function" ? tutorial.start() : mobileApi.start(),
   deferAdds = false,
   importPractice?: (signal: AbortSignal) => Promise<void>,
+  documentId?: string,
 ) {
   let diagram = initial;
   let version = { identity: {}, revision: 0 };
@@ -150,7 +151,7 @@ function sandbox(
     },
   };
   const close = vi.fn();
-  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice });
+  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice, documentId });
   const disconnect = runner.connect();
   cleanup.push(disconnect);
   return {
@@ -1705,4 +1706,40 @@ it("Restart requests a fresh history rather than an undoable document replacemen
   const apply = vi.spyOn(s.editor, "applyDiagram");
   s.runner.send({ type: "restart" });
   expect(apply).toHaveBeenCalledExactlyOnceWith(mobileApi.start(), { resetHistory: true });
+});
+
+it("Retry recovers a failed AI practice initialization without restarting the lesson", async () => {
+  const practice = await import("./agentPractice");
+  const { reviewAgentChanges } = await import("./catalog/reviewAgentChanges");
+  let unavailable = true;
+  const reset = vi.spyOn(practice, "resetAgentPractice").mockImplementation(() => {
+    if (unavailable) throw new Error("Chunk temporarily unavailable");
+  });
+  const tutorial: Tutorial = {
+    ...reviewAgentChanges,
+    subjects: { worker: { stencils: ["service.go"] } },
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "node", subject: "worker" },
+        demo: [{ kind: "agentFixture", action: "add" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named(), false, undefined, "sandbox");
+  vi.spyOn(practice, "agentPractice").mockImplementation(() =>
+    s.edit({
+      ...s.getDiagram(),
+      nodes: [...s.getDiagram().nodes, { id: "worker", stencil: "service.go", label: "Worker", x: 300, y: 0 }],
+      edges: [{ id: "flow", from: "api", to: "worker", kind: "async" }],
+    }),
+  );
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("failed"));
+  unavailable = false;
+  const attempts = reset.mock.calls.length;
+  s.runner.send({ type: "retry" });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(reset.mock.calls.length).toBeGreaterThan(attempts);
 });
