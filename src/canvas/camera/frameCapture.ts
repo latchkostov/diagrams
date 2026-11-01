@@ -1,3 +1,5 @@
+import { flushSync } from "react-dom";
+
 /** Camera detail is temporary screen geometry. Image capture reads the complete authored drawing. */
 type Capture = { surfaces: Map<() => () => void, (() => void) | undefined>; depth: number; zoom?: string };
 const captures = new WeakMap<Element, Capture>();
@@ -33,7 +35,11 @@ export function suspendFrameCapture(viewport: Element): () => void {
       capture.zoom = style.getPropertyValue("--rf-zoom-exact");
       style.setProperty("--rf-zoom-exact", "1");
     }
-    for (const suspend of capture.surfaces.keys()) capture.surfaces.set(suspend, suspend());
+    // Capture starts outside React. Flush existing surfaces here; one registering later
+    // can be in a mounting effect and must leave its updates to that React commit.
+    flushSync(() => {
+      for (const suspend of capture.surfaces.keys()) capture.surfaces.set(suspend, suspend());
+    });
   }
   let released = false;
   return () => {

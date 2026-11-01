@@ -173,7 +173,7 @@ export function mountChips(
     ? registerFrameCapture(viewport, () => {
         suspended = true;
         natural();
-        flushSync(() => setLowZoom(store, null));
+        setLowZoom(store, null);
         return () => {
           suspended = false;
           previous = "";
