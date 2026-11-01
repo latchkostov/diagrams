@@ -280,6 +280,25 @@ test("keyboard readout navigation leaves an earlier pinned card before selecting
   await expect(page.getByTestId("node-detail-answer")).toHaveCount(0);
 });
 
+test("keyboard speed selection hands off when completion restores normal speed", async ({ page }) => {
+  await page.setContent(
+    '<select data-testid="live-speed"><option value="1">1×</option><option value="8">8×</option></select>',
+  );
+  await page.getByTestId("live-speed").evaluate((el) => {
+    const select = el as HTMLSelectElement;
+    let finished = false;
+    Object.assign(window, { __tutorial: { snapshot: () => ({ state: { value: finished ? "finished" : "active" } }) } });
+    select.addEventListener("change", () => {
+      if (select.value !== "8") return;
+      finished = true;
+      select.value = "1";
+    });
+  });
+  await page.keyboard.press("Tab");
+  await expect(play(page, { choose: "live-speed", value: "8" })).rejects.toBeInstanceOf(CompletedStep);
+  await expect(page.getByTestId("live-speed")).toHaveValue("1");
+});
+
 test("keyboard canvas navigation exits when the lesson has already finished", async ({ page }) => {
   await page.goto("./?tutorial=property-sheet");
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });

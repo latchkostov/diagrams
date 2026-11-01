@@ -375,6 +375,26 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
   } else if ("choose" in action) {
     await focus(page, action.choose);
     await chooseNativeSelect(page, action.choose, action.value);
+    if (action.choose === "live-speed") {
+      // The authored run can finish while this optional acceleration is selected.
+      // Completion restores normal speed; the finished lesson now owns the controls.
+      let finished = false;
+      await expect
+        .poll(async () => {
+          const state = await page.getByTestId(action.choose).evaluate(
+            (el, value) => ({
+              finished: window.__tutorial?.snapshot().state.value === "finished",
+              selected: (el as HTMLSelectElement).value === value,
+            }),
+            action.value,
+          );
+          finished = state.finished;
+          return finished || state.selected;
+        })
+        .toBe(true);
+      if (finished) throw new CompletedStep();
+      return;
+    }
     await expect(page.getByTestId(action.choose)).toHaveValue(
       action.choose === "sim-panel-add-step" || /^sim-panel-step-\d+-focus$/.test(action.choose) ? "" : action.value,
     );
