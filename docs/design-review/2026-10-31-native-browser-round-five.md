@@ -27,3 +27,7 @@ The Sequence retry fixture now acknowledges the restored SVG invoker's focus bef
 ## Trace Retry follow-up
 
 The generated lazy-surface driver now acknowledges its original non-body-focus boundary after Retry for trace and the other surfaces, retaining presence's stronger exact invoker check. Both presence and trace hold the actual return frame in regression coverage. No application focus policy or assertion is weakened.
+
+## Recording elapsed time
+
+The exact one-second recording test now controls time after the real encoder-start signal. Locator and review work cannot consume its measured second. Countdown, framing, presentation, elapsed display, metadata and download assertions stay intact; application recording behavior and timeouts are unchanged.
