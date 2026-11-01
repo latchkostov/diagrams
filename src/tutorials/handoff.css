@@ -99,7 +99,7 @@
   display: flex;
   flex-direction: column;
   flex: 0 1 320px;
-  min-height: 115px;
+  min-height: min-content;
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-m);
@@ -109,7 +109,7 @@
   flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  min-height: 84px;
   padding: 12px 6px;
   background-color: var(--board);
   background-image: radial-gradient(var(--dot) 1px, transparent 1.25px);
@@ -131,7 +131,7 @@
 }
 .handoff-node-label {
   fill: var(--text);
-  font: 600 11px var(--font-ui);
+  font: 600 14px var(--font-ui);
 }
 .handoff-wire {
   fill: none;
@@ -146,7 +146,7 @@
 }
 .handoff-svg-mark text {
   fill: var(--surface);
-  font: 600 10px var(--font-mono);
+  font: 600 12px var(--font-mono);
   text-anchor: middle;
 }
 .handoff-titleblock {
@@ -261,6 +261,7 @@
 }
 .handoff-board.is-settings {
   flex: 0 0 auto;
+  min-height: 0;
   max-height: 320px;
 }
 .handoff-settings {
@@ -318,7 +319,7 @@
   }
   .handoff-board {
     flex-basis: 150px;
-    min-height: 130px;
+    min-height: min-content;
   }
 }
 /* Completed lesson actions belong to the top bar; the sheet is the single finish recap. */
@@ -342,5 +343,33 @@
 }
 .handoff-edge-label {
   fill: var(--text-2);
-  font: 9px var(--font-ui);
+  font: 11px var(--font-ui);
+}
+.handoff-board.is-labeled .handoff-board-content {
+  min-height: 104px;
+}
+@media (max-height: 950px) {
+  /* The outcomes carry the next lesson's detail here; keep every four-step handoff above the footer. */
+  .handoff-summary {
+    display: none;
+  }
+  .handoff-header {
+    gap: 10px;
+    padding-block: 16px;
+  }
+  .handoff-body {
+    padding-block: 10px;
+  }
+  .tutorial-handoff-next {
+    gap: 10px;
+  }
+  .handoff-steps {
+    row-gap: 8px;
+  }
+  .handoff-step-row {
+    line-height: 1.25;
+  }
+  .handoff-outcome {
+    padding-block-start: 2px;
+  }
 }

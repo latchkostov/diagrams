@@ -11,6 +11,7 @@ import { stepInput } from "./blueprint";
 import { KeyText } from "./KeyText";
 import type { Tutorial } from "./types";
 import "./handoff.css";
+import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
 
 export function FinishHandoff({
   tutorial,
@@ -54,12 +55,29 @@ export function FinishHandoff({
       event.preventDefault();
       dismissSheet();
     };
-    // A modal can close on this same Escape. Focus and listen after its cleanup and that event finish.
-    const frame = requestAnimationFrame(() => {
-      heading.current?.focus();
+    const interaction = canvasInteraction.get();
+    let frame = 0;
+    const takeFocus = () => {
       window.addEventListener("keydown", dismiss);
-    });
+      // Quick-add can finish a lesson before its deferred name field arrives. Retire that focus request
+      // through the existing naming controller before the handoff takes focus, rather than racing its retry.
+      const mode = interaction?.mode;
+      if (mode?.target && mode.value === "naming") interaction?.dispatch({ type: "naming.done", flowId: mode.target });
+      // A name already being committed owns its final focus move. Its mode transition schedules us after it.
+      if (interaction && ["committing", "released"].includes(interaction.mode.value)) return;
+      stop?.();
+      cancelAnimationFrame(frame);
+      heading.current?.focus();
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(takeFocus);
+    };
+    const stop = interaction?.subscribeMode(schedule);
+    // A modal can close on this same Escape. Focus and listen after its cleanup and that event finish.
+    schedule();
     return () => {
+      stop?.();
       cancelAnimationFrame(frame);
       window.removeEventListener("keydown", dismiss);
     };

@@ -17,11 +17,41 @@ async function finish(page: Page) {
     await expect(strip).not.toHaveAttribute("data-step", step ?? "");
   }
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+  await expect(page.getByTestId("tutorial-handoff-next-title")).toBeInViewport({ ratio: 1 });
 }
 
-test("keyboard-only completion reaches the sheet and starts the next lesson", async ({ page, consoleErrors }) => {
+test("keyboard-only completion reaches the sheet and starts the next lesson", async ({
+  page,
+  consoleErrors,
+}, testInfo) => {
   await runKeyboardTutorial(page, consoleErrors, "quick-add");
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+  await expect(page.getByTestId("tutorial-handoff-next-title")).toBeInViewport({ ratio: 1 });
+  await expect(page.getByTestId("tutorial-handoff-preview-mark")).toHaveCount(4);
+  await expect(page.getByTestId("tutorial-handoff-step-4")).toBeInViewport({ ratio: 1 });
+  expect(await page.getByTestId("tutorial-handoff-body").evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(
+    true,
+  );
+  for (const mark of await page.getByTestId("tutorial-handoff-preview-mark").all())
+    await expect(mark).toBeInViewport({ ratio: 1 });
+  const label = await page.getByTestId("tutorial-handoff-edge-label").boundingBox();
+  if (!label) throw new Error("Missing named connection preview");
+  const nodes = await page.getByTestId("tutorial-handoff-preview-node").evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+  );
+  expect(
+    nodes.every(
+      (node) =>
+        label.y >= node.y + node.height ||
+        label.y + label.height <= node.y ||
+        label.x >= node.x + node.width ||
+        label.x + label.width <= node.x,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("v7-keyboard.png") });
   await page.keyboard.press("Tab");
   await expect(page.getByTestId("tutorial-handoff-body")).toBeFocused();
   await page.keyboard.press("Tab");

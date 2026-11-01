@@ -46,6 +46,7 @@ it("keeps a named connection's identity and markers when reconnecting its destin
     label: t("tutorials.dotsAndSides.edgeName"),
     marks: [1, 2, 3, 4],
   });
+  expect(new Set([...blueprintLayout(board).positions.values()].map((p) => p.y)).size).toBe(1);
 });
 
 it("inserts between existing subjects and removes the original bypass", async () => {

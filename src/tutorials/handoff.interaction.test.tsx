@@ -12,9 +12,13 @@ import { chapters } from "./chapters";
 import { BlueprintBoard } from "./BlueprintBoard";
 import { state as locale } from "../i18n";
 import { quickAdd } from "./catalog/quickAdd";
+import { dotsAndSides } from "./catalog/dotsAndSides";
+import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
+import { initialEditorMode, type EditorModeState } from "../canvas/interaction/mode";
 
 const host = document.createElement("div");
 let root: ReturnType<typeof createRoot>;
+let stopInteraction: (() => void) | undefined;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   document.body.append(host);
@@ -27,7 +31,56 @@ afterEach(async () => {
   cancelLessonStart();
   vi.unstubAllGlobals();
   locale.l = "en";
+  stopInteraction?.();
+  stopInteraction = undefined;
 });
+
+it("retires a final quick-add name request before the finish heading takes focus", async () => {
+  const done = vi.fn(() =>
+    expect(document.activeElement).not.toBe(host.querySelector('[data-testid="tutorial-handoff-heading"]')),
+  );
+  stopInteraction = canvasInteraction.publish({
+    mode: { ...initialEditorMode, value: "naming", target: "db" },
+    dispatch: done,
+    subscribeMode: () => () => {},
+    setGuide: () => {},
+  });
+  await act(() => root.render(<FinishHandoff tutorial={quickAdd} catalog={[quickAdd]} before={{}} progress={{}} />));
+  expect(done).toHaveBeenCalledExactlyOnceWith({ type: "naming.done", flowId: "db" });
+  expect(document.activeElement).toBe(host.querySelector('[data-testid="tutorial-handoff-heading"]'));
+});
+
+it.each(["committing", "released"] as const)(
+  "waits for a name in %s to release its final focus move",
+  async (value) => {
+    let mode: EditorModeState = { ...initialEditorMode, value, target: "db" };
+    let changed: ((next: EditorModeState, previous: EditorModeState) => void) | undefined;
+    const unsubscribe = vi.fn();
+    const dispatch = vi.fn();
+    stopInteraction = canvasInteraction.publish({
+      get mode() {
+        return mode;
+      },
+      dispatch,
+      setGuide: () => {},
+      subscribeMode: (listener) => {
+        changed = listener;
+        return unsubscribe;
+      },
+    });
+    await act(() => root.render(<FinishHandoff tutorial={quickAdd} catalog={[quickAdd]} before={{}} progress={{}} />));
+    const heading = host.querySelector('[data-testid="tutorial-handoff-heading"]');
+    expect(document.activeElement).not.toBe(heading);
+    expect(dispatch).not.toHaveBeenCalled();
+    await act(() => {
+      const previous = mode;
+      mode = initialEditorMode;
+      changed?.(mode, previous);
+    });
+    expect(document.activeElement).toBe(heading);
+    expect(unsubscribe).toHaveBeenCalled();
+  },
+);
 
 it("refreshes a mounted blueprint's authored labels when the language changes", async () => {
   const lesson = {
@@ -49,10 +102,25 @@ it("refreshes a mounted blueprint's authored labels when the language changes", 
 
 it("places a node's numbered markers in reading order", async () => {
   await act(() => root.render(<BlueprintBoard lesson={quickAdd} catalog={[quickAdd]} />));
-  const marks = [...host.querySelectorAll(".handoff-svg-mark")];
+  const marks = [...host.querySelectorAll('[data-testid="tutorial-handoff-preview-mark"]')];
   const x = (number: string) =>
     Number(/translate\((\d+)/.exec(marks.find((mark) => mark.textContent === number)!.getAttribute("transform")!)![1]);
   expect(x("2")).toBeLessThan(x("3"));
+});
+
+it("keeps a named connection's markers and label clear of its nodes", async () => {
+  await act(() => root.render(<BlueprintBoard lesson={dotsAndSides} catalog={[dotsAndSides]} />));
+  const marks = [...host.querySelectorAll('[data-testid="tutorial-handoff-preview-mark"]')];
+  expect(marks).toHaveLength(4);
+  for (const mark of marks) {
+    const y = Number(/translate\([^ ]+ ([^)]+)\)/.exec(mark.getAttribute("transform")!)![1]);
+    expect(y).toBeGreaterThanOrEqual(Number(mark.firstElementChild!.getAttribute("r")));
+  }
+  const labelY = Number(host.querySelector('[data-testid="tutorial-handoff-edge-label"]')!.getAttribute("y"));
+  for (const node of host.querySelectorAll('[data-testid="tutorial-handoff-preview-node"]')) {
+    const y = Number(/translate\([^ ]+ ([^)]+)\)/.exec(node.getAttribute("transform")!)![1]);
+    expect(labelY - 11).toBeGreaterThan(y + 44);
+  }
 });
 
 it.each(["Stay", "Escape", "Scrim"])(
@@ -160,7 +228,7 @@ it.each([false, true])("shows the %s end state with a single header seal", async
   expect(host.querySelector('[data-testid="tutorial-handoff-heading"]')?.textContent).toBe(
     whole ? "You've finished the syllabus" : "Chapter I complete",
   );
-  expect(host.querySelectorAll(".tutorial-seal")).toHaveLength(1);
+  expect(host.querySelectorAll('[data-testid^="tutorial-handoff-seal-"]')).toHaveLength(1);
   expect(
     host.querySelector(`[data-testid="tutorial-handoff-seal-${whole ? "whole-syllabus" : chapters.basics.seal}"]`),
   ).not.toBeNull();

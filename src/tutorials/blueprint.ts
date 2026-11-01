@@ -200,7 +200,9 @@ export function stepInput(step: TutorialStep): string {
 
 /** Flow columns preserve forks and direction; a cycle gets its own column, never an invented connecting wire. */
 export function blueprintLayout(blueprint: Blueprint) {
-  const remaining = new Set(blueprint.nodes.map((n) => n.subject));
+  // A loose node belongs beside the flow, not in a second row that makes a small preview unreadable.
+  const loose = blueprint.nodes.filter((n) => !blueprint.edges.some((e) => e.from === n.subject || e.to === n.subject));
+  const remaining = new Set(blueprint.nodes.filter((n) => !loose.includes(n)).map((n) => n.subject));
   const positions = new Map<string, { x: number; y: number }>();
   let column = 0,
     rows = 1;
@@ -214,5 +216,10 @@ export function blueprintLayout(blueprint: Blueprint) {
     rows = Math.max(rows, ready.length);
     column++;
   }
-  return { positions, width: Math.max(176, column * 176), height: rows * 82 };
+  for (const node of loose) positions.set(node.subject, { x: 16 + column++ * 176, y: 26 });
+  return {
+    positions,
+    width: Math.max(176, column * 176),
+    height: rows * 82 + (blueprint.edges.some((edge) => edge.label) ? 18 : 0),
+  };
 }

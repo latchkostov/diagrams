@@ -38,17 +38,24 @@ function Drawing({ blueprint }: { blueprint: Blueprint }) {
               markerEnd={`url(#${marker})`}
             />
             {edge.label && (
-              <text className="handoff-edge-label" x={(x1 + x2) / 2} y={(y1 + y2) / 2 + 14} textAnchor="middle">
+              <text
+                data-testid="tutorial-handoff-edge-label"
+                className="handoff-edge-label"
+                x={(x1 + x2) / 2}
+                y={Math.max(a.y, b.y) + 60}
+                textAnchor="middle"
+              >
                 {edge.label}
               </text>
             )}
             {edge.marks.map((n, i) => (
               <g
                 className="handoff-svg-mark"
+                data-testid="tutorial-handoff-preview-mark"
                 key={n}
-                transform={`translate(${(x1 + x2) / 2} ${(y1 + y2) / 2 - 16 - i * 20})`}
+                transform={`translate(${(x1 + x2) / 2 + (i - (edge.marks.length - 1) / 2) * 24} ${Math.min(a.y, b.y) - 14})`}
               >
-                <circle r="9" />
+                <circle r="11" />
                 <text dy=".35em">{n}</text>
               </g>
             ))}
@@ -58,7 +65,7 @@ function Drawing({ blueprint }: { blueprint: Blueprint }) {
       {blueprint.nodes.map((node) => {
         const p = layout.positions.get(node.subject)!;
         return (
-          <g key={node.subject} transform={`translate(${p.x} ${p.y})`}>
+          <g key={node.subject} data-testid="tutorial-handoff-preview-node" transform={`translate(${p.x} ${p.y})`}>
             <rect className="handoff-node" width="140" height="44" rx="6" />
             <rect className="handoff-tile" x="5" y="6" width="30" height="32" rx="4" />
             <image href={iconUrl(getStencil(node.stencil).icon)} x="10" y="12" width="20" height="20" />
@@ -66,7 +73,7 @@ function Drawing({ blueprint }: { blueprint: Blueprint }) {
               className="handoff-node-label"
               x="41"
               y="26"
-              textLength={node.label.length > 15 ? 93 : undefined}
+              textLength={node.label.length > 12 ? 93 : undefined}
               lengthAdjust="spacingAndGlyphs"
             >
               {node.label}
@@ -74,10 +81,11 @@ function Drawing({ blueprint }: { blueprint: Blueprint }) {
             {node.marks.map((n, i) => (
               <g
                 className="handoff-svg-mark"
+                data-testid="tutorial-handoff-preview-mark"
                 key={n}
-                transform={`translate(${130 - (node.marks.length - 1 - i) * 20} -2)`}
+                transform={`translate(${130 - (node.marks.length - 1 - i) * 24} -2)`}
               >
-                <circle r="9" />
+                <circle r="11" />
                 <text dy=".35em">{n}</text>
               </g>
             ))}
@@ -104,7 +112,7 @@ export function BlueprintBoard({ lesson, catalog }: { lesson: Tutorial; catalog:
     state.diagram && buildBlueprint(lesson, typeof lesson.start === "function" ? lesson.start() : state.diagram);
   return (
     <div
-      className={`handoff-board${blueprint?.kind === "settings" ? " is-settings" : ""}`}
+      className={`handoff-board${blueprint?.kind === "settings" ? " is-settings" : blueprint?.edges.some((edge) => edge.label) ? " is-labeled" : ""}`}
       data-testid="tutorial-handoff-board"
     >
       <div className="handoff-board-content" data-testid="tutorial-handoff-board-content">
@@ -143,7 +151,7 @@ export function BlueprintBoard({ lesson, catalog }: { lesson: Tutorial; catalog:
         <span className="handoff-lesson-number">{lessonNumber(lesson, catalog)}</span>
         <div>
           <small>{t("tutorials.handoff.nextLesson")}</small>
-          <h3>{lesson.title()}</h3>
+          <h3 data-testid="tutorial-handoff-next-title">{lesson.title()}</h3>
         </div>
         <div>
           <small>{t("tutorials.handoff.time")}</small>

@@ -12,6 +12,10 @@ The preview projects authored demo data onto a fresh lesson start, without execu
 
 The old duplicate completion strip no longer consumes sheet space; its optional example/copy actions remain in the tutorial bar. Heading focus announces the handoff once; the recap appears once before the next lesson. Escape and Stay remove both the sheet and its listener and restore canvas focus. The dimmed region has the same Stay action.
 
+A keyboard completion can precede quick-add's deferred name field. The handoff retires that pending name through the existing naming controller before taking heading focus, so its late retry cannot take focus back. Loose nodes stay beside the previewed flow, and the board's intrinsic minimum preserves wrapped title blocks instead of clipping them.
+
+Short viewports fold the redundant next-lesson summary, retaining the recap, drawing, title, time and every step's outcome. This keeps both the 1.3 and the longer 1.4 four-step handoffs above the pinned footer at 1440×900.
+
 ## Placement regression
 
 The Editing card formerly cached a screen rectangle when hover intent opened. Fit and other subsequent layout movement could leave that rectangle stale. The general fix remeasures the live anchor while visible and searches clear positions off the node and floating coach. It suppresses the tooltip when none fit. Regression tests fail when the old tooltip implementation is restored.
