@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
-import { createElement, useSyncExternalStore } from "react";
+import { createElement, useEffect, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -69,13 +69,13 @@ function harness() {
       return () => listeners.delete(run);
     },
   };
-  const dispose = mountChips(
-    root,
-    store as unknown as ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
-    null,
-    { style: "smoothstep", direction: "LR" },
-  );
-  return { root, store, flush, dispose, state: () => state };
+  const mount = () =>
+    mountChips(root, store as unknown as ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>, null, {
+      style: "smoothstep",
+      direction: "LR",
+    });
+  const dispose = mount();
+  return { root, store, flush, dispose, mount, state: () => state };
 }
 
 afterEach(() => {
@@ -83,6 +83,35 @@ afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+it("mounts a chip surface during image capture without flushing from its React effect", async () => {
+  const { root, store, flush, dispose, mount, state } = harness();
+  const error = vi.spyOn(console, "error");
+  const host = document.createElement("div");
+  const react = createRoot(host);
+  store.setState({ transform: [0, 0, 0.4] });
+  await flush();
+  expect(state().ldChips).toBeTruthy();
+  const resume = suspendFrameCapture(root.querySelector(".react-flow__viewport")!);
+  dispose();
+  function Surface() {
+    useEffect(mount, []);
+    return null;
+  }
+  try {
+    flushSync(() => react.render(createElement(Surface)));
+    await flush();
+    expect(state().ldChips).toBeNull();
+    expect(root.hasAttribute("data-low-zoom")).toBe(false);
+    expect(error).not.toHaveBeenCalled();
+    resume();
+    await flush();
+    expect(state().ldChips).toBeTruthy();
+  } finally {
+    react.unmount();
+    resume();
+  }
 });
 
 it("clears chip readiness only after rendered subscribers commit", async () => {

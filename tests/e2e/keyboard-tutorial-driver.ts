@@ -13,6 +13,7 @@ import {
 import { type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
 import { chooseNativeSelect } from "./native-select";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
+import { tutorialKey } from "../../scripts/e2e-keys";
 
 export class CompletedStep extends Error {}
 
@@ -203,6 +204,7 @@ export async function focus(page: Page, id: string) {
         completed: ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? ""),
         reading,
         active: active?.getAttribute("data-testid") ?? `${active?.tagName ?? "none"}:${document.hasFocus()}`,
+        menuFocused: !!active?.closest("[data-testid][data-depth]"),
         roving,
       };
     }, settle);
@@ -227,6 +229,20 @@ export async function focus(page: Page, id: string) {
     // Canvas Tab publishes its destination before the reveal/focus transaction settles.
     // A second key during that transaction is intentionally ignored by the canvas.
     if (/^(rf__node-|node-live-focus-)/.test(previous)) {
+      // Opening quick-add hands focus from this node to the placed search. The
+      // menu remains open after that handoff, so interaction idle cannot acknowledge it.
+      if ((await page.getByTestId("canvas-wrap").getAttribute("data-interaction-state")) === "menu-open") {
+        await expect
+          .poll(
+            async () => {
+              state = await readState();
+              return state.completed || state.focused || state.menuFocused;
+            },
+            { intervals: [0] },
+          )
+          .toBe(true);
+        continue;
+      }
       await waitForInteractionIdle(page);
       await waitForCameraIdle(page);
     }
@@ -374,7 +390,16 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
     await write(page, action.text);
   } else if ("choose" in action) {
     await focus(page, action.choose);
-    await chooseNativeSelect(page, action.choose, action.value);
+    const chosen = await chooseNativeSelect(
+      page,
+      action.choose,
+      action.value,
+      "platform",
+      action.choose === "live-speed"
+        ? () => page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")
+        : undefined,
+    );
+    if (!chosen) throw new CompletedStep();
     if (action.choose === "live-speed") {
       // The authored run can finish while this optional acceleration is selected.
       // Completion restores normal speed; the finished lesson now owns the controls.
@@ -462,7 +487,7 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
       .toBe(true);
     if (action.press === "ControlOrMeta+d")
       await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
-    await page.keyboard.press(action.press);
+    await page.keyboard.press(tutorialKey(action.press));
     if (action.press === "Escape") {
       await animationFrames(page);
       if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished"))

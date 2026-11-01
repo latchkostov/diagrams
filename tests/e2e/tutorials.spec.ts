@@ -1310,6 +1310,9 @@ test("example start waits for loading and recovers from a failed download", asyn
   });
   let attempts = 0;
   await page.route(/\/(?:assets\/retry-storm-[^/]+\.js|src\/examples\/retry-storm\.json)(?:\?.*)?$/, async (route) => {
+    // The catalog also imports this example as raw reference text. Fail the sandbox
+    // document load, not the catalog chunk that must render its recovery control.
+    if (new URL(route.request().url()).searchParams.has("raw")) return route.continue();
     attempts++;
     if (attempts === 1) {
       await held;

@@ -628,6 +628,8 @@ describe("focusPolicy: invariants over every state × event", () => {
       expect(say(focusPolicy(s, onMac).command)).toBe(say(d.command));
       // A move is the one pending move; keep and roving leave pending as it was (unless the event retires it).
       if (d.command.type === "focus") expect(d.state.pending).toBe(d.command);
+      else if (e.type === "menu.opened")
+        expect(d.state.pending).toBe(e.kind === "live" || e.kind === "dialog" ? s.pending : null);
       else if (e.type === "inspector.abandoned")
         expect(d.state.pending).toBe(s.pending?.target.kind === "field" ? null : s.pending);
       else if (!["focus.ran", "focus.done", "input"].includes(e.type)) expect(d.state.pending).toBe(s.pending);

@@ -171,19 +171,41 @@ for (const renderer of ["worker", "main"])
   test(`low zoom stops painting during running playback: ${renderer}`, async ({ page }) => {
     await installParticleCounters(page);
     await page.clock.install();
-    await gotoLive(page, `./?view=canvas&example=kafka-order-pipeline&live=1&sim=black-friday&renderer=${renderer}`);
+    await gotoLive(
+      page,
+      `./?view=canvas&example=kafka-order-pipeline&live=1&sim=black-friday&paused=1&renderer=${renderer}`,
+    );
+    const play = page.getByTestId("live-play");
+    const settleZoom = async () => {
+      await expect
+        .poll(
+          async () => {
+            await page.clock.runFor(32);
+            return page
+              .getByTestId("canvas-wrap")
+              .evaluate((el) => !el.hasAttribute("data-viewport-moving") && el.dataset.chipsPending === "false");
+          },
+          { intervals: [0] },
+        )
+        .toBe(true);
+    };
+    await expect(play).toHaveAttribute("data-state", "paused");
     await expect.poll(() => page.evaluate(() => typeof window.__liveProbe)).toBe("function");
     await zoomIdentity(page, 0.8);
     await pauseClock(page);
+    await settleZoom();
+    await play.click();
+    await expect(play).toHaveAttribute("data-state", "playing");
     const frames = async () => (await rendererCounters(page, true)).frames;
     const clock = async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
     const first = await frames();
     await page.clock.runFor(1000);
     expect(await frames()).toBeGreaterThan(first);
-    await page.clock.resume();
+    // Keep playback running through both manual zooms, advancing only the controlled page clock.
     await zoomIdentity(page, 0.4);
+    await settleZoom();
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
-    await pauseClock(page);
+    await expect(play).toHaveAttribute("data-state", "playing");
     // Counters publish every other UI tick; measure after that pending publish.
     await page.clock.runFor(1000);
     const stopped = await frames();
@@ -191,9 +213,9 @@ for (const renderer of ["worker", "main"])
     await page.clock.runFor(1000);
     expect(await clock()).toBeGreaterThan(time);
     expect(await frames()).toBe(stopped);
-    await page.clock.resume();
     await zoomIdentity(page, 0.8);
-    await pauseClock(page);
+    await settleZoom();
+    await expect(play).toHaveAttribute("data-state", "playing");
     const resumed = await frames();
     await page.clock.runFor(1000);
     expect(await frames()).toBeGreaterThan(resumed);
