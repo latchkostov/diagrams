@@ -45,14 +45,16 @@ export function matchesSimulation(sim: Simulation | null | undefined, match: Sim
   )
     return false;
   if (
-    match.note &&
-    !sim.timeline?.some(
-      (s) =>
-        s.atMs === match.note!.atMs &&
-        s.action.do === "note" &&
-        !!s.action.text.trim() &&
-        s.action.pause === match.note!.pause &&
-        s.action.focus?.includes(match.note!.focus),
+    [...(match.note ? [match.note] : []), ...(match.notes ?? [])].some(
+      (note) =>
+        !sim.timeline?.some(
+          (s) =>
+            s.atMs === note.atMs &&
+            s.action.do === "note" &&
+            !!s.action.text.trim() &&
+            s.action.pause === note.pause &&
+            s.action.focus?.includes(note.focus),
+        ),
     )
   )
     return false;
@@ -84,28 +86,36 @@ export function authoredSimulation(
   if (demo.definition) {
     // The reference is explicit; keep unrelated authored timeline items and settings.
     const definition = demo.definition;
+    const remaining = [...(own?.timeline ?? [])];
+    const timeline = (definition.timeline ?? []).map((d) => {
+      let index = remaining.findIndex((s) => s.atMs === d.atMs && s.action.do === d.action.do);
+      if (index < 0)
+        index = remaining.findIndex(
+          (s) => s.action.do === "note" && d.action.do === "note" && s.action.text === d.action.text,
+        );
+      const existing = index < 0 ? undefined : remaining.splice(index, 1)[0];
+      return d.action.do === "note" &&
+        existing?.action.do === "note" &&
+        existing.atMs === d.atMs &&
+        existing.action.text.trim() &&
+        existing.action.pause === d.action.pause &&
+        equal(existing.action.focus, d.action.focus)
+        ? existing
+        : d;
+    });
+    const extraExpectations = [...(own?.expectations ?? [])];
+    const expectations = (definition.expectations ?? []).map((d) => {
+      let index = extraExpectations.findIndex((e) => e.id === d.id);
+      if (index < 0) index = extraExpectations.findIndex((e) => matchesExpectation(e, d));
+      if (index < 0) index = extraExpectations.findIndex((e) => e.label === d.label);
+      const existing = index < 0 ? undefined : extraExpectations.splice(index, 1)[0];
+      return existing ? { ...d, id: existing.id, label: existing.label } : d;
+    });
     const next = {
       ...own,
       ...definition,
-      timeline: [
-        ...(own?.timeline ?? []).filter(
-          (s) => !definition.timeline?.some((d) => d.atMs === s.atMs && d.action.do === s.action.do),
-        ),
-        ...(definition.timeline ?? []).map((d) => {
-          const existing = own?.timeline?.find((s) => s.atMs === d.atMs && s.action.do === d.action.do);
-          return d.action.do === "note" &&
-            existing?.action.do === "note" &&
-            existing.action.text.trim() &&
-            existing.action.pause === d.action.pause &&
-            equal(existing.action.focus, d.action.focus)
-            ? existing
-            : d;
-        }),
-      ],
-      expectations: [
-        ...(own?.expectations ?? []).filter((e) => !definition.expectations?.some((d) => d.id === e.id)),
-        ...(definition.expectations ?? []),
-      ],
+      timeline: [...remaining, ...timeline],
+      expectations: [...extraExpectations, ...expectations],
     };
     return equal(own, next) ? null : next;
   }
@@ -160,6 +170,7 @@ export function matchesExpectation(e: Expectation, match: NonNullable<Simulation
     equal(e.metric, match.metric) &&
     e.op === match.op &&
     e.value === match.value &&
-    (e.when ?? "end") === (match.when ?? "end")
+    (e.when ?? "end") === (match.when ?? "end") &&
+    ((match.when ?? "end") !== "at" || e.atMs === match.atMs)
   );
 }

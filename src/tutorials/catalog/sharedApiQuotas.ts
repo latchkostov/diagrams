@@ -24,7 +24,7 @@ export const sharedApiQuotas: Tutorial = {
       {
         title: msg("tutorials.sharedApiQuotas.runTitle"),
         goal: msg("tutorials.sharedApiQuotas.runGoal"),
-        done: msg("tutorials.sharedApiQuotas.runDone"),
+        done: msg("tutorials.sharedApiQuotas.runDoneV2"),
       },
       true,
     ),
@@ -89,5 +89,5 @@ export const sharedApiQuotas: Tutorial = {
       },
     ),
   ],
-  finish: { text: msg("tutorials.sharedApiQuotas.finish") },
+  finish: { text: msg("tutorials.sharedApiQuotas.finishV2") },
 };

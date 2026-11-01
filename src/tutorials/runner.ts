@@ -774,7 +774,12 @@ export function createTutorialRunner(
         if (!h.canvas?.live || !session) return false;
         // Already so (the learner's own toggle, a trace or slow motion under way): nothing to press.
         if (demo.kind === "traffic" && session.traffic === demo.on) return true;
-        if (demo.kind === "trace" && session.trace) return true;
+        if (
+          demo.kind === "trace" &&
+          session.trace &&
+          (!demo.deadLetter || session.trace.current?.steps.some((s) => s.kind === "deadletter"))
+        )
+          return true;
         if (demo.kind === "slowmo" && (h.session?.slowmo?.getState().status ?? "off") !== "off") return true;
         const node = "subject" in demo && demo.subject ? subjects[demo.subject] : undefined;
         if ("subject" in demo && demo.subject && !node) return false;
@@ -782,9 +787,11 @@ export function createTutorialRunner(
           demo.kind === "traffic"
             ? "sim.traffic"
             : demo.kind === "trace"
-              ? node
-                ? "sim.trace-next"
-                : "sim.trace-message:next"
+              ? demo.deadLetter
+                ? "sim.trace-message:dead-letter"
+                : node
+                  ? "sim.trace-next"
+                  : "sim.trace-message:next"
               : demo.kind === "slowmo"
                 ? node
                   ? "sim.slowmo-from"

@@ -1,14 +1,17 @@
+import { diagnosticLesson } from "./diagnosticLesson";
+import reference from "../../examples/retry-storm.json";
+import type { DiagramFile } from "../../model/types";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
-export const backoffBudget: Tutorial = {
+const lesson: Tutorial = {
   id: "backoff-budget",
-  version: 1,
+  version: 2,
   track: "resilience",
   level: 2,
   minutes: 4,
   title: msg("tutorials.backoffBudget.title"),
-  summary: msg("tutorials.backoffBudget.summary"),
+  summary: msg("tutorials.backoffBudget.summaryV2"),
   start: { example: "retry-storm" },
   subjects: {
     caller: { stencils: ["generic.service"] },
@@ -37,8 +40,8 @@ export const backoffBudget: Tutorial = {
       solution: [
         { click: "node-{callee}" },
         { press: "Control+Alt+[" },
-        { click: "inspector-section-edge-simulation" },
-        { click: "inspector-section-retry-details" },
+        { open: "inspector-section-edge-simulation" },
+        { open: "inspector-section-retry-details" },
         { fill: "inspector-field-retry-backoff", text: "100" },
         { press: "Enter" },
       ],
@@ -70,18 +73,18 @@ export const backoffBudget: Tutorial = {
           ],
         },
       ],
-      solution: [{ click: "inspector-section-retry-budget-details" }, { click: "inspector-field-retry-budget" }],
+      solution: [{ open: "inspector-section-retry-budget-details" }, { click: "inspector-field-retry-budget" }],
     },
     {
       id: "run-jitter",
       title: msg("tutorials.backoffBudget.jitterTitle"),
-      goal: msg("tutorials.backoffBudget.jitterGoal"),
+      goal: msg("tutorials.backoffBudget.jitterGoalV2"),
       done: msg("tutorials.backoffBudget.jitterDone"),
       check: { kind: "simulation", id: "jittered-backoff" },
       sticky: true,
       targets: [
-        { testId: "live-sim-picker", tip: msg("tutorials.backoffBudget.jitterGoal") },
-        { testId: "live-toggle", tip: msg("tutorials.backoffBudget.jitterGoal") },
+        { testId: "live-sim-picker", tip: msg("tutorials.backoffBudget.jitterGoalV2") },
+        { testId: "live-toggle", tip: msg("tutorials.backoffBudget.jitterGoalV2") },
       ],
       demo: [{ kind: "runSimulation", id: "jittered-backoff" }],
       solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "jittered-backoff" }],
@@ -89,17 +92,32 @@ export const backoffBudget: Tutorial = {
     {
       id: "expect-jitter-backlog",
       title: msg("tutorials.backoffBudget.jitterExpectTitle"),
-      goal: msg("tutorials.backoffBudget.jitterExpectGoal"),
+      goal: msg("tutorials.backoffBudget.jitterExpectGoalV2"),
       done: msg("tutorials.backoffBudget.jitterExpectDone"),
       // eslint-disable-next-line local/no-literal-ui-text -- stable saved expectation id
       check: { kind: "expectation", simulation: "jittered-backoff", label: "backlog", outcome: "fail" },
       sticky: true,
       targets: [
-        { testId: "live-expectations", tip: msg("tutorials.backoffBudget.jitterExpectGoal"), dim: false },
-        { testId: "live-expectations-summary", tip: msg("tutorials.backoffBudget.jitterExpectGoal"), dim: false },
+        { testId: "live-expectations", tip: msg("tutorials.backoffBudget.jitterExpectGoalV2"), dim: false },
+        { testId: "live-expectations-summary", tip: msg("tutorials.backoffBudget.jitterExpectGoalV2"), dim: false },
       ],
       demo: [],
-      solution: [{ select: "live-speed", value: "8" }, { hover: "live-timeline" }],
+      solution: [
+        { select: "live-speed", value: "8" },
+        { open: "live-expectations-summary" },
+        { hover: "live-timeline" },
+      ],
+    },
+    {
+      id: "read-failed-expectation",
+      title: msg("tutorials.backoffBudget.jitterExpectTitle"),
+      goal: msg("tutorials.backoffBudget.jitterExpectGoalV2"),
+      done: msg("tutorials.backoffBudget.jitterExpectDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "live-expectations-summary", tip: msg("tutorials.backoffBudget.jitterExpectTitle") }],
+      demo: [],
+      solution: [{ open: "live-expectations-summary" }, { click: "tutorial-skip" }],
     },
     {
       id: "run-budget",
@@ -115,7 +133,7 @@ export const backoffBudget: Tutorial = {
     {
       id: "compare",
       title: msg("tutorials.backoffBudget.compareTitle"),
-      goal: msg("tutorials.backoffBudget.compareGoal"),
+      goal: msg("tutorials.backoffBudget.compareGoalV2"),
       done: msg("tutorials.backoffBudget.compareDone"),
       check: {
         kind: "all",
@@ -128,12 +146,14 @@ export const backoffBudget: Tutorial = {
       },
       sticky: true,
       targets: [
-        { testId: "live-expectations", tip: msg("tutorials.backoffBudget.compareGoal"), dim: false },
-        { testId: "live-expectations-summary", tip: msg("tutorials.backoffBudget.compareGoal"), dim: false },
+        { testId: "live-expectations", tip: msg("tutorials.backoffBudget.compareGoalV2"), dim: false },
+        { testId: "live-expectations-summary", tip: msg("tutorials.backoffBudget.compareGoalV2"), dim: false },
       ],
       demo: [],
       solution: [{ select: "live-speed", value: "8" }, { hover: "live-timeline" }],
     },
   ],
-  finish: { text: msg("tutorials.backoffBudget.finish") },
+  finish: { text: msg("tutorials.backoffBudget.finishV2") },
 };
+
+export const backoffBudget = diagnosticLesson(lesson, () => structuredClone(reference) as DiagramFile);

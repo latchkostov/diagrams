@@ -38,6 +38,7 @@ export const tutorialMetadata: readonly TutorialMetadata[] = (
     { id: "timeouts-pools", title: msg("tutorials.timeoutsPools.title") },
     { id: "backlog-lag", title: msg("tutorials.backlogLag.title") },
     { id: "autoscaling", title: msg("tutorials.autoscaling.title") },
+    { id: "scale-on-backlog", title: msg("tutorials.scaleOnBacklog.title") },
     { id: "scale-to-zero", title: msg("tutorials.scaleToZero.title") },
     { id: "rates-and-inputs", title: msg("tutorials.ratesAndInputs.title") },
     { id: "read-a-node", title: msg("tutorials.readANode.title") },

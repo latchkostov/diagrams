@@ -499,7 +499,7 @@ for (const entry of ["Skip", "Continue"] as const)
         localStorage.setItem(
           "diagrams.tutorials.v1",
           JSON.stringify({
-            progress: { "threads-block": { version: 2, step: 3, completed: false } },
+            progress: { "threads-block": { version: 3, step: 3, completed: false } },
           }),
         ),
       );
@@ -590,7 +590,7 @@ test("where-time-goes: Latency can be expanded and read before Done finishes", a
     localStorage.setItem(
       "diagrams.tutorials.v1",
       JSON.stringify({
-        progress: { "where-time-goes": { version: 2, step: 3, completed: false } },
+        progress: { "where-time-goes": { version: 3, step: 4, completed: false } },
       }),
     ),
   );

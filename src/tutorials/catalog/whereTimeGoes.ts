@@ -1,18 +1,32 @@
+import { diagnosticLesson } from "./diagnosticLesson";
+import reference from "../../examples/where-the-time-goes.json";
+import type { DiagramFile } from "../../model/types";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { moment, runStep } from "./waitingSteps";
 
-export const whereTimeGoes: Tutorial = {
+const lesson: Tutorial = {
   id: "where-time-goes",
-  version: 2,
+  version: 3,
   track: "waiting",
   level: 2,
   minutes: 4,
   title: msg("tutorials.whereTimeGoes.title"),
-  summary: msg("tutorials.whereTimeGoes.summary"),
+  summary: msg("tutorials.whereTimeGoes.summaryV3"),
   start: { example: "where-the-time-goes" },
   subjects: { billing: { stencils: ["service.dotnet"] } },
   steps: [
+    {
+      id: "predict",
+      title: msg("tutorials.whereTimeGoes.predictTitleV3"),
+      goal: msg("tutorials.whereTimeGoes.predictGoalV3"),
+      done: msg("tutorials.whereTimeGoes.predictDoneV3"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "node-{billing}", tip: msg("tutorials.whereTimeGoes.predictTitleV3") }],
+      demo: [],
+      solution: [{ click: "tutorial-skip" }],
+    },
     runStep(
       "run",
       "slow-billing-drill",
@@ -36,8 +50,8 @@ export const whereTimeGoes: Tutorial = {
       },
       {
         title: msg("tutorials.whereTimeGoes.p95Title"),
-        goal: msg("tutorials.whereTimeGoes.p95Goal"),
-        done: msg("tutorials.whereTimeGoes.p95Done"),
+        goal: msg("tutorials.whereTimeGoes.p95GoalV3"),
+        done: msg("tutorials.whereTimeGoes.p95DoneV3"),
       },
     ),
     moment(
@@ -65,13 +79,15 @@ export const whereTimeGoes: Tutorial = {
     {
       id: "read-breakdown",
       title: msg("tutorials.whereTimeGoes.breakdownTitle"),
-      goal: msg("tutorials.whereTimeGoes.breakdownGoal"),
+      goal: msg("tutorials.whereTimeGoes.breakdownGoalV3"),
       check: { kind: "acknowledge" },
       sticky: true,
-      targets: [{ testId: "hover-section-latency", tip: msg("tutorials.whereTimeGoes.breakdownGoal"), dim: false }],
+      targets: [{ testId: "hover-section-latency", tip: msg("tutorials.whereTimeGoes.breakdownGoalV3"), dim: false }],
       demo: [],
       solution: [{ hover: "node-{billing}" }, { click: "hover-section-latency" }, { click: "tutorial-skip" }],
     },
   ],
-  finish: { text: msg("tutorials.whereTimeGoes.finish") },
+  finish: { text: msg("tutorials.whereTimeGoes.finishV3") },
 };
+
+export const whereTimeGoes = diagnosticLesson(lesson, () => structuredClone(reference) as DiagramFile);

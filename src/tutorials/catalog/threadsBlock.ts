@@ -1,15 +1,18 @@
+import { diagnosticLesson } from "./diagnosticLesson";
+import reference from "../../examples/blocking-call.json";
+import type { DiagramFile } from "../../model/types";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { liveStep, moment, patchStep, runStep } from "./waitingSteps";
 
-export const threadsBlock: Tutorial = {
+const lesson: Tutorial = {
   id: "threads-block",
-  version: 2,
+  version: 3,
   track: "waiting",
   level: 2,
   minutes: 4,
   title: msg("tutorials.threadsBlock.title"),
-  summary: msg("tutorials.threadsBlock.summary"),
+  summary: msg("tutorials.threadsBlock.summaryV3"),
   start: { example: "blocking-call" },
   subjects: { caller: { stencils: ["generic.service"] }, partner: { stencils: ["generic.external-api"] } },
   steps: [
@@ -54,8 +57,8 @@ export const threadsBlock: Tutorial = {
       ],
       {
         title: msg("tutorials.threadsBlock.freeTitle"),
-        goal: msg("tutorials.threadsBlock.freeGoal"),
-        done: msg("tutorials.threadsBlock.freeDone"),
+        goal: msg("tutorials.threadsBlock.freeGoalV3"),
+        done: msg("tutorials.threadsBlock.freeDoneV3"),
       },
     ),
     liveStep("live-run-free-thread", {
@@ -70,7 +73,7 @@ export const threadsBlock: Tutorial = {
       "free-thread",
       {
         title: msg("tutorials.threadsBlock.rerunTitle"),
-        goal: msg("tutorials.threadsBlock.rerunGoal"),
+        goal: msg("tutorials.threadsBlock.rerunGoalV3"),
         done: msg("tutorials.threadsBlock.rerunDone"),
       },
       false,
@@ -90,9 +93,11 @@ export const threadsBlock: Tutorial = {
       {
         title: msg("tutorials.threadsBlock.resultTitle"),
         goal: msg("tutorials.threadsBlock.resultGoal"),
-        done: msg("tutorials.threadsBlock.resultDone"),
+        done: msg("tutorials.threadsBlock.resultDoneV3"),
       },
     ),
   ],
-  finish: { text: msg("tutorials.threadsBlock.finish") },
+  finish: { text: msg("tutorials.threadsBlock.finishV3") },
 };
+
+export const threadsBlock = diagnosticLesson(lesson, () => structuredClone(reference) as DiagramFile);

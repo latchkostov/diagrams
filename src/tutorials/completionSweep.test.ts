@@ -364,7 +364,7 @@ function sandbox(
       tracing: () => null,
       traceNext: (nodeId) => c.traceNext(nodeId),
       traceSlowest: () => {},
-      traceDeadLettered: () => {},
+      traceDeadLettered: () => controller?.traceDeadLettered(),
       slowMotion: () => slow.start(),
       slowMotionTrace: () => {},
       canReplayTrace: () => false,
@@ -908,6 +908,7 @@ function sandbox(
         case "traffic":
           return controller!.setTraffic(demo.on);
         case "trace":
+          if (demo.deadLetter) return controller!.traceDeadLettered();
           if (controller!.getState().trace) return;
           return controller!.traceNext(demo.subject ? id(demo.subject) : undefined);
         case "fault": {
@@ -1002,7 +1003,7 @@ const checkNeedsTime = (check: Check): boolean =>
     : (check.kind === "simulation" && !!check.atLeastMs) ||
       check.kind === "routeEvidence" ||
       check.kind === "newRun" ||
-      (check.kind === "trace" && !!check.complete) ||
+      (check.kind === "trace" && (!!check.complete || !!check.deadLetter)) ||
       check.kind === "processed" ||
       check.kind === "metric" ||
       check.kind === "expectation" ||
@@ -2373,9 +2374,11 @@ describe("completion regressions", () => {
           expect(s.hostState.canvas.live).toBe(true);
           expect(state(s).index).toBe(i + 2);
           expect(tutorial.steps[state(s).index].solution[0]).toHaveProperty("select", "live-sim-picker");
-          const rerun = tutorial.steps[state(s).index].demo[0];
+          const actions = tutorial.steps[state(s).index].demo;
+          expect(actions.map((d) => d.kind)).toEqual(["saveSimulation", "runSimulation"]);
+          const rerun = actions.at(-1)!;
           expect(rerun.kind).toBe("runSimulation");
-          await s.learn(rerun);
+          for (const action of actions) await s.learn(action);
           expect(s.live!.getState().running?.id).toBe(rerun.kind === "runSimulation" ? rerun.id : "");
         });
     }
@@ -2396,17 +2399,19 @@ describe("completion regressions", () => {
 
   it("autoscaling cannot latch replicas-grow behind the setting step with its readout closed", async () => {
     const s = sandbox(autoscaling);
-    await reach(s, autoscaling, 1);
+    const setting = autoscaling.steps.findIndex((step) => step.id === "scale-on-busy-threads");
+    const result = autoscaling.steps.findIndex((step) => step.id === "replicas-grow");
+    await reach(s, autoscaling, setting);
     for (let t = 0; t < 9000; t += 10) s.live!.advance(10);
     s.live!.publish();
     expect(s.live!.getState().snapshot.nodes[s.subject("caller")].replicas).toBeGreaterThan(4);
-    expect(state(s).latched[2]).toBe(false);
-    await s.learn(autoscaling.steps[1].demo[0]);
-    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(state(s).latched[result]).toBe(false);
+    await s.learn(autoscaling.steps[setting].demo[0]);
+    expect(state(s)).toMatchObject({ index: result, value: "active" });
     // Changing the scaling policy rebuilds the run. It must still wait for a readout once the fleet grows again.
     for (let t = 0; t < 9000; t += 10) s.live!.advance(10);
     s.live!.publish();
-    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(state(s)).toMatchObject({ index: result, value: "active" });
     s.hover({ kind: "node", id: s.subject("caller") });
     expect(state(s).value).toBe("finished");
   });
@@ -2819,17 +2824,28 @@ describe("completion regressions", () => {
     );
   });
 
-  it("backoff-budget: jitter fails the backlog expectation but the same seeded budget run recovers", async () => {
+  it("backoff-budget: jitter fails the backlog expectation before the budget comparison", async () => {
     const s = sandbox(backoffBudget);
     await reach(s, backoffBudget, 3);
     const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
     expect(edge.props).toMatchObject({ caller: { retry: { backoffMs: 100, budget: { percent: 20 } } } });
     const seed = s.live!.getState().running!.seed;
     play(s, 60000);
+    expect(backoffBudget.steps[state(s).index].id).toBe("read-failed-expectation");
+    await skip(s, backoffBudget);
     expect(backoffBudget.steps[state(s).index].id).toBe("run-budget");
     expect(s.live!.getState().run!.expectations).toContainEqual(
       expect.objectContaining({ id: "backlog", status: "fail" }),
     );
+    expect(seed).toBe(7);
+  });
+
+  it("backoff-budget: the same seeded budget run recovers", async () => {
+    const s = sandbox(backoffBudget);
+    const budget = backoffBudget.steps.findIndex((step) => step.id === "run-budget");
+    await reach(s, backoffBudget, budget);
+    const seed = s.live!.getState().running!.seed;
+    expect(seed).toBe(7);
     await skip(s, backoffBudget);
     expect(s.live!.getState().running!.seed).toBe(seed);
     expect(backoffBudget.steps[state(s).index].id).toBe("compare");
@@ -2875,6 +2891,20 @@ describe("completion regressions", () => {
     },
   );
 
+  it("dead-letters: Skip investigates an existing dead letter after the narration has paused", async () => {
+    const s = sandbox(tutorials.find((t) => t.id === "dead-letters")!);
+    const lesson = tutorials.find((t) => t.id === "dead-letters")!;
+    const step = lesson.steps.findIndex((step) => step.id === "investigate");
+    await reach(s, lesson, step);
+    play(s, 20000);
+    expect(s.live!.getState().run).toMatchObject({ time: 10000, waiting: true });
+    expect(s.live!.getState().trace).toBeNull();
+    await skip(s, lesson);
+    expect(s.live!.getState().trace?.current?.steps).toContainEqual(
+      expect.objectContaining({ kind: "deadletter", node: s.subject("commands") }),
+    );
+  });
+
   it("circuit-breaker: initial Closed never completes recovery; real playback opens, tests and closes", async () => {
     const s = sandbox(circuitBreaker);
     await reach(s, circuitBreaker, 2);
@@ -2885,10 +2915,11 @@ describe("completion regressions", () => {
       const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
       const reading = s.live!.getState().snapshot.edges[edge.id]?.breaker?.state;
       if (reading) seen.add(reading);
+      if (s.live!.getState().run?.waiting) s.live!.resume();
     }
     expect(seen).toEqual(new Set(["closed", "open", "half-open"]));
     expect(state(s).value).toBe("finished");
-    expect(state(s).latched.slice(2)).toEqual([true, true, true]);
+    expect(state(s).latched.slice(2)).toEqual(circuitBreaker.steps.slice(2).map(() => true));
   });
 
   it("shared-api-quotas: reaching the comparison actually selects the smaller batch", async () => {

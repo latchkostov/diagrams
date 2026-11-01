@@ -226,13 +226,13 @@ describe("waiting lessons against their seeded runs", () => {
     // The p3-w2 payment example puts Connection pool behind its own disclosure.
     expect(initial(timeoutsPools).planning?.revision).toBe("p3-w2");
     expect(timeoutsPools.steps.find((step) => step.id === "pool-40")!.solution).toContainEqual({
-      click: "inspector-section-call-advanced",
+      open: "inspector-section-call-advanced",
     });
   });
 
   it("registers six lessons and releases the decided cold-start lesson", () => {
     for (const lesson of [whereTimeGoes, threadsBlock, timeoutsPools, backlogLag, autoscaling, scaleToZero]) {
-      expect(lesson.version).toBe(2);
+      expect(lesson.version).toBe(lesson.id === "backlog-lag" ? 2 : 3);
       expect(tutorialEntries).toContainEqual({ id: lesson.id, ...(lesson.quarantined ? { quarantined: true } : {}) });
       const diagram = initial(lesson);
       for (const step of lesson.steps)

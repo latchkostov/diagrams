@@ -29,11 +29,11 @@ export const retryStorm: Tutorial = {
     {
       id: "watch-waiting",
       title: msg("tutorials.retryStorm.waitTitle"),
-      goal: msg("tutorials.retryStorm.waitGoal"),
+      goal: msg("tutorials.retryStorm.waitGoalV2"),
       done: msg("tutorials.retryStorm.waitDone"),
       check: { kind: "readout", subject: "caller" },
       sticky: true,
-      targets: [{ testId: "node-{caller}", tip: msg("tutorials.retryStorm.waitGoal"), dim: false }],
+      targets: [{ testId: "node-{caller}", tip: msg("tutorials.retryStorm.waitGoalV2"), dim: false }],
       demo: [],
       solution: [{ hover: "node-{caller}" }],
     },
@@ -64,5 +64,5 @@ export const retryStorm: Tutorial = {
       solution: [{ select: "live-speed", value: "8" }, { hover: "live-timeline" }],
     },
   ],
-  finish: { text: msg("tutorials.retryStorm.finish") },
+  finish: { text: msg("tutorials.retryStorm.finishV2") },
 };
