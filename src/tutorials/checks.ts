@@ -311,7 +311,19 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       return (
         !!event &&
         (check.turn === undefined || event.kind === check.turn) &&
-        (check.subject === undefined || (!!subjects[check.subject] && event.changed.includes(subjects[check.subject]!)))
+        (event.kind !== "context" || (event.copiedBytes ?? 0) > 0) &&
+        (check.subject === undefined ||
+          (!!subjects[check.subject] && event.changed.includes(subjects[check.subject]!))) &&
+        (check.label === undefined || (!!check.subject && node(check.subject)?.label === check.label()))
+      );
+    }
+    case "localPeer": {
+      const p = view.observations?.collaboration?.practice;
+      return (
+        p?.phase === check.action &&
+        (check.action !== "edit" || (!!p.viewerRefused && !!p.converged)) &&
+        (check.action !== "watch" || !!p.run) &&
+        (check.action !== "leave" || !!p.recovery)
       );
     }
     case "collaboration": {
@@ -490,7 +502,14 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.live &&
         !!view.session?.trace &&
         (!check.complete || !!view.session.trace.current?.done) &&
-        (!check.origin || view.session.trace.current?.origin === subjects[check.origin])
+        (!check.origin || view.session.trace.current?.origin === subjects[check.origin]) &&
+        (!check.deadLetter ||
+          !!view.session.trace.current?.steps.some(
+            (s) =>
+              s.kind === "deadletter" &&
+              s.node === subjects[check.deadLetter!.subject] &&
+              (check.deadLetter!.attempt === undefined || s.attempt === check.deadLetter!.attempt),
+          ))
       );
     case "slowmo": {
       const slow = view.slowmo;
@@ -599,7 +618,14 @@ export function metricValue(
   const node = (id: string | undefined, field: NodeMetric) =>
     id ? finite(reading(session.snapshot.nodes[id], field)) : undefined;
   const edge = (id: string | undefined, field: EdgeMetric) =>
-    id ? finite(session.snapshot.edges[id]?.[field]) : undefined;
+    id
+      ? finite(
+          readPath(
+            session.snapshot.edges[id] as unknown as Record<string, unknown>,
+            field.split(".") as [string, ...string[]],
+          ),
+        )
+      : undefined;
   const between = (pair: readonly [string, string]) => {
     const from = subjects[pair[0]],
       to = subjects[pair[1]];

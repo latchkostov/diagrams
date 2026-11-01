@@ -117,9 +117,9 @@ export const rateLimit: Tutorial = {
       {
         title: msg("tutorials.rateLimit.rejectedTitle"),
         goal: msg("tutorials.rateLimit.rejectedGoal"),
-        done: msg("tutorials.rateLimit.rejectedDone"),
+        done: msg("tutorials.rateLimit.rejectedDoneV2"),
       },
     ),
   ],
-  finish: { text: msg("tutorials.rateLimit.finish") },
+  finish: { text: msg("tutorials.rateLimit.finishV2") },
 };

@@ -5,9 +5,9 @@ import { lessonNumber } from "./handoff";
 import { chapterSeals, earnedSeals } from "./seals";
 import { recordSeals, withoutProgress } from "./progress";
 
-it("derives order, numbering and seal identity from six keyed descriptors", () => {
-  expect(tracks).toHaveLength(6);
-  expect(tracks.map((c) => c.order)).toEqual([1, 2, 3, 4, 5, 6]);
+it("derives order, numbering and seal identity from seven keyed descriptors", () => {
+  expect(tracks).toHaveLength(7);
+  expect(tracks.map((c) => c.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   expect(new Set(tracks.map((c) => c.seal)).size).toBe(tracks.length);
   for (const track of tracks) {
     expect(chapters[track.id]).toBe(track);

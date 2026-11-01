@@ -29,6 +29,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 const first = tutorials.find((lesson) => lesson.track === "basics")!;
+
+it("reviewing the moved presentation lesson preserves its legacy completion and date", () => {
+  const lesson = tutorials.find((t) => t.id === "share-present")!;
+  writeTutorials(() => ({ progress: { [lesson.id]: { version: 1, step: 2, completed: true, completedAt: 123 } } }));
+  expect(savedProgress(lesson)).toMatchObject({ completed: true, completedAt: 123 });
+  saveProgress(lesson, 0, false);
+  expect(savedProgress(lesson)).toMatchObject({ version: lesson.version, completed: true, completedAt: 123 });
+});
 const completed = (list = tutorials): StoredTutorials => ({
   highlights: false,
   progress: Object.fromEntries(
@@ -76,7 +84,7 @@ it("records seals at finish, and never revokes or redates them on version change
 });
 
 describe("pure seal rules", () => {
-  it("has exactly the six stable chapter ids and the whole syllabus, with no first-lesson award", () => {
+  it("has exactly the seven stable chapter ids and the whole syllabus, with no first-lesson award", () => {
     expect(seals.map((seal) => seal.id)).toEqual([
       "chapter-basics",
       "chapter-blocks",
@@ -84,6 +92,7 @@ describe("pure seal rules", () => {
       "chapter-waiting",
       "chapter-resilience",
       "chapter-studies",
+      "chapter-sharing",
       "whole-syllabus",
     ]);
     expect(earnedSeals({}, tutorials)).toEqual([]);

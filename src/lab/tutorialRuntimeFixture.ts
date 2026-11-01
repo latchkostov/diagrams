@@ -1,6 +1,23 @@
 import { msg, t } from "../i18n";
 import type { Tutorial } from "../tutorials/types";
 import { tutorialObservationFixtures } from "./tutorialObservationFixture";
+import { quickAdd } from "../tutorials/catalog/quickAdd";
+import { ratesAndInputs } from "../tutorials/catalog/ratesAndInputs";
+
+/** A long authored settings list exercises nested scrolling without altering the public syllabus. */
+const settingsPreviews: readonly Tutorial[] = [
+  { ...quickAdd, id: "lab-tutorial-handoff-settings", steps: quickAdd.steps.slice(0, 1) },
+  {
+    ...ratesAndInputs,
+    id: "lab-tutorial-handoff-settings-next",
+    track: "basics",
+    steps: Array.from({ length: 12 }, (_, i) => ({
+      ...ratesAndInputs.steps[0],
+      id: `rate-${i}`,
+      demo: [{ kind: "prop", subject: "client", props: { ratePerSec: i + 3 } }],
+    })),
+  },
+];
 
 /** Runtime integration preview, separate from the learner catalog. Uses only a public example. */
 const runtimePreviews: readonly Tutorial[] = [
@@ -163,6 +180,7 @@ export const tutorialRuntimeFixtures: readonly Tutorial[] = [
 
 /** Isolated previews must not change the established handoff fixture's curriculum. */
 export function tutorialRuntimeCatalog(id: string): readonly Tutorial[] {
+  if (settingsPreviews.some((lesson) => lesson.id === id)) return settingsPreviews;
   const observation = tutorialObservationFixtures.find((lesson) => lesson.id === id);
   if (observation) return [observation];
   const preview = runtimePreviews.find((lesson) => lesson.id === id);

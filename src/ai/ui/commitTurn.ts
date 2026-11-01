@@ -15,6 +15,7 @@ export function commitPlan(
   record: Pick<ThreadTurn, "request" | "engine"> & Partial<Pick<ThreadTurn, "reply" | "scope">>,
 ): TurnRecord {
   const historyKey = `ai:${turnId()}`;
+  const before = editor.getDiagram();
   editor.applyDiagram(plan.next, { merge: historyKey });
   showApplied(plan.summary, plan.changed, editor, { turnUndo: true, reveal: true });
   return {
@@ -25,6 +26,7 @@ export function commitPlan(
     ...(plan.choices.length ? { choices: plan.choices } : {}),
     ...(plan.warnings.length ? { warnings: plan.warnings } : {}),
     after: editor.getDiagram(),
+    before,
     historyKey,
   };
 }

@@ -61,8 +61,16 @@ export async function play(page: Page, step: ResolvedUiStep) {
   } else if ("open" in step) {
     const disclosure = page.getByTestId(step.open);
     await expect(disclosure).toBeVisible();
-    if ((await disclosure.getAttribute("aria-expanded")) === "false") await disclosure.click();
-    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    const open = () =>
+      disclosure.evaluate((el) =>
+        el instanceof HTMLDetailsElement
+          ? el.open
+          : el.parentElement instanceof HTMLDetailsElement
+            ? el.parentElement.open
+            : el.getAttribute("aria-expanded") === "true",
+      );
+    if (!(await open())) await disclosure.click();
+    await expect.poll(open).toBe(true);
   } else if ("click" in step) {
     if (step.click === "canvas-pane")
       await page.getByTestId("canvas-wrap").click({ position: await emptyCanvasPoint(page) });
@@ -266,6 +274,13 @@ export async function skipAll(page: Page, clocked = false) {
   const lesson = await page.getByTestId("tutorial-app").evaluateAll((apps) => apps[0]?.getAttribute("data-tutorial"));
   while ((await strip(page).getAttribute("data-phase")) === "step") {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
+    if (lesson === "share-present" && (await page.getByTestId("present-exit").isVisible()))
+      await page.keyboard.press("Escape");
+    // The Share state advances the lesson before its lazy dialog has mounted. Await that surface before Escape.
+    if (lesson === "share-present" && current === "audience")
+      await expect(page.getByTestId("share-chooser")).toBeVisible();
+    if (lesson === "share-present" && (await page.getByTestId("share-chooser").isVisible()))
+      await page.keyboard.press("Escape");
     if (lesson === "sequence-evidence" && (await page.getByTestId("sequence-dialog").isVisible())) {
       await page.keyboard.press("Escape");
       await expect(page.getByTestId("sequence-dialog")).toHaveCount(0);
@@ -359,7 +374,7 @@ export async function runPointerSolution(page: Page, consoleErrors: string[], id
       "read-compensation",
     ]);
   if (id === "command-palette") expect(seen).toEqual(["add", "goto", "action"]);
-  if (id === "share-present") expect(seen).toEqual(["present", "leave", "share"]);
+  if (id === "share-present") expect(seen).toEqual(["present", "leave", "share", "audience"]);
   await expect(page.getByTestId("tutorial-progress")).toBeVisible();
   if (id === "library-reuse") {
     expect(await savedEntries(page)).toHaveLength(1);

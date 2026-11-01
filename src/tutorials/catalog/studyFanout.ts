@@ -30,6 +30,16 @@ const channels = [
   },
 ] as const;
 
+const channelConfiguration = (): Check[] =>
+  channels.flatMap(({ worker, provider, queue, dlq }) => [
+    { kind: "relation", from: "events", to: queue, relation: "flow", edgeKind: "async" },
+    { kind: "relation", from: queue, to: worker, relation: "flow", edgeKind: "async" },
+    { kind: "relation", from: queue, to: dlq, relation: "flow", edgeKind: "async" },
+    { kind: "prop", subject: queue, prop: "maxDeliveryCount", op: "=", value: 2 },
+    { kind: "prop", edge: [queue, dlq], prop: "dlq", op: "=", value: true },
+    { kind: "prop", edge: [worker, provider], prop: ["caller", "poolConnections"], effective: true, op: "=", value: 1 },
+  ]);
+
 const poolSolution = (provider: string, first: boolean): UiStep[] => [
   { click: "fit-view-button" },
   { click: `node-{${provider}}` },
@@ -59,13 +69,13 @@ const queueSolution = (worker: string, search: Words): UiStep[] => [
 
 export const studyFanout: Tutorial = {
   id: "study-fanout",
-  version: 1,
+  version: 2,
   track: "studies",
   level: 3,
   minutes: 25,
   study: true,
   title: msg("tutorials.studyFanout.title"),
-  summary: msg("tutorials.studyFanout.summary"),
+  summary: msg("tutorials.studyFanout.summaryV2"),
   start: () => ({
     format: "diagrams/v2",
     title: t("tutorials.studyFanout.title"),
@@ -222,8 +232,12 @@ export const studyFanout: Tutorial = {
     {
       id: "respect-provider-limits",
       title: msg("tutorials.studyFanout.limitsTitle"),
-      goal: msg("tutorials.studyFanout.limitsGoal"),
-      hint: msg("tutorials.studyFanout.limitsHint"),
+      goal: () => t("tutorials.studyFanout.limitsGoalV2", { limitsRun: t("tutorials.studyFanout.limitsRun") }),
+      hint: msg("tutorials.studyFanout.limitsHintV2"),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () => t("tutorials.studyFanout.checklistV2", { outageRun: t("tutorials.studyFanout.outageRun") }),
+      },
       done: msg("tutorials.studyFanout.limitsDone"),
       sticky: true,
       check: {
@@ -236,7 +250,7 @@ export const studyFanout: Tutorial = {
           ]),
         ],
       },
-      targets: [{ testId: "node-{sms}", tip: msg("tutorials.studyFanout.limitsHint") }],
+      targets: [{ testId: "node-{sms}", tip: msg("tutorials.studyFanout.limitsHintV2") }],
       demo: [...poolRepairs(["provider-limits", "sms-outage"]), { kind: "runSimulation", id: "provider-limits" }],
       solution: [
         ...channels.flatMap(({ provider }, i) => poolSolution(provider, i === 0)),
@@ -247,20 +261,24 @@ export const studyFanout: Tutorial = {
     {
       id: "dead-letter-each-channel",
       title: msg("tutorials.studyFanout.queuesTitle"),
-      goal: msg("tutorials.studyFanout.queuesGoal"),
-      hint: msg("tutorials.studyFanout.queuesHint"),
+      goal: msg("tutorials.studyFanout.queuesGoalV2"),
+      hint: msg("tutorials.studyFanout.queuesHintV2"),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () => t("tutorials.studyFanout.checklistV2", { outageRun: t("tutorials.studyFanout.outageRun") }),
+      },
       done: msg("tutorials.studyFanout.queuesDone"),
       check: {
         kind: "all",
         checks: channels.flatMap<Check>(({ worker, queue, dlq }) => [
           { kind: "relation", from: "events", to: queue, relation: "flow", edgeKind: "async" },
-          { kind: "relation", from: queue, to: worker, relation: "flow" },
+          { kind: "relation", from: queue, to: worker, relation: "flow", edgeKind: "async" },
           { kind: "relation", from: queue, to: dlq, relation: "flow", edgeKind: "async" },
           { kind: "prop", edge: [queue, dlq], prop: "dlq", op: "=", value: true },
           { kind: "prop", subject: queue, prop: "maxDeliveryCount", op: "=", value: 2 },
         ]),
       },
-      targets: [{ testId: "node-{events}", tip: msg("tutorials.studyFanout.queuesHint") }],
+      targets: [{ testId: "node-{events}", tip: msg("tutorials.studyFanout.queuesHintV2") }],
       demo: channels.flatMap<Demo>(({ worker, queue, dlq, stencil }) => [
         { kind: "insert", edge: ["events", worker], subject: queue, stencil },
         { kind: "relation", from: "events", to: queue, relation: "flow", edgeKind: "async" },
@@ -271,6 +289,7 @@ export const studyFanout: Tutorial = {
         { kind: "patch", edge: [queue, dlq], patches: [{ op: "set", path: ["dlq"], value: true }] },
       ]),
       solution: [
+        { click: "coach-fold" },
         { click: "live-toggle" },
         ...channels.flatMap<UiStep>(({ worker, search }, i) => [
           ...queueSolution(worker, search),
@@ -288,14 +307,19 @@ export const studyFanout: Tutorial = {
     {
       id: "survive-sms-outage",
       title: msg("tutorials.studyFanout.outageTitle"),
-      goal: msg("tutorials.studyFanout.outageGoal"),
-      hint: msg("tutorials.studyFanout.outageHint"),
+      goal: () => t("tutorials.studyFanout.outageGoalV2", { outageRun: t("tutorials.studyFanout.outageRun") }),
+      hint: msg("tutorials.studyFanout.outageHintV2"),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () => t("tutorials.studyFanout.checklistV2", { outageRun: t("tutorials.studyFanout.outageRun") }),
+      },
       done: msg("tutorials.studyFanout.outageDone"),
       sticky: true,
       check: {
         kind: "all",
         checks: [
           { kind: "simulation", id: "sms-outage", atLeastMs: 6000 },
+          ...channelConfiguration(),
           { kind: "expectation", simulation: "sms-outage", label: msg("tutorials.studyFanout.emailDuringOutage") },
           { kind: "expectation", simulation: "sms-outage", label: msg("tutorials.studyFanout.pushDuringOutage") },
           { kind: "metric", subject: "smsQueue", field: "deadLettered", op: ">=", value: 1 },
@@ -307,14 +331,14 @@ export const studyFanout: Tutorial = {
           { kind: "compare", left: { sum: "failed", nodes: ["emailSender", "pushSender"] }, op: "=", right: 0 },
         ],
       },
-      targets: [{ testId: "node-{smsQueue}", tip: msg("tutorials.studyFanout.outageHint"), dim: false }],
+      targets: [{ testId: "node-{smsQueue}", tip: msg("tutorials.studyFanout.outageHintV2"), dim: false }],
       // The outage also judges each provider's quota: a pool the learner widened in this run since is put back first.
       demo: [...poolRepairs(["sms-outage"]), { kind: "runSimulation", id: "sms-outage" }],
       solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "sms-outage" }],
     },
   ],
   finish: {
-    text: msg("tutorials.studyFanout.finish"),
+    text: msg("tutorials.studyFanout.finishV2"),
     example: { slug: "notification-fanout", label: msg("tutorials.studyFanout.reference") },
   },
 };

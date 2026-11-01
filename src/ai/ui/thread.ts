@@ -30,6 +30,8 @@ export interface ThreadTurn {
   warnings?: string[];
   /** The diagram right after this turn; dropped from older turns to keep storage small. */
   after?: DiagramFile;
+  /** The pre-change snapshot, for reconstructing a turn's exact inverse. Capped with `after`. */
+  before?: DiagramFile;
   /** "Undo this change" was used. */
   undone?: boolean;
   /**
@@ -64,6 +66,7 @@ export function capThread(turns: readonly ThreadTurn[]): ThreadTurn[] {
     const next: ThreadTurn = { ...t, reply };
     if (after) next.after = after;
     else delete next.after;
+    if (!after || (t.before && JSON.stringify(t.before).length > MAX_SNAPSHOT_CHARS)) delete next.before;
     out.unshift(next);
   }
   return out;
@@ -149,6 +152,10 @@ export function validTurn(raw: unknown): ThreadTurn | null {
   if (t.after !== undefined) {
     const checked = validateDiagram(t.after);
     if (checked.ok) turn.after = checked.diagram;
+  }
+  if (t.before !== undefined) {
+    const checked = validateDiagram(t.before);
+    if (checked.ok) turn.before = checked.diagram;
   }
   return turn;
 }

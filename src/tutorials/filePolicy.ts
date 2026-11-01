@@ -2,6 +2,29 @@ import type { DiagramFile } from "../model/types";
 import type { ImportResult } from "../interop/importResult";
 import type { SaveTarget } from "../lib/diagramIO";
 
+/** Mounted file controls connect after render; reference actions fail into Retry when unavailable. */
+export function createPracticeExports() {
+  let current:
+    { share(): void; export(format: "svg" | "png" | "html", signal: AbortSignal): Promise<void> } | undefined;
+  return {
+    connect(next: NonNullable<typeof current>) {
+      current = next;
+      return () => {
+        if (current === next) current = undefined;
+      };
+    },
+    share() {
+      if (!current) throw new Error("Sharing unavailable");
+      current.share();
+    },
+    run(format: "svg" | "png" | "html", signal: AbortSignal) {
+      signal.throwIfAborted();
+      if (!current) throw new Error("Export unavailable");
+      return current.export(format, signal);
+    },
+  };
+}
+
 /** The mounted file controller supplies the real parser pipeline; an unavailable demo fails into Retry. */
 export function createPracticeImport() {
   let current: ((signal: AbortSignal) => Promise<ImportResult>) | undefined;

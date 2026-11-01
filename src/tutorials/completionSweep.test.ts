@@ -1,3 +1,6 @@
+import { planTurn } from "../ai/ui/apply";
+import { parseReply } from "../ai/ui/reply";
+import { workerReply, renameReply } from "./catalog/agentReplies";
 import { HistoryController } from "../editor/historyController";
 import { toFlow, fromFlow } from "../canvas/convert";
 import { runChecks } from "../checks/run";
@@ -364,7 +367,7 @@ function sandbox(
       tracing: () => null,
       traceNext: (nodeId) => c.traceNext(nodeId),
       traceSlowest: () => {},
-      traceDeadLettered: () => {},
+      traceDeadLettered: () => controller?.traceDeadLettered(),
       slowMotion: () => slow.start(),
       slowMotionTrace: () => {},
       canReplayTrace: () => false,
@@ -735,7 +738,68 @@ function sandbox(
     }),
   );
   const app = { presenting: false, sharing: false };
+  let agentCheckpoint: DiagramFile | undefined;
+  const externalExport = async (format: "svg" | "png" | "html") => {
+    observationPorts.exports.publish({ ...source, format, bytes: 100 });
+  };
+  const externalPeer = async (action: "join" | "edit" | "watch" | "leave") => {
+    observationPorts.collaboration.publish({
+      ...source,
+      status: action === "leave" ? "left" : "joined",
+      role: "creator",
+      practice: { phase: action, viewerRefused: true, converged: true, run: "local-run", recovery: true },
+    });
+  };
+  const externalAgent = async (action: "add" | "rename" | "undo" | "revert") => {
+    if (action === "undo" || action === "revert") {
+      const ids = new Set(agentCheckpoint?.nodes.filter((n) => n.stencil === "service.go").map((n) => n.id));
+      const next =
+        action === "undo"
+          ? {
+              ...diagram,
+              nodes: diagram.nodes.filter((n) => !ids.has(n.id)),
+              edges: diagram.edges.filter((e) => !ids.has(e.from) && !ids.has(e.to)),
+            }
+          : agentCheckpoint;
+      if (!next) throw new Error("Missing checkpoint");
+      const changed = diagram.nodes.filter((n) => n.stencil === "service.go").map((n) => n.id);
+      write(structuredClone(next));
+      observationPorts.ai.publish({ ...source, kind: action, changed });
+      return;
+    }
+    const existing = diagram.nodes.find((n) => n.stencil === "service.go");
+    const reply =
+      action === "add" && existing
+        ? JSON.stringify({
+            layout: "none",
+            ops: [
+              { op: "update", target: existing.id, label: "Status worker" },
+              { op: "connect", from: "api", to: existing.id, kind: "async" },
+            ],
+          })
+        : action === "add"
+          ? workerReply
+          : renameReply;
+    const plan = planTurn(diagram, parseReply(reply));
+    if (!plan.ok || !plan.hasChanges) throw new Error("Fixture refused");
+    write(plan.next);
+    if (action === "add") agentCheckpoint = structuredClone(plan.next);
+    observationPorts.ai.publish({ ...source, kind: "change", changed: plan.changed });
+  };
   const runner = createTutorialRunner(tutorial, {
+    exportArtifact: externalExport,
+    localPeer: externalPeer,
+    agentFixture: externalAgent,
+    copyAiContext: async () => {
+      observationPorts.ai.publish({ ...source, kind: "context", changed: ["api"], copiedBytes: 100 });
+    },
+    openAi: () => {
+      observationPorts.dock.publish({ ...source, tab: "ai", snap: "half", live: false, presenting: false });
+    },
+    shareChoices: () => {
+      app.sharing = true;
+      runner.appChanged({ ...app });
+    },
     close: vi.fn(),
     host,
     initial: savedDocument ?? startOf(tutorial),
@@ -785,6 +849,9 @@ function sandbox(
   }
   return {
     runner,
+    get agentCheckpoint() {
+      return agentCheckpoint;
+    },
     editor,
     hostState,
     get mode() {
@@ -823,6 +890,21 @@ function sandbox(
       const edge = (pair: readonly [string, string]) =>
         diagram.edges.find((e) => e.from === id(pair[0]) && e.to === id(pair[1]))!;
       switch (demo.kind) {
+        case "copyAiContext":
+          observationPorts.ai.publish({ ...source, kind: "context", changed: ["api"], copiedBytes: 100 });
+          return;
+        case "aiDock":
+          observationPorts.dock.publish({ ...source, tab: "ai", snap: "half", live: false, presenting: false });
+          return;
+        case "shareChoices":
+          app.sharing = true;
+          return runner.appChanged({ ...app });
+        case "exportArtifact":
+          return externalExport(demo.format);
+        case "localPeer":
+          return externalPeer(demo.action);
+        case "agentFixture":
+          return externalAgent(demo.action);
         case "draftSimulation":
           return session.runDraft(demo.simulation);
         case "openSequence":
@@ -908,6 +990,7 @@ function sandbox(
         case "traffic":
           return controller!.setTraffic(demo.on);
         case "trace":
+          if (demo.deadLetter) return controller!.traceDeadLettered();
           if (controller!.getState().trace) return;
           return controller!.traceNext(demo.subject ? id(demo.subject) : undefined);
         case "fault": {
@@ -1002,7 +1085,7 @@ const checkNeedsTime = (check: Check): boolean =>
     : (check.kind === "simulation" && !!check.atLeastMs) ||
       check.kind === "routeEvidence" ||
       check.kind === "newRun" ||
-      (check.kind === "trace" && !!check.complete) ||
+      (check.kind === "trace" && (!!check.complete || !!check.deadLetter)) ||
       check.kind === "processed" ||
       check.kind === "metric" ||
       check.kind === "expectation" ||
@@ -1069,6 +1152,32 @@ async function skipLanding(tutorial: Tutorial, k: number) {
 }
 
 describe("design study evidence", () => {
+  it.each(["email", "sms", "push"])(
+    "final fan-out evidence rejects a wrong delivery limit on %s despite valid outcomes",
+    async (channel) => {
+      const s = sandbox(studyFanout);
+      await reach(s, studyFanout, 2);
+      await skip(s, studyFanout);
+      const session = s.live!.getState();
+      const diagram = structuredClone(s.diagram);
+      expect(observeSteps(studyFanout, { diagram, live: true, session, processed: () => 0 })[2]).toBe(true);
+      diagram.nodes.find((n) => n.id === s.subject(`${channel}Queue`))!.props!.maxDeliveryCount = 3;
+      expect(observeSteps(studyFanout, { diagram, live: true, session, processed: () => 0 })[2]).toBe(false);
+    },
+  );
+  it.each(["booking", "neighbour"])(
+    "cell evidence rejects disconnecting %s even with valid recorded counters",
+    async (name) => {
+      const s = sandbox(studyCells);
+      await reach(s, studyCells, 1);
+      await skip(s, studyCells);
+      const session = s.live!.getState();
+      const diagram = structuredClone(s.diagram);
+      expect(observeSteps(studyCells, { diagram, live: true, session, processed: () => 0 })[1]).toBe(true);
+      diagram.edges = diagram.edges.filter((e) => !(e.from === s.subject("east") && e.to === s.subject(name)));
+      expect(observeSteps(studyCells, { diagram, live: true, session, processed: () => 0 })[1]).toBe(false);
+    },
+  );
   const play = (s: Sandbox, ms: number) => {
     for (let elapsed = 0; elapsed < ms; elapsed += 250) {
       s.live!.advance(250);
@@ -1705,6 +1814,8 @@ describe("every tutorial's completion contract", () => {
               s.editor.addStencil(stencil);
             }
             const before = s.diagram.nodes.length;
+            const agentAction = step.demo.find((demo) => demo.kind === "agentFixture");
+            const agentWorkersBefore = s.diagram.nodes.filter((n) => n.stencil === "service.go").length;
             const bindings = s.runner.getSnapshot().subjects;
             const missing = new Set(
               step.demo.flatMap((d) =>
@@ -1738,9 +1849,20 @@ describe("every tutorial's completion contract", () => {
             const replacesPractice = step.demo.some((demo) => demo.kind === "importFixture");
             if (replacesPractice)
               expect(s.diagram.nodes.map((node) => node.id).sort()).toEqual(["api", "redis", "worker"]);
+            else if (agentAction?.kind === "agentFixture" && agentAction.action === "add")
+              expect(s.diagram.nodes).toHaveLength(before + (agentWorkersBefore ? 0 : 1));
+            else if (agentAction?.kind === "agentFixture" && agentAction.action === "undo")
+              expect(s.diagram.nodes).toHaveLength(before - 1);
+            else if (agentAction?.kind === "agentFixture" && agentAction.action === "revert")
+              expect(s.diagram).toEqual(s.agentCheckpoint);
             else expect(s.diagram.nodes).toHaveLength(before + missing.size - removed.size);
             for (const [name, id] of Object.entries(bindings))
-              if (id && !tutorial.subjects[name].edge && !replacesPractice) {
+              if (
+                id &&
+                !tutorial.subjects[name].edge &&
+                !replacesPractice &&
+                !(agentAction?.kind === "agentFixture" && ["undo", "revert"].includes(agentAction.action))
+              ) {
                 if (removed.has(id)) expect(s.diagram.nodes.some((node) => node.id === id)).toBe(false);
                 else expect(s.subject(name)).toBe(id);
               }
@@ -2301,8 +2423,10 @@ describe("completion regressions", () => {
                 original.kind = required.edgeKind === "sync" ? "async" : "sync";
               else diagram.edges = diagram.edges.filter((edge) => edge !== original);
               s.editor.applyDiagram(diagram);
-              expect(state(s)).toMatchObject({ index: i, value: "active" });
+              const recoveryIndex = tutorial.id === "study-rag" && step.id === "survive-reindex" ? 1 : i;
+              expect(state(s)).toMatchObject({ index: recoveryIndex, value: "active" });
               await skip(s, tutorial);
+              if (recoveryIndex !== i) await skip(s, tutorial);
               const repaired = s.diagram.edges.filter((edge) => edge.from === from && edge.to === to);
               expect(repaired).toHaveLength(1);
               expect(repaired[0].kind).toBe(required.edgeKind);
@@ -2373,9 +2497,11 @@ describe("completion regressions", () => {
           expect(s.hostState.canvas.live).toBe(true);
           expect(state(s).index).toBe(i + 2);
           expect(tutorial.steps[state(s).index].solution[0]).toHaveProperty("select", "live-sim-picker");
-          const rerun = tutorial.steps[state(s).index].demo[0];
+          const actions = tutorial.steps[state(s).index].demo;
+          expect(actions.map((d) => d.kind)).toEqual(["saveSimulation", "runSimulation"]);
+          const rerun = actions.at(-1)!;
           expect(rerun.kind).toBe("runSimulation");
-          await s.learn(rerun);
+          for (const action of actions) await s.learn(action);
           expect(s.live!.getState().running?.id).toBe(rerun.kind === "runSimulation" ? rerun.id : "");
         });
     }
@@ -2396,17 +2522,19 @@ describe("completion regressions", () => {
 
   it("autoscaling cannot latch replicas-grow behind the setting step with its readout closed", async () => {
     const s = sandbox(autoscaling);
-    await reach(s, autoscaling, 1);
+    const setting = autoscaling.steps.findIndex((step) => step.id === "scale-on-busy-threads");
+    const result = autoscaling.steps.findIndex((step) => step.id === "replicas-grow");
+    await reach(s, autoscaling, setting);
     for (let t = 0; t < 9000; t += 10) s.live!.advance(10);
     s.live!.publish();
     expect(s.live!.getState().snapshot.nodes[s.subject("caller")].replicas).toBeGreaterThan(4);
-    expect(state(s).latched[2]).toBe(false);
-    await s.learn(autoscaling.steps[1].demo[0]);
-    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(state(s).latched[result]).toBe(false);
+    await s.learn(autoscaling.steps[setting].demo[0]);
+    expect(state(s)).toMatchObject({ index: result, value: "active" });
     // Changing the scaling policy rebuilds the run. It must still wait for a readout once the fleet grows again.
     for (let t = 0; t < 9000; t += 10) s.live!.advance(10);
     s.live!.publish();
-    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(state(s)).toMatchObject({ index: result, value: "active" });
     s.hover({ kind: "node", id: s.subject("caller") });
     expect(state(s).value).toBe("finished");
   });
@@ -2686,7 +2814,7 @@ describe("completion regressions", () => {
     expect(s.mode.selection).toEqual([s.subject("topic")]);
   });
 
-  it("Present, reload, then Continue from Leave lands on Share: the fresh app is not presenting", async () => {
+  it("Present, reload, then Continue reconstructs Present before asking to Leave", async () => {
     const first = sandbox(sharePresent);
     first.runner.send({ type: "start" });
     first.runner.appChanged({ presenting: true, sharing: false });
@@ -2695,8 +2823,9 @@ describe("completion regressions", () => {
     cleanup.length = 0;
     const s = sandbox(sharePresent);
     s.runner.send({ type: "resume" });
-    await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 2, value: "active" }), { interval: 1 });
-    expect(savedProgress(sharePresent)).toMatchObject({ step: 2 });
+    await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 1, value: "active" }), { interval: 1 });
+    expect(s.app.presenting).toBe(true);
+    expect(savedProgress(sharePresent)).toMatchObject({ step: 1 });
   });
 
   it.each(["menu", "Skip"] as const)("faults: Restore completes with an additional slowdown (%s)", async (finish) => {
@@ -2819,17 +2948,28 @@ describe("completion regressions", () => {
     );
   });
 
-  it("backoff-budget: jitter fails the backlog expectation but the same seeded budget run recovers", async () => {
+  it("backoff-budget: jitter fails the backlog expectation before the budget comparison", async () => {
     const s = sandbox(backoffBudget);
     await reach(s, backoffBudget, 3);
     const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
     expect(edge.props).toMatchObject({ caller: { retry: { backoffMs: 100, budget: { percent: 20 } } } });
     const seed = s.live!.getState().running!.seed;
     play(s, 60000);
+    expect(backoffBudget.steps[state(s).index].id).toBe("read-failed-expectation");
+    await skip(s, backoffBudget);
     expect(backoffBudget.steps[state(s).index].id).toBe("run-budget");
     expect(s.live!.getState().run!.expectations).toContainEqual(
       expect.objectContaining({ id: "backlog", status: "fail" }),
     );
+    expect(seed).toBe(7);
+  });
+
+  it("backoff-budget: the same seeded budget run recovers", async () => {
+    const s = sandbox(backoffBudget);
+    const budget = backoffBudget.steps.findIndex((step) => step.id === "run-budget");
+    await reach(s, backoffBudget, budget);
+    const seed = s.live!.getState().running!.seed;
+    expect(seed).toBe(7);
     await skip(s, backoffBudget);
     expect(s.live!.getState().running!.seed).toBe(seed);
     expect(backoffBudget.steps[state(s).index].id).toBe("compare");
@@ -2875,6 +3015,20 @@ describe("completion regressions", () => {
     },
   );
 
+  it("dead-letters: Skip investigates an existing dead letter after the narration has paused", async () => {
+    const s = sandbox(tutorials.find((t) => t.id === "dead-letters")!);
+    const lesson = tutorials.find((t) => t.id === "dead-letters")!;
+    const step = lesson.steps.findIndex((step) => step.id === "investigate");
+    await reach(s, lesson, step);
+    play(s, 20000);
+    expect(s.live!.getState().run).toMatchObject({ time: 10000, waiting: true });
+    expect(s.live!.getState().trace).toBeNull();
+    await skip(s, lesson);
+    expect(s.live!.getState().trace?.current?.steps).toContainEqual(
+      expect.objectContaining({ kind: "deadletter", node: s.subject("commands") }),
+    );
+  });
+
   it("circuit-breaker: initial Closed never completes recovery; real playback opens, tests and closes", async () => {
     const s = sandbox(circuitBreaker);
     await reach(s, circuitBreaker, 2);
@@ -2885,10 +3039,11 @@ describe("completion regressions", () => {
       const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
       const reading = s.live!.getState().snapshot.edges[edge.id]?.breaker?.state;
       if (reading) seen.add(reading);
+      if (s.live!.getState().run?.waiting) s.live!.resume();
     }
     expect(seen).toEqual(new Set(["closed", "open", "half-open"]));
     expect(state(s).value).toBe("finished");
-    expect(state(s).latched.slice(2)).toEqual([true, true, true]);
+    expect(state(s).latched.slice(2)).toEqual(circuitBreaker.steps.slice(2).map(() => true));
   });
 
   it("shared-api-quotas: reaching the comparison actually selects the smaller batch", async () => {

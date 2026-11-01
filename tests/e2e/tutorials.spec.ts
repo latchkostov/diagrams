@@ -499,7 +499,7 @@ for (const entry of ["Skip", "Continue"] as const)
         localStorage.setItem(
           "diagrams.tutorials.v1",
           JSON.stringify({
-            progress: { "threads-block": { version: 2, step: 3, completed: false } },
+            progress: { "threads-block": { version: 3, step: 3, completed: false } },
           }),
         ),
       );
@@ -586,17 +586,22 @@ test("scale-to-zero: the cold-start note holds the readout for a late learner", 
 });
 
 test("where-time-goes: Latency can be expanded and read before Done finishes", async ({ page }) => {
+  await page.clock.install();
   await page.addInitScript(() =>
     localStorage.setItem(
       "diagrams.tutorials.v1",
       JSON.stringify({
-        progress: { "where-time-goes": { version: 2, step: 3, completed: false } },
+        progress: { "where-time-goes": { version: 3, step: 4, completed: false } },
       }),
     ),
   );
   await openTutorial(page, "where-time-goes");
   await page.getByTestId("tutorial-start").click();
+  await pauseClock(page);
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "read-breakdown");
   await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
+  await page.clock.resume();
   const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
   for (const action of solution.slice(0, -1)) await play(page, action);
   await expect(page.getByTestId("hover-section-latency")).toHaveAttribute("aria-expanded", "true");
@@ -699,7 +704,9 @@ test("study-checkout: Skip repairs the saved Partner quota pool", async ({ page,
 
 test("study-dispatch: saved Inputs complete the partition fix", async ({ page, consoleErrors }) => {
   test.slow();
+  await page.clock.install();
   await reachStudyMilestone(page, "study-dispatch", "fix-partition-ceiling");
+  await pauseClock(page);
   await page.getByTestId("live-sim-picker").selectOption("more-partitions");
   await page.getByTestId("live-capacity").click();
   await page.getByTestId("capacity-replicas-dispatcher").fill("4");
@@ -708,6 +715,7 @@ test("study-dispatch: saved Inputs complete the partition fix", async ({ page, c
   await page.getByTestId("capacity-partitions-pings").press("Enter");
   await page.getByTestId("capacity-save").click();
   await page.getByTestId("live-restart").click();
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-phase")) === "finished");
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   expectNoErrors(consoleErrors);
 });
@@ -738,6 +746,8 @@ for (const { replicas, partitions } of [
     await expect(strip(page)).toHaveAttribute("data-step", "fix-partition-ceiling");
     await page.getByTestId("tutorial-skip").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await page.getByTestId("tutorial-handoff-dismiss").click();
+    await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
     await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-replicas-dispatcher")).toHaveValue("4");
     await expect(page.getByTestId("capacity-partitions-pings")).toHaveValue("4");
@@ -1037,7 +1047,7 @@ test("command-palette: adding a topic waits for Go to without requiring an unrel
   expectNoErrors(consoleErrors);
 });
 
-test("share-present: Present, reload, then Continue lands on Share", async ({ page, consoleErrors }) => {
+test("share-present: Continue reconstructs presentation before returning to Share", async ({ page, consoleErrors }) => {
   await openTutorial(page, "share-present");
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("present-toggle").click();
@@ -1045,10 +1055,16 @@ test("share-present: Present, reload, then Continue lands on Share", async ({ pa
   await page.reload();
   await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
   await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "leave");
+  await expect(page.getByTestId("present-exit")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(strip(page)).toHaveAttribute("data-step", "share");
   await expect(strip(page)).toHaveAttribute("data-state", "active");
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-share").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "audience");
+  await page.keyboard.press("Escape");
+  await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   expectNoErrors(consoleErrors);
 });
@@ -1058,13 +1074,21 @@ test("share-present exits to the original diagram without saving, and offers Int
 }) => {
   await gotoCanvas(page, "retry-storm");
   await page.getByTestId("view-tutorials").click();
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
-  await finishSolution(page);
+  for (const current of ["present", "leave", "share"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", current);
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+    await expect(strip(page)).not.toHaveAttribute("data-step", current);
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "audience");
   await expect(page.getByTestId("share-chooser")).toBeVisible();
   await expect(page.getByTestId("share-option-html")).toBeFocused();
   await expectNothingSaved(page);
   await page.keyboard.press("Escape");
+  await finishSolution(page);
   await page.getByTestId("tutorial-exit").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await page.getByTestId("view-canvas").click();
@@ -1087,19 +1111,24 @@ test("share-present: Exit preserves existing diagram edits", async ({ page, cons
   const slug = await page.getByTestId("example-picker").getAttribute("data-diagram-slug");
   if (!slug) throw new Error("Original diagram has no slug");
   await page.getByTestId("view-tutorials").click();
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
-  await page.getByTestId("node-seed-0").dblclick();
+  const practiceId = await page.evaluate(() => window.__tutorial?.diagram()?.nodes[0]?.id);
+  if (!practiceId) throw new Error("Practice diagram has no node");
+  const practiceNode = page.getByTestId(`node-${practiceId}`);
+  await practiceNode.dblclick();
   await page.getByTestId("inspector-field-label").fill("Sandbox edit only");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("node-seed-0")).toContainText("Sandbox edit only");
+  await expect(practiceNode).toContainText("Sandbox edit only");
   await page.getByTestId("tutorial-exit").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await page.getByTestId("view-canvas").click();
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", slug);
   await expect(page.getByTestId(originalTestId)).toContainText("My edited service");
   await expect(page.getByTestId(/^node-/)).toHaveCount(original.nodes.length);
-  await expect(page.getByTestId("node-seed-0")).toHaveCount(0);
+  await expect(practiceNode).toHaveCount(0);
   expect(await savedDiagram(page)).toEqual(original);
   expectNoErrors(consoleErrors);
 });
@@ -1698,6 +1727,8 @@ test("tutorial Restart ends slow motion and restarts its saved simulation", asyn
   await page.getByTestId("tutorial-start").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   await waitForCameraIdle(page);
+  await page.getByTestId("tutorial-handoff-dismiss").click();
+  await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
   await page.getByTestId("node-shop").click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.slowmo-from").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
@@ -1773,10 +1804,14 @@ test("shortcuts Tutorials navigation preserves the opened device file Save bindi
   await page.getByTestId("shortcuts-tutorials").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await expect(page.getByTestId("shortcuts-dialog")).toHaveCount(0);
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("view-tutorials").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("shortcuts-button").click();
@@ -2554,3 +2589,29 @@ for (const route of ["Right arrow", "Skip"] as const)
     await expect(strip(page)).toHaveAttribute("data-step", "camera");
     expectNoErrors(consoleErrors);
   });
+
+test("where-time-goes: a late reader can still inspect the held waiting comparison", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  await openTutorial(page, "where-time-goes");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "run");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await page.getByTestId("tutorial-step").hover();
+  await pauseClock(page);
+  await advanceTutorialClock(
+    page,
+    async () => (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) === "9000",
+  );
+  await page.clock.fastForward(20000);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await page.clock.resume();
+  await hoverPractice(page, "node-billing");
+  await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await finishSolution(page);
+  expectNoErrors(consoleErrors);
+});

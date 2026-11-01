@@ -80,7 +80,7 @@ export const healthChecks: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.healthChecks.finish"),
+    text: msg("tutorials.healthChecks.finishV2"),
     example: { slug: "zone-outage-drill", label: msg("tutorials.healthChecks.example") },
   },
 };

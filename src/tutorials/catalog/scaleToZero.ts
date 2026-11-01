@@ -1,17 +1,18 @@
+import { diagnosticLesson } from "./diagnosticLesson";
 import { msg } from "../../i18n";
 import timetable from "../../examples/cloud-run-timetable-api.json";
 import type { DiagramFile } from "../../model/types";
 import type { Tutorial } from "../types";
 import { moment, runStep } from "./waitingSteps";
 
-export const scaleToZero: Tutorial = {
+const lesson: Tutorial = {
   id: "scale-to-zero",
-  version: 2,
+  version: 3,
   track: "waiting",
   level: 3,
   minutes: 4,
   title: msg("tutorials.scaleToZero.title"),
-  summary: msg("tutorials.scaleToZero.summary"),
+  summary: msg("tutorials.scaleToZero.summaryV3"),
   start: () => {
     const diagram = structuredClone(timetable) as DiagramFile;
     // Hold the real cold-start readout while the learner reads or switches tabs.
@@ -66,10 +67,12 @@ export const scaleToZero: Tutorial = {
       },
       {
         title: msg("tutorials.scaleToZero.coldTitle"),
-        goal: msg("tutorials.scaleToZero.coldGoal"),
-        done: msg("tutorials.scaleToZero.coldDone"),
+        goal: msg("tutorials.scaleToZero.coldGoalV3"),
+        done: msg("tutorials.scaleToZero.coldDoneV3"),
       },
     ),
   ],
-  finish: { text: msg("tutorials.scaleToZero.finish") },
+  finish: { text: msg("tutorials.scaleToZero.finishV3") },
 };
+
+export const scaleToZero = diagnosticLesson(lesson, lesson.start as () => DiagramFile);

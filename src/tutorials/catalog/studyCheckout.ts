@@ -5,13 +5,13 @@ import { studyAdd, studyRun } from "./studyShared";
 
 export const studyCheckout: Tutorial = {
   id: "study-checkout",
-  version: 1,
+  version: 2,
   track: "studies",
   level: 3,
   minutes: 20,
   study: true,
   title: msg("tutorials.studyCheckout.title"),
-  summary: msg("tutorials.studyCheckout.summary"),
+  summary: msg("tutorials.studyCheckout.summaryV2"),
   start: () => ({
     format: "diagrams/v2",
     title: t("tutorials.studyCheckout.title"),
@@ -107,9 +107,10 @@ export const studyCheckout: Tutorial = {
     {
       id: "survive-tenfold",
       title: msg("tutorials.studyCheckout.rushTitle"),
-      goal: msg("tutorials.studyCheckout.rushGoal"),
-      hint: msg("tutorials.studyCheckout.rushHint"),
-      done: msg("tutorials.studyCheckout.rushDone"),
+      goal: msg("tutorials.studyCheckout.rushGoalV2"),
+      hint: msg("tutorials.studyCheckout.rushHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyCheckout.checklistV2") },
+      done: msg("tutorials.studyCheckout.rushDoneV2"),
       sticky: true,
       check: {
         kind: "all",
@@ -120,7 +121,7 @@ export const studyCheckout: Tutorial = {
           { kind: "metric", subject: "checkout", field: "rejected", op: "<=", value: 0 },
         ],
       },
-      targets: [{ testId: "node-{checkout}", tip: msg("tutorials.studyCheckout.rushHint") }],
+      targets: [{ testId: "node-{checkout}", tip: msg("tutorials.studyCheckout.rushHintV2") }],
       demo: [
         {
           kind: "patch",
@@ -142,8 +143,13 @@ export const studyCheckout: Tutorial = {
     {
       id: "keep-orders",
       title: msg("tutorials.studyCheckout.ordersTitle"),
-      goal: msg("tutorials.studyCheckout.ordersGoal"),
-      hint: msg("tutorials.studyCheckout.ordersHint"),
+      goal: () => t("tutorials.studyCheckout.ordersGoalV2", { orders: t("tutorials.studyCheckout.orders") }),
+      hint: () =>
+        t("tutorials.studyCheckout.ordersHintV2", {
+          orders: t("tutorials.studyCheckout.orders"),
+          checkout: t("tutorials.studyCheckout.checkout"),
+        }),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyCheckout.checklistV2") },
       done: msg("tutorials.studyCheckout.ordersDone"),
       check: {
         kind: "all",
@@ -153,7 +159,16 @@ export const studyCheckout: Tutorial = {
           { kind: "relation", from: "topic", to: "consumer", relation: "flow", edgeKind: "async" },
         ],
       },
-      targets: [{ testId: "node-{checkout}", tip: msg("tutorials.studyCheckout.ordersHint") }],
+      targets: [
+        {
+          testId: "node-{checkout}",
+          tip: () =>
+            t("tutorials.studyCheckout.ordersHintV2", {
+              orders: t("tutorials.studyCheckout.orders"),
+              checkout: t("tutorials.studyCheckout.checkout"),
+            }),
+        },
+      ],
       demo: [
         { kind: "connect", from: "checkout", to: "orders" },
         { kind: "relation", from: "checkout", to: "orders", relation: "flow", edgeKind: "sync" },
@@ -171,8 +186,13 @@ export const studyCheckout: Tutorial = {
     {
       id: "respect-partner-quota",
       title: msg("tutorials.studyCheckout.quotaTitle"),
-      goal: msg("tutorials.studyCheckout.quotaGoal"),
-      hint: msg("tutorials.studyCheckout.quotaHint"),
+      goal: () =>
+        t("tutorials.studyCheckout.quotaGoalV2", {
+          quotaRun: t("tutorials.studyCheckout.quotaRun"),
+          checkout: t("tutorials.studyCheckout.checkout"),
+        }),
+      hint: msg("tutorials.studyCheckout.quotaHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyCheckout.checklistV2") },
       done: msg("tutorials.studyCheckout.quotaDone"),
       sticky: true,
       check: {
@@ -191,7 +211,7 @@ export const studyCheckout: Tutorial = {
           { kind: "metric", subject: "payments", field: "processed", op: ">=", value: 10 },
         ],
       },
-      targets: [{ testId: "node-{payments}", tip: msg("tutorials.studyCheckout.quotaHint") }],
+      targets: [{ testId: "node-{payments}", tip: msg("tutorials.studyCheckout.quotaHintV2") }],
       demo: [
         {
           kind: "patch",
@@ -215,7 +235,7 @@ export const studyCheckout: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.studyCheckout.finish"),
+    text: msg("tutorials.studyCheckout.finishV2"),
     example: { slug: "black-friday-commerce", label: msg("tutorials.studyCheckout.reference") },
   },
 };

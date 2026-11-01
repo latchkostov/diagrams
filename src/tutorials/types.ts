@@ -103,7 +103,7 @@ export type NodeMetric =
   | `latency.${"p50" | "p95" | "p99" | "waitMs" | "workMs"}`
   | `threads.${"working" | "waiting" | "queued"}`
   | `fleet.${"desired" | "ready" | "starting" | "draining"}`;
-export type EdgeMetric = NumericKeys<EdgeSimState>;
+export type EdgeMetric = NumericKeys<EdgeSimState> | `calls.${NumericKeys<NonNullable<EdgeSimState["calls"]>>}`;
 /**
  * Every node a subject spec would fit (stencils, else role), bound or not: "every worker". within: only those in this
  * boundary subject ("every service in cell A").
@@ -134,7 +134,8 @@ export interface SimulationMatch {
   expectations?: number;
   traffic?: readonly TrafficProfile[];
   note?: { focus: string; pause: boolean; atMs: number };
-  expectation?: Pick<Expectation, "metric" | "op" | "value" | "when">;
+  notes?: readonly { focus: string; pause: boolean; atMs: number }[];
+  expectation?: Pick<Expectation, "metric" | "op" | "value" | "when" | "atMs">;
   fault?: { node: string; atMs: number; kind?: "slow" | "fail" };
   seed?: number;
   scale?: number;
@@ -194,7 +195,8 @@ export type Check =
   | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
   | { kind: "export"; format: ProductObservations["exports"]["format"] }
   | { kind: "import"; format: ProductObservations["imports"]["format"]; source?: string }
-  | { kind: "aiTurn"; turn?: ProductObservations["ai"]["kind"]; subject?: string }
+  | { kind: "aiTurn"; turn?: ProductObservations["ai"]["kind"]; subject?: string; label?: Words }
+  | { kind: "localPeer"; action: "join" | "edit" | "watch" | "leave" }
   | { kind: "collaboration"; status: "joined" | "left"; role?: ProductObservations["collaboration"]["role"] }
   | { kind: "node"; subject: string }
   /** A flow (never a dependency) from one subject to the other. */
@@ -242,7 +244,7 @@ export type Check =
     ))
   /** A Fault is active on the subject; absent: none is (Restore cleared it), while Live runs. */
   | ({ kind: "fault"; fault?: FaultKind; absent?: true } & PropertyTarget)
-  | { kind: "trace"; complete?: true; origin?: string }
+  | { kind: "trace"; complete?: true; origin?: string; deadLetter?: { subject: string; attempt?: number } }
   /** Slow motion is on; finished: its message's journey has played to the end (the machine's `finished`). */
   | { kind: "slowmo"; finished?: true; ready?: true }
   /** A Live panel or view is open (or closed), as Live publishes it. */
@@ -264,6 +266,12 @@ export type Check =
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
+  | { kind: "copyAiContext"; subject: string }
+  | { kind: "aiDock" }
+  | { kind: "shareChoices" }
+  | { kind: "exportArtifact"; format: "svg" | "png" | "html" }
+  | { kind: "agentFixture"; action: "add" | "rename" | "undo" | "revert" }
+  | { kind: "localPeer"; action: "join" | "edit" | "watch" | "leave" }
   | { kind: "openSequence" }
   | { kind: "draftSimulation"; simulation: Simulation }
   | { kind: "slowControl"; action: "pause" | "step" | "end" }
@@ -293,7 +301,7 @@ export type Demo =
   /** Continuous traffic on or off, through Live's own control (the registry's "sim.traffic"). */
   | { kind: "traffic"; on: boolean }
   /** Follow the next message, through Live's own "Trace a message › Next message". */
-  | { kind: "trace"; subject?: string }
+  | { kind: "trace"; subject?: string; deadLetter?: true }
   /**
    * Watch one message in slow motion, through Live's own action: from this subject ("Watch one message in slow motion"
    * on its menu), or the next anywhere ("Trace a message › Next message, in slow motion").
@@ -400,6 +408,8 @@ export interface TutorialStep {
   goal: Words;
   /** Shown by "Show me", with the highlight forced on. */
   hint?: Words;
+  /** Public, local reply bytes or a milestone checklist, revealed with Read note. */
+  note?: { title: Words; text: string | Words; code?: true };
   /** Said once it's done (or done for you): the lesson of the step. */
   done?: Words;
   check: Check;
@@ -433,6 +443,10 @@ export interface TutorialStep {
 }
 
 export interface TutorialMetadata {
+  /** Extensions never block chapter or core syllabus seals. */
+  optional?: "collaboration" | "ai";
+  /** Preserve earned completion when a lesson moves chapters; unfinished runs still reconstruct at the new version. */
+  completionFromVersion?: number;
   id: string;
   title: Words;
   /** Unavailable to learners while regressions are tracked; saved progress is retained. */
@@ -459,3 +473,11 @@ export interface Tutorial extends TutorialMetadata {
   steps: readonly TutorialStep[];
   finish: { text: Words; example?: { slug: string; label: Words } };
 }
+
+/** A catalog row and deep-link explanation, with no runnable lesson or fixture. */
+export interface UnavailableTutorial extends Pick<Tutorial, "id" | "title" | "summary" | "track"> {
+  optional: NonNullable<Tutorial["optional"]>;
+  unavailable: Words;
+}
+
+export type TutorialEntry = Tutorial | UnavailableTutorial;

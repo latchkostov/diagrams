@@ -1,3 +1,4 @@
+import { undoAiTurn, revertAiTurn } from "./historyActions";
 import { surfaceCatalogs } from "../../i18n/surfaces";
 import { t, msg, useLocale } from "../../i18n";
 import { stencilLabel } from "../../i18n/stencils";
@@ -22,10 +23,10 @@ import { paletteHost } from "../../palette/host";
 import { getStencil } from "../../stencils/registry";
 import { canUseAiHistory, canUseOnDevice, privacyOf } from "../../lib/localOnly";
 import { AI_TOOLS, ON_DEVICE } from "../../lib/deployment";
-import { choiceIsCurrent, diffDiagrams, summarize, swapStencil, type StencilChoice } from "./apply";
+import { choiceIsCurrent, swapStencil, type StencilChoice } from "./apply";
 import { dismissAppliedToast, markElements, showApplied } from "./feedback";
 import { aiDock, clampWidth, collapseDock, useAiDock } from "./dock";
-import { sameContent, turnId, type ThreadTurn } from "./thread";
+import { sameContent, type ThreadTurn } from "./thread";
 import { threads, useThread } from "./threadStore";
 import type { TurnRecord } from "./commitTurn";
 import { Advanced } from "./Advanced";
@@ -213,12 +214,10 @@ export default function AiPanel({ request: opened, active }: { request: PanelReq
    */
   const undoTurn = (turn: ThreadTurn) => {
     const ed = editorNow();
-    if (!ed || !turn.historyKey || ed.undoTarget() !== turn.historyKey) {
+    if (!ed || !documentId || !undoAiTurn(ed, documentId, turn)) {
       refresh();
       return notify(t("ai.somethingChangedSinceThisTurnUseRevert"), { kind: "error" });
     }
-    ed.undo();
-    setTurns((all) => all.map((t) => (t.id === turn.id ? { ...t, undone: true } : t)));
     refresh();
   };
 
@@ -226,27 +225,13 @@ export default function AiPanel({ request: opened, active }: { request: PanelReq
   const revertTo = (turn: ThreadTurn) => {
     const ed = editorNow();
     if (!ed || !turn.after || !historyAllowed) return;
-    const before = ed.getDiagram();
-    const historyKey = `ai:${turnId()}`;
     try {
-      ed.applyDiagram(turn.after, { merge: historyKey });
+      if (documentId) revertAiTurn(ed, documentId, turn);
     } catch (err) {
       return notify(t("ai.revertFailed", { error: err instanceof Error ? err.message : String(err) }), {
         kind: "error",
       });
     }
-    const after = ed.getDiagram();
-    const diff = diffDiagrams(before, after);
-    const label = turn.revertLabel ?? (turn.request || turn.reply || turn.summary || "");
-    addTurn({
-      kind: "revert",
-      request: "",
-      revertLabel: label.length > 60 ? `${label.slice(0, 60)}…` : label,
-      summary: summarize(diff),
-      changed: diff.changed,
-      after,
-      historyKey,
-    });
   };
 
   const clearConversation = () => {

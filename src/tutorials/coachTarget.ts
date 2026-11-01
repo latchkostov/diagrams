@@ -110,7 +110,7 @@ export function observeCoach(card: HTMLElement | null, measure: () => void) {
     run();
   };
   const chrome =
-    '[role="menu"], [role="listbox"], [data-testid="live-note"], [data-testid="inspector"], [data-testid="palette"]';
+    '[role="menu"], [role="listbox"], [data-testid="live-note"], [data-testid="inspector"], [data-testid="palette"], [data-testid="toast"]';
   const mounts = `${chrome}, [data-testid="coach-card"], [data-testid="tutorial-handoff"]`;
   const mutations = new MutationObserver((records) => {
     const ui = records.some(
@@ -130,7 +130,10 @@ export function observeCoach(card: HTMLElement | null, measure: () => void) {
     attributes: true,
     attributeFilter: ["style", "class", "hidden", "data-testid", "aria-expanded", "dir"],
   });
-  const sizes = new ResizeObserver(schedule);
+  const sizes = new ResizeObserver((entries) => {
+    if (card && entries.some((entry) => entry.target === card)) immediate();
+    else schedule();
+  });
   sizes.observe(document.documentElement);
   if (card) sizes.observe(card);
   window.addEventListener("resize", schedule);

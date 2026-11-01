@@ -45,6 +45,7 @@ it.each(locales)("%s: tutorial instructions contain the exact values their check
       for (const check of leaves(step.check)) {
         const values: string[] = [];
         if (check.kind === "label" || (check.kind === "field" && check.is)) values.push(check.is!());
+        if (check.kind === "aiTurn" && check.label) values.push(check.label());
         if (check.kind === "prop" && check.prop === "group" && "value" in check && typeof check.value === "string")
           values.push(check.value);
         if (check.kind === "prop" && check.prop === "filter" && "value" in check && Array.isArray(check.value))

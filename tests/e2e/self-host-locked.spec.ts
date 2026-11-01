@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { tutorialEntries } from "../../src/tutorials/catalog/ids";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
 import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeModelContext, must, toolNames } from "./ai-helpers";
@@ -120,4 +122,42 @@ test.describe("self-hosted build with one language (VITE_LOCALES=en)", () => {
     await expect(page.getByTestId("command-item-view:language")).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
+});
+
+// Capability-off tutorial build: availability changes, persisted identities and core seals do not.
+test("tutorial core seal remains attainable with collaboration and AI compiled off", async ({ page }) => {
+  const versions = Object.fromEntries(
+    readdirSync("src/tutorials/catalog")
+      .filter((f) => f.endsWith(".ts"))
+      .flatMap((f) => {
+        const source = readFileSync(join("src/tutorials/catalog", f), "utf8");
+        const id = /id: "([^"]+)"/.exec(source)?.[1],
+          version = /version: (\d+)/.exec(source)?.[1];
+        return id && version ? [[id, Number(version)]] : [];
+      }),
+  );
+  const core = tutorialEntries.filter((t) => !t.optional && !t.quarantined).map((t) => t.id);
+  await page.addInitScript(
+    ({ core, versions }) =>
+      localStorage.setItem(
+        "diagrams.tutorials.v1",
+        JSON.stringify({
+          progress: Object.fromEntries(core.map((id) => [id, { version: versions[id], step: 0, completed: true }])),
+        }),
+      ),
+    { core, versions },
+  );
+  await page.goto("./?view=tutorials");
+  await page.getByTestId("tutorials-chapter-sharing").click();
+  for (const id of ["work-together", "review-agent-changes"]) {
+    await expect(page.getByTestId(`tutorial-open-${id}`)).toBeDisabled();
+    await expect(page.getByTestId(`tutorial-unavailable-${id}`)).toContainText("unavailable in this build");
+    await expect(page.getByTestId(`tutorial-optional-${id}`)).toHaveText("Optional extension");
+  }
+  await page.getByTestId("tutorials-seals").click();
+  await expect(page.getByTestId("tutorials-seal-chapter-sharing")).toContainText("Earned");
+  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Earned");
+  await page.goto("./?tutorial=review-agent-changes");
+  await expect(page.getByTestId("tutorial-unavailable")).toContainText("unavailable in this build");
+  await expect(page.getByTestId("tutorial-start")).toHaveCount(0);
 });

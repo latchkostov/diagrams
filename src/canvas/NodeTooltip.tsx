@@ -7,6 +7,7 @@ import { useSyncExternalStore, useRef, useLayoutEffect, type RefObject } from "r
 import { MarkdownView } from "../components/markdown/lazy";
 import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
 import type { Stencil } from "../model/types";
+import { placeNodeTip } from "./nodeTipPlacement";
 
 /** Descriptions are display text in the stencils catalog: their code arrives with it, when a tip first opens. */
 let describe: ((s: Stencil) => string) | undefined;
@@ -14,6 +15,8 @@ let describe: ((s: Stencil) => string) | undefined;
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
 export interface NodeTip {
   rect: DOMRect;
+  /** Follow the actual node through fit-view, zoom and layout changes while the tip is open. */
+  anchor?: Element;
   /** The node it describes (aria-describedby). */
   nodeId?: string;
   label: string;
@@ -30,23 +33,90 @@ export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let obstacles = [...document.querySelectorAll("[data-tip-obstacle]")];
+    const pane = tip.anchor?.closest('[data-testid="canvas-wrap"]');
     const position = () => {
-      const pad = 8;
       const { width, height } = el.getBoundingClientRect();
-      const aboveSpace = tip.rect.top - pad * 2;
-      const belowSpace = window.innerHeight - tip.rect.bottom - pad * 2;
-      const above = aboveSpace >= height || (belowSpace < height && aboveSpace > belowSpace);
-      const top = above ? tip.rect.top - pad - height : tip.rect.bottom + pad;
-      el.style.left = `${Math.max(pad, Math.min(tip.rect.left + tip.rect.width / 2 - width / 2, window.innerWidth - width - pad))}px`;
-      el.style.top = `${Math.max(pad, Math.min(top, window.innerHeight - height - pad))}px`;
+      const target = tip.anchor?.isConnected ? tip.anchor.getBoundingClientRect() : tip.rect;
+      const area = pane?.getBoundingClientRect() ?? {
+        x: 0,
+        y: 0,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      const blocked = obstacles.map((node) => node.getBoundingClientRect()).filter((r) => r.width && r.height);
+      const place = placeNodeTip(target, { width, height }, area, blocked);
+      el.style.visibility = place ? "" : "hidden";
+      if (place) {
+        el.style.left = `${place.x}px`;
+        el.style.top = `${place.y}px`;
+      }
     };
-    position();
-    const observer = new ResizeObserver(position);
-    observer.observe(el);
-    window.addEventListener("resize", position);
+    let frame = 0;
+    const moving = new Set<Element>();
+    const update = () => {
+      frame = 0;
+      position();
+      if (moving.size) schedule();
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    const relevant = (node: Node) =>
+      node instanceof Element &&
+      node !== el &&
+      !el.contains(node) &&
+      [tip.anchor, pane, ...obstacles].some((target) => target && (node.contains(target) || target.contains(node)));
+    const sizes = new ResizeObserver(schedule);
+    const observeSizes = () => {
+      sizes.disconnect();
+      for (const target of [el, tip.anchor, pane, ...obstacles]) if (target) sizes.observe(target);
+    };
+    const mutations = new MutationObserver((records) => {
+      const next = [...document.querySelectorAll("[data-tip-obstacle]")];
+      const changed = next.length !== obstacles.length || next.some((node, i) => node !== obstacles[i]);
+      if (changed || records.some((record) => relevant(record.target))) {
+        obstacles = next;
+        if (changed) observeSizes();
+        schedule();
+      }
+    });
+    mutations.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["style", "class", "hidden", "dir", "data-tip-obstacle"],
+    });
+    const movement = (event: Event) => {
+      if (!(event.target instanceof Element) || !relevant(event.target)) return;
+      if (event.type === "transitionrun" || event.type === "animationstart") moving.add(event.target);
+      else moving.delete(event.target);
+      schedule();
+    };
+    const events = [
+      "transitionrun",
+      "transitionend",
+      "transitioncancel",
+      "animationstart",
+      "animationend",
+      "animationcancel",
+    ];
+    for (const event of events) document.addEventListener(event, movement, true);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    window.visualViewport?.addEventListener("resize", schedule);
+    window.visualViewport?.addEventListener("scroll", schedule);
+    observeSizes();
+    update();
     return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", position);
+      cancelAnimationFrame(frame);
+      mutations.disconnect();
+      sizes.disconnect();
+      for (const event of events) document.removeEventListener(event, movement, true);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      window.visualViewport?.removeEventListener("resize", schedule);
+      window.visualViewport?.removeEventListener("scroll", schedule);
     };
   }, [tip]);
   return (

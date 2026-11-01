@@ -4,7 +4,7 @@
  */
 import type { TutorialMetadata } from "../types";
 
-export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantined">[] = [
+export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantined" | "optional">[] = [
   { id: "workbench-tour" },
   { id: "mobile-api" },
   { id: "quick-add" },
@@ -19,7 +19,6 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "command-palette" },
   { id: "library-reuse" },
   { id: "import-and-review" },
-  { id: "share-present" },
   { id: "api-gateway" },
   { id: "route-by-address" },
   { id: "kafka-topic" },
@@ -38,6 +37,7 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "timeouts-pools" },
   { id: "backlog-lag" },
   { id: "autoscaling" },
+  { id: "scale-on-backlog" },
   { id: "scale-to-zero" },
   { id: "rates-and-inputs" },
   { id: "read-a-node" },
@@ -63,4 +63,8 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "study-fanout" },
   { id: "study-rag" },
   { id: "study-cells" },
+  { id: "share-present" },
+  { id: "export-for-audience" },
+  { id: "work-together", optional: "collaboration" },
+  { id: "review-agent-changes", optional: "ai" },
 ];

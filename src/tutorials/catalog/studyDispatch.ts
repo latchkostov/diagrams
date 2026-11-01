@@ -5,13 +5,13 @@ import { studyRun } from "./studyShared";
 
 export const studyDispatch: Tutorial = {
   id: "study-dispatch",
-  version: 1,
+  version: 2,
   track: "studies",
   level: 3,
   minutes: 20,
   study: true,
   title: msg("tutorials.studyDispatch.title"),
-  summary: msg("tutorials.studyDispatch.summary"),
+  summary: msg("tutorials.studyDispatch.summaryV2"),
   start: () => ({
     format: "diagrams/v2",
     title: t("tutorials.studyDispatch.title"),
@@ -88,19 +88,34 @@ export const studyDispatch: Tutorial = {
     {
       id: "handle-dinner-rush",
       title: msg("tutorials.studyDispatch.rushTitle"),
-      goal: msg("tutorials.studyDispatch.rushGoal"),
-      hint: msg("tutorials.studyDispatch.rushHint"),
+      goal: () => t("tutorials.studyDispatch.rushGoalV2", { rushRun: t("tutorials.studyDispatch.rushRun") }),
+      hint: () => t("tutorials.studyDispatch.rushHintV2", { rushRun: t("tutorials.studyDispatch.rushRun") }),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () =>
+          t("tutorials.studyDispatch.checklistV2", {
+            partitionsRun: t("tutorials.studyDispatch.partitionsRun"),
+            rushRun: t("tutorials.studyDispatch.rushRun"),
+          }),
+      },
       done: msg("tutorials.studyDispatch.rushDone"),
       sticky: true,
       check: {
         kind: "all",
         checks: [
+          { kind: "prop", effective: true, subject: "dispatcher", prop: "replicas", op: ">=", value: 2 },
+          { kind: "prop", effective: true, subject: "topic", prop: "partitions", op: ">=", value: 2 },
           { kind: "simulation", id: "dinner-rush", atLeastMs: 4000 },
           { kind: "expectation", simulation: "dinner-rush", label: msg("tutorials.studyDispatch.bounded") },
           { kind: "metric", subject: "dispatcher", field: "processed", op: ">=", value: 10 },
         ],
       },
-      targets: [{ testId: "node-{dispatcher}", tip: msg("tutorials.studyDispatch.rushHint") }],
+      targets: [
+        {
+          testId: "node-{dispatcher}",
+          tip: () => t("tutorials.studyDispatch.rushHintV2", { rushRun: t("tutorials.studyDispatch.rushRun") }),
+        },
+      ],
       demo: [
         {
           kind: "patch",
@@ -123,8 +138,18 @@ export const studyDispatch: Tutorial = {
     {
       id: "fix-partition-ceiling",
       title: msg("tutorials.studyDispatch.fixTitle"),
-      goal: livePropertiesGoal(msg("tutorials.studyDispatch.fixGoal")),
-      hint: msg("tutorials.studyDispatch.fixHint"),
+      goal: livePropertiesGoal(() =>
+        t("tutorials.studyDispatch.fixGoalV2", { partitionsRun: t("tutorials.studyDispatch.partitionsRun") }),
+      ),
+      hint: () => t("tutorials.studyDispatch.fixHintV2", { partitionsRun: t("tutorials.studyDispatch.partitionsRun") }),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () =>
+          t("tutorials.studyDispatch.checklistV2", {
+            partitionsRun: t("tutorials.studyDispatch.partitionsRun"),
+            rushRun: t("tutorials.studyDispatch.rushRun"),
+          }),
+      },
       done: msg("tutorials.studyDispatch.fixDone"),
       sticky: true,
       check: {
@@ -145,10 +170,16 @@ export const studyDispatch: Tutorial = {
       targets: [
         {
           testId: "dock-edit-properties",
-          tip: livePropertiesGoal(msg("tutorials.studyDispatch.fixGoal")),
+          tip: livePropertiesGoal(() =>
+            t("tutorials.studyDispatch.fixGoalV2", { partitionsRun: t("tutorials.studyDispatch.partitionsRun") }),
+          ),
           selected: "topic",
         },
-        { testId: "node-{topic}", tip: msg("tutorials.studyDispatch.fixHint") },
+        {
+          testId: "node-{topic}",
+          tip: () =>
+            t("tutorials.studyDispatch.fixHintV2", { partitionsRun: t("tutorials.studyDispatch.partitionsRun") }),
+        },
       ],
       demo: [
         {
@@ -179,7 +210,7 @@ export const studyDispatch: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.studyDispatch.finish"),
+    text: msg("tutorials.studyDispatch.finishV2"),
     example: { slug: "delivery-dispatch", label: msg("tutorials.studyDispatch.reference") },
   },
 };

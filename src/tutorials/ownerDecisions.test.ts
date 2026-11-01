@@ -152,13 +152,16 @@ describe("2026-10-25 tutorial owner decisions", () => {
     expect(deadLetters.steps.map((step) => step.id)).toEqual([
       "run-poison",
       "watch-dead-letter",
+      "investigate",
       "max-deliveries",
+      "rerun-limit",
+      "verify-limit",
       "replay",
     ]);
     const replay = deadLetters.steps.at(-1)!;
     expect(replay.check).toEqual({ kind: "acknowledge" });
     expect(replay.demo).toEqual([]);
-    expect(replay.goal()).toContain("no dead-letter replay action");
+    expect(replay.goal()).toContain("no DLQ replay action");
     expect(replay.solution.at(-1)).toEqual({ click: "tutorial-skip" });
   });
 });

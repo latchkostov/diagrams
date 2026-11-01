@@ -10,6 +10,22 @@
 // stays.
 
 const en = {
+  "tutorials.handoff.nextLesson": "Next lesson",
+  "tutorials.handoff.time": "Time",
+  "tutorials.handoff.minutes": "{count} min",
+  "tutorials.handoff.doubleClick": "Double-click",
+  "tutorials.handoff.drag": "Drag",
+  "tutorials.handoff.rightClick": "Right-click",
+  "tutorials.handoff.type": "Type",
+  "tutorials.handoff.choose": "Choose",
+  "tutorials.handoff.click": "Click",
+  "tutorials.handoff.hover": "Hover",
+  "tutorials.handoff.pan": "Pan",
+  "tutorials.handoff.observe": "Observe",
+  "tutorials.handoff.notSet": "Not set",
+  "tutorials.handoff.on": "On",
+  "tutorials.handoff.off": "Off",
+  "tutorials.handoff.becomes": "becomes",
   "tutorials.commandPalette.finishV2":
     "You added a topic, found it and used a Properties command; its description records the result. Commands depend on selection and mode: which would be available on an edge?",
   "tutorials.annotate.zoneGoalV2":
@@ -5356,5 +5372,450 @@ const en = {
   "tutorials.traceSlowmo.cameraDone":
     "A manual view change takes ownership from Following; the replay and its held Live run do not move in time.",
   "tutorials.savedSimulations.expectationLabelV2": "{client} goodput at the end",
+  "tutorials.diagnostics.keyboardRoute":
+    "Keyboard: focus the named node or connection, press Enter for its Live readout or F2 for Properties, then Tab to the named control.",
+  "tutorials.scaleOnBacklog.title": "Scale workers for waiting jobs",
+  "tutorials.scaleOnBacklog.summary":
+    "Match Kafka lag to worker demand and lift a partition ceiling. Waiting jobs need consumers even when CPU is quiet; first complete Scale on busy threads.",
+  "tutorials.scaleOnBacklog.signalTitle": "Inspect the lag signal",
+  "tutorials.scaleOnBacklog.signalGoal":
+    "Open Poster workers Properties → Simulation. Read KEDA’s Render requests / renders source, target 10 waiting jobs per worker, minimum 0 and maximum 6.",
+  "tutorials.scaleOnBacklog.signalTip": "Read Target: 10 jobs per worker; Min: 0; Max: 6.",
+  "tutorials.scaleOnBacklog.signalDone":
+    "This controller reads one consumer group’s lag. CPU and cloud request metrics would answer different questions.",
+  "tutorials.scaleOnBacklog.runTitle": "Run the waiting-job burst",
+  "tutorials.scaleOnBacklog.runGoal":
+    "Go Live and pick KEDA: render workers wake from zero in Simulations. Predict whether Starting means ready to consume.",
+  "tutorials.scaleOnBacklog.runDone":
+    "The public story sends the same 80 jobs with seed 7; narration will hold two real readings.",
+  "tutorials.scaleOnBacklog.startingTitle": "Read Starting and Ready",
+  "tutorials.scaleOnBacklog.startingGoal":
+    "Read Poster workers at the paused note. Starting is 1 and Ready is 0: the requested worker cannot consume yet.",
+  "tutorials.scaleOnBacklog.startingDone":
+    "Starting records capacity still booting. The broker keeps the jobs until a consumer is ready.",
+  "tutorials.scaleOnBacklog.readyTitle": "Let workers become ready",
+  "tutorials.scaleOnBacklog.readyGoal":
+    "Press the narration’s Continue. At the next pause, read Poster workers: Ready is 3 and work has completed.",
+  "tutorials.scaleOnBacklog.readyDone":
+    "Ready workers now process jobs. Maximum 6 is a bound, not six active consumers.",
+  "tutorials.scaleOnBacklog.ceilingTitle": "Find the partition ceiling",
+  "tutorials.scaleOnBacklog.ceilingGoal":
+    "Read Render requests at the held note: backlog remains with three ready workers. Three partitions cap this group at three consumers despite maximum 6.",
+  "tutorials.scaleOnBacklog.ceilingDone":
+    "KEDA avoids idle consumers: replicas beyond the partition count cannot all consume this group.",
+  "tutorials.scaleOnBacklog.partitionsTitle": "Raise partitions to six",
+  "tutorials.scaleOnBacklog.partitionsGoal":
+    "Open Render requests → Simulation and set Partitions to 6. This edit lifts the consumer ceiling; it does not prove the waiting jobs finished.",
+  "tutorials.scaleOnBacklog.partitionsDone":
+    "The diagram has six partitions. Replay the burst to measure work in a fresh run.",
+  "tutorials.scaleOnBacklog.replayTitle": "Replay the same burst",
+  "tutorials.scaleOnBacklog.replayGoal":
+    "Press Restart in the Live controls to repeat KEDA: render workers wake from zero. The same 80 jobs and seed isolate the partition change.",
+  "tutorials.scaleOnBacklog.replayDone":
+    "A new run now uses six partitions; earlier completions cannot satisfy its expectations.",
+  "tutorials.scaleOnBacklog.drainedTitle": "Read the completed burst",
+  "tutorials.scaleOnBacklog.drainedGoal":
+    "Continue both paused notes, then read the end expectations: all 80 posters rendered and lag is zero. Speed 8× is optional.",
+  "tutorials.scaleOnBacklog.drainedDone":
+    "The fresh run completed all 80 jobs and drained this group’s lag. More partitions enable concurrency; startup and processing still take time.",
+  "tutorials.scaleOnBacklog.startNote":
+    "One worker is Starting; none is Ready. Jobs remain at the broker while capacity boots.",
+  "tutorials.scaleOnBacklog.ceilingNote":
+    "Compare Ready workers, waiting jobs and the broker’s partition count. KEDA avoids idle consumers; maximum six alone does not remove a partition ceiling.",
+  "tutorials.scaleOnBacklog.finish":
+    "You raised partitions from three to six; a fresh seeded burst completed 80 jobs with zero lag. Which signal and partition count would describe your own waiting work?",
+  "tutorials.scaleOnBacklog.example": "Explore both public autoscaling stories",
+  "tutorials.whereTimeGoes.summaryV3":
+    "Predict where Billing spends time, then compare waiting with working. Latency can rise while CPU looks healthy; first learn to read a Live node.",
+  "tutorials.whereTimeGoes.predictTitleV3": "Predict where time will go",
+  "tutorials.whereTimeGoes.predictGoalV3":
+    "Billing calls a slow dependency. Predict whether waiting or local work will dominate, then choose Done to test your prediction.",
+  "tutorials.whereTimeGoes.predictDoneV3":
+    "You paused to make a prediction; Done does not measure its correctness. The seeded run supplies the evidence next.",
+  "tutorials.whereTimeGoes.p95GoalV3":
+    "Read Billing’s Live card and watch p95 exceed 1,050 ms during the slowdown. Keyboard: focus Billing and press Enter to open the same readout.",
+  "tutorials.whereTimeGoes.p95DoneV3":
+    "p50 is the median; p95 and p99 describe slower sampled requests. A small sample can miss rare tails, and these are not averages.",
+  "tutorials.whereTimeGoes.breakdownGoalV3":
+    "Open Billing’s Live readout, then click Latency to expand its breakdown. Keyboard: focus Billing, press Enter, Tab to Latency and press Enter; compare the wait and work totals before Done.",
+  "tutorials.whereTimeGoes.finishV3":
+    "You compared Billing’s latency breakdown; the seeded slowdown showed more time waiting than working. Would your prediction change with a different dependency or a larger sample?",
+  "tutorials.threadsBlock.summaryV3":
+    "Free a caller thread while its Request still waits for a reply. This protects concurrency when CPU is quiet; first complete Where the time goes.",
+  "tutorials.threadsBlock.freeGoalV3":
+    "Leave Live. Right-click the Decision service → Partner API Request, open Simulation and choose Free the thread while waiting. The reply is still required; keep the connection a Request.",
+  "tutorials.threadsBlock.freeDoneV3":
+    "Before: the Request held a caller thread. After: the Request still waits for a reply, using off-thread waiting; this is not a Message.",
+  "tutorials.threadsBlock.rerunGoalV3":
+    "Pick Free the thread while waiting in Simulations. Its saved setup explicitly supplies non-blocking Request waiting for the seeded comparison.",
+  "tutorials.threadsBlock.resultDoneV3":
+    "The fresh comparison completes Requests with zero waiting threads. Off-thread waiting does not make the partner respond sooner.",
+  "tutorials.threadsBlock.finishV3":
+    "You changed the Request’s waiting policy; the seeded comparison completed work with zero waiting threads. A non-blocking Request still needs its reply, whereas a Message does not.",
+  "tutorials.timeoutsPools.summaryV3":
+    "Compare a caller deadline, then a connection-pool bound in two phases. Both protect limited resources while a provider is slow; first complete A blocking call holds threads.",
+  "tutorials.timeoutsPools.timeoutTitleV3": "Phase 1: set a 600 ms deadline",
+  "tutorials.timeoutsPools.timeoutRunGoalV3":
+    "Pick A 600 ms timeout in Simulations. Its saved setup supplies the same 600 ms deadline. The provider may continue late work after the caller stops waiting; read the timeout expectation after the slowdown.",
+  "tutorials.timeoutsPools.timeoutRunDoneV3":
+    "Phase 1: the caller stops waiting after 600 ms. The provider can keep doing late work; a timeout does not cancel it or prove payment failed.",
+  "tutorials.timeoutsPools.poolTitleV3": "Phase 2: bound the connection pool",
+  "tutorials.timeoutsPools.poolRunGoalV3":
+    "Pick Threads freed while waiting for the pool. Its setup supplies the pool of 40 and off-thread waiting; the diagram retains your 600 ms deadline. Compare with the deadline-only run.",
+  "tutorials.timeoutsPools.poolRunDoneV3":
+    "Phase 2 keeps held connections within 40 and still observes timeouts and late work. Pool waiting, caller waiting and work already running at the provider are separate.",
+  "tutorials.timeoutsPools.finishV3":
+    "You set a 600 ms deadline and a pool of 40; seeded runs exposed timeouts while late provider work continued. Which resource would you protect, and how would you resolve an unknown payment outcome?",
+  "tutorials.autoscaling.summaryV3":
+    "Match a busy-thread signal to waiting Requests and inspect its bounds. Low CPU can hide exhausted caller threads; first complete A blocking call holds threads.",
+  "tutorials.autoscaling.inspectTitleV3": "Read the controller bounds",
+  "tutorials.autoscaling.inspectGoalV3":
+    "Open Decision service → Properties → Simulation. Read HPA, CPU target 70% of request, minimum 4 and maximum 10; Advanced holds the metric selector.",
+  "tutorials.autoscaling.inspectDoneV3":
+    "The target is a utilization percentage, and 4–10 bounds the desired fleet. A vendor preset name alone does not guarantee the same controller semantics.",
+  "tutorials.autoscaling.scaleGoalV3":
+    "In Decision service → Simulation → Advanced, choose Busy threads. Read target 70% and minimum 4 / maximum 10; waiting threads contribute to this signal.",
+  "tutorials.autoscaling.scaleDoneV3":
+    "The diagram now uses Busy threads. The saved comparison already supplied that signal; changing the diagram is configuration evidence, not measured growth.",
+  "tutorials.autoscaling.growGoalV3":
+    "Read Decision service’s Live card and wait for Ready replicas to rise above four. Starting replicas are requested capacity and cannot serve until Ready.",
+  "tutorials.autoscaling.growDoneV3":
+    "The seeded busy-thread run grew ready capacity beyond four. Startup waiting separates a controller’s decision from capacity you can use.",
+  "tutorials.autoscaling.finishV3":
+    "You chose Busy threads; the saved run showed ready replicas grow beyond four while calls waited. For broker work, would group lag describe demand better than thread utilization?",
+  "tutorials.scaleToZero.summaryV3":
+    "Read zero ready replicas, then an instance starting for the morning rush. Sleeping saves idle capacity but new demand must wait; first complete Scale workers for waiting jobs.",
+  "tutorials.scaleToZero.coldGoalV3":
+    "Read the timetable API at the paused narration. Starting is above zero: this is a real fleet state, not a cold-start counter.",
+  "tutorials.scaleToZero.coldDoneV3":
+    "The pause holds fleet.starting while the instance boots. A warm minimum trades idle capacity for less startup waiting; instant-admission mode does not model this delay.",
+  "tutorials.scaleToZero.finishV3":
+    "You compared an idle API with morning demand; the held Starting readout exposed startup waiting. What warm minimum would justify its idle capacity cost for your callers?",
+  "tutorials.backoffBudget.summaryV2":
+    "Compare jitter alone with a cap on extra attempts under the same slowdown. Smoother retries can still overload a dependency; first complete A retry storm.",
+  "tutorials.backoffBudget.jitterGoalV2":
+    "Go Live and pick Jittered backoff. This saved setup supplies exponential backoff and full jitter, replacing the connection’s just-enabled budget for the first comparison.",
+  "tutorials.backoffBudget.jitterExpectGoalV2":
+    "Read the failed end expectation: Payments backlog < 100. Jitter alone still leaves work queued; expand the expectation details before comparing the budget run. Speed 8× is optional.",
+  "tutorials.backoffBudget.compareGoalV2":
+    "Read the end results beside the first run: jitter alone failed backlog < 100; the same seed with a 20% budget must pass backlog < 100 and Shop goodput ≥ 270/s.",
+  "tutorials.backoffBudget.finishV2":
+    "You configured backoff and a 20% retry budget; the same-seed runs separated smoother retries from bounded extra attempts. These outcomes depend on capacity, deadlines and retry safety, not jitter alone.",
+  "tutorials.circuitBreaker.summaryV2":
+    "Read Open, Testing and recovered calls in one seeded run. Failing fast gives abandoned work room to drain; first learn Backoff and a retry budget.",
+  "tutorials.circuitBreaker.openGoalV2":
+    "Read the Payments Request at the paused note: Open refuses ordinary calls immediately while existing provider work can drain.",
+  "tutorials.circuitBreaker.testingGoalV2":
+    "Read the Payments Request at the held note: Testing admits up to five probes, rather than ordinary traffic. Keep this note paused while reading.",
+  "tutorials.circuitBreaker.closedGoalV2":
+    "Continue the Testing note and read the Request after recovery. Closed admits ordinary calls again; a failed probe can reopen the breaker first.",
+  "tutorials.circuitBreaker.continueTipV2": "Continue the held narration to observe the next real breaker state.",
+  "tutorials.circuitBreaker.openNoteV2":
+    "Open refuses ordinary calls immediately. Existing abandoned work can still run at Payments; this pause holds the real breaker state.",
+  "tutorials.circuitBreaker.testingNoteV2":
+    "Testing admits a small probe batch. Failed probes reopen the breaker; successful probes eventually restore normal admission.",
+  "tutorials.circuitBreaker.recoveredTitleV2": "Check recovered goodput",
+  "tutorials.circuitBreaker.recoveredGoalV2":
+    "Read the end expectation: Shop goodput ≥ 270/s. Closed is an admission state; the completed run must also show useful work.",
+  "tutorials.circuitBreaker.recoveredDoneV2":
+    "The same seeded run passes its recovered goodput expectation after the breaker closes.",
+  "tutorials.circuitBreaker.finishV2":
+    "You enabled the breaker and read Open, Testing and Closed; recovered goodput showed useful calls resume. A breaker does not cancel abandoned work or add dependency capacity.",
+  "tutorials.deadLetters.summaryV3":
+    "Investigate a quarantined message, set three deliveries and verify a new run. Bounded attempts keep poison work from retrying forever; first learn message tracing.",
+  "tutorials.deadLetters.poisonNoteV3":
+    "A schema mismatch makes each ledger attempt fail. Investigate delivery attempts and the command queue’s configured limit.",
+  "tutorials.deadLetters.investigateNoteV3":
+    "Poison commands are quarantined. Use More → Trace a message → One that dead-lettered to investigate; DLQ replay is not available in Live Diagrams.",
+  "tutorials.deadLetters.investigateTitleV3": "Investigate a dead letter",
+  "tutorials.deadLetters.investigateGoalV3":
+    "Open More → Trace a message → One that dead-lettered. Read the command queue’s failed deliveries and dead-letter outcome in the trace.",
+  "tutorials.deadLetters.investigateDoneV3":
+    "The trace ties quarantine to a real command delivery history; a growing counter alone cannot explain the failure.",
+  "tutorials.deadLetters.maxDoneV3":
+    "The diagram now allows three deliveries. Replay the poison experiment to verify this limit in a new trace.",
+  "tutorials.deadLetters.rerunTitleV3": "Run poison again with three deliveries",
+  "tutorials.deadLetters.rerunGoalV3":
+    "Press Restart in the Live controls. This restarts Poison invoices with new messages and a three-delivery command limit; it does not replay the DLQ.",
+  "tutorials.deadLetters.rerunDoneV3":
+    "The new poison run uses the configured limit of three deliveries; the previous run’s dead letters do not prove it.",
+  "tutorials.deadLetters.verifyTitleV3": "Verify the third delivery",
+  "tutorials.deadLetters.verifyGoalV3":
+    "Open More → Trace a message → One that dead-lettered again. Read a new command trace: it must dead-letter on delivery 3.",
+  "tutorials.deadLetters.verifyDoneV3":
+    "The fresh trace records the command queue giving up on delivery 3. A different queue or delivery count does not satisfy this comparison.",
+  "tutorials.deadLetters.replayGoalV3":
+    "Plan recovery: investigate the schema, repair the cause and make repeated handling safe before a controlled replay. Live Diagrams has no DLQ replay action; choose Done after reading.",
+  "tutorials.deadLetters.finishV3":
+    "You set three deliveries; a fresh command trace showed quarantine on delivery 3. DLQ replay is unavailable here, and real recovery needs a repaired cause and safe repeated handling.",
+  "tutorials.retryStorm.waitGoalV2":
+    "Read Checkout’s Request readout after the slowdown clears. Predict why healthy CPU can coexist with waiting requests: retries add attempts faster than useful work completes.",
+  "tutorials.retryStorm.finishV2":
+    "You ran three quick retries; the failed backlog expectation showed overload persisting after the slowdown. Failed counts attempts, so compare useful goodput before choosing a recovery policy.",
+  "tutorials.rateLimit.rejectedDoneV2":
+    "Rejected counts refused admission, including quota refusals that can produce 429 responses. Burst credit means an instantaneous count need not equal exactly ten.",
+  "tutorials.rateLimit.finishV2":
+    "You set 10 requests/s and sent 20 requests/s; Rejected showed excess admission refused. Burst credit permits short bursts, so an instantaneous count need not equal exactly ten.",
+  "tutorials.sharedApiQuotas.runDoneV2":
+    "Two model endpoints spend the same fictional project budget, measured in tokens/minute and requests/minute; these are teaching assumptions, not provider prices or current quotas.",
+  "tutorials.sharedApiQuotas.finishV2":
+    "You compared shared model tokens/minute and requests/minute with independent payments requests/second; rejection and completion readings showed each budget’s effect. The fictional numbers are assumptions you must replace for a real workload.",
+  "tutorials.loadShedding.finishV2":
+    "You bounded the API’s waiting queue; a fresh Shed delta showed excess work refused while accepted work continued. Ten waiting requests excludes work already in flight and does not promise zero failures.",
+  "tutorials.healthChecks.finishV2":
+    "You compared the same seeded outage with health checks off and on; surviving-zone work and bounded drops showed the routing effect. Remaining capacity still matters, and health checks do not replicate application state.",
+  "tutorials.backlogLag.finishV3":
+    "You added a consumer; a new run showed completed work and bounded backlog. Adding topology restarts Live, so this does not prove the old backlog drained.",
+  "tutorials.scaleOnBacklog.continueTitle": "Continue startup",
+  "tutorials.scaleOnBacklog.continueGoal":
+    "Press the narration’s Continue to let the worker finish starting. The next note will hold the Ready reading.",
+  "tutorials.scaleOnBacklog.continueDone":
+    "The startup note is released; wait for the next held reading to inspect ready capacity.",
+  "tutorials.scaleOnBacklog.readReadyTitle": "Read ready workers",
+  "tutorials.scaleOnBacklog.readReadyGoal":
+    "Read Poster workers at the held note: Ready is 3 and work has completed. Keep this note paused while comparing the broker.",
+  "tutorials.scaleOnBacklog.selectTitle": "Open Poster workers Properties",
+  "tutorials.scaleOnBacklog.selectGoal":
+    "Double-click Poster workers to open Properties. Next, inspect its lag signal and controller bounds.",
+  "tutorials.scaleOnBacklog.selectDone":
+    "Poster workers is selected; its configured controller has the expected lag source and bounds.",
+  "tutorials.autoscaling.selectTitleV3": "Open Decision service Properties",
+  "tutorials.autoscaling.selectGoalV3":
+    "Double-click Decision service to open Properties. Next, inspect the signal, target and bounds.",
+  "tutorials.autoscaling.selectDoneV3":
+    "Decision service is selected; the configured target and bounds match this experiment.",
+  "tutorials.whereTimeGoes.runGoalV3":
+    "Go Live, pick Slow Billing drill in Simulations and wait for the reading pause at 9 s. The held card will let you compare the sampled tail with waiting and work.",
+  "tutorials.whereTimeGoes.runDoneV3":
+    "The seeded slowdown is paused on a real reading. Compare Billing’s latency and waiting/work totals next.",
+  "tutorials.trackSharing": "Share, present & work together",
+  "tutorials.syllabus.blurbSharing": "Choose an audience and keep control of shared work.",
+  "tutorials.sharing.extensionComplete": "Optional extension complete",
+  "tutorials.sharing.optional": "Optional extension",
+  "tutorials.sharing.optionalExplanation":
+    "Chapter and whole-syllabus seals require only core lessons, which work offline. Collaboration and AI are optional extensions; local exercises need no account, external model or real partner.",
+  "tutorials.sharing.unavailable":
+    "This optional lesson is unavailable in this build. Core seals remain attainable offline.",
+  "tutorials.sharing.demo":
+    "Local demonstration: two isolated peers in this page. No person joins and no network connection is made. This does not certify a real collaboration session.",
+  "tutorials.exportAudience.title": "Give someone the right artifact",
+  "tutorials.exportAudience.summary":
+    "Export a picture and a runnable story for different audiences. Match the artifact to the decision; first learn Present and saved simulations (four minutes).",
+  "tutorials.exportAudience.svgTitle": "Export a scalable picture",
+  "tutorials.exportAudience.svgGoal":
+    "Open File → More formats → Image, open Options and choose SVG, then Export. A static picture explains structure but cannot replay traffic.",
+  "tutorials.exportAudience.svgDone":
+    "The SVG writer produced bytes from this diagram; opening a dialog alone would not export it.",
+  "tutorials.exportAudience.pngTitle": "Export a PNG for a slide",
+  "tutorials.exportAudience.pngGoal":
+    "Open Image again and export PNG. Its pixels work in slide tools; SVG stays scalable. Both carry the title by default and omit editing handles.",
+  "tutorials.exportAudience.pngDone": "PNG bytes were downloaded; a picture has no editable model or simulation.",
+  "tutorials.exportAudience.htmlTitle": "Give a reader an offline replay",
+  "tutorials.exportAudience.htmlGoal":
+    "In File → More formats, choose Interactive HTML and Download with the saved simulations. Open the file in a browser to replay the story offline.",
+  "tutorials.exportAudience.htmlDone":
+    "The HTML writer completed a self-contained file with saved runs; no upload was required.",
+  "tutorials.exportAudience.audienceTitle": "Choose who receives the file",
+  "tutorials.exportAudience.audienceGoal":
+    "Read and press Done: anyone with an unprotected HTML file can open it. Require a password encrypts it; share the password separately. Diagram JSON is editable. A recording captures one take; an embed needs a host. No publication is required here.",
+  "tutorials.exportAudience.audienceDone": "Done records your audience decision, not an access-control test.",
+  "tutorials.exportAudience.finish":
+    "You exported SVG, PNG and a runnable HTML story; successful writers supplied the bytes. Choose editable JSON for coauthors and control who receives the file; a static picture cannot replay the model.",
+  "tutorials.sharePresent.summaryV2":
+    "Present a connected order story and choose its audience. Readability keeps a review on the architecture; first learn drawing and Live (two minutes).",
+  "tutorials.sharePresent.presentGoalV2":
+    "Choose Present and inspect the connected order story, title and annotations. Editing chrome disappears so the audience can read the diagram.",
+  "tutorials.sharePresent.shareGoalV2":
+    "Open File → Share and read the audience choices. Opening Share makes no public link and uploads no diagram; Interactive HTML can be handed to a reader as a file.",
+  "tutorials.sharePresent.audienceTitle": "Read before handing it over",
+  "tutorials.sharePresent.audienceGoal":
+    "Read the choices, close Share and press Done. Anyone with a link can open it; a password protects its contents. Private disables links and AI, while local image and HTML exports remain available.",
+  "tutorials.sharePresent.finishV2":
+    "You presented a connected story and read the sharing choices before handing it over. The next lesson exports real artifacts; readability acknowledgment does not verify access control.",
+  "tutorials.workTogether.title": "Know what your collaborator controls",
+  "tutorials.workTogether.summary":
+    "Try roles, shared edits, following and leaving with two isolated local peers. Editing differs from driving a run; first learn Present and saved simulations (five minutes, optional demonstration).",
+  "tutorials.workTogether.joinTitle": "Start the local demonstration",
+  "tutorials.workTogether.joinGoal":
+    "Read the demonstration notice, then start its two isolated peers. The host owns roles; the second peer initially views only. Ordinary Edit together needs consent and configured transport; this exercise makes no connection.",
+  "tutorials.workTogether.joinDone":
+    "Two local collaboration sessions synchronized the fixture; no real partner joined.",
+  "tutorials.workTogether.editTitle": "Compare viewing and editing",
+  "tutorials.workTogether.editGoal":
+    "Try roles and peer edit: the supplied edit is refused as a viewer, then Can edit is granted and the edit is retried. Observe the host receiving the permitted label change.",
+  "tutorials.workTogether.editDone":
+    "The viewer edit was refused; a signed editor grant allowed the peer change to converge.",
+  "tutorials.workTogether.watchTitle": "Follow the host’s saved run",
+  "tutorials.workTogether.watchGoal":
+    "Choose Follow local run. The host drives a saved simulation and the peer follows it. This is separate from following the camera; editing permission does not give control of Live.",
+  "tutorials.workTogether.watchDone": "The local follower received the saved run and processed its traffic.",
+  "tutorials.workTogether.leaveTitle": "Leave and inspect the recovery copy",
+  "tutorials.workTogether.leaveGoal":
+    "Leave the local peers to stop following. Inspect the retained copy. This demonstration keeps it only in memory; ordinary rooms keep device recovery, and Save a copy is a deliberate separate action.",
+  "tutorials.workTogether.leaveDone": "Both sessions left; the in-memory copy still contains the permitted peer edit.",
+  "tutorials.workTogether.finish":
+    "You tested a refused viewer edit, a permitted peer edit and a followed run, then left with an in-memory copy. This optional local demonstration does not certify a real two-person session.",
+  "tutorials.workTogether.start": "Start local peers",
+  "tutorials.workTogether.edit": "Try roles and peer edit",
+  "tutorials.workTogether.watch": "Follow local run",
+  "tutorials.workTogether.leave": "Leave local peers",
+  "tutorials.workTogether.api": "Status API",
+  "tutorials.workTogether.worker": "Status worker",
+  "tutorials.workTogether.edited": "Reviewed status worker",
+  "tutorials.workTogether.run": "Status checks",
+  "tutorials.agentReview.title": "Keep control of an AI edit",
+  "tutorials.agentReview.summary":
+    "Review supplied public replies, Undo and Revert their changes. Review an agent edit like any other; first learn Properties and Undo (four minutes, optional extension). No model or account is used.",
+  "tutorials.agentReview.openTitle": "Read the ways to use AI",
+  "tutorials.agentReview.openGoal":
+    "Open AI and read its supported paths, then press Done. The dock shows turns; Advanced accepts pasted replies. This lesson supplies public replies locally: send nothing to a chatbot and enter no API key.",
+  "tutorials.agentReview.openDone": "Done acknowledges the explanation; no agent was contacted.",
+  "tutorials.agentReview.applyTitle": "Apply the supplied worker reply",
+  "tutorials.agentReview.applyGoal":
+    "Open Advanced, paste supplied reply 1 from Read note into the reply box and choose Apply. Inspect the highlighted worker and connection; no external model runs.",
+  "tutorials.agentReview.applyDone": "The reply parser and turn pipeline added the worker and connection as one edit.",
+  "tutorials.agentReview.undoTitle": "Undo this change",
+  "tutorials.agentReview.undoGoal":
+    "In the first turn choose Undo this change. Confirm that worker and connection disappear; Undo belongs to the latest unchanged history step.",
+  "tutorials.agentReview.undoDone": "Undo reversed the turn’s own history step and removed the worker.",
+  "tutorials.agentReview.againTitle": "Apply the first reply again",
+  "tutorials.agentReview.againGoal":
+    "Paste supplied reply 1 into Advanced again and Apply. This creates the checkpoint to restore after another edit.",
+  "tutorials.agentReview.againDone": "A new turn restored the worker checkpoint.",
+  "tutorials.agentReview.renameTitle": "Review a second supplied turn",
+  "tutorials.agentReview.renameGoal":
+    "Paste supplied reply 2 and Apply. Inspect the changed label {name} before deciding whether to keep it.",
+  "tutorials.agentReview.renameDone": "The second reply changed the label without adding another worker.",
+  "tutorials.agentReview.revertTitle": "Revert to the worker checkpoint",
+  "tutorials.agentReview.revertGoal":
+    "On the turn that added the worker again, choose Revert to here. Confirm the original {name} label returns. Revert restores that snapshot as a new undoable edit.",
+  "tutorials.agentReview.revertDone": "Revert restored the reviewed checkpoint and recorded a new turn.",
+  "tutorials.agentReview.limitsTitle": "Keep the data boundary deliberate",
+  "tutorials.agentReview.limitsGoal":
+    "Read and press Done: Private blocks copied prompts and external agents; an explicitly allowed on-device model has different limits. Fixture turns run locally. Skill installation, downloads and sending context are outside this lesson.",
+  "tutorials.agentReview.limitsDone": "No external agent or answer quality was tested.",
+  "tutorials.agentReview.finish":
+    "You applied public replies, inspected edits, used Undo and restored a checkpoint with Revert. These local turns teach review controls, not model quality or real-agent completion.",
+  "tutorials.agentReview.reply1": "Supplied public reply 1",
+  "tutorials.agentReview.reply2": "Supplied public reply 2",
+
+  "tutorials.studies.checklist": "Milestone checklist",
+  "tutorials.studyCheckout.summaryV2":
+    "Keep checkout work under tenfold demand, preserve orders and respect a partner quota. Use load, persistence and pacing as three milestones; finish the waiting and resilience chapters first (20 minutes).",
+  "tutorials.studyCheckout.rushGoalV2":
+    "Milestone 1: handle 40 requests/s without checkout drops. Tenfold saves Traffic ×10 over a base 4/s; compare effective demand with the 100/s partner before changing replicas and replaying.",
+  "tutorials.studyCheckout.rushHintV2":
+    "Checklist: keep Traffic ×10; give checkout enough replicas; replay Tenfold; read processed, dropped and rejected together. Low traffic is not a capacity fix.",
+  "tutorials.studyCheckout.rushDoneV2":
+    "The seeded tenfold run processed checkout work with no drops; the saved load is still ×10.",
+  "tutorials.studyCheckout.ordersGoalV2":
+    "Milestone 2: keep the Request to {orders} and add a Message branch through a Kafka topic to a Java consumer. This illustrates an outbox path; database write and event publication are not atomic in this model.",
+  "tutorials.studyCheckout.ordersHintV2":
+    "Checklist: {checkout} → {orders} stays Request; {checkout} → topic is Message; topic → consumer is Message. Wiring is configuration, not durability proof.",
+  "tutorials.studyCheckout.quotaGoalV2":
+    "Milestone 3: pace {checkout} → Payments with a pool of one and replay {quotaRun}. This run keeps Traffic ×10 and replaces the partner quota with 10/s; compare successful calls and rejected calls.",
+  "tutorials.studyCheckout.quotaHintV2":
+    "Checklist: offered load is 40/s; the partner allows 10/s; keep the quota and traffic; change the caller pool, then replay. Do not solve refusal by disconnecting the partner.",
+  "tutorials.studyCheckout.finishV2":
+    "You raised checkout capacity, added an event path and paced partner calls; seeded completions, drops and refusals supplied the evidence. Compare those assumptions with the reference: atomic outbox persistence and production capacity still need independent verification.",
+  "tutorials.studyCheckout.checklistV2":
+    "1. Demand: 4/s ×10; checkout processes work without drops.\n2. Orders: Request to the database; Message through topic to consumer.\n3. Partner: saved 10/s quota, pool of one, successful work with bounded refusals.\nCompare the assumptions and counters with the optional reference, not its layout.",
+  "tutorials.studyDispatch.summaryV2":
+    "Size dispatch consumers against partition parallelism, then test a busier run. Separate effective fleet size from useful consumers; first complete partitions and backlog scaling (20 minutes).",
+  "tutorials.studyDispatch.rushGoalV2":
+    "Milestone 1: predict whether two partitions can keep up with {rushRun} at 15 pings/s. Raise dispatcher replicas to two, replay and inspect backlog plus processed work at the saved expectation.",
+  "tutorials.studyDispatch.rushHintV2":
+    "Checklist: {rushRun} offers 15/s instead of the document’s 20/s; inspect two effective replicas and two partitions, then read the backlog expectation and throughput.",
+  "tutorials.studyDispatch.fixGoalV2":
+    "Milestone 2: {partitionsRun} offers a new saved 30/s load. Give the dispatcher four replicas and the topic at least four partitions, then replay. An extra replica beyond the partition count cannot claim another partition.",
+  "tutorials.studyDispatch.fixHintV2":
+    "Checklist: four effective replicas; at least four effective partitions; run {partitionsRun}; read its own backlog threshold and useful work. Saved-run setup can replace document settings.",
+  "tutorials.studyDispatch.finishV2":
+    "You expanded the fleet and lifted its partition ceiling; each saved run’s backlog expectation and processed work showed the effect. Compare useful consumers and offered load with the reference; replicas alone do not guarantee throughput.",
+  "tutorials.studyDispatch.checklistV2":
+    "1. {rushRun}: saved 15/s, two replicas, two partitions, bounded backlog and processed work.\n2. {partitionsRun}: saved 30/s, four replicas, at least four partitions, its own backlog threshold.\nCompare assumptions and effective values with the optional reference.",
+  "tutorials.studyPayments.summaryV2":
+    "Declare safe retries, bound caller waiting and isolate poison disputes. Use three milestones with separate configuration and replay evidence; first complete waiting, breakers and dead letters (25 minutes).",
+  "tutorials.studyPayments.safeTitleV2": "Declare safe retries",
+  "tutorials.studyPayments.safeGoalV2":
+    "Milestone 1: add a Message outbox and consumer, then declare the {psp} Request retry idempotent. This is a model declaration: it does not prove the real payment processor cannot double-charge.",
+  "tutorials.studyPayments.safeHintV2":
+    "Checklist: {payments} → outbox → consumer carries Messages; {psp} retries are idempotent. A real outbox needs atomic persistence and an actual deduplication contract.",
+  "tutorials.studyPayments.brownoutGoalV2":
+    "Milestone 2: set the {psp} caller deadline to 250 ms and enable its breaker, then run {brownoutRun}. The callee takes about 1000 ms; observe the breaker opening. Timeout ends the caller wait, not the callee’s work.",
+  "tutorials.studyPayments.brownoutHintV2":
+    "Checklist: effective caller deadline 1–250 ms; breaker enabled; same seeded brownout. Review waiting and failure evidence; do not claim the slow {psp} was cancelled.",
+  "tutorials.studyPayments.poisonGoalV2":
+    "Milestone 3: add an SQS dead-letter path from the outbox and mark that connection DLQ. Set the consumer failure rate to 1, replay {poisonRun} and inspect both dead-lettered and parked counts. Replay of parked messages is not available here.",
+  "tutorials.studyPayments.poisonHintV2":
+    "Checklist: distinct outbox and DLQ; DLQ connection marked; failing consumer; fresh poison run; both the outbox dead-letter count and DLQ processed count increase.",
+  "tutorials.studyPayments.finishV2":
+    "You declared idempotent retries, bounded caller waits and added a poison-message path; the brownout and parked-message counters supplied replay evidence. Compare the reference’s assumptions: this model proves neither atomic persistence nor freedom from double charges.",
+  "tutorials.studyPayments.checklistV2":
+    "1. Configure: Message outbox, consumer, idempotent {psp} retry declaration.\n2. Brownout: effective 250 ms deadline, open breaker, slow callee still works.\n3. Poison: marked DLQ path, failing consumer, dead-letter and parked counts.\nInvestigate parked messages outside this tool; no DLQ replay is offered.",
+  "tutorials.studyFanout.summaryV2":
+    "Pace three providers and isolate a failed channel with its own queues. Build one channel, repeat its checklist, then compare all three outcomes; first complete queues, quotas and dead letters (25 minutes).",
+  "tutorials.studyFanout.limitsGoalV2":
+    "Milestone 1: set a caller pool of one for Email, SMS and Push, then replay {limitsRun}. Each provider must process work with zero quota refusals; raising quotas or disconnecting a channel is not the experiment.",
+  "tutorials.studyFanout.limitsHintV2":
+    "Checklist per provider: pool of one; unchanged quota; processed work; zero rejected. SMS has the smallest quota, but evidence is required from all three channels.",
+  "tutorials.studyFanout.queuesGoalV2":
+    "Milestone 2: build the Email channel first: router → main queue → sender, plus a separate marked DLQ branch. Set maximum deliveries to two. Repeat for SMS and Push using their own queues; keep all three provider pools.",
+  "tutorials.studyFanout.queuesHintV2":
+    "Email / SMS / Push checklist: one main queue on that channel, its own distinct DLQ, Message connections, DLQ connection marked, delivery limit two. No queue is shared across channels.",
+  "tutorials.studyFanout.outageGoalV2":
+    "Milestone 3: replay {outageRun} and compare all three channels. SMS parks failed work and later processes again; Email and Push process during the outage without neighbour failures. Keep each provider within its quota.",
+  "tutorials.studyFanout.outageHintV2":
+    "Checklist: Email and Push during-outage expectations pass; no neighbour failures; SMS dead-lettered and DLQ processed both increase; all providers process work with zero refusals.",
+  "tutorials.studyFanout.finishV2":
+    "You paced every provider and added separate channel queues; all-channel throughput, refusals and SMS parking showed the outage’s reach. Compare the reference’s isolation assumptions and investigate parked SMS outside this tool; DLQ replay is not available here.",
+  "tutorials.studyFanout.checklistV2":
+    "Email: main queue → sender → provider; separate DLQ; delivery limit two; pool one.\nSMS: its own main queue, sender and DLQ; limit two; pool one; poison work parks.\nPush: its own main queue, sender and DLQ; limit two; pool one.\nReplay: every provider processes; Email and Push remain healthy during the {outageRun}.",
+  "tutorials.studyRag.summaryV2":
+    "Meet a sampled answer budget, approximate cache shares and survive reindexing. Separate these three milestones; first complete caller waiting and latency lessons (20 minutes). No AI editor or external model runs.",
+  "tutorials.studyRag.budgetGoalV2":
+    "Milestone 1: reduce {llm} latency to 1000 ms, then replay {questionsRun}. Keep the Request paths and sufficient deadlines; read p95 only alongside at least eight model completions and zero failures.",
+  "tutorials.studyRag.budgetHintV2":
+    "Checklist: Request topology intact; caller deadlines do not expire before the budget; p95 ≤2000 ms; at least eight model completions; zero failures. Model throughput is not answer quality.",
+  "tutorials.studyRag.samplingGoalV2":
+    "Milestone 2: add Redis with share 80%; set vector-search and model shares to 20% each. These are independent samples approximating cache hits, not correlated cache-aside misses. This step checks configuration; reindexing supplies replay evidence.",
+  "tutorials.studyRag.samplingHintV2":
+    "Checklist: Redis Request 80%; vector Request 20%; model Request 20%. A hit and both misses are not one correlated decision in this model.",
+  "tutorials.studyRag.sampledReindexGoalV2":
+    "Milestone 3: reduce vector-search latency to 50 ms and replay Reindex. Read the slow-search fault, p95 ≤2000 ms, at least two model completions, more cache completions than model work and zero downstream failures.",
+  "tutorials.studyRag.sampledReindexHintV2":
+    "Checklist: keep the configured shares and Request paths; minimum throughput makes p95 meaningful; cache work exceeds model work; failures stay zero. These are model estimates, not production measurements.",
+  "tutorials.studyRag.sampledFinishV2":
+    "You changed the answer budget, independent cache shares and vector latency; sampled p95, useful work and failure counters supplied evidence. Compare the reference’s assumptions: this models throughput and latency, not answer quality, correlated cache behavior or the AI editor.",
+  "tutorials.studyRag.checklistV2":
+    "1. Budget: intact Requests, p95 ≤2000 ms, at least eight model completions, no failures.\n2. Approximate cache: Redis 80%, vector and model 20% independently.\n3. Reindex: vector 50 ms before ×5 slowdown, minimum model work, more cache work, zero failures.\nReview sample size and assumptions before transferring the result.",
+  "tutorials.studyCells.summaryV2":
+    "Contain a cell failure, then evacuate a region with useful spare capacity. Read the map before close-up evidence; first complete boundaries, health checks and faults (25 minutes).",
+  "tutorials.studyCells.splitGoalV2":
+    "Milestone 1: put {booking} alone in one boundary, then connect a Java neighbour to East and put it in a different boundary. Read the map: boundaries describe cells; zoomed-out chips and trouble pills guide you back to close-up properties.",
+  "tutorials.studyCells.splitHintV2":
+    "Checklist: two distinct boundaries; {booking} in cell A; Java service in cell B; both Requests from East. Use Fit view for the map, select a chip to navigate, then inspect the service close up.",
+  "tutorials.studyCells.deployGoalV2":
+    "Milestone 2: replay {deployRun}. Inspect {booking} failures in cell A, then useful processed work with zero failures in cell B. A disconnected healthy neighbour supplies no isolation evidence.",
+  "tutorials.studyCells.deployHintV2":
+    "Checklist: cell A actually fails; cell B actually processes at least five with zero failures; both stay connected to East. Trouble pills help find the affected cell; counters prove the outcome.",
+  "tutorials.studyCells.evacuateGoalV2":
+    "Milestone 3: add a second regional load balancer from {global}, connect a Go backup and put it in its own cell boundary. Replay {evacuateRun}: inspect East down and at least ten backup completions with no backup drops or failures.",
+  "tutorials.studyCells.evacuateHintV2":
+    "Checklist: Global → spare region → backup are Requests; backup belongs to a distinct cell; East is down; spare processes work without drops or failures. Check the spare’s close-up counters, not just its green map chip.",
+  "tutorials.studyCells.finishV2":
+    "You separated cells and added a spare region; failing-cell evidence, healthy-neighbour throughput and backup completions showed containment and evacuation. Compare the reference’s spare-capacity assumptions: this model does not prove real regional independence or recovery readiness.",
+  "tutorials.studyCells.checklistV2":
+    "1. Map: separate cell A and cell B boundaries, both reached from East.\n2. Bad deploy: A fails; B processes useful work without failures.\n3. Evacuation: a distinct spare-region cell processes work while East is down, with no backup drops or failures.\nCompare counters and capacity assumptions with the optional reference.",
+  "tutorials.syllabus.overallV2": "{done} of {total} core lessons · {seals} of {totalSeals} seals",
+  "tutorials.syllabus.coreCriterion": "Finish all {count} core lessons. Optional extensions do not block this seal.",
+
+  "tutorials.agentReview.contextTitle": "Copy the public practice context",
+  "tutorials.agentReview.contextGoal":
+    "Select Status API, open Advanced and choose Copy prompt. Copy prompt includes the whole practice diagram, regardless of selection. It goes only to your clipboard: paste nothing into a chatbot. Next you will apply the locally supplied reply.",
+  "tutorials.agentReview.contextDone":
+    "The clipboard writer succeeded for the public practice diagram; no model received it.",
+
+  "tutorials.sharePresentAudience.title": "Present a story and choose its audience",
 } as const;
 export default en;

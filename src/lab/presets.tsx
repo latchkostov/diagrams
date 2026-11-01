@@ -1,5 +1,8 @@
+import { backlogScalingPractice, breakerPractice, deadLetterPractice } from "./waitingPractice";
 import { resourcePractice, experimentPractice } from "./simulationPractice";
 import { addressPractice, policyPractice, checksPractice } from "./buildingBlockSeeds";
+import { workTogether } from "../tutorials/catalog/workTogether";
+import { reviewAgentChanges } from "../tutorials/catalog/reviewAgentChanges";
 import { workbenchTour } from "../tutorials/catalog/workbenchTour";
 import { libraryReuse } from "../tutorials/catalog/libraryReuse";
 import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixture";
@@ -311,7 +314,7 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
-  ...[workbenchTour, libraryReuse].map((lesson): Preset => ({
+  ...[workbenchTour, libraryReuse, workTogether, reviewAgentChanges].map((lesson): Preset => ({
     kind: "diagram",
     id: `tutorial-${lesson.id}-practice`,
     title: lesson.title(),
@@ -322,22 +325,32 @@ const diagramPresets: Preset[] = [
       return lesson.start();
     },
   })),
-  ...[addressPractice, policyPractice, checksPractice, resourcePractice, experimentPractice].map(
-    (diagram, index): Preset => ({
-      kind: "diagram",
-      id: [
-        "tutorial-address-practice",
-        "tutorial-policy-practice",
-        "tutorial-checks-practice",
-        "tutorial-resource-practice",
-        "tutorial-experiment-practice",
-      ][index],
-      title: diagram().title,
-      group: "Diagrams",
-      description: diagram().title,
-      diagram,
-    }),
-  ),
+  ...[
+    addressPractice,
+    policyPractice,
+    checksPractice,
+    resourcePractice,
+    experimentPractice,
+    backlogScalingPractice,
+    breakerPractice,
+    deadLetterPractice,
+  ].map((diagram, index): Preset => ({
+    kind: "diagram",
+    id: [
+      "tutorial-address-practice",
+      "tutorial-policy-practice",
+      "tutorial-checks-practice",
+      "tutorial-resource-practice",
+      "tutorial-experiment-practice",
+      "tutorial-backlog-scaling-practice",
+      "tutorial-breaker-practice",
+      "tutorial-dead-letter-practice",
+    ][index],
+    title: diagram().title,
+    group: "Diagrams",
+    description: diagram().title,
+    diagram,
+  })),
   {
     kind: "render",
     id: "message-readers",
@@ -1340,6 +1353,9 @@ export const presets: readonly Preset[] = [
         </a>
         <a className="btn" href="?tutorial=lab-tutorial-phone-note" data-testid="lab-tutorial-phone-note">
           {t("workbench.readNote")}
+        </a>
+        <a className="btn" href="?tutorial=lab-tutorial-handoff-settings" data-testid="lab-tutorial-handoff-settings">
+          {t("tutorials.ratesAndInputs.title")}
         </a>
       </>
     ),
