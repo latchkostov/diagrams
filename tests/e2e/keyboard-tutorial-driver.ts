@@ -13,6 +13,7 @@ import {
 import { type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
 import { chooseNativeSelect } from "./native-select";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
+import { tutorialKey } from "../../scripts/e2e-keys";
 
 export class CompletedStep extends Error {}
 
@@ -462,7 +463,7 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
       .toBe(true);
     if (action.press === "ControlOrMeta+d")
       await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
-    await page.keyboard.press(action.press);
+    await page.keyboard.press(tutorialKey(action.press));
     if (action.press === "Escape") {
       await animationFrames(page);
       if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished"))

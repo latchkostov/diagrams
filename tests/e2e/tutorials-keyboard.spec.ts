@@ -21,6 +21,19 @@ import {
 } from "./keyboard-tutorial-driver";
 import { keyboardTutorialGroups } from "./keyboard-tutorial-groups";
 
+test("keyboard text recipes append a setting at the native document end", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="canvas-wrap" data-camera-state="idle"><textarea data-testid="settings">Orders:PageSize\nFeatures:*</textarea></div>',
+  );
+  const settings = page.getByTestId("settings");
+  await settings.focus();
+  await settings.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+  await play(page, { press: "ControlOrMeta+End" });
+  await play(page, { press: "Enter" });
+  await play(page, { type: "Notifications:Token", into: "settings" });
+  await expect(settings).toHaveValue("Orders:PageSize\nFeatures:*\nNotifications:Token");
+});
+
 for (const id of keyboardTutorialGroups[0]) {
   test(`${id}: keyboard solution plays through the real UI`, async ({ page, consoleErrors }) => {
     await runKeyboardTutorial(page, consoleErrors, id);
