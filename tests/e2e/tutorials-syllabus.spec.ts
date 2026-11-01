@@ -161,6 +161,38 @@ test("handoff Escape waits for its real focus-and-listener frame", async ({ page
   }
 });
 
+test("legacy chapter seal keeps its first date across reloads", async ({ page }) => {
+  const progress = Object.fromEntries(
+    readdirSync("src/tutorials/catalog")
+      .filter((name) => name.endsWith(".ts"))
+      .flatMap((name) => {
+        const source = readFileSync(join("src/tutorials/catalog", name), "utf8");
+        const id = /id: "([^"]+)"/.exec(source)?.[1];
+        const version = /version: (\d+)/.exec(source)?.[1];
+        return id && version && /track: "basics"/.test(source)
+          ? [[id, { version: Number(version), step: 0, completed: true }]]
+          : [];
+      }),
+  );
+  const first = Date.parse("2026-10-01T12:00:00Z");
+  await page.clock.setFixedTime(first);
+  await page.addInitScript((progress) => {
+    if (!localStorage.getItem("diagrams.tutorials.v1"))
+      localStorage.setItem("diagrams.tutorials.v1", JSON.stringify({ progress }));
+  }, progress);
+  await page.goto("./?view=tutorials");
+  const stored = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem("diagrams.tutorials.v1") ?? "{}").marks?.["chapter-basics"]);
+  await expect.poll(stored).toBe(first);
+  await page.getByTestId("tutorials-seals").click();
+  await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Earned Oct 1");
+  await page.clock.setFixedTime(Date.parse("2026-11-01T12:00:00Z"));
+  await page.reload();
+  await page.getByTestId("tutorials-seals").click();
+  await expect.poll(stored).toBe(first);
+  await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Earned Oct 1");
+});
+
 test("cancelling Start next while its example loads preserves the intro on a normal reopen", async ({ page }) => {
   const held = await holdChunk(page, chunk("aks-app-config-key-vault", "src/examples/aks-app-config-key-vault.json"));
   try {

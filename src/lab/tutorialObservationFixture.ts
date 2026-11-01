@@ -1,5 +1,5 @@
 import { msg } from "../i18n";
-import { observationPorts, type ProductObservations } from "../lib/observations";
+import { observationPorts, unsettledObservedWork, type ProductObservations } from "../lib/observations";
 import { currentObservationSource } from "../palette/observationSource";
 import type { Check, Tutorial } from "../tutorials/types";
 
@@ -20,6 +20,7 @@ export const tutorialObservationFixtures: readonly Tutorial[] = Object.entries(c
   level: 1,
   minutes: 1,
   chrome: "app",
+  ...(port === "ai" ? { optional: "ai" as const } : {}),
   title: msg("tutorials.runtime.title"),
   summary: msg("tutorials.runtime.summary"),
   start: () => ({
@@ -55,6 +56,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") {
     });
   for (const port of Object.keys(observationPorts) as (keyof ProductObservations)[]) watch(port);
   window.__observationLab = {
+    pending: unsettledObservedWork,
     ready: () => currentObservationSource() !== undefined,
     latest: () => latest,
     clear: () => {
@@ -72,6 +74,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") {
 declare global {
   interface Window {
     __observationLab?: {
+      pending(): number;
       ready(): boolean;
       latest(): Partial<ProductObservations>;
       clear(): void;

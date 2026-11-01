@@ -178,6 +178,19 @@ describe("capacity evidence", () => {
       c.dispose();
     }
   });
+  it("keeps the capacity interpretation active until the learner acknowledges it", () => {
+    const diagram = resourcePractice();
+    const step = resourceHeadroom.steps.find((step) => step.id === "ceiling")!;
+    const view: SandboxView = {
+      diagram,
+      live: false,
+      processed: () => 0,
+      observations: { planning: { ...source, nodeId: "worker", constraint: "cpu", capacity: 5, offered: 20 } },
+    };
+    expect(holds(step.check, view, resolveSubjects(resourceHeadroom, diagram))).toBe(false);
+    expect(step.check).toEqual({ kind: "acknowledge" });
+    expect(step.solution).toEqual([{ click: "tutorial-skip" }]);
+  });
 });
 
 it("requires Sequence and successful export bytes to belong to the currently traced root", () => {

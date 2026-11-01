@@ -3039,6 +3039,7 @@ describe("completion regressions", () => {
       const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
       const reading = s.live!.getState().snapshot.edges[edge.id]?.breaker?.state;
       if (reading) seen.add(reading);
+      s.hover({ kind: "edge", id: edge.id });
       if (s.live!.getState().run?.waiting) s.live!.resume();
     }
     expect(seen).toEqual(new Set(["closed", "open", "half-open"]));

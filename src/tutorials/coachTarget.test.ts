@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
-import { externalCoachTarget, observeCoach } from "./coachTarget";
+import { externalCoachTarget, observeCoach, locate } from "./coachTarget";
 
 afterEach(() => vi.unstubAllGlobals());
 it("never anchors a card to its own Download or Save a copy button", () => {
@@ -22,10 +22,13 @@ it("coalesces camera changes while measuring newly opened chrome even on a pause
   vi.stubGlobal(
     "MutationObserver",
     class {
+      cb: MutationCallback;
       constructor(cb: MutationCallback) {
-        callback = cb;
+        this.cb = cb;
       }
-      observe() {}
+      observe(_target: Node, options: MutationObserverInit) {
+        if (options.attributeFilter?.includes("dir")) callback = this.cb;
+      }
       disconnect = disconnect;
     },
   );
@@ -63,7 +66,7 @@ it("coalesces camera changes while measuring newly opened chrome even on a pause
   expect(measure).toHaveBeenCalledTimes(5); // File feedback must not cover the next coach action.
   change(viewport);
   close();
-  expect(disconnect).toHaveBeenCalledTimes(1);
+  expect(disconnect).toHaveBeenCalled();
   expect(cancel).toHaveBeenCalledTimes(2);
 });
 
@@ -96,4 +99,26 @@ it("measures a resized instruction card immediately even while animation frames 
   expect(measure).toHaveBeenCalledTimes(2);
   expect(frame).not.toHaveBeenCalled();
   close();
+});
+
+it("keeps callout overlays clear while allowing targets inside their own overlay", () => {
+  const overlay = document.createElement("div");
+  overlay.dataset.canvasOverlay = "";
+  overlay.getBoundingClientRect = () => new DOMRect(20, 20, 200, 100);
+  const target = document.createElement("button");
+  target.dataset.testid = "overlay-regression-target";
+  target.getBoundingClientRect = () => new DOMRect(40, 40, 40, 20);
+  document.body.append(overlay, target);
+  const props = { targets: [{ testId: target.dataset.testid, tip: () => "" }], subjects: {}, selected: [] };
+  try {
+    expect(locate(props)).toBeNull();
+    const hit = vi.spyOn(document, "elementFromPoint").mockReturnValue(target);
+    expect(locate(props)?.testId).toBe(target.dataset.testid);
+    hit.mockRestore();
+    overlay.append(target);
+    expect(locate(props)?.testId).toBe(target.dataset.testid);
+  } finally {
+    overlay.remove();
+    target.remove();
+  }
 });

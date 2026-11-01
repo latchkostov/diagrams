@@ -1,3 +1,4 @@
+import { node as keyboardNode, edge as keyboardEdge, activate as keyboardActivate } from "./keyboard-tutorial-driver";
 import { expectNoViolations } from "./a11y-helpers";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -263,4 +264,88 @@ test("dismissing a completion handoff restores a visible coach with a paused clo
   await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
   await expect(page.getByTestId("tutorial-finished")).toBeInViewport();
   await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+});
+
+async function coachedTarget(page: Page, id: string) {
+  await expect(page.getByTestId(id)).toBeVisible();
+  await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", id);
+}
+async function menuEnter(page: Page, id: string) {
+  await keyboardActivate(page, id);
+}
+
+test("generated connect route follows its rendered menus", async ({ page }) => {
+  await begin(page, "dots-and-sides");
+  await page.getByTestId("coach-route-keyboard").click();
+  await coachedTarget(page, "node-browser");
+  await keyboardNode(page, "browser");
+  await page.keyboard.press("Shift+F10");
+  await coachedTarget(page, "context-menu-item-node.connect");
+  await menuEnter(page, "context-menu-item-node.connect");
+  await coachedTarget(page, "context-menu-item-connect:a");
+  await menuEnter(page, "context-menu-item-connect:a");
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "describe");
+});
+
+test("generated reconnect route follows its rendered menus", async ({ page }) => {
+  await begin(page, "dots-and-sides");
+  for (const step of ["connect", "describe", "side"]) {
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", step);
+    await page.getByTestId("tutorial-skip").click();
+  }
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "reconnect");
+  const link = await page.evaluate(() => window.__tutorial?.snapshot().subjects.link);
+  if (!link) throw new Error("Missing connection");
+  await page.getByTestId("coach-route-keyboard").click();
+  await coachedTarget(page, `edge-${link}`);
+  await keyboardEdge(page, link);
+  await page.keyboard.press("Shift+F10");
+  await menuEnter(page, "context-menu-item-edge.reconnect");
+  await coachedTarget(page, "context-menu-item-edge.reconnect:to");
+  await menuEnter(page, "context-menu-item-edge.reconnect:to");
+  await coachedTarget(page, "context-menu-item-reconnect-target:b");
+  await menuEnter(page, "context-menu-item-reconnect-target:b");
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
+});
+
+test("generated grow route follows quick-add and naming", async ({ page }) => {
+  await begin(page, "api-gateway");
+  for (const step of ["add-app", "add-gw"]) {
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", step);
+    await page.getByTestId("tutorial-skip").click();
+  }
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "add-orders");
+  const gateway = await page.evaluate(() => window.__tutorial?.snapshot().subjects.gw);
+  if (!gateway) throw new Error("Missing gateway");
+  await page.getByTestId("coach-route-keyboard").click();
+  await coachedTarget(page, `node-${gateway}`);
+  await keyboardNode(page, gateway);
+  await page.keyboard.press("Alt+ArrowRight");
+  await coachedTarget(page, "quick-add-search");
+  await page.getByTestId("quick-add-search").fill("Service");
+  await page.getByTestId("quick-add-search").press("Enter");
+  await coachedTarget(page, "inspector-field-label");
+  await page.getByTestId("inspector-field-label").fill("Orders");
+  await page.getByTestId("inspector-field-label").press("Enter");
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "add-users");
+});
+
+test("shows strip fallback when its target is unavailable and restores the anchored coach", async ({ page }) => {
+  await begin(page, "workbench-tour");
+  const node = page.getByTestId("node-api");
+  const before = await node.boundingBox();
+  await node.evaluate((el) => {
+    el.style.display = "none";
+  });
+  await expect(page.getByTestId("tutorial-target-fallback")).toBeVisible();
+  await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
+  await expect(page.getByTestId("coach-card")).toBeVisible();
+  await page.getByTestId("coach-hint").click();
+  await expect(page.getByTestId("tutorial-hint")).toBeVisible();
+  await node.evaluate((el) => {
+    el.style.removeProperty("display");
+  });
+  await expect(page.getByTestId("tutorial-target-fallback")).toHaveCount(0);
+  expect(await node.boundingBox()).toEqual(before);
+  await coachedTarget(page, "node-api");
 });

@@ -4,7 +4,7 @@ import { useDialogInteraction } from "../components/useDialogInteraction";
 import { t } from "../i18n";
 import { tracks } from "./catalog";
 import { withoutProgress, type ResetScope, type StoredTutorials } from "./progress";
-import { chapterSeals } from "./seals";
+import { chapters } from "./chapters";
 import type { TrackId, Tutorial } from "./types";
 
 export function ResetProgressDialog({
@@ -37,7 +37,7 @@ export function ResetProgressDialog({
   const done = removed.filter((p) => p.completed).length;
   const going = removed.filter((p) => !p.completed).length;
   const seals = Object.keys(progress.marks ?? {}).filter((id) => after.marks?.[id] === undefined).length;
-  const numeral = chapterSeals.find((seal) => seal.track === track)!.numeral;
+  const numeral = chapters[track].numeral;
   const confirm =
     kind === "all"
       ? t("tutorials.syllabus.resetAllButton")
@@ -93,9 +93,9 @@ export function ResetProgressDialog({
                     }}
                     data-testid="tutorials-reset-chapter-select"
                   >
-                    {tracks.map((item, index) => (
+                    {tracks.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {chapterSeals[index].numeral} {item.label()}
+                        {item.numeral} {item.label()}
                       </option>
                     ))}
                   </select>

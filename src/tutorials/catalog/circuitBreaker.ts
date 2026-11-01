@@ -62,6 +62,7 @@ const lesson: Tutorial = {
         checks: [
           { kind: "simulation", id: "circuit-breaker", atLeastMs: 9000 },
           { kind: "note", waiting: true },
+          { kind: "readout", edge: ["caller", "callee"] },
           { kind: "metric", subject: "caller", edge: ["caller", "callee"], field: "breaker", op: "=", value: "open" },
         ],
       },
@@ -97,6 +98,7 @@ const lesson: Tutorial = {
         checks: [
           { kind: "simulation", id: "circuit-breaker", atLeastMs: 10500 },
           { kind: "note", waiting: true },
+          { kind: "readout", edge: ["caller", "callee"] },
           {
             kind: "metric",
             subject: "caller",

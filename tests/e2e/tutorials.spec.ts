@@ -2009,7 +2009,16 @@ test("tutorial policy: report Make it private changes only sandbox privacy", asy
   await page.getByTestId("import-report-close").click();
   await expect(page.getByTestId("import-report")).toHaveCount(0);
   await openShareChooser(page);
-  await expect(page.getByTestId("share-private-note")).toBeVisible();
+  await expect(page.getByTestId("share-private-note")).toContainText("always private");
+  await expect(page.getByTestId("share-make-not-private")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").hover();
+  await page.getByTestId("privacy-diagram").click();
+  await expect(page.getByTestId("privacy-dialog")).toBeVisible();
+  await expect(page.getByTestId("privacy-turn-off")).toHaveCount(0);
+  await page.getByTestId("privacy-keep").click();
+  await expectNothingSaved(page);
 });
 
 test("import-and-review: imports its downloaded practice file", async ({ page }, testInfo) => {
@@ -2073,7 +2082,9 @@ for (const entry of ["Skip", "Continue"] as const) {
     await expectNothingSaved(page);
   });
 
-  test(`tutorial parser chunk: ${entry} failure reaches Retry through the real import bridge`, async ({ page }) => {
+  test(`tutorial parser chunk: ${entry} failure retries successfully through the real import bridge`, async ({
+    page,
+  }) => {
     if (entry === "Continue")
       await page.addInitScript(() =>
         localStorage.setItem(
@@ -2091,6 +2102,15 @@ for (const entry of ["Skip", "Continue"] as const) {
     held.fail = true;
     held.release();
     await expect(page.getByTestId("tutorial-retry")).toBeVisible();
+    const failedProgress = await page.evaluate(
+      () => JSON.parse(localStorage.getItem("diagrams.tutorials.v1") ?? "{}").progress?.["import-and-review"],
+    );
+    expect(failedProgress?.step ?? 0).toBe(entry === "Continue" ? 1 : 0);
+    held.fail = false;
+    await page.getByTestId("tutorial-retry").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "report");
+    await expect(page.getByTestId("toast-import-details")).toBeVisible();
+    expect(await page.evaluate(() => window.__tutorial?.diagram()?.nodes.map((n) => n.label))).toContain("worker");
     await expectNothingSaved(page);
   });
 }

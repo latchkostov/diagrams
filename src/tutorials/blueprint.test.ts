@@ -52,12 +52,16 @@ it("keeps a named connection's identity and markers when reconnecting its destin
 });
 
 it("inserts between existing subjects and removes the original bypass", async () => {
-  const board = buildBlueprint(insertOnEdge, await loadTutorialStart(insertOnEdge));
+  const initial = await loadTutorialStart(insertOnEdge);
+  const board = buildBlueprint(insertOnEdge, initial);
   expect(board.edges.map((e) => [e.from, e.to])).toEqual([
     ["app", "gw"],
     ["gw", "api"],
   ]);
   expect(board.nodes.find((n) => n.subject === "gw")?.marks).toEqual([1, 2]);
+  expect(initial.edges[0].label).toBeTruthy();
+  expect(board.edges[0].label).toBe(initial.edges[0].label);
+  expect(board.edges[1].label).toBeUndefined();
   const layout = blueprintLayout(board);
   expect(layout.positions.get("app")!.x).toBeLessThan(layout.positions.get("gw")!.x);
   expect(layout.positions.get("gw")!.x).toBeLessThan(layout.positions.get("api")!.x);

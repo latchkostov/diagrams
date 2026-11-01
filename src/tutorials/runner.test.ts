@@ -53,6 +53,7 @@ function sandbox(
   deferAdds = false,
   importPractice?: (signal: AbortSignal) => Promise<void>,
   documentId?: string,
+  practicePorts: Partial<Parameters<typeof createTutorialRunner>[1]> = {},
 ) {
   let diagram = initial;
   let version = { identity: {}, revision: 0 };
@@ -151,7 +152,7 @@ function sandbox(
     },
   };
   const close = vi.fn();
-  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice, documentId });
+  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice, documentId, ...practicePorts });
   const disconnect = runner.connect();
   cleanup.push(disconnect);
   return {
@@ -1726,7 +1727,13 @@ it("Retry recovers a failed AI practice initialization without restarting the le
       },
     ],
   };
-  const s = sandbox(tutorial, named(), false, undefined, "sandbox");
+  const { createAgentPracticeHost } = await import("./agentPracticeHost");
+  const agent = createAgentPracticeHost("sandbox");
+  const s = sandbox(tutorial, named(), false, undefined, "sandbox", {
+    agentFixture: (action, signal) => agent.run(action, s.editor as unknown as EditorApi, signal),
+    cancelPractice: agent.reset,
+  });
+  cleanup.push(agent.reset);
   vi.spyOn(practice, "agentPractice").mockImplementation(() =>
     s.edit({
       ...s.getDiagram(),
