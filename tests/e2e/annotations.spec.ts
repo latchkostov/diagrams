@@ -1213,6 +1213,7 @@ test.describe("annotations", () => {
     await page.getByTestId("import-input").setInputFiles(file);
     await expect(page.getByTestId("toast")).toContainText("Imported");
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await fitDiagram(page);
     for (const a of annotatedKafka.annotations) await expect(annotation(page, a.id)).toBeVisible();
     await expect(page.getByTestId("annotation-text-note-retry")).toHaveText("Gateway retries 3x,\nthen 503.");
     await expect(page.getByTestId("edge-to-legacy")).toBeAttached();
