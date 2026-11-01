@@ -25,11 +25,18 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
   await expect(page.getByTestId("tutorial-handoff-logged")).toHaveText("Logged · today");
   await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
-  await expect(page.getByTestId("tutorial-handoff-steps")).toHaveText(
-    "Add a mobile appAdd the API it callsConnect themName the APIGo liveWatch requests flow",
-  );
+  await expect(page.getByTestId("tutorial-handoff-step-title")).toHaveText([
+    "Add a mobile app",
+    "Add the API it calls",
+    "Connect them",
+    "Name the API",
+    "Go live",
+    "Watch requests flow",
+  ]);
   await expect(page.getByTestId("tutorial-next")).toHaveText("Start 1.2");
   await expectNoViolations(page, "tutorial-handoff");
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("tutorial-handoff-body")).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByTestId("tutorial-next")).toBeFocused();
   await page.getByTestId("tutorial-done-exit").click();
@@ -147,8 +154,9 @@ test("handoff starts the next lesson directly and Escape leaves the canvas usabl
 for (const whole of [false, true]) {
   test(`handoff shows ${whole ? "the final syllabus seal" : "the chapter seal"} only when newly earned`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     const id = whole ? "study-cells" : "share-present";
+    await page.setViewportSize({ width: 2560, height: 1440 });
     const ids = tutorialEntries.filter((lesson) => !lesson.quarantined).map((lesson) => lesson.id);
     const done = whole ? ids.filter((lesson) => lesson !== id) : ids.slice(0, ids.indexOf(id));
     const versions = Object.fromEntries(
@@ -186,6 +194,7 @@ for (const whole of [false, true]) {
     );
     if (whole) await expect(page.getByTestId("tutorial-next")).toHaveCount(0);
     else await expect(page.getByTestId("tutorial-next")).toHaveText("Start 2.1");
+    await page.screenshot({ path: testInfo.outputPath(whole ? "v7-syllabus.png" : "v7-chapter.png") });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByTestId("tutorial-handoff-heading")).toBeInViewport();
     await expect(page.getByTestId("tutorial-done-exit")).toBeInViewport();
@@ -195,6 +204,8 @@ for (const whole of [false, true]) {
     await expectNoViolations(page, "tutorial-handoff");
     if (!whole) {
       await page.getByTestId("tutorial-handoff-heading").focus();
+      await page.keyboard.press("Tab");
+      await expect(page.getByTestId("tutorial-handoff-body")).toBeFocused();
       await page.keyboard.press("Tab");
       await expect(page.getByTestId("tutorial-next")).toBeFocused();
     }

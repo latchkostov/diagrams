@@ -166,12 +166,6 @@
   max-block-size: var(--tutorial-note-room, 65dvh);
 }
 
-.tutorial-handoff .tutorial-handoff-recap {
-  margin: 0;
-  padding: 12px 20px 16px;
-  line-height: 1.5;
-}
-
 /* Preserve the practice pane when instructions expand, text is zoomed or a keyboard opens. */
 @media (max-width: 640px), (max-height: 500px) {
   .tutorial-bar {
@@ -728,102 +722,8 @@
   font-size: 13px;
 }
 
-/* The handoff hangs below the strip; the rest of the canvas stays interactive. */
 .tutorial-practice {
   position: relative;
-}
-.tutorial-practice > .tutorial-handoff {
-  animation: none;
-}
-.tutorial-handoff {
-  position: absolute;
-  z-index: 30;
-  top: 16px;
-  inset-inline: 16px;
-  width: min(640px, calc(100% - 32px));
-  margin-inline: auto;
-  max-height: calc(100% - 48px);
-  overflow: auto;
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-l);
-  box-shadow: var(--shadow-2);
-}
-.tutorial-handoff > header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface);
-}
-.tutorial-handoff header,
-.tutorial-handoff-next {
-  padding: 16px 20px;
-}
-.tutorial-handoff h2,
-.tutorial-handoff h3 {
-  margin: 4px 0;
-  font-size: 16px;
-  font-weight: 650;
-}
-.tutorial-handoff p {
-  margin: 4px 0;
-}
-.tutorial-handoff-next {
-  border-top: 1px solid var(--line);
-}
-.tutorial-handoff-next > p {
-  color: var(--text-2);
-}
-.tutorial-handoff-next h4 {
-  margin-top: 14px;
-}
-.tutorial-handoff-seal {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-}
-.tutorial-handoff footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px 20px;
-  border-top: 1px solid var(--line);
-  background: var(--surface-2);
-}
-.tutorial-handoff :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-@media (max-width: 640px) {
-  .tutorial-strip[data-phase="finished"] {
-    flex-wrap: wrap;
-  }
-  .tutorial-strip[data-phase="finished"] .tutorial-words {
-    flex-basis: 100%;
-  }
-  .tutorial-strip[data-phase="finished"] .tutorial-actions {
-    max-inline-size: 100%;
-    justify-content: flex-start;
-  }
-  .tutorial-handoff {
-    top: 8px;
-    inset-inline: 8px;
-    width: calc(100% - 16px);
-  }
-  .tutorial-handoff header,
-  .tutorial-handoff-next {
-    padding: 12px 14px;
-  }
-  .tutorial-handoff footer {
-    padding: 12px 14px;
-  }
-  .tutorial-handoff-start {
-    width: 100%;
-  }
 }
 
 .tutorial-tools {

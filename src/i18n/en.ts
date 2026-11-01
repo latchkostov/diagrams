@@ -10,6 +10,22 @@
 // stays.
 
 const en = {
+  "tutorials.handoff.nextLesson": "Next lesson",
+  "tutorials.handoff.time": "Time",
+  "tutorials.handoff.minutes": "{count} min",
+  "tutorials.handoff.doubleClick": "Double-click",
+  "tutorials.handoff.drag": "Drag",
+  "tutorials.handoff.rightClick": "Right-click",
+  "tutorials.handoff.type": "Type",
+  "tutorials.handoff.choose": "Choose",
+  "tutorials.handoff.click": "Click",
+  "tutorials.handoff.hover": "Hover",
+  "tutorials.handoff.pan": "Pan",
+  "tutorials.handoff.observe": "Observe",
+  "tutorials.handoff.notSet": "Not set",
+  "tutorials.handoff.on": "On",
+  "tutorials.handoff.off": "Off",
+  "tutorials.handoff.becomes": "becomes",
   "tutorials.commandPalette.finishV2":
     "You added a topic, found it and used a Properties command; its description records the result. Commands depend on selection and mode: which would be available on an edge?",
   "tutorials.annotate.zoneGoalV2":

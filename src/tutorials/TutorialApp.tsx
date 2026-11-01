@@ -319,6 +319,9 @@ function Running({
           </span>
           <Progress tutorial={tutorial} snap={snap} />
           <div className="topbar-spacer" />
+          {state.value === "finished" && (
+            <div className="tutorial-completion-slot" data-testid="tutorial-completion-mount" />
+          )}
           {state.value !== "intro" && (
             <button
               className="btn"
@@ -544,9 +547,11 @@ function Progress({ tutorial, snap }: { tutorial: Tutorial; snap: RunnerSnapshot
       </ol>
       {state.value !== "intro" && (
         <span className="tutorial-count" data-testid="tutorial-progress">
-          {finished
-            ? t("tutorials.finished")
-            : t("tutorials.stepOf", { step: current + 1, total: tutorial.steps.length })}
+          {finished ? (
+            <span data-testid="tutorial-finished">{t("tutorials.finished")}</span>
+          ) : (
+            t("tutorials.stepOf", { step: current + 1, total: tutorial.steps.length })
+          )}
         </span>
       )}
     </div>
@@ -652,7 +657,7 @@ function CoachInstructions({
       data-state={phase}
       data-step={step?.id ?? ""}
     >
-      {(step || phase === "finished") && (
+      {step && (
         <div className="coach-head">
           <span className="coach-count" aria-hidden="true">
             {phase === "finished"
@@ -829,11 +834,6 @@ function CoachInstructions({
       )}
       {phase === "finished" && (
         <>
-          <div className="tutorial-words">
-            <p className="tutorial-goal" data-testid="tutorial-finished">
-              <strong>{t("tutorials.finished")}.</strong>
-            </p>
-          </div>
           <div className="tutorial-actions">
             {tutorial.id === "library-reuse" && (
               <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
