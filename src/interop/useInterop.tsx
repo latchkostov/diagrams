@@ -127,7 +127,7 @@ interface Options {
   /** Explicit practice destination. Normal Open retains its ownership, handle and provenance behavior. */
   importDestination?: Options["openDiagram"];
   /** Temporary documents supply provenance and privacy changes without acquiring ownership. */
-  temporaryPrivacy?: { get(): CanvasPrivacyState; setPrivate(on: boolean): void };
+  temporaryPrivacy?: { get(): CanvasPrivacyState; setPrivate(on: boolean): void; readonly sticky?: boolean };
 }
 
 /** PNG / SVG export choices (the image dialog's Options). The title is in by default. */
@@ -1001,7 +1001,9 @@ export function useInterop({
     attempt("privacy", () => {
       setDialog(null);
       if (source !== openSlug.current) return;
-      const changed = temporaryPrivacy ? (temporaryPrivacy.setPrivate(false), true) : setDiagramPrivate(source, false);
+      const changed = temporaryPrivacy
+        ? (temporaryPrivacy.setPrivate(false), !temporaryPrivacy.get().private)
+        : setDiagramPrivate(source, false);
       if (changed) toast.success(t("fileToast.thisDiagramIsNoLongerPrivate"));
       // The badge that opened the dialog is gone with it: keep the keyboard on the canvas, not the page.
       requestAnimationFrame(() => {
@@ -1212,7 +1214,9 @@ export function useInterop({
                 }
               : undefined
           }
-          onMakeNotPrivate={() => setDialog({ kind: "privacy", source: dialog.source })}
+          onMakeNotPrivate={
+            temporaryPrivacy?.sticky ? undefined : () => setDialog({ kind: "privacy", source: dialog.source })
+          }
           onClose={() => setDialog(null)}
         />
       )}
@@ -1226,7 +1230,10 @@ export function useInterop({
         />
       )}
       {dialog?.kind === "privacy" && (
-        <PrivacyDialog onTurnOff={() => void confirmNotPrivate(dialog.source)} onClose={() => setDialog(null)} />
+        <PrivacyDialog
+          onTurnOff={temporaryPrivacy?.sticky ? undefined : () => void confirmNotPrivate(dialog.source)}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === "clear-device" && <ClearDeviceDialog onClose={() => setDialog(null)} />}
       {SHARE_LINKS && dialog?.kind === "password-link" && (

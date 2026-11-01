@@ -197,7 +197,7 @@ export function FinishHandoff({
           {next && (
             <div className="tutorial-handoff-next" data-testid="tutorial-handoff-next">
               {next.optional && <p data-testid="tutorial-handoff-next-optional">{t("tutorials.sharing.optional")}</p>}
-              <BlueprintBoard key={next.id} lesson={next} catalog={catalog} />
+              <BlueprintBoard key={next.id} lesson={next} catalog={catalog === tutorials ? tutorialCatalog : catalog} />
               <p className="handoff-summary">{next.summary()}</p>
               <ol className="handoff-steps" data-testid="tutorial-handoff-steps">
                 {next.steps.map((step, i) => (

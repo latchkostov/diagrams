@@ -103,7 +103,13 @@ function valueText(value: unknown): string {
 }
 
 /** Reuses the cancellable lesson loader; previews never mount a second editor or start a lesson. */
-export function BlueprintBoard({ lesson, catalog }: { lesson: Tutorial; catalog: readonly Tutorial[] }) {
+export function BlueprintBoard({
+  lesson,
+  catalog,
+}: {
+  lesson: Tutorial;
+  catalog: readonly Pick<Tutorial, "id" | "track">[];
+}) {
   useLocale();
   const [loader] = useState(() => createTutorialStart(lesson));
   const state = useSyncExternalStore(loader.subscribe, loader.getSnapshot);
@@ -150,7 +156,9 @@ export function BlueprintBoard({ lesson, catalog }: { lesson: Tutorial; catalog:
         </div>
       )}
       <div className="handoff-titleblock">
-        <span className="handoff-lesson-number">{lessonNumber(lesson, catalog)}</span>
+        <span className="handoff-lesson-number" data-testid="tutorial-handoff-lesson-number">
+          {lessonNumber(lesson, catalog)}
+        </span>
         <div>
           <small>{t("tutorials.handoff.nextLesson")}</small>
           <h3 data-testid="tutorial-handoff-next-title">{lesson.title()}</h3>

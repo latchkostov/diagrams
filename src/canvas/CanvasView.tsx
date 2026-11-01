@@ -1,3 +1,4 @@
+import { publishDockObservation } from "./dockObservation";
 import { Icon } from "../components/Icon";
 import { observationPorts } from "../lib/observations";
 import { currentObservationSource } from "../palette/observationSource";
@@ -682,7 +683,7 @@ function CanvasInner({
   });
   useEffect(() => {
     const report = () =>
-      observationPorts.dock.publish({
+      publishDockObservation({
         documentId,
         identity: editor.getDocumentVersion().identity,
         tab: dock.value,

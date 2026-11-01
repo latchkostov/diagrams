@@ -5,7 +5,7 @@ import { useInteraction } from "../canvas/interaction";
 import { t } from "../i18n";
 import { calloutOffset } from "./calloutPlacement";
 import { hoverTop, hoverRoom } from "./hoverPlacement";
-import { observeProtectedControls, protectedControls } from "./protectedControls";
+import { observeProtectedControls, protectedControls } from "../canvas/protectedControls";
 import { HoverStatus, HoverVerdict, HoverVitals, SectionRows } from "./HoverReadout";
 import type { HoverFact, HoverSummary } from "./hoverSummary";
 

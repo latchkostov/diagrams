@@ -29,7 +29,9 @@ export function useTutorialLayout() {
         caption.getBoundingClientRect().bottom,
         (visual?.offsetTop ?? 0) + (visual?.height ?? window.innerHeight),
       );
-      root.style.setProperty("--tutorial-note-room", `${Math.max(0, bottom - top - 8)}px`);
+      const room = `${Math.max(0, bottom - top - 8)}px`;
+      if (root.style.getPropertyValue("--tutorial-note-room") !== room)
+        root.style.setProperty("--tutorial-note-room", room);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -37,7 +39,20 @@ export function useTutorialLayout() {
     const sizes = new ResizeObserver(schedule);
     sizes.observe(root);
     // Portal insertion and expansion must clamp before the next paint, including with a paused animation clock.
-    const mutations = new MutationObserver(measure);
+    const relevant =
+      '[data-testid="live-note"], [data-testid="tutorial-bar"], [data-testid="tutorial-tools"], [data-testid="live-caption-mount"]';
+    const mutations = new MutationObserver((records) => {
+      if (
+        records.some(
+          (record) =>
+            (record.type === "attributes" && record.target instanceof Element && record.target.matches(relevant)) ||
+            [...record.addedNodes, ...record.removedNodes].some(
+              (node) => node instanceof Element && (node.matches(relevant) || !!node.querySelector(relevant)),
+            ),
+        )
+      )
+        measure();
+    });
     mutations.observe(root, {
       childList: true,
       subtree: true,

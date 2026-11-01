@@ -729,7 +729,7 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
  * What Private means, and the one confirmation before it's turned off (the badge beside the title and
  * File ▸ Privacy ▸ Private diagram open it). Keeping it private is the default button.
  */
-export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; onClose: () => void }) {
+export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff?: () => void; onClose: () => void }) {
   useLocale();
   useLocale();
   return (
@@ -746,9 +746,11 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
             {t("privateDialog.more")}
           </a>
           <span className="ix-grow" />
-          <button className="btn" onClick={onTurnOff} data-testid="privacy-turn-off">
-            {t("privateDialog.turnOff")}
-          </button>
+          {onTurnOff && (
+            <button className="btn" onClick={onTurnOff} data-testid="privacy-turn-off">
+              {t("privateDialog.turnOff")}
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="privacy-keep">
             {t("privateDialog.keep")}
           </button>
@@ -760,7 +762,7 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
         <li>{t("privateDialog.noCloud")}</li>
         <li>{t("privateDialog.noAi")}</li>
       </ul>
-      <p className="ix-muted">{t("privateDialog.after")}</p>
+      <p className="ix-muted">{onTurnOff ? t("privateDialog.after") : t("share.alwaysPrivate")}</p>
     </Dialog>
   );
 }
