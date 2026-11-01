@@ -98,12 +98,14 @@ export function ContextMenu({
   }, [onClose]);
   // A searchable menu (quick-add) keeps what's typed before its search can take focus: it starts the search.
   const typing = useRef<{ stop: () => TypeAhead } | null>(null);
+  // A translated placeholder must not recapture keys after MenuList has taken its input.
+  const capturesSearch = !!searchable;
   useLayoutEffect(() => {
-    if (!searchable) return;
+    if (!capturesSearch) return;
     const t = captureTypeAhead();
     typing.current = t;
     return () => void t.stop();
-  }, [searchable]);
+  }, [capturesSearch]);
   const takeTypeAhead = useCallback(() => {
     const t = typing.current?.stop();
     typing.current = null;
