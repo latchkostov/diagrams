@@ -3,6 +3,7 @@ import type { ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
 import { TRACE_CARD_TOP, TRACE_CARD_FOOTPRINT } from "../../live/traceCardLayout";
+import { FRAME_CARD_SPACE, innerFrame } from "./frameBounds";
 import { selectRoutes } from "../edges/useEdgeRoute";
 import {
   fitNodesViewport,
@@ -12,8 +13,69 @@ import {
   overlayFitViewport,
   goToViewport,
   hasVisibleContent,
+  revealPan,
 } from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
+
+for (const dock of ["bottom", "left", "bottom with Focus clipping"] as const)
+  it(`reveals a selected card inside the exposed canvas with a ${dock} dock`, () => {
+    const bounds = { left: 0, top: 0, right: 800, bottom: 700, width: 800, height: 700 };
+    const sheet =
+      dock === "left" ? { left: 0, top: 0, right: 300, bottom: 700 } : { left: 0, top: 350, right: 800, bottom: 700 };
+    const root = {
+      clientWidth: 800,
+      clientHeight: 700,
+      getBoundingClientRect: () => bounds,
+      querySelectorAll: () => [],
+      dataset: { detailView: dock === "bottom with Focus clipping" ? "focus" : "custom" },
+      ownerDocument: {
+        querySelector: (selector: string) =>
+          selector.includes('"inspector"') ? { getBoundingClientRect: () => sheet } : null,
+      },
+    } as unknown as HTMLElement;
+    const card = { x: 100, y: dock === "bottom with Focus clipping" ? 250 : 450, width: 220, height: 72 };
+    const view = revealPan(root, { x: 0, y: 0, zoom: 1 }, card);
+    expect(view).not.toBeNull();
+    expect(view!.zoom).toBe(1);
+    const painted = { x: card.x + view!.x, y: card.y + view!.y, width: card.width, height: card.height };
+    expect(
+      intersects(painted, {
+        x: sheet.left,
+        y: sheet.top,
+        width: sheet.right - sheet.left,
+        height: sheet.bottom - sheet.top,
+      }),
+    ).toBe(false);
+    expect(painted.x).toBeGreaterThanOrEqual(0);
+    expect(painted.y).toBeGreaterThanOrEqual(0);
+    expect(painted.x + painted.width).toBeLessThanOrEqual(bounds.width);
+    expect(painted.y + painted.height).toBeLessThanOrEqual(bounds.height);
+    if (dock === "bottom with Focus clipping") {
+      const frame = innerFrame(bounds.width, sheet.top, "focus", false);
+      expect(painted.y + painted.height + FRAME_CARD_SPACE.bottom).toBeLessThanOrEqual(frame.y + frame.height);
+    }
+    expect(revealPan(root, view!, card)).toBeNull();
+  });
+
+it("keeps the established centre fallback for an oversized selection", () => {
+  const root = {
+    clientWidth: 800,
+    clientHeight: 700,
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 800, bottom: 700, width: 800, height: 700 }),
+    querySelectorAll: () => [],
+    dataset: { detailView: "focus" },
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes('"inspector"')
+          ? { getBoundingClientRect: () => ({ left: 0, top: 350, right: 800, bottom: 700 }) }
+          : null,
+    },
+  } as unknown as HTMLElement;
+  const selected = { x: 100, y: 450, width: 220, height: 800 };
+  // The selection cannot fit above the sheet. Centre it in the existing reveal
+  // area (72 px above, 56 px below), without changing the chosen zoom.
+  expect(revealPan(root, { x: 0, y: 0, zoom: 1 }, selected)).toEqual({ x: 0, y: -667, zoom: 1 });
+});
 
 it("only reserves transport space when the bar overlaps the canvas", () => {
   let transportTop = 600;

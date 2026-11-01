@@ -6,7 +6,7 @@ import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } 
 import { intersects, segmentHitsRect, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { visibleCanvas, oneHop } from "./frameBounds";
+import { visibleCanvas, oneHop, innerFrame, FRAME_CARD_SPACE } from "./frameBounds";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
@@ -243,14 +243,34 @@ const VIEW_MARGIN = { top: 72, right: 40, bottom: 56, left: 40 };
  * moves.
  */
 export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, must: Rect = want): Viewport | null {
-  const { width, height } = root.getBoundingClientRect();
+  const frame = visibleCanvas(root);
   const overlays = overlayRects(root);
   const { x, y, zoom: k } = viewport;
+  const cropped = root.dataset?.detailView === "focus" || root.dataset?.detailView === "follow";
+  const phone = (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640;
+  const inner = innerFrame(frame.width, frame.height, "focus", false, false, phone);
+  // Focus/Follow clip a card together with its badge space. A revealed card must
+  // clear that complete footprint, or clipping can hide it and drop its focus.
+  const decoratedBottom = Math.max(VIEW_MARGIN.bottom, frame.height - inner.y - inner.height + FRAME_CARD_SPACE.bottom);
+  // An oversized selection cannot retain that complete footprint. Keep its
+  // established centering fallback instead of shifting the whole diagram.
+  const bottom =
+    cropped && must.height * k <= Math.max(0, frame.height - VIEW_MARGIN.top - decoratedBottom)
+      ? decoratedBottom
+      : VIEW_MARGIN.bottom;
+  const safe = cropped
+    ? {
+        x: frame.x + inner.x,
+        y: frame.y + inner.y + FRAME_CARD_SPACE.top,
+        width: inner.width,
+        height: Math.max(0, inner.height - FRAME_CARD_SPACE.top - FRAME_CARD_SPACE.bottom),
+      }
+    : frame;
   const view = {
-    x: VIEW_MARGIN.left,
-    y: VIEW_MARGIN.top,
-    width: width - VIEW_MARGIN.left - VIEW_MARGIN.right,
-    height: height - VIEW_MARGIN.top - VIEW_MARGIN.bottom,
+    x: frame.x + VIEW_MARGIN.left,
+    y: frame.y + VIEW_MARGIN.top,
+    width: Math.max(0, frame.width - VIEW_MARGIN.left - VIEW_MARGIN.right),
+    height: Math.max(0, frame.height - VIEW_MARGIN.top - bottom),
   };
   const target = want.width * k <= view.width && want.height * k <= view.height ? want : must;
   const onScreen = (v: Viewport): Rect => ({
@@ -260,11 +280,22 @@ export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, mus
     height: target.height * k,
   });
   const now = onScreen(viewport);
-  const inPane = now.x >= 0 && now.y >= 0 && now.x + now.width <= width && now.y + now.height <= height;
+  const inPane =
+    now.x >= safe.x &&
+    now.y >= safe.y &&
+    now.x + now.width <= safe.x + safe.width &&
+    now.y + now.height <= safe.y + safe.height;
   if (inPane && !overlays.some((o) => intersects(now, o))) return null;
   // Cut off by the pane's edge: into the view first. Then off the chrome.
   const v = (inPane ? null : panIntoView(want, must, viewport, view)) ?? viewport;
-  const d = panClearOf(onScreen(v), overlays, { width, height });
+  // Overlay avoidance uses the same exposed frame; it must not move a revealed
+  // card back behind a sibling dock or the phone's bottom sheet.
+  const screen = onScreen(v);
+  const d = panClearOf(
+    { ...screen, x: screen.x - safe.x, y: screen.y - safe.y },
+    overlays.map((r) => ({ ...r, x: r.x - safe.x, y: r.y - safe.y })),
+    safe,
+  );
   const next = { x: v.x + d.dx, y: v.y + d.dy, zoom: k };
   return Math.abs(next.x - x) >= 1 || Math.abs(next.y - y) >= 1 ? next : null;
 }
