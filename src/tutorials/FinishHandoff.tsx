@@ -58,7 +58,7 @@ export function FinishHandoff({
     // dialogs remain usable, including a palette opened as the lesson finishes.
     const background = new Map<HTMLElement, boolean>();
     for (const region of document.querySelectorAll<HTMLElement>(
-      '[data-testid="canvas-wrap"], [data-testid="inspector"], .live-transport-mount',
+      '[data-testid="canvas-wrap"], [data-testid="inspector"], .live-transport-mount, [data-testid="palette"], [data-testid="palette-annotate-flyout"]',
     )) {
       background.set(region, region.inert);
       region.inert = true;

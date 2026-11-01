@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, pageLoadTimeout, waitForCameraIdle, waitForSelectionSettled } from "./fixtures";
+import { test, expect, openLibrary, pageLoadTimeout, waitForCameraIdle, waitForSelectionSettled } from "./fixtures";
 import { expectNoViolations } from "./a11y-helpers";
 import { runKeyboardTutorial } from "./keyboard-tutorial-driver";
 
@@ -41,6 +41,21 @@ test("finish keeps Save a copy and Exit reachable by keyboard while the canvas s
   expect(await page.getByTestId("canvas-wrap").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
+});
+
+test("a pinned stencil library stays inert under the finish sheet", async ({ page }) => {
+  await begin(page, "quick-add");
+  await openLibrary(page);
+  await page.getByTestId("palette-toggle").click();
+  await expect(page.getByTestId("palette")).toHaveAttribute("data-mode", "pinned");
+  await finish(page);
+  expect(await page.getByTestId("palette").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+  // Cycling focus through the sheet and the strip never lands in the covered library.
+  const limit = await page.getByTestId(/./).count();
+  for (let i = 0; i < limit; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="palette"]'))).toBe(false);
+  }
 });
 
 test("keyboard-only completion reaches the sheet and starts the next lesson", async ({
