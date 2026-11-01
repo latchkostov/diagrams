@@ -25,5 +25,8 @@ Linux browser artifact/local-peer/hub checks passed twice. The chapter VII hub
 capture shows both optional markers. Expanded phone, landscape, RTL and pseudo-locale
 captures were inspected. The landscape capture exposed a clipped action row; the
 coach now budgets its scrollable words around the measured translated actions.
-The regression requires the whole action button to remain in the viewport. Complete
+The regression requires the whole action button to remain in the viewport.
+Import-feedback toasts also count as occupied chrome, so they cannot trap the
+pointer above the next coach action. Card-size changes also settle immediately,
+including after Continue on a paused clock; camera changes stay coalesced. Complete
 verification results are recorded with the final report.

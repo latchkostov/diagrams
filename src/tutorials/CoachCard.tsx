@@ -41,7 +41,7 @@ const PAD = 5;
 const PHONE = "(max-width: 600px)";
 /** Open things the card must not sit on: menus, the Add flyout, popovers. */
 const OPEN =
-  '[role="menu"], [role="listbox"], [data-testid="palette"], [data-testid="palette-annotate-flyout"], [role="dialog"]:not([aria-modal="true"]), [data-testid^="node-detail-"], [data-testid^="edge-detail-"]';
+  '[role="menu"], [role="listbox"], [data-testid="palette"], [data-testid="palette-annotate-flyout"], [role="dialog"]:not([aria-modal="true"]), [data-testid^="node-detail-"], [data-testid^="edge-detail-"], [data-testid="toast"]';
 
 export function CoachCard({
   targets,

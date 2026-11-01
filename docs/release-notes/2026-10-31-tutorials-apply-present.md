@@ -32,5 +32,6 @@ The 37 translated locales each gain 138 English fallbacks; the pseudo-locale
 keeps zero fallbacks. Only tutorial-area fingerprints change. Existing translations and
 all diagram, simulation, planning, example, layout and export goldens stay unchanged.
 Translated coach action rows stay fully visible in short landscape viewports;
-instructions scroll within the remaining space. No engine algorithm, budget,
+instructions scroll within the remaining space. File feedback toasts also keep
+clear of the coach actions. No engine algorithm, budget,
 reserve or plugin version changes.

@@ -704,7 +704,9 @@ test("study-checkout: Skip repairs the saved Partner quota pool", async ({ page,
 
 test("study-dispatch: saved Inputs complete the partition fix", async ({ page, consoleErrors }) => {
   test.slow();
+  await page.clock.install();
   await reachStudyMilestone(page, "study-dispatch", "fix-partition-ceiling");
+  await pauseClock(page);
   await page.getByTestId("live-sim-picker").selectOption("more-partitions");
   await page.getByTestId("live-capacity").click();
   await page.getByTestId("capacity-replicas-dispatcher").fill("4");
@@ -713,6 +715,7 @@ test("study-dispatch: saved Inputs complete the partition fix", async ({ page, c
   await page.getByTestId("capacity-partitions-pings").press("Enter");
   await page.getByTestId("capacity-save").click();
   await page.getByTestId("live-restart").click();
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-phase")) === "finished");
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   expectNoErrors(consoleErrors);
 });

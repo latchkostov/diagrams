@@ -1,7 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { test, expect, expectNoErrors, pageLoadTimeout } from "./fixtures";
-import { openTutorial, play, strip, finishSolution, expectNothingSaved } from "./pointer-tutorial-driver";
+import { test, expect, expectNoErrors, pageLoadTimeout, pauseClock } from "./fixtures";
+import {
+  openTutorial,
+  play,
+  strip,
+  finishSolution,
+  expectNothingSaved,
+  advanceTutorialClock,
+  skipAll,
+} from "./pointer-tutorial-driver";
 import { expectPlaying, watchedPage, filePayloadText } from "./html-viewer";
 
 test("batch6 exports: real SVG/PNG properties and a saved HTML story replayed offline", async ({
@@ -182,4 +190,71 @@ for (const sample of [
     await expect(page.getByTestId("tutorial-skip")).toBeInViewport({ ratio: 1 });
     await expect(page.getByTestId("tutorial-exit")).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: info.outputPath(`fanout-checklist-${sample.locale}-${sample.width}.png`) });
+  });
+
+for (const [id, index] of [
+  ["export-for-audience", 1],
+  ["work-together", 2],
+  ["review-agent-changes", 5],
+  ["share-present", 3],
+  ...["study-checkout", "study-dispatch", "study-payments", "study-fanout", "study-rag", "study-cells"].map(
+    (id) => [id, 1] as const,
+  ),
+] as const)
+  test(`batch6 Continue reconstructs ${id} and its real predecessor`, async ({ page, consoleErrors }) => {
+    test.slow();
+    await page.clock.install();
+    await openTutorial(page, id);
+    await page.getByTestId("tutorial-start").click();
+    await pauseClock(page);
+    while ((await page.evaluate(() => window.__tutorial?.snapshot().state.index ?? 0)) < index) {
+      if (await page.getByTestId("present-exit").isVisible()) await page.keyboard.press("Escape");
+      if (await page.getByTestId("share-chooser").isVisible()) await page.keyboard.press("Escape");
+      const prior = await page.evaluate(() => window.__tutorial?.snapshot().state.index ?? 0);
+      if (prior >= index) break;
+      await page.getByTestId("tutorial-skip").click();
+      await advanceTutorialClock(
+        page,
+        async () => (await page.evaluate(() => window.__tutorial?.snapshot().state.index ?? 0)) > prior,
+      );
+    }
+    const normalized = () =>
+      page.evaluate(() => {
+        const diagram = window.__tutorial?.diagram();
+        if (!diagram) throw new Error("Practice diagram missing");
+        return {
+          nodes: diagram.nodes.map(({ stencil, label, props, group }) => ({
+            stencil,
+            label,
+            props,
+            group: diagram.groups?.find((g) => g.id === group)?.label,
+          })),
+          edges: diagram.edges.map(({ from, to, kind, relation, props }) => ({
+            from: diagram.nodes.findIndex((n) => n.id === from),
+            to: diagram.nodes.findIndex((n) => n.id === to),
+            kind,
+            relation,
+            props,
+          })),
+        };
+      });
+    const predecessor = await normalized();
+    await page.reload();
+    await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+    await page.getByTestId("tutorial-start").click();
+    await pauseClock(page);
+    await advanceTutorialClock(page, async () =>
+      ["active", "hinting", "completing"].includes((await strip(page).getAttribute("data-state")) ?? ""),
+    );
+    expect(await page.evaluate(() => window.__tutorial?.snapshot().state.index)).toBe(index);
+    expect(await normalized()).toEqual(predecessor);
+    if (id === "review-agent-changes") {
+      await expect(page.getByTestId("ai-panel")).toBeVisible();
+      expect(predecessor.nodes).toHaveLength(1);
+    }
+    if (id === "work-together") await expect(page.getByTestId("tutorial-peer-watch")).toBeVisible();
+    await page.clock.resume();
+    await skipAll(page);
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
   });

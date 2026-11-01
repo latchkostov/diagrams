@@ -57,8 +57,43 @@ it("coalesces camera changes while measuring newly opened chrome even on a pause
   handoff.dataset.testid = "tutorial-handoff";
   change(document.body, [], [handoff]);
   expect(measure).toHaveBeenCalledTimes(4); // A dismissed handoff must return its coach on a paused clock too.
+  const toast = document.createElement("div");
+  toast.dataset.testid = "toast";
+  change(document.body, [toast]);
+  expect(measure).toHaveBeenCalledTimes(5); // File feedback must not cover the next coach action.
   change(viewport);
   close();
   expect(disconnect).toHaveBeenCalledTimes(1);
   expect(cancel).toHaveBeenCalledTimes(2);
+});
+
+it("measures a resized instruction card immediately even while animation frames are paused", () => {
+  let resized: ResizeObserverCallback = () => {};
+  const frame = vi.fn(() => 1);
+  vi.stubGlobal("requestAnimationFrame", frame);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal(
+    "MutationObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        resized = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const card = document.createElement("section");
+  const measure = vi.fn();
+  const close = observeCoach(card, measure);
+  resized([{ target: card } as unknown as ResizeObserverEntry], {} as ResizeObserver);
+  expect(measure).toHaveBeenCalledTimes(2);
+  expect(frame).not.toHaveBeenCalled();
+  close();
 });
