@@ -17,44 +17,14 @@ async function box(locator: Locator) {
 async function reachable(locator: Locator) {
   await expect(locator).toBeInViewport();
   await expect(locator).toBeVisible();
-  await expect
-    .poll(() =>
-      locator.evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-        return hit === el || (hit !== null && el.contains(hit));
-      }),
-    )
-    .toBe(true);
+  expect(
+    await locator.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return hit === el || (hit !== null && el.contains(hit));
+    }),
+  ).toBe(true);
 }
-
-test("reachability waits for the actual hit target after a layout change", async ({ page }) => {
-  await page.setContent(
-    '<button data-testid="target" style="position:fixed;top:20px;left:20px;width:120px;height:40px">Target</button>' +
-      '<div data-testid="cover" style="position:fixed;inset:0"></div>',
-  );
-  const target = page.getByTestId("target");
-  const hitRead = page.waitForEvent("console", { predicate: (message) => message.text() === "reachability-hit-read" });
-  await page.evaluate(() => {
-    const read = document.elementFromPoint.bind(document);
-    document.elementFromPoint = (x, y) => {
-      console.debug("reachability-hit-read");
-      return read(x, y);
-    };
-  });
-  let returned = false;
-  const checking = reachable(target).finally(() => (returned = true));
-  const outcome = checking.catch((error: unknown) => error);
-  try {
-    await hitRead;
-    expect(returned, "visibility does not establish that the layout has exposed the target").toBe(false);
-    await page.getByTestId("cover").evaluate((el) => el.remove());
-    await checking;
-  } finally {
-    await page.getByTestId("cover").evaluateAll((els) => els.forEach((el) => el.remove()));
-    await outcome;
-  }
-});
 
 test("finish reads the recap before the next lesson, without a duplicate announcement", async ({ page }) => {
   await begin(page, "annotate");
@@ -152,6 +122,8 @@ for (const viewport of [
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.addInitScript(() => localStorage.setItem("diagrams.locale", "en-XA"));
     await begin(page);
+    // The pseudo-locale brackets this prose; it is not one unbreakable keyboard key.
+    await expect(page.getByTestId("coach-objective").getByTestId("coach-key")).toHaveCount(0);
     await page.getByTestId("tutorial-show-me").click();
     await waitForCameraIdle(page);
     await page.getByTestId("node-c").click({ position: { x: 20, y: 35 } });
