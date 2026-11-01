@@ -248,38 +248,43 @@ async function svgDigest(page: Page) {
   });
 }
 
-test("image exports never include the chips: the natural drawing's SVG at 40%, 25% and back at 100% @dev", async ({
-  page,
-  browser,
-}, info) => {
-  // The same canvas in a second browser with the chips switched off (the parity tier's switch).
-  const { baseURL, viewport, colorScheme, deviceScaleFactor } = info.project.use;
-  const context = await browser.newContext({ baseURL, viewport, colorScheme, deviceScaleFactor });
-  try {
-    const natural = await context.newPage();
-    await natural.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
-    // Zones with moved headers, merged lanes and wrapped names: everything the chips restyle.
-    await Promise.all(
-      [page, natural].map(async (p) => {
-        await gotoCanvas(p, "black-friday-commerce");
-        // A capture below 60% turns far-zoom cards back to natural ones while it copies them, so without this
-        // the natural reference would catch some borders and shadows mid-transition. Compare settled values.
-        await p.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
-      }),
-    );
-    // Back at 100% too: nothing the chips placed on the page stays behind.
-    for (const zoom of [0.4, 0.25, 1]) {
-      const tier = zoom < 0.3 ? "far" : "mid";
-      await Promise.all([page, natural].map((p) => zoomIdentity(p, zoom)));
-      if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
-      await expect(natural.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom");
-      const [actual, expected] = await Promise.all([svgDigest(page), svgDigest(natural)]);
-      expect({ zoom, digest: actual }).toEqual({ zoom, digest: expected });
-      // The capture hands the screen back to the chips.
-      if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
+// Six 9.5 MB captures in one test outran its deadline (docs/backlog/2026-11-01-svg-export-speed-investigation.md).
+// The same comparisons run as two tests: 40%, then 25% followed by the return to 100%, so a capture
+// below 60% still precedes the 100% check that nothing the chips placed on the page stays behind.
+for (const zooms of [[0.4], [0.25, 1]] as const) {
+  const label = zooms.map((z) => `${z * 100}%`).join(" then ");
+  test(`image exports never include the chips: the natural drawing's SVG at ${label} @dev`, async ({
+    page,
+    browser,
+  }, info) => {
+    // The same canvas in a second browser with the chips switched off (the parity tier's switch).
+    const { baseURL, viewport, colorScheme, deviceScaleFactor } = info.project.use;
+    const context = await browser.newContext({ baseURL, viewport, colorScheme, deviceScaleFactor });
+    try {
+      const natural = await context.newPage();
+      await natural.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
+      // Zones with moved headers, merged lanes and wrapped names: everything the chips restyle.
+      await Promise.all(
+        [page, natural].map(async (p) => {
+          await gotoCanvas(p, "black-friday-commerce");
+          // A capture below 60% turns far-zoom cards back to natural ones while it copies them, so without this
+          // the natural reference would catch some borders and shadows mid-transition. Compare settled values.
+          await p.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
+        }),
+      );
+      for (const zoom of zooms) {
+        const tier = zoom < 0.3 ? "far" : "mid";
+        await Promise.all([page, natural].map((p) => zoomIdentity(p, zoom)));
+        if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
+        await expect(natural.getByTestId("canvas-wrap")).not.toHaveAttribute("data-low-zoom");
+        const [actual, expected] = await Promise.all([svgDigest(page), svgDigest(natural)]);
+        expect({ zoom, digest: actual }).toEqual({ zoom, digest: expected });
+        // The capture hands the screen back to the chips.
+        if (zoom < 0.6) await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", tier);
+      }
+    } finally {
+      await context.close();
     }
-  } finally {
-    await context.close();
-  }
-});
+  });
+}
 import { installParticleCounters, rendererCounters } from "./particle-counters";
