@@ -3,6 +3,7 @@ import { waitingFixture } from "../../src/lab/waitingFixture";
 import type { Page } from "@playwright/test";
 import { chunk, holdChunk } from "./chunk";
 import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
+import { CATCH_UP_MS } from "../../src/live/frameClock";
 import {
   test,
   expect,
@@ -34,15 +35,35 @@ function timeoutFixture(disabled = false) {
   return d;
 }
 
-async function verifiedTrouble(page: Page, holdFirst = false, paused?: () => void) {
+async function verifiedTrouble(
+  page: Page,
+  holdFirst = false,
+  paused?: () => void,
+  beforePlayback?: () => Promise<void>,
+) {
   await installThreadVerification(page, holdFirst);
   await page.clock.install();
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
+  await beforePlayback?.();
   await pauseClock(page);
   await page.getByTestId("live-play").click();
-  await page.clock.runFor(11000);
+  const simulation = (await savedDiagram(page)).simulations?.find(({ id }) => id === "slow");
+  if (!simulation?.durationMs) throw new Error("Fixture needs the slow simulation's duration");
+  // Observe a continuous ten-second trend at the same eleven-second endpoint,
+  // through the real timeline, without painting every intervening frame.
+  for (const time of [1000, 3000, 5000, 7000, 8000, 11000]) {
+    await page.getByTestId("live-timeline-input").fill(String((time * 1000) / simulation.durationMs));
+    await page.getByTestId("live-play").focus();
+  }
+  await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "11000");
   await page.getByTestId("live-play").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  await expect
+    .poll(async () => {
+      await page.clock.fastForward(CATCH_UP_MS);
+      return page.getByTestId("live-canvas").getAttribute("data-sim-time");
+    })
+    .toBe("11000");
   expect(Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time"))).toBeGreaterThan(10000);
   paused?.();
   await waitForThreadVerification(page);
@@ -57,19 +78,48 @@ test("deadline setup cannot finish before the real verification response with th
   });
   const paused = Promise.withResolvers<undefined>();
   let finished = false;
-  const opening = verifiedTrouble(page, true, () => paused.resolve(undefined)).then(() => {
+  let readFrames: (() => Promise<number>) | undefined;
+  let stopFrames: (() => Promise<void>) | undefined;
+  const opening = verifiedTrouble(
+    page,
+    true,
+    () => paused.resolve(undefined),
+    async () => {
+      const counter = await page.evaluateHandle(() => {
+        let frames = 0;
+        let frame = 0;
+        const count = () => {
+          if (document.querySelector('[data-testid="live-play"]')?.getAttribute("data-state") === "playing") frames++;
+          frame = requestAnimationFrame(count);
+        };
+        frame = requestAnimationFrame(count);
+        return { count: () => frames, stop: () => cancelAnimationFrame(frame) };
+      });
+      readFrames = () => counter.evaluate(({ count }) => count());
+      stopFrames = async () => {
+        await counter.evaluate(({ stop }) => stop());
+        await counter.dispose();
+      };
+    },
+  ).then(() => {
     finished = true;
   });
   try {
     await Promise.race([paused.promise, opening]);
     await page.evaluate(() => window.__threadVerification?.whenRequested());
+    expect(await page.evaluate(() => window.__threadVerification?.requests.map(({ time }) => time))).toEqual([11000]);
     expect(finished, "advancing the page clock does not complete a real worker replay").toBe(false);
+    if (!readFrames) throw new Error("Missing deadline-frame observation");
+    const frames = await readFrames();
+    test.info().annotations.push({ type: "frame-operations", description: String(frames) });
+    expect(frames, "timeline preparation does not paint intervening playback frames").toBe(0);
     await page.evaluate(() => window.__threadVerification?.release?.());
     await opening;
     await expect(page.getByTestId("trouble-action")).toHaveText("Add a timeout");
   } finally {
     await page.evaluate(() => window.__threadVerification?.release?.());
     await opening;
+    await stopFrames?.();
   }
 });
 

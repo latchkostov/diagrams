@@ -1,0 +1,9 @@
+## Confirm the final snapshot without painting every intermediate frame
+
+Baseline Nightly 41253920016 and round-five diagnostic 41263869369 still expose Windows request-deadline verification deadlines. A mixed two-CPU/three-worker reproduction also times out in the real verification acknowledgement. The fixture's eleven-second runFor drive paints about 688 animation frames and can request a replay at an earlier snapshot before reaching the intended endpoint.
+
+Preparation now uses the real authored timeline at 1, 3, 5, 7, 8 and 11 seconds. Committing each preview through focus preserves the continuous trouble window without starting verification at an intermediate warm snapshot. Range values use the fixture's actual saved simulation duration. It requires the exact 11,000 ms clock, pauses through the same control, then advances only the paused UI until the actual renderer publishes that same 11,000 ms snapshot. The original greater-than-ten-seconds renderer assertion, real worker acknowledgement, confirmed action, persistence, no-timeout override and Undo checks remain.
+
+The held-worker regression now requires the first actual verification request at 11,000 ms and zero intervening playing animation callbacks. It still cannot finish before releasing the real worker. Restoring the original drive fails with a request at 9,270 ms instead of 11,000; an earlier operation-count probe measures 688 callbacks. Restored: all eight native Windows executions pass on two CPUs/three workers.
+
+A fastForward-only candidate retains four verification deadlines out of eight and is rejected. The first timeline candidate correctly fails all eight original renderer-clock assertions at zero: a controller seek alone is not renderer publication. The final version acknowledges that real paused publication rather than removing the assertion. No application, tracker, simulation result, timeout, tolerance, budget, skip, quarantine, retry or golden changes are made.

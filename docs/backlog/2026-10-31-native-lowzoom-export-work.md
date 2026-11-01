@@ -6,7 +6,7 @@ The baseline Linux trace spends about ten seconds opening the two canvases, then
 
 Rejected experiments are restored, not shipped:
 
-- Complete computed-style caching is slower in same-page comparisons; only 370 of 993 blocks are identical once initial inline styles and every computed value count.
+- Complete computed-style caching is slower in same-page comparisons; only 370 of 993 blocks are identical once initial inline styles and every computed value count. A later sparse key that still represents every value also stays byte-identical but slower in all three paired trials (370 hits among 995 blocks).
 - Batching custom properties preserves bytes but is slower. Template/difference and bulk declaration parsing experiments change serialized style bytes, so they are unsuitable for a pure performance repair. No golden is updated to accept them.
 - Splitting comparisons, serial reference/capture pages, reusing one page across fresh loads and disabling per-frame trace capture do not repair the constrained Windows deadlines. All original captures and exact digests remain in the original test.
 
