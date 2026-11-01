@@ -49,7 +49,7 @@ for (const phase of ["pending", "animating", "idle"])
         return Reflect.get(target, key, receiver) as unknown;
       },
     });
-    const opening = openLiveNodeDetails(driver, "billing", "latency");
+    const opening = openLiveNodeDetails(driver, "billing", "latency", { settleCamera: true });
     try {
       expect(await Promise.race([reachedCamera, opening.then(() => "pinned")])).toBe("camera");
       await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-camera-state", phase);
@@ -64,3 +64,25 @@ for (const phase of ["pending", "animating", "idle"])
       await opening;
     }
   });
+
+test("ordinary Live details can pin with unrelated camera and pane work pending", async ({ page }) => {
+  await page.setContent(`
+    <div data-testid="canvas-wrap" data-camera-state="pending" data-pane-pending="true">
+      <div tabindex="0"><div data-testid="node-orders">Orders</div></div>
+    </div>
+    <div data-testid="node-detail-orders" data-pinned="false">
+      <strong data-testid="hover-full-name">Orders</strong>
+      <button data-testid="hover-section-planning" aria-expanded="false">Planning</button>
+    </div>`);
+  await page.getByTestId("hover-full-name").evaluate((name) => {
+    name.addEventListener("click", () => name.parentElement?.setAttribute("data-pinned", "true"));
+  });
+  await page.getByTestId("hover-section-planning").evaluate((row) => {
+    row.addEventListener("click", () => row.setAttribute("aria-expanded", "true"));
+  });
+  await openLiveNodeDetails(page, "orders", "planning");
+  await expect(page.getByTestId("node-detail-orders")).toHaveAttribute("data-pinned", "true");
+  await expect(page.getByTestId("hover-section-planning")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-camera-state", "pending");
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+});
