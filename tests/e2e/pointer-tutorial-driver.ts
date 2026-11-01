@@ -238,7 +238,7 @@ export async function finishSolution(page: Page, highlightsOff = false) {
     expect(["active", "hinting", "completing"]).toContain(value);
     expect(seen, `step ${current} came back`).not.toContain(current);
     seen.push(current);
-    if (highlightsOff) await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+    if (highlightsOff) await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
     for (const step of steps) await play(page, step);
     await expect(strip(page)).not.toHaveAttribute("data-step", current, { timeout: 20_000 });
   }

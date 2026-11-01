@@ -1,6 +1,6 @@
 import { surfaceCatalogs } from "../i18n/surfaces";
 import { ModeSwitch, HistoryButtons } from "../components/ModeSwitch";
-import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { LazyCanvasView as CanvasView } from "../canvas/loadCanvasView";
 import {
   createLibraryDiagram,
@@ -35,7 +35,10 @@ import { paletteHost } from "../palette/host";
 import { toast } from "../interop/ui/toast";
 import { useLibrary } from "../lib/useLibrary";
 import { tutorialMetadata } from "./metadata";
-import { Coachmark } from "./Coachmark";
+import { CoachCard } from "./CoachCard";
+import { isEditableTarget } from "../editor/shortcuts";
+import { CoachText, KeyText } from "./KeyText";
+import { useCoachHelp } from "./coachHelp";
 import { useTutorialLayout } from "./useTutorialLayout";
 import { inStep, targetsShown, type RunnerEvent } from "./machine";
 import { createTutorialRunner, type RunnerSnapshot } from "./runner";
@@ -63,7 +66,7 @@ const noop = () => {};
 const NO_DIAGRAMS: never[] = [];
 
 /**
- * A tutorial: its bar in place of the top bar, the step strip under it, and the canvas on a sandbox diagram of its
+ * A tutorial: a progress bar, an anchored coach, and a canvas on a sandbox diagram of its
  * own (TUTORIAL_SLUG is never stored). Leaving goes back to where it was opened from.
  */
 export function TutorialApp({ id }: { id: string }) {
@@ -156,6 +159,7 @@ function Running({
   });
   const [start] = useState(() => structuredClone(initial));
   const [diagramTitle, setDiagramTitle] = useState(initial.title);
+  const [coachAttempt, setCoachAttempt] = useState(0);
   const canvas = useRef<CanvasHandle | null>(null);
   const library = useLibrary();
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -283,8 +287,6 @@ function Running({
   }, [runner, tutorial]);
   const snap = useSyncExternalStore(runner.subscribe, runner.getSnapshot);
   const { state } = snap;
-  const step = inStep(state) ? tutorial.steps[state.index] : undefined;
-  const spot = !!step && targetsShown(state, !!tutorial.study);
 
   return (
     <div
@@ -316,25 +318,7 @@ function Running({
             {tutorial.title()}
           </span>
           <Progress tutorial={tutorial} snap={snap} />
-          {tutorial.chrome !== "app" && (
-            <>
-              <span className="sr-only" data-testid="diagram-title">
-                {diagramTitle}
-              </span>
-              <HistoryButtons />
-              <ModeSwitch />
-            </>
-          )}
           <div className="topbar-spacer" />
-          <label className="tutorial-switch" title={t("tutorials.highlightsTitle")}>
-            <input
-              type="checkbox"
-              checked={state.highlights}
-              onChange={(e) => runner.send({ type: "highlights", on: e.target.checked })}
-              data-testid="tutorial-highlights"
-            />
-            {t("tutorials.highlights")}
-          </label>
           {state.value !== "intro" && (
             <button
               className="btn"
@@ -342,6 +326,7 @@ function Running({
               title={t("tutorials.restart")}
               onClick={() => {
                 setBefore(readTutorials());
+                setCoachAttempt((attempt) => attempt + 1);
                 runner.send({ type: "restart" });
                 interop.resetImports();
                 temporaryPrivacy.reset();
@@ -362,9 +347,31 @@ function Running({
           </button>
         </header>
       )}
-      <div hidden={presenting}>
-        <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} />
+      <div hidden={presenting} style={presenting ? undefined : { display: "contents" }}>
+        {state.value !== "intro" && state.value !== "closed" && (
+          <LessonCoach
+            key={`${coachAttempt}:${state.index}`}
+            tutorial={tutorial}
+            snap={snap}
+            send={runner.send}
+            saveCopy={saveCopy}
+          />
+        )}
       </div>
+      {!presenting && tutorial.chrome !== "app" && (
+        <div
+          className="tutorial-tools"
+          data-testid="tutorial-tools"
+          role="group"
+          aria-label={t("shortcuts.group.edit")}
+        >
+          <span className="sr-only" data-testid="diagram-title">
+            {diagramTitle}
+          </span>
+          <HistoryButtons />
+          <ModeSwitch />
+        </div>
+      )}
       <div className="app-body">
         {!presenting && <ToolRail view="canvas" onView={tutorialRoute.openView} />}
         <div className="app-main tutorial-practice">
@@ -389,9 +396,6 @@ function Running({
       </div>
       {state.value === "intro" && (
         <Intro tutorial={tutorial} snap={snap} send={runner.send} onCancel={() => tutorialRoute.close()} />
-      )}
-      {spot && !presenting && (
-        <Coachmark targets={step.targets} subjects={snap.subjects} edges={snap.edges} selected={snap.selected} />
       )}
       {/* Ctrl+K works here as on any canvas: actions, nodes, stencils. There are no other diagrams to open. */}
       <CommandPalette
@@ -553,7 +557,8 @@ function Progress({ tutorial, snap }: { tutorial: Tutorial; snap: RunnerSnapshot
  * The step strip: the instruction first, in bold; under it, smaller, the hint once asked for, or what was just done.
  * Three lines high whatever it says, so the canvas never jumps.
  */
-function Strip({
+/** Display-only help and routes never participate in a completion check or demo. */
+function LessonCoach({
   tutorial,
   snap,
   send,
@@ -561,14 +566,78 @@ function Strip({
 }: {
   tutorial: Tutorial;
   snap: RunnerSnapshot;
+  send(e: RunnerEvent): void;
+  saveCopy(): void;
+}) {
+  const step = tutorial.steps[snap.state.index];
+  const waiting = snap.state.value === "active" || snap.state.value === "hinting";
+  const help = useCoachHelp(waiting);
+  const routes = step?.coach?.routes;
+  return (
+    <CoachCard
+      targets={routes?.[help.state.route]?.targets ?? step?.targets ?? []}
+      subjects={snap.subjects}
+      edges={snap.edges}
+      selected={snap.selected}
+      anchored={inStep(snap.state) && (!tutorial.study || snap.state.value === "hinting")}
+      ring={targetsShown(snap.state, !!tutorial.study)}
+      collapsed={help.state.folded}
+      complete={snap.state.value === "finished"}
+      onProgress={help.progress}
+    >
+      {(now) => (
+        <CoachInstructions
+          tutorial={tutorial}
+          snap={snap}
+          send={send}
+          saveCopy={saveCopy}
+          card={{
+            folded: help.state.folded,
+            onFold: () => help.send({ type: "fold" }),
+            route: help.state.route,
+            onRoute: (route) => help.send({ type: "route", route }),
+            now,
+            hint: help.state.hint,
+            onHint: () => help.send({ type: "hint" }),
+            nudged: waiting && help.state.value === "nudged",
+          }}
+        />
+      )}
+    </CoachCard>
+  );
+}
+
+function CoachInstructions({
+  tutorial,
+  snap,
+  send,
+  saveCopy,
+  card,
+}: {
+  tutorial: Tutorial;
+  snap: RunnerSnapshot;
   send: (e: RunnerEvent) => void;
   saveCopy(): void;
+  /** Coach: the strip's content as an anchored card, with a head (step count, title) that folds the rest. */
+  card: {
+    folded: boolean;
+    onFold(): void;
+    /** The chosen way to do the step (step.coach.routes), and the next move on it (its pointed target's tip). */
+    route: number;
+    onRoute(index: number): void;
+    now: string | null;
+    /** The first rung of help: the hint, shown in the card without forcing the ring. */
+    hint: boolean;
+    onHint(): void;
+    /** No progress for a while: the help rungs say they're there. */
+    nudged: boolean;
+  };
 }) {
   const { state } = snap;
   const phase = state.value;
   const retry = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (phase !== "failed") return;
+    if (phase !== "failed" || isEditableTarget(document.activeElement)) return;
     const frame = requestAnimationFrame(() => retry.current?.focus({ preventScroll: true }));
     return () => cancelAnimationFrame(frame);
   }, [phase]);
@@ -576,14 +645,48 @@ function Strip({
   const last = state.last !== null ? tutorial.steps[state.last] : undefined;
   return (
     <section
-      className="tutorial-strip"
+      className="tutorial-strip coach-strip"
       aria-label={t("tutorials.tutorial")}
       data-testid="tutorial-step"
       data-phase={inStep(state) ? "step" : phase}
       data-state={phase}
       data-step={step?.id ?? ""}
     >
-      {/* The intro says it all in its card: the strip waits, at its height. */}
+      {(step || phase === "finished") && (
+        <div className="coach-head">
+          <span className="coach-count" aria-hidden="true">
+            {phase === "finished"
+              ? `${tutorial.steps.length}/${tutorial.steps.length}`
+              : `${state.index + 1}/${tutorial.steps.length}`}
+          </span>
+          <span className="coach-title" data-testid="coach-title">
+            <KeyText text={step ? step.title() : t("tutorials.finished")} />
+          </span>
+          {step && (
+            <label className="coach-highlights" title={t("tutorials.highlightsTitle")}>
+              <input
+                type="checkbox"
+                checked={state.highlights}
+                onChange={(e) => send({ type: "highlights", on: e.target.checked })}
+                data-testid="tutorial-highlights"
+                aria-label={t("tutorials.highlights")}
+              />
+            </label>
+          )}
+          {step && (
+            <button
+              className="icon-btn icon-btn-quiet coach-fold"
+              aria-expanded={!card.folded}
+              aria-label={card.folded ? t("tutorials.coach.show") : t("tutorials.coach.hide")}
+              title={card.folded ? t("tutorials.coach.show") : t("tutorials.coach.hide")}
+              onClick={card.onFold}
+              data-testid="coach-fold"
+            >
+              <Icon name="chevron-down" size={14} />
+            </button>
+          )}
+        </div>
+      )}
       {step && (
         <>
           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Native scroll keys must stay in the instruction region, away from canvas shortcuts. */}
@@ -600,9 +703,7 @@ function Strip({
             }}
           >
             <p className="tutorial-goal" data-testid="tutorial-goal">
-              <strong>
-                {step.title()}. {step.goal()}
-              </strong>
+              <CardGoal step={step} card={card} />
             </p>
             <span className="tutorial-target-hint" data-testid="tutorial-target-hint" />
             {phase === "failed" ? (
@@ -622,69 +723,108 @@ function Strip({
               </p>
             ) : phase === "completing" ? (
               <p className="tutorial-done" data-testid="tutorial-completing">
-                <Icon name="check" size={13} /> {step.done?.() ?? ""}{" "}
-                {typeof step.settle === "object"
-                  ? step.settle.tip()
-                  : step.settle === "annotation"
-                    ? t("tutorials.finishAnnotation")
-                    : t("tutorials.finishUp")}
+                <Icon name="check" size={13} />
+                {step.done && <KeyText text={step.done()} />}{" "}
+                <KeyText
+                  text={
+                    typeof step.settle === "object"
+                      ? step.settle.tip()
+                      : step.settle === "annotation"
+                        ? t("tutorials.finishAnnotation")
+                        : t("tutorials.finishUp")
+                  }
+                />
               </p>
-            ) : phase === "hinting" && step.hint ? (
+            ) : phase === "hinting" || card.hint ? (
               <p className="tutorial-aside" id="tutorial-hint" data-testid="tutorial-hint">
-                {step.hint()}
+                <KeyText
+                  text={
+                    step.hint?.() ??
+                    (otherRoute(step, card.route)
+                      ? t("tutorials.coach.noHint", { route: otherRoute(step, card.route)!.summary() })
+                      : t("tutorials.coach.hintFallback"))
+                  }
+                />
               </p>
             ) : (
               last?.done && (
                 <p className="tutorial-done" data-testid="tutorial-done">
-                  <Icon name="check" size={13} /> {last.done()}
+                  <Icon name="check" size={13} />
+                  <KeyText text={last.done()} />
                 </p>
               )
             )}
           </div>
-          <div className="tutorial-actions" key={step.id}>
-            {tutorial.id === "library-reuse" && step.check.kind === "ownedCopy" && (
-              <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
-                {t("tutorials.saveCopy")}
-              </button>
-            )}
-            {tutorial.id === "import-and-review" && step.id === "import" && (
-              <a
-                className="btn"
-                data-testid="tutorial-fixture"
-                href={`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`}
-                download
-              >
-                {t("tutorials.importAndReview.download")}
-              </a>
-            )}
-            {(phase === "active" || phase === "hinting") && (
-              <button
-                className="btn"
-                onClick={() => send({ type: "showMe" })}
-                data-testid="tutorial-show-me"
-                aria-expanded={phase === "hinting"}
-                aria-controls={phase === "hinting" && step.hint ? "tutorial-hint" : undefined}
-              >
-                {t("tutorials.showMe")}
-              </button>
-            )}
-            {phase === "failed" ? (
-              <button className="btn" ref={retry} data-testid="tutorial-retry" onClick={() => send({ type: "retry" })}>
-                {t("common.retry")}
-              </button>
-            ) : (
-              <button
-                className="btn btn-ghost"
-                onClick={(e) => {
-                  if (e.detail < 2) send({ type: "skip", stepId: step.id });
-                }}
-                title={step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skipTitle")}
-                data-testid="tutorial-skip"
-              >
-                {step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skip")}
-              </button>
-            )}
-          </div>
+          <CardRoutes step={step} card={card} />
+          {step.check.kind !== "acknowledge" && (phase === "active" || phase === "hinting") ? (
+            <CardHelp step={step} phase={phase} send={send} card={card}>
+              {tutorial.id === "import-and-review" && step.id === "import" && (
+                <a
+                  className="btn"
+                  data-testid="tutorial-fixture"
+                  href={`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`}
+                  download
+                >
+                  {t("tutorials.importAndReview.download")}
+                </a>
+              )}
+              {tutorial.id === "library-reuse" && step.check.kind === "ownedCopy" && (
+                <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
+                  {t("tutorials.saveCopy")}
+                </button>
+              )}
+            </CardHelp>
+          ) : (
+            <div className="tutorial-actions" key={step.id}>
+              {tutorial.id === "library-reuse" && step.check.kind === "ownedCopy" && (
+                <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
+                  {t("tutorials.saveCopy")}
+                </button>
+              )}
+              {tutorial.id === "import-and-review" && step.id === "import" && (
+                <a
+                  className="btn"
+                  data-testid="tutorial-fixture"
+                  href={`${import.meta.env.BASE_URL}tutorial-status-compose.yaml`}
+                  download
+                >
+                  {t("tutorials.importAndReview.download")}
+                </a>
+              )}
+              {(phase === "active" || phase === "hinting") && (
+                <button
+                  className="btn"
+                  onClick={() => send({ type: "showMe" })}
+                  data-testid="tutorial-show-me"
+                  aria-expanded={phase === "hinting"}
+                  aria-controls={phase === "hinting" && step.hint ? "tutorial-hint" : undefined}
+                >
+                  {t("tutorials.showMe")}
+                </button>
+              )}
+              {phase === "failed" ? (
+                <button
+                  className="btn"
+                  ref={retry}
+                  data-testid="tutorial-retry"
+                  onClick={() => send({ type: "retry" })}
+                >
+                  {t("common.retry")}
+                </button>
+              ) : (
+                <button
+                  className="btn btn-ghost"
+                  onClick={(e) => {
+                    if (e.detail < 2) send({ type: "skip", stepId: step.id });
+                  }}
+                  title={step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skipTitle")}
+                  data-testid="tutorial-skip"
+                >
+                  {step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skip")}
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
       {phase === "finished" && (
@@ -713,6 +853,104 @@ function Strip({
         </>
       )}
     </section>
+  );
+}
+
+type CardProps = Parameters<typeof CoachInstructions>[0]["card"];
+type Step = Tutorial["steps"][number];
+const otherRoute = (step: Step, route: number) => step.coach?.routes.find((_, i) => i !== route);
+
+/** Keep the lesson objective beside the chosen route's next move; use its summary when no target is available. */
+function CardGoal({ step, card }: { step: Step; card: CardProps }) {
+  const routes = step.coach?.routes;
+  if (!routes) return <CoachText title={step.title()} goal={step.goal()} tip={card.now} />;
+  const chosen = routes[card.route] ?? routes[0];
+  return <CoachText title={step.title()} goal={step.goal()} tip={card.now ?? chosen.summary()} />;
+}
+
+function CardRoutes({ step, card }: { step: Step; card: CardProps }) {
+  const routes = step.coach?.routes;
+  if (!routes) return null;
+  return (
+    <span className="coach-routes" role="group" aria-label={t("tutorials.coach.ways")}>
+      {routes.map((r, i) => (
+        <button
+          key={r.kind}
+          type="button"
+          className="coach-route"
+          aria-pressed={i === card.route}
+          onClick={() => card.onRoute(i)}
+          data-testid={`coach-route-${r.kind}`}
+        >
+          <Icon name={r.kind === "pointer" ? "pointer" : r.kind === "keyboard" ? "keyboard" : "sliders"} size={13} />
+          {r.kind === "pointer"
+            ? t("tutorials.coach.pointer")
+            : r.kind === "keyboard"
+              ? t("tutorials.coach.keyboard")
+              : t("tutorials.coach.menu")}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Coach: help as a ladder in the card, beside what you're doing: a hint, then Show me (the ring and the hint), then
+ * Do it for me (the step's demonstration, which moves on). Every rung is always there; after a while without progress
+ * the ladder says so.
+ */
+function CardHelp({
+  step,
+  phase,
+  send,
+  card,
+  children,
+}: {
+  step: Step;
+  phase: string;
+  send: (e: RunnerEvent) => void;
+  card: CardProps;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={`tutorial-actions coach-help${card.nudged ? " is-nudged" : ""}`} data-testid="coach-help">
+      <span className="coach-stuck" role={card.nudged ? "status" : undefined}>
+        {card.nudged ? t("tutorials.coach.nudge") : t("tutorials.coach.stuck")}
+      </span>
+      <span className="coach-rungs">
+        {children}
+        <button
+          className="btn btn-ghost"
+          aria-expanded={card.hint || phase === "hinting"}
+          aria-controls="tutorial-hint"
+          onClick={card.onHint}
+          data-testid="coach-hint"
+        >
+          {t("tutorials.coach.hint")}
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => send({ type: "showMe" })}
+          aria-pressed={phase === "hinting"}
+          aria-expanded={phase === "hinting"}
+          aria-controls={phase === "hinting" ? "tutorial-hint" : undefined}
+          data-testid="tutorial-show-me"
+        >
+          {t("tutorials.showMe")}
+        </button>
+        <button
+          className="btn"
+          onClick={(e) => {
+            if (e.detail < 2) send({ type: "skip", stepId: step.id });
+          }}
+          title={t("tutorials.skipTitle")}
+          data-testid="tutorial-skip"
+        >
+          {t("tutorials.coach.doIt")}
+          <Icon name="chevron-right" size={13} />
+        </button>
+      </span>
+    </div>
   );
 }
 

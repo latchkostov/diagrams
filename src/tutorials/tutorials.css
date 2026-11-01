@@ -1,11 +1,15 @@
 /* Tutorials (src/tutorials): the bar in place of the top bar, the step strip, and the coach mark. */
 
 .tutorial-app {
-  grid-template-rows: var(--topbar-h) auto 1fr;
+  grid-template-rows: var(--topbar-h) 1fr;
+}
+
+.tutorial-app:has(> .tutorial-tools) {
+  grid-template-rows: var(--topbar-h) 42px 1fr;
 }
 
 .app.tutorial-app-chrome:not(.is-presenting) {
-  grid-template-rows: var(--topbar-h) var(--topbar-h) auto 1fr;
+  grid-template-rows: var(--topbar-h) var(--topbar-h) 1fr;
 }
 
 .tutorial-loading {
@@ -77,26 +81,9 @@
   white-space: nowrap;
 }
 
-.tutorial-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-2);
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
 .tutorial-strip {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-block: 10px;
-  padding-inline: 16px 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  /* Three lines (what was just done, the goal over two): the canvas doesn't jump as steps change. */
-  min-height: 76px;
+  display: block;
+  padding: 10px 14px 12px;
 }
 
 .tutorial-words {
@@ -164,103 +151,6 @@
   text-decoration: none;
 }
 
-/* ---------- the coach mark: never takes pointer events or focus ---------- */
-
-.tutorial-coach {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  /* Above the canvas's menus (200), so a ringed menu item shows through the dim; below dialogs (they hide it). */
-  z-index: var(--layer-coach);
-}
-
-.tutorial-spot {
-  position: fixed;
-  border-radius: 10px;
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 6px var(--accent-soft);
-  animation: tutorial-pulse 1.6s var(--ease-out) infinite;
-  transition:
-    left var(--dur-2) var(--ease-out),
-    top var(--dur-2) var(--ease-out),
-    width var(--dur-2) var(--ease-out),
-    height var(--dur-2) var(--ease-out);
-}
-
-.tutorial-spot.is-dimming {
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 6px var(--accent-soft),
-    0 0 0 100vmax rgb(15 23 42 / 0.2);
-}
-
-[data-theme="dark"] .tutorial-spot.is-dimming {
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 6px var(--accent-soft),
-    0 0 0 100vmax rgb(0 0 0 / 0.38);
-}
-
-@keyframes tutorial-pulse {
-  50% {
-    outline: 2px solid var(--accent);
-    outline-offset: 6px;
-  }
-  0%,
-  100% {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-  }
-}
-
-.tutorial-tip {
-  position: fixed;
-  z-index: var(--layer-coach-tip);
-  width: max-content;
-  padding: 7px 10px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 12.5px;
-  font-weight: 550;
-  line-height: 1.35;
-  box-shadow: var(--shadow-2);
-}
-
-.tutorial-tip::before {
-  content: "";
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: inherit;
-  rotate: 45deg;
-}
-
-.tutorial-tip.is-right::before {
-  left: -4px;
-  top: 13px;
-}
-
-.tutorial-tip.is-left::before {
-  right: -4px;
-  top: 13px;
-}
-
-.tutorial-tip.is-below {
-  translate: none;
-}
-
-.tutorial-tip.is-below::before {
-  top: -4px;
-  left: calc(50% - 4px);
-}
-
-.tutorial-tip.is-above::before {
-  bottom: -4px;
-  left: calc(50% - 4px);
-}
-
 .tutorial-target-hint:empty {
   display: none;
 }
@@ -290,7 +180,6 @@
   }
   .tutorial-bar .tutorial-chip,
   .tutorial-bar .tutorial-dots,
-  .tutorial-bar .tutorial-switch,
   .tutorial-bar .tutorial-count {
     display: none;
   }
@@ -331,13 +220,6 @@
     max-inline-size: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tutorial-spot {
-    animation: none;
-    transition: none;
   }
 }
 
@@ -942,4 +824,18 @@
   .tutorial-handoff-start {
     width: 100%;
   }
+}
+
+.tutorial-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 12px;
+  background: var(--bezel);
+  border-block-end: 1px solid var(--bezel-line);
+}
+.tutorial-tools .mode-switch {
+  position: static;
+  transform: none;
+  background: transparent;
 }

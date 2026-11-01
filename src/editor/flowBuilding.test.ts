@@ -737,6 +737,32 @@ describe("one creation path: node and edge from one snapshot", () => {
     expect(t.edges().find((e) => e.id === made?.edge)).toMatchObject({ source: "a", target: made?.id });
   });
 
+  it.each([
+    [{ x: 1240, y: 436 }, "right"],
+    [{ x: 1330, y: 436 }, "right"],
+    [{ x: 980, y: 436 }, "left"],
+    [{ x: 1110, y: 490 }, "down"],
+    [{ x: 1110, y: 508 }, "down"],
+    [{ x: 1110, y: 380 }, "up"],
+  ] as const)("a short grow drag toward %j leaves the normal connection gap", (at, side) => {
+    const t = setup();
+    const expected = t.api.nextSpot("hub", side);
+    const made = t.api.createConnected({ from: "hub", stencil: "generic.service", at });
+    if (!made) throw new Error("Missing connected node");
+    t.commit();
+    expect(t.boxOf(made.id)).toEqual(expected);
+    expect(t.overlapsAny(made.id)).toBe(false);
+    expect(t.edges().find((e) => e.id === made.edge)).toMatchObject({ source: "hub", target: made.id });
+  });
+
+  it("keeps a clear manual drop closer than the automatic flow gap", () => {
+    const t = setup();
+    const made = t.api.createConnected({ from: "hub", stencil: "generic.service", at: { x: 1370, y: 436 } });
+    if (!made) throw new Error("Missing connected node");
+    t.commit();
+    expect(t.boxOf(made.id)).toMatchObject({ x: 1260, y: 400 });
+  });
+
   it("node and edge are one undo step, tagged so the new node's name joins it", () => {
     const t = setup();
     const made = t.api.createConnected({ from: "hub", stencil: "redis.cache" });
