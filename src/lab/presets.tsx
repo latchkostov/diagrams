@@ -1341,6 +1341,9 @@ export const presets: readonly Preset[] = [
         <a className="btn" href="?tutorial=lab-tutorial-phone-note" data-testid="lab-tutorial-phone-note">
           {t("workbench.readNote")}
         </a>
+        <a className="btn" href="?tutorial=lab-tutorial-handoff-settings" data-testid="lab-tutorial-handoff-settings">
+          {t("tutorials.ratesAndInputs.title")}
+        </a>
       </>
     ),
   },

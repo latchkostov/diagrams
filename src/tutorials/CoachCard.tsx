@@ -233,6 +233,7 @@ export function CoachCard({
           collapsed ? "is-collapsed" : compact ? "is-compact" : "",
         ].join(" ")}
         data-testid="coach-card"
+        data-tip-obstacle
         data-editor-overlay
         data-compact={compact}
         data-side={place?.side ?? sheet?.sheet.edge ?? "home"}

@@ -49,7 +49,7 @@ export function useNodeTooltip(enabled: boolean) {
     (el: Element, next: Omit<NodeTip, "rect">, immediate = false) => {
       clearTimeout(timer.current);
       if (!enabledRef.current) return;
-      const open = () => setTip({ ...next, rect: el.getBoundingClientRect() });
+      const open = () => setTip({ ...next, anchor: el, rect: el.getBoundingClientRect() });
       if (immediate) open();
       else timer.current = setTimeout(open, DELAY);
     },
