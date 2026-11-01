@@ -1,12 +1,23 @@
 import { openLibrary, goToNode, waitForCameraIdle } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { zoomIdentity } from "./node-identity";
 
 // On-prem network devices (docs/research/network-infrastructure.md): find a router by the model number people still
 // say, see a device's throughput and capacity live, and a firewall's deny rule blocking traffic, shown apart from
 // failures. Selectors are data-testid only. Uses the public example src/examples/branch-to-datacentre.json.
 
 const SLUG = "branch-to-datacentre";
+
+async function openFirewallRule(page: Page) {
+  await zoomIdentity(page, 0.8);
+  const wrap = page.getByTestId("canvas-wrap");
+  await expect(wrap).not.toHaveAttribute("data-viewport-moving", /.*/);
+  await expect(wrap).toHaveAttribute("data-chips-pending", "false");
+  await expect(wrap).not.toHaveAttribute("data-low-zoom", /.*/);
+  await page.getByTestId("edge-label-firewall-spine-1").click();
+}
 
 test.describe("network devices", () => {
   test("a Cisco router is found by its old model number and added with its size preset", async ({
@@ -69,7 +80,7 @@ test.describe("network devices", () => {
 
   test("a firewall's deny rule blocks traffic, counted apart from failures", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
-    await page.getByTestId("edge-label-firewall-spine-1").click();
+    await openFirewallRule(page);
     const rule = page.getByTestId("inspector-field-rule");
     await expect(rule).toBeVisible();
     await expect(page.getByTestId("inspector-field-rule-allow")).toHaveAttribute("aria-checked", "true");
@@ -169,7 +180,7 @@ test.describe("network devices", () => {
 
   test("the firewall rule is a named radio group with one Tab stop and arrow keys", async ({ page }) => {
     await gotoCanvas(page, SLUG);
-    await page.getByTestId("edge-label-firewall-spine-1").click();
+    await openFirewallRule(page);
     const group = page.getByTestId("inspector-field-rule");
     await expect(group).toHaveAttribute("role", "radiogroup");
     await expect(group).toHaveAccessibleName("Firewall rule");
@@ -228,5 +239,15 @@ test.describe("network devices", () => {
         return el.scrollWidth <= el.clientWidth;
       }),
     ).toBe(true);
+  });
+
+  test("connection rules can be opened after the calm view has settled", async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await zoomIdentity(page, 0.4);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+    await expect(page.getByTestId("edge-label-firewall-spine-1")).toHaveCount(0);
+    await openFirewallRule(page);
+    await expect(page.getByTestId("inspector-field-rule")).toBeVisible();
+    await expect(page.getByTestId("inspector-field-rule-allow")).toHaveAttribute("aria-checked", "true");
   });
 });
