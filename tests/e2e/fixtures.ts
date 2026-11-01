@@ -707,6 +707,10 @@ export async function openLiveNodeDetails(page: Page, id: string, section: strin
   )
     await page.getByTestId("inspector-toggle").click();
   await page.getByTestId(`node-${id}`).evaluate((el) => el.parentElement?.focus());
+  // Focus can reveal an enlarged node with a new pan. A stationary hover card
+  // can precede that pan's final placement, so acknowledge the focus's camera work.
+  await waitForCameraIdle(page);
+  await waitForStableViewport(page);
   const card = page.getByTestId(`node-detail-${id}`);
   await expect(card).toBeVisible();
   // Enter names selected items; the header's public pin action works for either selection state.

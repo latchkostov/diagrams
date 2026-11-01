@@ -332,6 +332,30 @@ test.describe("editor", () => {
     await expect(page.getByTestId("diagram-title")).toHaveText("Renamed pipeline");
   });
 
+  test("clicking Simulation while naming opens its fields and keeps edits separately undoable", async ({ page }) => {
+    await page.getByTestId("node-orders").click();
+    await waitForSelectionSettled(page);
+    const label = page.getByTestId("inspector-field-label");
+    await label.fill("Order API");
+    const section = page.getByTestId("inspector-section-node-simulation");
+    await expect(page.getByTestId("planning-loading")).toHaveCount(0);
+    await waitForStableBox(section);
+    // Keep the actual pointer-away interleaving: no Enter or blur before the click.
+    await expect(label).toBeFocused();
+    await section.click();
+    await expect(section).toHaveAttribute("aria-expanded", "true");
+    await expect(label).not.toBeFocused();
+    const concurrency = page.getByTestId("inspector-field-concurrency");
+    const original = await concurrency.inputValue();
+    await concurrency.fill(String(Number(original) + 1));
+    await concurrency.press("Enter");
+    await page.getByTestId("undo-button").click();
+    await expect(concurrency).toHaveValue(original);
+    await expect(label).toHaveValue("Order API");
+    await page.getByTestId("undo-button").click();
+    await expect(label).toHaveValue("Order service");
+  });
+
   test("align a multi-selection from the menu", async ({ page }) => {
     await page.getByTestId("node-orders").click();
     await expect(page.getByTestId("inspector-title")).toHaveText("Node");

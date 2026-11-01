@@ -13,12 +13,12 @@ const rows = (values) =>
     ),
   );
 test("compares complete groups and excludes diagnostic traces", () => {
-  const base = rows([100, 200, 300]);
-  const head = [...rows([50, 100, 150]), ...rows([1]).map((row) => ({ ...row, traced: true }))];
+  const base = rows([900, 100, 200]);
+  const head = [...rows([450, 50, 100]), ...rows([1]).map((row) => ({ ...row, traced: true }))];
   const report = compareSurvey(base, head);
   equal(report.split("-50.0%").length - 1, 4);
-  match(report, /200 \(100–300\)/);
-  match(report, /100 \(50–150\)/);
+  match(report, /200 \(100–900\)/);
+  match(report, /100 \(50–450\)/);
   match(report, /3\/3/);
 });
 test("refuses absent, undersampled and invalid groups", () => {
@@ -30,7 +30,8 @@ test("refuses absent, undersampled and invalid groups", () => {
 const groups = ["layout-500", "paste50-500", "layout-1500", "paste50-1500"];
 const distinct = (factor = 1) =>
   groups.flatMap((metric, i) =>
-    [1, 2, 3, 4].map((n) => ({ metric, traced: false, data: { wall: (i + 1) * n * 100 * factor } })),
+    // Unordered and skewed: the median differs from the mean and the input's middle pair.
+    [9, 1, 3, 2].map((n) => ({ metric, traced: false, data: { wall: (i + 1) * n * 100 * factor } })),
   );
 
 test("isolates each action and size, including even medians and unrelated metrics", () => {
@@ -44,10 +45,10 @@ test("isolates each action and size, including even medians and unrelated metric
     [...head, ...distinct(1000).map((row) => ({ ...row, traced: true }))],
   );
   for (const line of [
-    "| Auto-layout | 500 | 250 (100–400) | 125 (50–200) | -50.0% | 4/4 |",
-    "| Paste 50 | 500 | 500 (200–800) | 500 (200–800) | 0.0% | 4/4 |",
-    "| Auto-layout | 1500 | 750 (300–1200) | 1125 (450–1800) | 50.0% | 4/4 |",
-    "| Paste 50 | 1500 | 1000 (400–1600) | 2000 (800–3200) | 100.0% | 4/4 |",
+    "| Auto-layout | 500 | 250 (100–900) | 125 (50–450) | -50.0% | 4/4 |",
+    "| Paste 50 | 500 | 500 (200–1800) | 500 (200–1800) | 0.0% | 4/4 |",
+    "| Auto-layout | 1500 | 750 (300–2700) | 1125 (450–4050) | 50.0% | 4/4 |",
+    "| Paste 50 | 1500 | 1000 (400–3600) | 2000 (800–7200) | 100.0% | 4/4 |",
   ])
     equal(report.includes(line), true, line);
 });
