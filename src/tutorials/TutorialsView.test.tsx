@@ -8,6 +8,7 @@ import { toast } from "../interop/ui/toast";
 import { tutorials } from "./catalog";
 import { savedProgress, writeTutorials } from "./progress";
 import { TutorialsView } from "./TutorialsView";
+import { tracks } from "./chapters";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -26,6 +27,23 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+it("reset chapter labels follow their descriptors even when chapter display order changes", async () => {
+  tracks.reverse();
+  try {
+    await act(() => root.render(<TutorialsView />));
+    await act(() => control("tutorials-more").click());
+    await act(() => control("context-menu-item-tutorials-reset").click());
+    const select = control("tutorials-reset-chapter-select") as HTMLSelectElement;
+    for (const chapter of tracks) {
+      expect([...select.options].find((option) => option.value === chapter.id)?.textContent).toBe(
+        `${chapter.numeral} ${chapter.label()}`,
+      );
+    }
+  } finally {
+    tracks.reverse();
+  }
+});
+
 it("names lesson buttons with their visible action, number, title and progress", async () => {
   await act(() => root.render(<TutorialsView />));
   const lesson = tutorials[0];
@@ -41,6 +59,29 @@ it("names lesson buttons with their visible action, number, title and progress",
     expect(button.textContent).toBe(action);
     expect(button.getAttribute("aria-label")).toContain(`${action} 1.1 ${lesson.title()},`);
     expect(button.getAttribute("aria-label")).toContain(control(`tutorial-status-${lesson.id}`).textContent);
+  }
+});
+
+it("persists backfilled seal dates through hub remounts", async () => {
+  const first = 1000;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(first);
+  try {
+    writeTutorials(() => ({
+      progress: Object.fromEntries(
+        tutorials
+          .filter((lesson) => lesson.track === "basics")
+          .map((lesson) => [lesson.id, { version: lesson.version, step: 0, completed: true }]),
+      ),
+    }));
+    await act(() => root.render(<TutorialsView />));
+    const stored = () => JSON.parse(localStorage.getItem("diagrams.tutorials.v1") ?? "{}").marks?.["chapter-basics"];
+    expect(stored()).toBe(first);
+    await act(() => root.render(null));
+    clock.mockReturnValue(2000);
+    await act(() => root.render(<TutorialsView />));
+    expect(stored()).toBe(first);
+  } finally {
+    clock.mockRestore();
   }
 });
 
