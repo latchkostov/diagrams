@@ -2323,10 +2323,21 @@ test("trace-slowmo: Continue at exit keeps the reconstructed run in Live", async
   expectNoErrors(consoleErrors);
 });
 
+async function retrySequenceDownload(page: Page, downloaded: () => void) {
+  const download = page.waitForEvent("download");
+  await page.getByTestId("sequence-export-retry").click();
+  const file = await download;
+  downloaded();
+  // The file can finish before the toast returns the keyboard on its next frame.
+  await expect(page.getByTestId("sequence-download-svg")).toBeFocused();
+  return file;
+}
+
 test("batch4 Sequence: failed download stays current; Retry writes the same trace's SVG bytes", async ({
   page,
   consoleErrors,
 }) => {
+  await page.clock.install();
   await openTutorial(page, "sequence-evidence");
   await page.getByTestId("tutorial-start").click();
   for (const current of ["live", "trace", "sequence"]) {
@@ -2360,9 +2371,23 @@ test("batch4 Sequence: failed download stays current; Retry writes the same trac
   await expect(page.getByTestId("sequence-export-retry")).toBeVisible();
   await expect(strip(page)).toHaveAttribute("data-step", "export");
   await page.evaluate(() => (window as Window & { restoreSequence(): void }).restoreSequence());
-  const downloaded = page.waitForEvent("download");
-  await page.getByTestId("sequence-export-retry").click();
-  const file = await downloaded;
+  await pauseClock(page);
+  let downloaded!: () => void;
+  const fileReady = new Promise<void>((resolve) => (downloaded = resolve));
+  let returned = false;
+  const retrying = retrySequenceDownload(page, downloaded).then((file) => {
+    returned = true;
+    return file;
+  });
+  try {
+    await fileReady;
+    await expect(page.getByTestId("sequence-export-retry")).toHaveCount(0);
+    expect(returned, "download completion precedes the toast's keyboard-return frame").toBe(false);
+  } finally {
+    await page.clock.runFor(32);
+    await page.clock.resume();
+  }
+  const file = await retrying;
   expect(await file.failure()).toBeNull();
   const bytes = readFileSync(await file.path(), "utf8");
   const captured = await page.evaluate(() => (window as Window & { sequenceBlob?: Blob }).sequenceBlob?.text());

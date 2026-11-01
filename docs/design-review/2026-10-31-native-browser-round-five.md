@@ -19,3 +19,7 @@ Low-zoom export deadlines, native latency scrolling and any replay, selection, L
 ## Hidden worker repaint
 
 A later dispatched Windows failure reveals an independent product issue: late canvas fonts paint the worker's last snapshot even while low zoom hides the layer. Font completion now invalidates the normal frame loop instead of drawing independently. Visible paused drawings still request one fresh frame; hidden drawings wait until they return, using current geometry. An invalidation survives an older in-flight acknowledgement and ignores an old attachment's epoch. No controls or visual tokens change.
+
+## Sequence Retry keyboard return
+
+The Sequence retry fixture now acknowledges the restored SVG invoker's focus before sending Escape. A real paused return frame distinguishes the completed download from restored keyboard ownership. The product's existing focus return and modal policy stay unchanged, as do the exact downloaded bytes and tutorial completion assertions.
