@@ -87,7 +87,10 @@ export async function downloadInteractiveHtml(
 }
 
 /** The dialog's Download: the file, with progress and the outcome in a toast (never a thrown error). */
-export async function exportInteractiveHtml(diagram: DiagramFile, options: HtmlExportOptions): Promise<void> {
+export async function exportInteractiveHtml(
+  diagram: DiagramFile,
+  options: HtmlExportOptions,
+): Promise<import("../interop/exportResult").ExportResult> {
   const locked = options.password !== undefined;
   const busy = toast.busy(locked ? t("htmlExport.encryptingTheHTMLFile") : t("htmlExport.makingTheHTMLFile"));
   try {
@@ -100,13 +103,15 @@ export async function exportInteractiveHtml(diagram: DiagramFile, options: HtmlE
         locked: locked ? "yes" : "no",
       }),
     );
+    return { status: "success" };
   } catch (err) {
     toast.dismiss(busy);
-    if (err instanceof DOMException && err.name === "AbortError") return;
+    if (err instanceof DOMException && err.name === "AbortError") return { status: "cancelled" };
     toast.error(
       t("htmlExport.couldntExportTheInteractiveHTMLValue0", {
         value0: err instanceof Error ? err.message : String(err),
       }),
     );
+    return { status: "failure" };
   }
 }

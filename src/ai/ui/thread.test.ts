@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
+import { withoutConversationSnapshots } from "../../lib/exampleConversations";
 import {
   capThread,
   validTurn,
@@ -51,6 +52,20 @@ describe("thread", () => {
     expect(capped.filter((t) => t.after)).toHaveLength(MAX_SNAPSHOTS);
     expect(capped.at(-1)?.after).toBeDefined();
     expect(capped[0].after).toBeUndefined();
+  });
+
+  it("caps and validates pre-change snapshots together with their turns", () => {
+    const before = diagram(["before"]);
+    const after = diagram(["after"]);
+    const kept = capThread(Array.from({ length: MAX_SNAPSHOTS + 1 }, (_, i) => turn(i, after, { before })));
+    expect(kept[0].before).toBeUndefined();
+    expect(kept.filter((t) => t.before)).toHaveLength(MAX_SNAPSHOTS);
+    saveThread("before-state", kept);
+    expect(loadThread("before-state").at(-1)?.before).toEqual(before);
+    expect(validTurn({ ...turn(0, after), before: { nodes: "invalid" } })?.before).toBeUndefined();
+    const fallback = JSON.parse(withoutConversationSnapshots(JSON.stringify({ turns: [turn(0, after, { before })] })));
+    expect(fallback.turns[0]).not.toHaveProperty("before");
+    expect(fallback.turns[0]).not.toHaveProperty("after");
   });
 
   it("truncates long replies", () => {

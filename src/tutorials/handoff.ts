@@ -5,7 +5,8 @@ import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
 
 /** Session-only navigation belongs to the lazy tutorial surface, never startup or persistent progress. */
-export const lessonReturn: { lesson?: Tutorial } = {};
+type LessonIdentity = Pick<Tutorial, "id" | "track">;
+export const lessonReturn: { lesson?: LessonIdentity } = {};
 let pendingStart: string | undefined;
 let stopWatching: (() => void) | undefined;
 
@@ -22,7 +23,7 @@ export function takeLessonStart(id: string): boolean {
   return start;
 }
 
-export function leaveLesson(lesson: Tutorial) {
+export function leaveLesson(lesson: LessonIdentity) {
   lessonReturn.lesson = lesson;
   tutorialRoute.returnTo("tutorials");
 }
@@ -34,7 +35,7 @@ export function startNextLesson(lesson: Tutorial) {
   if (pendingStart) stopWatching = tutorialRoute.subscribe(cancelLessonStart);
 }
 
-export function lessonNumber(lesson: Tutorial, catalog: readonly Tutorial[]) {
+export function lessonNumber(lesson: LessonIdentity, catalog: readonly LessonIdentity[]) {
   return `${chapters[lesson.track].order}.${catalog.filter((x) => x.track === lesson.track).findIndex((x) => x.id === lesson.id) + 1}`;
 }
 

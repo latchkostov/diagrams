@@ -23,13 +23,13 @@ const answerDeadlines = (run: string): Demo[] =>
 
 export const studyRag: Tutorial = {
   id: "study-rag",
-  version: 1,
+  version: 2,
   track: "studies",
   level: 3,
   minutes: 20,
   study: true,
   title: msg("tutorials.studyRag.title"),
-  summary: msg("tutorials.studyRag.summary"),
+  summary: msg("tutorials.studyRag.summaryV2"),
   start: () => ({
     format: "diagrams/v2",
     title: t("tutorials.studyRag.title"),
@@ -96,8 +96,13 @@ export const studyRag: Tutorial = {
     {
       id: "answer-within-budget",
       title: msg("tutorials.studyRag.budgetTitle"),
-      goal: msg("tutorials.studyRag.budgetGoal"),
-      hint: msg("tutorials.studyRag.budgetHint"),
+      goal: () =>
+        t("tutorials.studyRag.budgetGoalV2", {
+          questionsRun: t("tutorials.studyRag.questionsRun"),
+          llm: t("tutorials.studyRag.llm"),
+        }),
+      hint: msg("tutorials.studyRag.budgetHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyRag.checklistV2") },
       done: msg("tutorials.studyRag.budgetDone"),
       sticky: true,
       check: {
@@ -117,7 +122,7 @@ export const studyRag: Tutorial = {
           },
         ],
       },
-      targets: [{ testId: "node-{llm}", tip: msg("tutorials.studyRag.budgetHint") }],
+      targets: [{ testId: "node-{llm}", tip: msg("tutorials.studyRag.budgetHintV2") }],
       demo: [
         { kind: "connect", from: "questions", to: "embeddings" },
         { kind: "relation", from: "questions", to: "embeddings", relation: "flow", edgeKind: "sync" },
@@ -146,20 +151,27 @@ export const studyRag: Tutorial = {
     {
       id: "cache-repeated-questions",
       title: msg("tutorials.studyRag.cacheTitle"),
-      goal: msg("tutorials.studyRag.samplingGoal"),
-      hint: msg("tutorials.studyRag.samplingHint"),
+      goal: msg("tutorials.studyRag.samplingGoalV2"),
+      hint: msg("tutorials.studyRag.samplingHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyRag.checklistV2") },
       done: msg("tutorials.studyRag.samplingDone"),
       check: {
         kind: "all",
         checks: [
+          { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
+          { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
           { kind: "relation", from: "embeddings", to: "cache", relation: "flow", edgeKind: "sync" },
           { kind: "prop", edge: ["embeddings", "cache"], prop: "share", op: "=", value: 0.8 },
           { kind: "prop", edge: ["embeddings", "index"], prop: "share", op: "=", value: 0.2 },
           { kind: "prop", edge: ["embeddings", "llm"], prop: "share", op: "=", value: 0.2 },
         ],
       },
-      targets: [{ testId: "node-{embeddings}", tip: msg("tutorials.studyRag.samplingHint") }],
+      targets: [{ testId: "node-{embeddings}", tip: msg("tutorials.studyRag.samplingHintV2") }],
       demo: [
+        { kind: "connect", from: "embeddings", to: "index" },
+        { kind: "connect", from: "embeddings", to: "llm" },
+        { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
+        { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
         { kind: "add", subject: "cache", stencil: "redis.cache", after: "embeddings" },
         { kind: "relation", from: "embeddings", to: "cache", relation: "flow", edgeKind: "sync" },
         { kind: "patch", edge: ["embeddings", "cache"], patches: [{ op: "set", path: ["share"], value: 0.8 }] },
@@ -186,13 +198,20 @@ export const studyRag: Tutorial = {
     {
       id: "survive-reindex",
       title: msg("tutorials.studyRag.reindexTitle"),
-      goal: msg("tutorials.studyRag.sampledReindexGoal"),
-      hint: msg("tutorials.studyRag.sampledReindexHint"),
+      goal: msg("tutorials.studyRag.sampledReindexGoalV2"),
+      hint: msg("tutorials.studyRag.sampledReindexHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyRag.checklistV2") },
       done: msg("tutorials.studyRag.sampledReindexDone"),
       sticky: true,
       check: {
         kind: "all",
         checks: [
+          { kind: "relation", from: "embeddings", to: "cache", relation: "flow", edgeKind: "sync" },
+          { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
+          { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
+          { kind: "prop", edge: ["embeddings", "cache"], prop: "share", op: "=", value: 0.8 },
+          { kind: "prop", edge: ["embeddings", "index"], prop: "share", op: "=", value: 0.2 },
+          { kind: "prop", edge: ["embeddings", "llm"], prop: "share", op: "=", value: 0.2 },
           { kind: "simulation", id: "reindex", atLeastMs: 6000 },
           { kind: "fault", subject: "index", fault: "slow" },
           { kind: "compare", left: { node: "questions", metric: "latency.p95" }, op: "<=", right: 2000 },
@@ -206,8 +225,17 @@ export const studyRag: Tutorial = {
           { kind: "compare", left: { sum: "failed", nodes: ["embeddings", "index", "llm"] }, op: "=", right: 0 },
         ],
       },
-      targets: [{ testId: "node-{index}", tip: msg("tutorials.studyRag.sampledReindexHint") }],
+      targets: [{ testId: "node-{index}", tip: msg("tutorials.studyRag.sampledReindexHintV2") }],
       demo: [
+        { kind: "add", subject: "cache", stencil: "redis.cache", after: "embeddings" },
+        { kind: "connect", from: "embeddings", to: "index" },
+        { kind: "connect", from: "embeddings", to: "llm" },
+        { kind: "relation", from: "embeddings", to: "cache", relation: "flow", edgeKind: "sync" },
+        { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
+        { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
+        { kind: "patch", edge: ["embeddings", "cache"], patches: [{ op: "set", path: ["share"], value: 0.8 }] },
+        { kind: "patch", edge: ["embeddings", "index"], patches: [{ op: "set", path: ["share"], value: 0.2 }] },
+        { kind: "patch", edge: ["embeddings", "llm"], patches: [{ op: "set", path: ["share"], value: 0.2 }] },
         ...answerDeadlines("reindex"),
         {
           kind: "patch",
@@ -227,7 +255,7 @@ export const studyRag: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.studyRag.sampledFinish"),
+    text: msg("tutorials.studyRag.sampledFinishV2"),
     example: { slug: "rag-assistant", label: msg("tutorials.studyRag.reference") },
   },
 };

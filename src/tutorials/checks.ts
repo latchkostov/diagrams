@@ -311,7 +311,19 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       return (
         !!event &&
         (check.turn === undefined || event.kind === check.turn) &&
-        (check.subject === undefined || (!!subjects[check.subject] && event.changed.includes(subjects[check.subject]!)))
+        (event.kind !== "context" || (event.copiedBytes ?? 0) > 0) &&
+        (check.subject === undefined ||
+          (!!subjects[check.subject] && event.changed.includes(subjects[check.subject]!))) &&
+        (check.label === undefined || (!!check.subject && node(check.subject)?.label === check.label()))
+      );
+    }
+    case "localPeer": {
+      const p = view.observations?.collaboration?.practice;
+      return (
+        p?.phase === check.action &&
+        (check.action !== "edit" || (!!p.viewerRefused && !!p.converged)) &&
+        (check.action !== "watch" || !!p.run) &&
+        (check.action !== "leave" || !!p.recovery)
       );
     }
     case "collaboration": {

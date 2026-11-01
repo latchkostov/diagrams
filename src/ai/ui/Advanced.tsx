@@ -1,3 +1,4 @@
+import { copyAiContext } from "./copyContext";
 import { t, useLocale } from "../../i18n";
 import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -137,7 +138,7 @@ export function Advanced({
       : place === "live"
         ? buildSimulationPrompt(input)
         : buildPrompt(input);
-    const ok = await copyText(prompt);
+    const ok = await copyAiContext(prompt);
     if (!ok) return notify(t("ai.theBrowserDidnTAllowCopyingTry"), { kind: "error" });
     flashCopied("prompt");
     if (!explaining) replyRef.current?.focus();

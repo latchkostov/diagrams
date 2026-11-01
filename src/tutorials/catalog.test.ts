@@ -58,6 +58,12 @@ const stencilIds = new Set(stencils.map((s) => s.id));
  */
 function knownTestId(id: string): boolean {
   if (!id) return true;
+  if (
+    id.endsWith("-toggle") &&
+    source.includes("data-testid={`${testId}-toggle`}") &&
+    source.includes(`testId="${id.slice(0, -7)}"`)
+  )
+    return true;
   const faultRow = /^sim-panel-step-([0-9]+)-(fault-(?:kind|target|value))$/.exec(id);
   if (faultRow)
     return (
@@ -327,7 +333,11 @@ describe("tutorial catalog", () => {
     expect(ids).toEqual(tutorialEntries.map((t) => t.id));
     expect(tutorialMetadata.map((x) => x.id)).toEqual(tutorials.filter((t) => !t.quarantined).map((t) => t.id));
     expect(tutorialEntries).toEqual(
-      tutorials.map(({ id, quarantined }) => ({ id, ...(quarantined ? { quarantined } : {}) })),
+      tutorials.map(({ id, quarantined, optional }) => ({
+        id,
+        ...(quarantined ? { quarantined } : {}),
+        ...(optional ? { optional } : {}),
+      })),
     );
     expect(new Set(ids).size).toBe(ids.length);
     for (const t of tutorials) {

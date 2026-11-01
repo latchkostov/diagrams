@@ -1,3 +1,8 @@
+import { AI_TOOLS } from "../../lib/deployment";
+import { ROOMS } from "../../lib/localOnly";
+import { exportForAudience } from "./exportForAudience";
+import { workTogether } from "./workTogether";
+import { reviewAgentChanges } from "./reviewAgentChanges";
 import { scaleOnBacklog } from "./scaleOnBacklog";
 import { withCoachRoutes } from "../coachRoutes";
 import { authorASimulation } from "./authorASimulation";
@@ -25,7 +30,8 @@ import { authorADrill } from "./authorADrill";
 import { loadShedding } from "./loadShedding";
 import { deadLetters } from "./deadLetters";
 import { healthChecks } from "./healthChecks";
-import type { TrackId, Tutorial } from "../types";
+import type { TrackId, Tutorial, TutorialEntry } from "../types";
+import { workTogetherUnavailable, reviewAgentChangesUnavailable } from "./unavailable";
 import { apiGateway } from "./apiGateway";
 import { kafkaTopic } from "./kafkaTopic";
 import { queueWorkers } from "./queueWorkers";
@@ -78,7 +84,6 @@ export const allTutorials: readonly Tutorial[] = [
   commandPalette,
   libraryReuse,
   importAndReview,
-  sharePresent,
   apiGateway,
   routeByAddress,
   kafkaTopic,
@@ -123,15 +128,29 @@ export const allTutorials: readonly Tutorial[] = [
   studyFanout,
   studyRag,
   studyCells,
+  sharePresent,
+  exportForAudience,
+  ...(ROOMS ? [workTogether] : []),
+  ...(AI_TOOLS ? [reviewAgentChanges] : []),
 ]
   .map(withKeyboardSolutions)
   .map(withCoachRoutes);
 
-/** Available lessons only: discovery, deep links and progress totals share this catalog. */
+/** Runnable lessons only: progress and handoffs never start an unavailable extension. */
 export const tutorials = allTutorials.filter((t) => !t.quarantined);
+
+/** Discovery and deep links retain optional lesson identities when their code is compiled out. */
+export const tutorialCatalog: readonly TutorialEntry[] = tutorialEntries.flatMap<TutorialEntry>((entry) => {
+  const lesson = tutorials.find((lesson) => lesson.id === entry.id);
+  if (lesson) return [lesson];
+  if (entry.id === "work-together" && !ROOMS) return [workTogetherUnavailable];
+  if (entry.id === "review-agent-changes" && !AI_TOOLS) return [reviewAgentChangesUnavailable];
+  return [];
+});
 
 export { tracks } from "../chapters";
 import { chapters } from "../chapters";
+import { tutorialEntries } from "./ids";
 
-export const findTutorial = (id: string | null): Tutorial | undefined => tutorials.find((x) => x.id === id);
+export const findTutorial = (id: string | null): TutorialEntry | undefined => tutorialCatalog.find((x) => x.id === id);
 export const trackLabel = (id: TrackId): string => chapters[id].label();

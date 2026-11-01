@@ -10,7 +10,7 @@ import { chunk, holdChunk } from "./chunk";
 test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page, consoleErrors }) => {
   await page.goto("./?view=tutorials");
   await expect(page.getByTestId("tutorials-resume")).toContainText("Start here: 1.1", { timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 59 lessons · 0 of 7 seals");
+  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 60 core lessons · 0 of 8 seals");
   await expect(page.getByTestId("tutorials-chapter-basics")).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByTestId("tutorial-open-workbench-tour")).toHaveAccessibleName(/^Start 1\.1 .*Not started/);
   await expectNoViolations(page, "tutorials-view");
@@ -44,8 +44,8 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
   await expect(page.getByTestId("tutorial-open-workbench-tour")).toHaveAccessibleName(/^Review 1\.1 .*Done/);
   await page.getByTestId("tutorials-seals").click();
-  await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Not yet · 1 of 15");
-  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 59");
+  await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Not yet · 1 of 14");
+  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 60");
   await expectNoViolations(page, "tutorials-view");
   await page.getByTestId("tutorials-seals-back").click();
   await page.getByTestId("tutorials-reset-basics").click();
@@ -69,7 +69,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await page.getByTestId("view-tutorials").click();
   await page.getByTestId("tutorials-reset-undo").click();
   await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
-  await expect(page.getByTestId("tutorials-overall")).toContainText("1 of 59 lessons");
+  await expect(page.getByTestId("tutorials-overall")).toContainText("1 of 60 core lessons");
   await page.reload();
   await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
   // The header opens the same dialog, with an explicit Everything scope.
@@ -155,10 +155,12 @@ for (const whole of [false, true]) {
   test(`handoff shows ${whole ? "the final syllabus seal" : "the chapter seal"} only when newly earned`, async ({
     page,
   }, testInfo) => {
-    const id = whole ? "study-cells" : "share-present";
+    const id = whole ? "export-for-audience" : "import-and-review";
     await page.setViewportSize({ width: 2560, height: 1440 });
     const ids = tutorialEntries.filter((lesson) => !lesson.quarantined).map((lesson) => lesson.id);
-    const done = whole ? ids.filter((lesson) => lesson !== id) : ids.slice(0, ids.indexOf(id));
+    const done = whole
+      ? ids.filter((lesson) => lesson !== id && !["work-together", "review-agent-changes"].includes(lesson))
+      : ids.slice(0, ids.indexOf(id));
     const versions = Object.fromEntries(
       readdirSync("src/tutorials/catalog")
         .filter((name) => name.endsWith(".ts"))
@@ -192,8 +194,10 @@ for (const whole of [false, true]) {
     await expect(page.getByTestId("tutorial-handoff-heading")).toHaveText(
       whole ? "You've finished the syllabus" : "Chapter I complete",
     );
-    if (whole) await expect(page.getByTestId("tutorial-next")).toHaveCount(0);
-    else await expect(page.getByTestId("tutorial-next")).toHaveText("Start 2.1");
+    if (whole) {
+      await expect(page.getByTestId("tutorial-handoff-next")).toContainText("Optional extension");
+      await expect(page.getByTestId("tutorial-next")).toHaveText("Start 7.3");
+    } else await expect(page.getByTestId("tutorial-next")).toHaveText("Start 2.1");
     await page.screenshot({ path: testInfo.outputPath(whole ? "v7-syllabus.png" : "v7-chapter.png") });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByTestId("tutorial-handoff-heading")).toBeInViewport();

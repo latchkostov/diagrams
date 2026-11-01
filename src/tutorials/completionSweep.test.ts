@@ -1,3 +1,6 @@
+import { planTurn } from "../ai/ui/apply";
+import { parseReply } from "../ai/ui/reply";
+import { workerReply, renameReply } from "./catalog/agentReplies";
 import { HistoryController } from "../editor/historyController";
 import { toFlow, fromFlow } from "../canvas/convert";
 import { runChecks } from "../checks/run";
@@ -735,7 +738,68 @@ function sandbox(
     }),
   );
   const app = { presenting: false, sharing: false };
+  let agentCheckpoint: DiagramFile | undefined;
+  const externalExport = async (format: "svg" | "png" | "html") => {
+    observationPorts.exports.publish({ ...source, format, bytes: 100 });
+  };
+  const externalPeer = async (action: "join" | "edit" | "watch" | "leave") => {
+    observationPorts.collaboration.publish({
+      ...source,
+      status: action === "leave" ? "left" : "joined",
+      role: "creator",
+      practice: { phase: action, viewerRefused: true, converged: true, run: "local-run", recovery: true },
+    });
+  };
+  const externalAgent = async (action: "add" | "rename" | "undo" | "revert") => {
+    if (action === "undo" || action === "revert") {
+      const ids = new Set(agentCheckpoint?.nodes.filter((n) => n.stencil === "service.go").map((n) => n.id));
+      const next =
+        action === "undo"
+          ? {
+              ...diagram,
+              nodes: diagram.nodes.filter((n) => !ids.has(n.id)),
+              edges: diagram.edges.filter((e) => !ids.has(e.from) && !ids.has(e.to)),
+            }
+          : agentCheckpoint;
+      if (!next) throw new Error("Missing checkpoint");
+      const changed = diagram.nodes.filter((n) => n.stencil === "service.go").map((n) => n.id);
+      write(structuredClone(next));
+      observationPorts.ai.publish({ ...source, kind: action, changed });
+      return;
+    }
+    const existing = diagram.nodes.find((n) => n.stencil === "service.go");
+    const reply =
+      action === "add" && existing
+        ? JSON.stringify({
+            layout: "none",
+            ops: [
+              { op: "update", target: existing.id, label: "Status worker" },
+              { op: "connect", from: "api", to: existing.id, kind: "async" },
+            ],
+          })
+        : action === "add"
+          ? workerReply
+          : renameReply;
+    const plan = planTurn(diagram, parseReply(reply));
+    if (!plan.ok || !plan.hasChanges) throw new Error("Fixture refused");
+    write(plan.next);
+    if (action === "add") agentCheckpoint = structuredClone(plan.next);
+    observationPorts.ai.publish({ ...source, kind: "change", changed: plan.changed });
+  };
   const runner = createTutorialRunner(tutorial, {
+    exportArtifact: externalExport,
+    localPeer: externalPeer,
+    agentFixture: externalAgent,
+    copyAiContext: async () => {
+      observationPorts.ai.publish({ ...source, kind: "context", changed: ["api"], copiedBytes: 100 });
+    },
+    openAi: () => {
+      observationPorts.dock.publish({ ...source, tab: "ai", snap: "half", live: false, presenting: false });
+    },
+    shareChoices: () => {
+      app.sharing = true;
+      runner.appChanged({ ...app });
+    },
     close: vi.fn(),
     host,
     initial: savedDocument ?? startOf(tutorial),
@@ -785,6 +849,9 @@ function sandbox(
   }
   return {
     runner,
+    get agentCheckpoint() {
+      return agentCheckpoint;
+    },
     editor,
     hostState,
     get mode() {
@@ -823,6 +890,21 @@ function sandbox(
       const edge = (pair: readonly [string, string]) =>
         diagram.edges.find((e) => e.from === id(pair[0]) && e.to === id(pair[1]))!;
       switch (demo.kind) {
+        case "copyAiContext":
+          observationPorts.ai.publish({ ...source, kind: "context", changed: ["api"], copiedBytes: 100 });
+          return;
+        case "aiDock":
+          observationPorts.dock.publish({ ...source, tab: "ai", snap: "half", live: false, presenting: false });
+          return;
+        case "shareChoices":
+          app.sharing = true;
+          return runner.appChanged({ ...app });
+        case "exportArtifact":
+          return externalExport(demo.format);
+        case "localPeer":
+          return externalPeer(demo.action);
+        case "agentFixture":
+          return externalAgent(demo.action);
         case "draftSimulation":
           return session.runDraft(demo.simulation);
         case "openSequence":
@@ -1070,6 +1152,32 @@ async function skipLanding(tutorial: Tutorial, k: number) {
 }
 
 describe("design study evidence", () => {
+  it.each(["email", "sms", "push"])(
+    "final fan-out evidence rejects a wrong delivery limit on %s despite valid outcomes",
+    async (channel) => {
+      const s = sandbox(studyFanout);
+      await reach(s, studyFanout, 2);
+      await skip(s, studyFanout);
+      const session = s.live!.getState();
+      const diagram = structuredClone(s.diagram);
+      expect(observeSteps(studyFanout, { diagram, live: true, session, processed: () => 0 })[2]).toBe(true);
+      diagram.nodes.find((n) => n.id === s.subject(`${channel}Queue`))!.props!.maxDeliveryCount = 3;
+      expect(observeSteps(studyFanout, { diagram, live: true, session, processed: () => 0 })[2]).toBe(false);
+    },
+  );
+  it.each(["booking", "neighbour"])(
+    "cell evidence rejects disconnecting %s even with valid recorded counters",
+    async (name) => {
+      const s = sandbox(studyCells);
+      await reach(s, studyCells, 1);
+      await skip(s, studyCells);
+      const session = s.live!.getState();
+      const diagram = structuredClone(s.diagram);
+      expect(observeSteps(studyCells, { diagram, live: true, session, processed: () => 0 })[1]).toBe(true);
+      diagram.edges = diagram.edges.filter((e) => !(e.from === s.subject("east") && e.to === s.subject(name)));
+      expect(observeSteps(studyCells, { diagram, live: true, session, processed: () => 0 })[1]).toBe(false);
+    },
+  );
   const play = (s: Sandbox, ms: number) => {
     for (let elapsed = 0; elapsed < ms; elapsed += 250) {
       s.live!.advance(250);
@@ -1706,6 +1814,8 @@ describe("every tutorial's completion contract", () => {
               s.editor.addStencil(stencil);
             }
             const before = s.diagram.nodes.length;
+            const agentAction = step.demo.find((demo) => demo.kind === "agentFixture");
+            const agentWorkersBefore = s.diagram.nodes.filter((n) => n.stencil === "service.go").length;
             const bindings = s.runner.getSnapshot().subjects;
             const missing = new Set(
               step.demo.flatMap((d) =>
@@ -1739,9 +1849,20 @@ describe("every tutorial's completion contract", () => {
             const replacesPractice = step.demo.some((demo) => demo.kind === "importFixture");
             if (replacesPractice)
               expect(s.diagram.nodes.map((node) => node.id).sort()).toEqual(["api", "redis", "worker"]);
+            else if (agentAction?.kind === "agentFixture" && agentAction.action === "add")
+              expect(s.diagram.nodes).toHaveLength(before + (agentWorkersBefore ? 0 : 1));
+            else if (agentAction?.kind === "agentFixture" && agentAction.action === "undo")
+              expect(s.diagram.nodes).toHaveLength(before - 1);
+            else if (agentAction?.kind === "agentFixture" && agentAction.action === "revert")
+              expect(s.diagram).toEqual(s.agentCheckpoint);
             else expect(s.diagram.nodes).toHaveLength(before + missing.size - removed.size);
             for (const [name, id] of Object.entries(bindings))
-              if (id && !tutorial.subjects[name].edge && !replacesPractice) {
+              if (
+                id &&
+                !tutorial.subjects[name].edge &&
+                !replacesPractice &&
+                !(agentAction?.kind === "agentFixture" && ["undo", "revert"].includes(agentAction.action))
+              ) {
                 if (removed.has(id)) expect(s.diagram.nodes.some((node) => node.id === id)).toBe(false);
                 else expect(s.subject(name)).toBe(id);
               }
@@ -2302,8 +2423,10 @@ describe("completion regressions", () => {
                 original.kind = required.edgeKind === "sync" ? "async" : "sync";
               else diagram.edges = diagram.edges.filter((edge) => edge !== original);
               s.editor.applyDiagram(diagram);
-              expect(state(s)).toMatchObject({ index: i, value: "active" });
+              const recoveryIndex = tutorial.id === "study-rag" && step.id === "survive-reindex" ? 1 : i;
+              expect(state(s)).toMatchObject({ index: recoveryIndex, value: "active" });
               await skip(s, tutorial);
+              if (recoveryIndex !== i) await skip(s, tutorial);
               const repaired = s.diagram.edges.filter((edge) => edge.from === from && edge.to === to);
               expect(repaired).toHaveLength(1);
               expect(repaired[0].kind).toBe(required.edgeKind);
@@ -2691,7 +2814,7 @@ describe("completion regressions", () => {
     expect(s.mode.selection).toEqual([s.subject("topic")]);
   });
 
-  it("Present, reload, then Continue from Leave lands on Share: the fresh app is not presenting", async () => {
+  it("Present, reload, then Continue reconstructs Present before asking to Leave", async () => {
     const first = sandbox(sharePresent);
     first.runner.send({ type: "start" });
     first.runner.appChanged({ presenting: true, sharing: false });
@@ -2700,8 +2823,9 @@ describe("completion regressions", () => {
     cleanup.length = 0;
     const s = sandbox(sharePresent);
     s.runner.send({ type: "resume" });
-    await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 2, value: "active" }), { interval: 1 });
-    expect(savedProgress(sharePresent)).toMatchObject({ step: 2 });
+    await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 1, value: "active" }), { interval: 1 });
+    expect(s.app.presenting).toBe(true);
+    expect(savedProgress(sharePresent)).toMatchObject({ step: 1 });
   });
 
   it.each(["menu", "Skip"] as const)("faults: Restore completes with an additional slowdown (%s)", async (finish) => {

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { tutorialAvailable } from "./availability";
 import { surfaceCatalogs } from "../i18n/surfaces";
 import { Icon } from "../components/Icon";
 import { ContextMenu } from "../components/ContextMenu";
 import { t, useLocale } from "../i18n";
 import { formatDate } from "../i18n/format";
 import { notify, toast } from "../interop/ui/toast";
-import { tracks, tutorials } from "./catalog";
+import { tracks, tutorials, tutorialCatalog } from "./catalog";
 import {
   earnedSeals,
   readTutorials,
@@ -24,21 +25,22 @@ import { SealsPage } from "./SealsPage";
 import { ResetProgressDialog } from "./ResetProgressDialog";
 import { lessonReturn, lessonNumber as numberedLesson } from "./handoff";
 import { tutorialRoute } from "./route";
-import type { TrackId, Tutorial } from "./types";
+import type { TrackId, TutorialEntry } from "./types";
 import "./tutorials.css";
 
-const lessonNumber = (lesson: Tutorial) => numberedLesson(lesson, tutorials);
+const lessonNumber = (lesson: TutorialEntry) => numberedLesson(lesson, tutorialCatalog);
 
 export function TutorialsView() {
   useLocale();
   const raw = useSyncExternalStore(subscribeTutorials, tutorialsSnapshot, () => "{}");
   const progress = recordSeals(readTutorials(raw), tutorials);
   const ordered = tracks.flatMap((track) => tutorials.filter((lesson) => lesson.track === track.id));
+  const core = ordered.filter((lesson) => !lesson.optional);
   const current =
-    ordered.find((lesson) => {
+    core.find((lesson) => {
       const p = lessonProgress(progress, lesson);
       return p && !p.completed;
-    }) ?? ordered.find((lesson) => !lessonProgress(progress, lesson)?.completed);
+    }) ?? core.find((lesson) => !lessonProgress(progress, lesson)?.completed);
   const [open, setOpen] = useState<TrackId | null>(() => lessonReturn.lesson?.track ?? current?.track ?? tracks[0].id);
   const [page, setPage] = useState<"hub" | "seals">("hub");
   const [reset, setReset] = useState<ResetScope | null>(null);
@@ -46,14 +48,14 @@ export function TutorialsView() {
   const menuButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const resetOpener = useRef<HTMLElement | null>(null);
-  const done = tutorials.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
+  const done = core.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
   const awards = earnedSeals(progress, tutorials);
   useEffect(() => {
     const id = lessonReturn.lesson?.id;
     if (id) document.querySelector(`[data-testid="tutorial-open-${id}"]`)?.scrollIntoView({ block: "nearest" });
     writeTutorials((s) => recordSeals(s, tutorials));
   }, []);
-  const launch = (lesson: Tutorial) => {
+  const launch = (lesson: TutorialEntry) => {
     lessonReturn.lesson = lesson;
     tutorialRoute.open(lesson.id);
   };
@@ -96,11 +98,11 @@ export function TutorialsView() {
                     role="progressbar"
                     aria-label={t("tutorials.section")}
                     aria-valuemin={0}
-                    aria-valuemax={tutorials.length}
+                    aria-valuemax={core.length}
                     aria-valuenow={done}
                   >
                     {tracks.map((track) => {
-                      const list = tutorials.filter((lesson) => lesson.track === track.id);
+                      const list = tutorials.filter((lesson) => lesson.track === track.id && !lesson.optional);
                       return (
                         <span key={track.id} style={{ flex: list.length }}>
                           <b
@@ -113,7 +115,12 @@ export function TutorialsView() {
                     })}
                   </div>
                   <span>
-                    {t("tutorials.syllabus.overall", { done, total: tutorials.length, seals: awards.length })}
+                    {t("tutorials.syllabus.overallV2", {
+                      done,
+                      total: core.length,
+                      seals: awards.length,
+                      totalSeals: tracks.length + 1,
+                    })}
                   </span>
                 </div>
               </div>
@@ -178,12 +185,13 @@ export function TutorialsView() {
               </section>
             )}
             {tracks.map((track) => {
-              const list = tutorials.filter((lesson) => lesson.track === track.id);
-              const finished = list.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
+              const list = tutorialCatalog.filter((lesson) => lesson.track === track.id);
+              const required = tutorials.filter((lesson) => lesson.track === track.id && !lesson.optional);
+              const finished = required.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
               const seal = { id: track.seal, numeral: track.numeral };
               const earned = awards.includes(seal.id);
               const expanded = open === track.id;
-              const minutes = list
+              const minutes = required
                 .filter((lesson) => !lessonProgress(progress, lesson)?.completed)
                 .reduce((sum, lesson) => sum + lesson.minutes, 0);
               return (
@@ -217,7 +225,7 @@ export function TutorialsView() {
                           list.map((lesson) => <ProgressGlyph key={lesson.id} progress={progress} lesson={lesson} />)}
                       </span>
                       <span className="tutorials-chapter-count">
-                        <b>{t("tutorials.syllabus.count", { done: finished, total: list.length })}</b>
+                        <b>{t("tutorials.syllabus.count", { done: finished, total: required.length })}</b>
                         {" · "}
                         {minutes === 0 && earned
                           ? t("tutorials.syllabus.sealEarned")
@@ -229,6 +237,9 @@ export function TutorialsView() {
                     </button>
                   </h2>
                   <div id={`tutorials-lessons-${track.id}`} hidden={!expanded}>
+                    {track.id === "sharing" && (
+                      <p data-testid="tutorials-optional-explanation">{t("tutorials.sharing.optionalExplanation")}</p>
+                    )}
                     <ol className="tutorials-rows">
                       {list.map((lesson) => (
                         <LessonRow key={lesson.id} lesson={lesson} progress={progress} onOpen={() => launch(lesson)} />
@@ -237,8 +248,8 @@ export function TutorialsView() {
                     <div className="tutorials-chapter-foot">
                       <span>
                         {t("tutorials.syllabus.chapterNote", {
-                          count: list.length,
-                          minutes: list.reduce((sum, lesson) => sum + lesson.minutes, 0),
+                          count: required.length,
+                          minutes: required.reduce((sum, lesson) => sum + lesson.minutes, 0),
                         })}
                       </span>
                       <button
@@ -300,8 +311,8 @@ export function TutorialsView() {
   );
 }
 
-function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson: Tutorial }) {
-  const p = lessonProgress(progress, lesson);
+function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson: TutorialEntry }) {
+  const p = "unavailable" in lesson ? undefined : lessonProgress(progress, lesson);
   return (
     <span
       aria-hidden="true"
@@ -312,8 +323,16 @@ function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson
   );
 }
 
-function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: StoredTutorials; onOpen: () => void }) {
-  const p = lessonProgress(progress, lesson);
+function LessonRow({
+  lesson,
+  progress,
+  onOpen,
+}: {
+  lesson: TutorialEntry;
+  progress: StoredTutorials;
+  onOpen: () => void;
+}) {
+  const p = "unavailable" in lesson ? undefined : lessonProgress(progress, lesson);
   const going = !!p && !p.completed && p.step > 0;
   const action = going ? t("tutorials.continue") : p?.completed ? t("tutorials.syllabus.review") : t("tutorials.start");
   const state = p?.completed
@@ -321,19 +340,31 @@ function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: S
     : going
       ? t("tutorials.syllabus.going")
       : t("tutorials.syllabus.notStarted");
-  const status = p?.completed
-    ? p.completedAt === undefined
-      ? t("tutorials.syllabus.done")
-      : t("tutorials.syllabus.doneDate", { date: formatDate(p.completedAt) })
-    : going
-      ? t("tutorials.syllabus.step", { step: Math.min(p.step + 1, lesson.steps.length), total: lesson.steps.length })
-      : t("tutorials.syllabus.lessonMeta", { minutes: lesson.minutes, level: lesson.level });
+  const status =
+    "unavailable" in lesson
+      ? lesson.unavailable()
+      : p?.completed
+        ? p.completedAt === undefined
+          ? t("tutorials.syllabus.done")
+          : t("tutorials.syllabus.doneDate", { date: formatDate(p.completedAt) })
+        : going
+          ? t("tutorials.syllabus.step", {
+              step: Math.min(p.step + 1, lesson.steps.length),
+              total: lesson.steps.length,
+            })
+          : t("tutorials.syllabus.lessonMeta", { minutes: lesson.minutes, level: lesson.level });
   return (
     <li className={`tutorials-row${going ? " is-going" : ""}`} data-testid={`tutorial-card-${lesson.id}`}>
       <span className="tutorials-number">{lessonNumber(lesson)}</span>
       <ProgressGlyph progress={progress} lesson={lesson} />
       <div className="tutorials-row-title">
         <h3>{lesson.title()}</h3>
+        {lesson.optional && (
+          <span data-testid={`tutorial-optional-${lesson.id}`}>{t("tutorials.sharing.optional")}</span>
+        )}
+        {!tutorialAvailable(lesson) && (
+          <span data-testid={`tutorial-unavailable-${lesson.id}`}>{t("tutorials.sharing.unavailable")}</span>
+        )}
         <p>{lesson.summary()}</p>
       </div>
       <span className="tutorials-row-meta" data-testid={`tutorial-status-${lesson.id}`}>
@@ -350,6 +381,7 @@ function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: S
           status,
         })}
         onClick={onOpen}
+        disabled={!tutorialAvailable(lesson)}
       >
         {action}
       </button>

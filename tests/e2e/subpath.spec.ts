@@ -39,6 +39,26 @@ test.describe("production build under a sub-path", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("production share-present completes assisted Share without test hooks", async ({ page, consoleErrors }) => {
+    await page.goto("./?view=tutorials");
+    await page.getByTestId("tutorials-chapter-sharing").click();
+    await page.getByTestId("tutorial-open-share-present").click();
+    await page.getByTestId("tutorial-start").click();
+    expect(await page.evaluate(() => window.__tutorial)).toBeUndefined();
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "present");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "leave");
+    await page.getByTestId("present-exit").click();
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "share");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(page.getByTestId("share-chooser")).toBeVisible();
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "audience");
+    await page.keyboard.press("Escape");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(page.getByTestId("tutorial-finished")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
   test("gallery loads with every icon", async ({ page, consoleErrors }) => {
     await page.goto("./?view=gallery");
     await expect(page.getByTestId("gallery-view")).toBeVisible();

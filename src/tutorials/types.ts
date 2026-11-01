@@ -195,7 +195,8 @@ export type Check =
   | { kind: "view"; view: NonNullable<ProductObservations["dock"]["view"]> }
   | { kind: "export"; format: ProductObservations["exports"]["format"] }
   | { kind: "import"; format: ProductObservations["imports"]["format"]; source?: string }
-  | { kind: "aiTurn"; turn?: ProductObservations["ai"]["kind"]; subject?: string }
+  | { kind: "aiTurn"; turn?: ProductObservations["ai"]["kind"]; subject?: string; label?: Words }
+  | { kind: "localPeer"; action: "join" | "edit" | "watch" | "leave" }
   | { kind: "collaboration"; status: "joined" | "left"; role?: ProductObservations["collaboration"]["role"] }
   | { kind: "node"; subject: string }
   /** A flow (never a dependency) from one subject to the other. */
@@ -265,6 +266,12 @@ export type Check =
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
+  | { kind: "copyAiContext"; subject: string }
+  | { kind: "aiDock" }
+  | { kind: "shareChoices" }
+  | { kind: "exportArtifact"; format: "svg" | "png" | "html" }
+  | { kind: "agentFixture"; action: "add" | "rename" | "undo" | "revert" }
+  | { kind: "localPeer"; action: "join" | "edit" | "watch" | "leave" }
   | { kind: "openSequence" }
   | { kind: "draftSimulation"; simulation: Simulation }
   | { kind: "slowControl"; action: "pause" | "step" | "end" }
@@ -401,6 +408,8 @@ export interface TutorialStep {
   goal: Words;
   /** Shown by "Show me", with the highlight forced on. */
   hint?: Words;
+  /** Public, local reply bytes or a milestone checklist, revealed with Read note. */
+  note?: { title: Words; text: string | Words; code?: true };
   /** Said once it's done (or done for you): the lesson of the step. */
   done?: Words;
   check: Check;
@@ -434,6 +443,10 @@ export interface TutorialStep {
 }
 
 export interface TutorialMetadata {
+  /** Extensions never block chapter or core syllabus seals. */
+  optional?: "collaboration" | "ai";
+  /** Preserve earned completion when a lesson moves chapters; unfinished runs still reconstruct at the new version. */
+  completionFromVersion?: number;
   id: string;
   title: Words;
   /** Unavailable to learners while regressions are tracked; saved progress is retained. */
@@ -460,3 +473,11 @@ export interface Tutorial extends TutorialMetadata {
   steps: readonly TutorialStep[];
   finish: { text: Words; example?: { slug: string; label: Words } };
 }
+
+/** A catalog row and deep-link explanation, with no runnable lesson or fixture. */
+export interface UnavailableTutorial extends Pick<Tutorial, "id" | "title" | "summary" | "track"> {
+  optional: NonNullable<Tutorial["optional"]>;
+  unavailable: Words;
+}
+
+export type TutorialEntry = Tutorial | UnavailableTutorial;

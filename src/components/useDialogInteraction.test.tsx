@@ -155,3 +155,46 @@ it.each([
     vi.unstubAllGlobals();
   }
 });
+
+it.each(["retained", "removed"])("a dialog Retry returns focus before the next frame (%s origin)", async (origin) => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  // Hold frames: pressing Escape must work even before the browser paints again.
+  vi.stubGlobal("requestAnimationFrame", vi.fn());
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const close = vi.fn();
+  const retry = vi.fn();
+  try {
+    await act(() =>
+      root.render(
+        <>
+          <Toaster />
+          <Dialog title="Sequence" testId="test-sequence" onClose={close}>
+            <button data-autofocus data-testid="test-download">
+              Download
+            </button>
+          </Dialog>
+        </>,
+      ),
+    );
+    await act(() => toast.error("Download failed", { action: { label: "Retry", run: retry, testId: "test-retry" } }));
+    const button = document.querySelector<HTMLButtonElement>('[data-testid="test-retry"]')!;
+    await act(() => button.focus());
+    if (origin === "removed") document.querySelector('[data-testid="test-download"]')!.remove();
+    await act(() => button.click());
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(modalLayers.top?.panel.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.closest('[data-testid="toast"]')).toBeNull();
+    await act(() =>
+      document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
+    expect(close).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(() => root.unmount());
+    interaction.release();
+    toast.dismiss();
+    host.remove();
+    vi.unstubAllGlobals();
+  }
+});

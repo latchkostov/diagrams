@@ -19,7 +19,6 @@ export const tutorialMetadata: readonly TutorialMetadata[] = (
     { id: "command-palette", title: msg("tutorials.commandPalette.title") },
     { id: "library-reuse", title: msg("tutorials.libraryReuse.title") },
     { id: "import-and-review", title: msg("tutorials.importAndReview.title") },
-    { id: "share-present", title: msg("tutorials.sharePresent.title") },
     { id: "api-gateway", title: msg("tutorials.apiGateway.title") },
     { id: "route-by-address", title: msg("tutorials.routeByAddress.title") },
     { id: "kafka-topic", title: msg("tutorials.kafkaTopic.title") },
@@ -64,5 +63,9 @@ export const tutorialMetadata: readonly TutorialMetadata[] = (
     { id: "study-fanout", title: msg("tutorials.studyFanout.title") },
     { id: "study-rag", title: msg("tutorials.studyRag.title") },
     { id: "study-cells", title: msg("tutorials.studyCells.title") },
+    { id: "share-present", title: msg("tutorials.sharePresentAudience.title") },
+    { id: "export-for-audience", title: msg("tutorials.exportAudience.title") },
+    { id: "work-together", title: msg("tutorials.workTogether.title"), optional: "collaboration" },
+    { id: "review-agent-changes", title: msg("tutorials.agentReview.title"), optional: "ai" },
   ] as const
 ).filter((t) => !tutorialEntries.find((entry) => entry.id === t.id)?.quarantined);

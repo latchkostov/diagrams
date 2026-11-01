@@ -30,6 +30,7 @@ import { scaleOnBacklog } from "./catalog/scaleOnBacklog";
 import { backlogScalingPractice } from "../lab/waitingPractice";
 import { stencilRole } from "../stencils/roles";
 import { matchesExpectation } from "./simulations";
+import { workbenchDock } from "../canvas/inspector/dockState";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -51,6 +52,7 @@ function sandbox(
   initial: DiagramFile = typeof tutorial.start === "function" ? tutorial.start() : mobileApi.start(),
   deferAdds = false,
   importPractice?: (signal: AbortSignal) => Promise<void>,
+  documentId?: string,
 ) {
   let diagram = initial;
   let version = { identity: {}, revision: 0 };
@@ -149,7 +151,7 @@ function sandbox(
     },
   };
   const close = vi.fn();
-  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice });
+  const runner = createTutorialRunner(tutorial, { close, host, initial, importPractice, documentId });
   const disconnect = runner.connect();
   cleanup.push(disconnect);
   return {
@@ -169,6 +171,46 @@ function sandbox(
     tick: () => sessions.forEach((f) => f()),
   };
 }
+
+it("an AI dock transition completes its step without a canvas edit", () => {
+  workbenchDock.close();
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], sticky: true, demo: [], check: { kind: "dock", tab: "ai" } }],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  workbenchDock.show("ai");
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  workbenchDock.close();
+});
+
+it("image/HTML export completion rejects bytes captured from an older edit revision", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], sticky: true, demo: [], check: { kind: "export", format: "svg" } }],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  const captured = s.editor.getDocumentVersion();
+  s.edit({ ...s.getDiagram(), title: "A later edit" });
+  observationPorts.exports.publish({
+    documentId: "sandbox",
+    identity: captured.identity,
+    revision: captured.revision,
+    format: "svg",
+    bytes: 40,
+  });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  observationPorts.exports.publish({
+    documentId: "sandbox",
+    ...s.editor.getDocumentVersion(),
+    format: "svg",
+    bytes: 40,
+  });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
 
 it("independent add demos do not reuse a rail action's stale selected anchor", async () => {
   const s = sandbox();
@@ -1664,4 +1706,40 @@ it("Restart requests a fresh history rather than an undoable document replacemen
   const apply = vi.spyOn(s.editor, "applyDiagram");
   s.runner.send({ type: "restart" });
   expect(apply).toHaveBeenCalledExactlyOnceWith(mobileApi.start(), { resetHistory: true });
+});
+
+it("Retry recovers a failed AI practice initialization without restarting the lesson", async () => {
+  const practice = await import("./agentPractice");
+  const { reviewAgentChanges } = await import("./catalog/reviewAgentChanges");
+  let unavailable = true;
+  const reset = vi.spyOn(practice, "resetAgentPractice").mockImplementation(() => {
+    if (unavailable) throw new Error("Chunk temporarily unavailable");
+  });
+  const tutorial: Tutorial = {
+    ...reviewAgentChanges,
+    subjects: { worker: { stencils: ["service.go"] } },
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "node", subject: "worker" },
+        demo: [{ kind: "agentFixture", action: "add" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named(), false, undefined, "sandbox");
+  vi.spyOn(practice, "agentPractice").mockImplementation(() =>
+    s.edit({
+      ...s.getDiagram(),
+      nodes: [...s.getDiagram().nodes, { id: "worker", stencil: "service.go", label: "Worker", x: 300, y: 0 }],
+      edges: [{ id: "flow", from: "api", to: "worker", kind: "async" }],
+    }),
+  );
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("failed"));
+  unavailable = false;
+  const attempts = reset.mock.calls.length;
+  s.runner.send({ type: "retry" });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(reset.mock.calls.length).toBeGreaterThan(attempts);
 });

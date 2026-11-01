@@ -1,9 +1,10 @@
 import { expect, it } from "vitest";
+import { tutorialAvailable } from "./availability";
 import { tracks, tutorials } from "./catalog";
 import { justEarnedSeals, lessonNumber } from "./handoff";
 import { nextTutorial, recordSeals, type StoredTutorials } from "./progress";
 
-const ordered = tracks.flatMap((track) => tutorials.filter((lesson) => lesson.track === track.id));
+const ordered = tracks.flatMap((track) => tutorials.filter((lesson) => lesson.track === track.id && !lesson.optional));
 function completed(list = ordered): StoredTutorials {
   return {
     progress: Object.fromEntries(
@@ -40,7 +41,9 @@ it("skips done and quarantined lessons, but offers an unfinished current version
 
 it("wraps to earlier unfinished lessons and stops only at the end of the syllabus", () => {
   expect(nextTutorial(ordered.at(-1)!, tutorials, {})).toBe(ordered[0]);
-  expect(nextTutorial(ordered.at(-1)!, tutorials, completed())).toBeUndefined();
+  const optional = tutorials.find((lesson) => lesson.optional && tutorialAvailable(lesson))!;
+  expect(nextTutorial(ordered.at(-1)!, tutorials, completed())).toBe(optional);
+  expect(nextTutorial(ordered.at(-1)!, tutorials, completed(tutorials))).toBeUndefined();
   expect(nextTutorial(ordered[0], [ordered[0]], {})).toBeUndefined();
 });
 
@@ -52,7 +55,7 @@ it("shows only newly earned chapter seals, once, including both final seals", ()
   expect(justEarnedSeals(after, after, tutorials)).toEqual([]);
   expect(justEarnedSeals({ marks: { "chapter-basics": 500 } }, after, tutorials)).toEqual([]);
   expect(justEarnedSeals(completed(ordered.slice(0, -1)), recordSeals(completed(), tutorials), tutorials)).toEqual([
-    "chapter-studies",
+    "chapter-sharing",
     "whole-syllabus",
   ]);
   expect(justEarnedSeals({}, completed([ordered[0]]), tutorials)).toEqual([]);
