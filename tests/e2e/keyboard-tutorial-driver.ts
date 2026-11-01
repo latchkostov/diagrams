@@ -235,10 +235,13 @@ export async function focus(page: Page, id: string) {
     if (body) state = await readState(true);
     else
       await expect
-        .poll(async () => {
-          state = await readState(roving);
-          return state.active;
-        })
+        .poll(
+          async () => {
+            state = await readState(roving);
+            return state.active;
+          },
+          { intervals: [0] },
+        )
         .not.toBe(previous);
   }
 }
