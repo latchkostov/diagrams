@@ -122,6 +122,8 @@ for (const viewport of [
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.addInitScript(() => localStorage.setItem("diagrams.locale", "en-XA"));
     await begin(page);
+    // The pseudo-locale brackets this prose; it is not one unbreakable keyboard key.
+    await expect(page.getByTestId("coach-objective").getByTestId("coach-key")).toHaveCount(0);
     await page.getByTestId("tutorial-show-me").click();
     await waitForCameraIdle(page);
     await page.getByTestId("node-c").click({ position: { x: 20, y: 35 } });

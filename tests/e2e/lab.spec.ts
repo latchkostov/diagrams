@@ -13,8 +13,8 @@ async function waitForPreset(page: import("@playwright/test").Page) {
   if (kind === "scenario") await expect(page.getByTestId("sim-readout")).toBeVisible();
 }
 
-/** The preset sweep runs in this many tests, so the shards' workers share it (it took 80 s as one test). */
-const PRESET_PARTS = 8;
+/** Every preset still cold-loads; bound each batch's accumulated startup work on the native runners. */
+const PRESET_PARTS = 16;
 
 test.describe("lab", () => {
   test("every public example retains its description and description search", async ({ page }) => {

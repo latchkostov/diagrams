@@ -23,12 +23,13 @@ async function menu() {
   const close = vi.fn();
   const picked = vi.fn();
   let name: ReturnType<typeof captureTypeAhead> | undefined;
+  let placeholder = "Search";
   const render = () =>
     root.render(
       <ContextMenu
         x={20}
         y={20}
-        searchable="Search"
+        searchable={placeholder}
         query="topic"
         onClose={close}
         items={[
@@ -64,6 +65,10 @@ async function menu() {
     picked,
     name: () => name?.read(),
     update: () => act(render),
+    translate: (text: string) => {
+      placeholder = text;
+      return act(render);
+    },
     dispose: async () => {
       name?.stop();
       await act(() => root.unmount());
@@ -94,6 +99,22 @@ it("a failed queued pick yields Tab and Enter to Retry and resumes its buffered 
     await m.update();
     expect(m.picked).toHaveBeenCalledOnce();
     expect(m.name()).toEqual({ text: "Cache!", done: "enter" });
+  } finally {
+    await m.dispose();
+  }
+});
+
+it("translating a placed search keeps Enter with its focused field", async () => {
+  metadata.ready = true;
+  const m = await menu();
+  try {
+    expect(document.activeElement).toBe(m.input);
+    expect(typeAheadActive()).toBe(false);
+    await m.translate("Rechercher");
+    expect(m.input.placeholder).toBe("Rechercher");
+    await m.key("Enter");
+    expect(m.picked).toHaveBeenCalledOnce();
+    expect(m.close.mock.calls).toEqual([["pick"]]);
   } finally {
     await m.dispose();
   }

@@ -2,6 +2,26 @@ import { t } from "../i18n";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { CoachText, KeyText } from "./KeyText";
+import { pseudoText } from "../i18n/pseudo";
+
+it.each(["Drag Service 3 into the boundary.", pseudoText("Drag Service 3 into the boundary.")])(
+  "keeps a bracketed instruction as wrapping prose: %s",
+  (words) => {
+    const text = `[${words}]`;
+    expect(renderToStaticMarkup(<KeyText text={text} mac={false} />)).toBe(text);
+  },
+);
+
+it.each(["[Press [Alt]+[→] to connect.]", "[[Alt]+[→] to connect.]"])(
+  "recognises marked keys inside a bracketed sentence without consuming its wrapper: %s",
+  (text) => {
+    const html = renderToStaticMarkup(<KeyText text={text} mac={false} />);
+    expect(html.match(/<kbd/g)).toHaveLength(2);
+    expect(html).toMatch(/^\[(?:Press )?</);
+    expect(html).toMatch(/ to connect\.\]$/);
+    expect(html).toContain('aria-label="Right arrow"');
+  },
+);
 
 it("chips existing combinations and Enter, drawing arrows instead of raw glyphs", () => {
   const html = renderToStaticMarkup(<KeyText text="Press Alt+→, Shift+0, then press Enter." mac={false} />);
@@ -18,6 +38,7 @@ it("keeps ordinary prose and draws explicit translated key marks and the grow co
   expect(html).toContain('aria-label="+"');
   expect(html).toContain("PostgreSQL");
   expect(renderToStaticMarkup(<KeyText text="Read the diagram." />)).toBe("Read the diagram.");
+  expect(renderToStaticMarkup(<KeyText text="[[]" />)).toContain("[</kbd>");
 });
 it.each([false, true])("uses the product's platform modifiers, retaining literal Ctrl+Alt navigation (%s)", (mac) => {
   const html = renderToStaticMarkup(<KeyText text="Ctrl+K; Ctrl+drag; ControlOrMeta+Z; Ctrl+Alt+→" mac={mac} />);

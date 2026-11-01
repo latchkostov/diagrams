@@ -34,8 +34,9 @@ const GLYPH: Record<string, string> = { ArrowRight: "→", ArrowLeft: "←", Arr
 const TURN: Record<string, number> = { "→": 0, "↓": 90, "←": 180, "↑": 270 };
 const KEY = String.raw`(?:ControlOrMeta|Ctrl/Cmd|Ctrl|Cmd|Meta|Mod|Alt|Shift|Option|Enter|Escape|Esc|Tab|Delete|Backspace|Space|Arrow(?:Right|Left|Up|Down)|F(?:1[0-2]|[1-9])|[→←↑↓]|[A-Z0-9])`;
 const MOD = String.raw`(?:ControlOrMeta|Ctrl/Cmd|Ctrl|Cmd|Meta|Mod|Alt|Shift|Option)`;
+// Key marks are single tokens; a bracketed sentence (including en-XA's wrapper) is not one key.
 const PATTERN = new RegExp(
-  String.raw`\[([^\]]+)\](?:\+\[([^\]]+)\])*|\b${MOD}(?:\+${KEY})+|\b${MOD}(?=[+-](?:drag|click))|\b(?:Enter|Escape|Esc|Tab|Delete|Backspace)\b|(?<=\b(?:press|Press)\s)[A-Z0-9]\b|[→←↑↓]`,
+  String.raw`\[(\[|[^\s[\]]+)\](?:\+\[(\[|[^\s[\]]+)\])*|\b${MOD}(?:\+${KEY})+|\b${MOD}(?=[+-](?:drag|click))|\b(?:Enter|Escape|Esc|Tab|Delete|Backspace)\b|(?<=\b(?:press|Press)\s)[A-Z0-9]\b|[→←↑↓]`,
   "g",
 );
 

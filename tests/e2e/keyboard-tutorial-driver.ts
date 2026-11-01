@@ -30,16 +30,19 @@ async function chooseRow(page: Page, id: string) {
       .poll(() => row.evaluate((el) => el.closest("[data-testid][data-depth]")?.contains(document.activeElement)))
       .toBe(true);
   const seen = new Set<string>();
-  while ((await row.getAttribute("data-active")) !== "true") {
-    const active = await page.getByTestId(/^(command-item-|context-menu-item-)/).evaluateAll((items) =>
+  const activeRow = () =>
+    page.getByTestId(/^(command-item-|context-menu-item-)/).evaluateAll((items) =>
       items
         .filter((item) => item.getAttribute("data-active") === "true")
         .map((item) => item.getAttribute("data-testid"))
         .join(),
     );
+  while ((await row.getAttribute("data-active")) !== "true") {
+    const active = await activeRow();
     if (seen.has(active)) throw new Error(`Keyboard row is unreachable: ${id} (${active})`);
     seen.add(active);
     await page.keyboard.press("ArrowDown");
+    await expect.poll(activeRow).not.toBe(active);
   }
 }
 
@@ -232,10 +235,13 @@ export async function focus(page: Page, id: string) {
     if (body) state = await readState(true);
     else
       await expect
-        .poll(async () => {
-          state = await readState(roving);
-          return state.active;
-        })
+        .poll(
+          async () => {
+            state = await readState(roving);
+            return state.active;
+          },
+          { intervals: [0] },
+        )
         .not.toBe(previous);
   }
 }
@@ -369,6 +375,26 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
   } else if ("choose" in action) {
     await focus(page, action.choose);
     await chooseNativeSelect(page, action.choose, action.value);
+    if (action.choose === "live-speed") {
+      // The authored run can finish while this optional acceleration is selected.
+      // Completion restores normal speed; the finished lesson now owns the controls.
+      let finished = false;
+      await expect
+        .poll(async () => {
+          const state = await page.getByTestId(action.choose).evaluate(
+            (el, value) => ({
+              finished: window.__tutorial?.snapshot().state.value === "finished",
+              selected: (el as HTMLSelectElement).value === value,
+            }),
+            action.value,
+          );
+          finished = state.finished;
+          return finished || state.selected;
+        })
+        .toBe(true);
+      if (finished) throw new CompletedStep();
+      return;
+    }
     await expect(page.getByTestId(action.choose)).toHaveValue(
       action.choose === "sim-panel-add-step" || /^sim-panel-step-\d+-focus$/.test(action.choose) ? "" : action.value,
     );

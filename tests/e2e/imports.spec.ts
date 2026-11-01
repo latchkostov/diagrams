@@ -11,6 +11,8 @@ import {
   openShareChooser,
   waitForStableViewport,
   waitForCameraIdle,
+  fitDiagram,
+  waitForSelectionSettled,
 } from "./fixtures";
 
 // Infrastructure imports, batch 1: docker-compose (docs/research/imports.md). Open…, drop, the Import report
@@ -107,6 +109,13 @@ test.describe("imports: docker-compose", () => {
       { name: "docker-compose.override.yml", text: "services:\n  mailer:\n    image: axllent/mailpit\n" },
     ]);
     await expect(page.getByTestId("toast")).toContainText("Imported “shop” from docker-compose: 16 nodes");
+    await waitForCameraIdle(page);
+    await page.getByTestId("node-mailer").click();
+    await waitForSelectionSettled(page);
+    await page.getByTestId("view-focus").click();
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("node-topic-orders.placed.v1")).toBeHidden();
+    await fitDiagram(page);
     await expect(page.getByTestId("node-mailer")).toBeVisible();
     await expect(page.getByTestId("node-topic-orders.placed.v1")).toBeVisible();
     expectNoErrors(consoleErrors);
