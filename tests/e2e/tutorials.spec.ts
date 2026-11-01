@@ -2358,12 +2358,11 @@ test("trace-slowmo: Continue at exit keeps the reconstructed run in Live", async
   expectNoErrors(consoleErrors);
 });
 
-async function retrySequenceDownload(page: Page, downloaded: () => void) {
+async function retrySequenceDownload(page: Page) {
   const download = page.waitForEvent("download");
   await page.getByTestId("sequence-export-retry").click();
   const file = await download;
-  downloaded();
-  // The file can finish before the toast returns the keyboard on its next frame.
+  // A completed file alone doesn't establish that the keyboard is back in the dialog.
   await expect(page.getByTestId("sequence-download-svg")).toBeFocused();
   return file;
 }
@@ -2407,32 +2406,25 @@ test("batch4 Sequence: failed download stays current; Retry writes the same trac
   await expect(strip(page)).toHaveAttribute("data-step", "export");
   await page.evaluate(() => (window as Window & { restoreSequence(): void }).restoreSequence());
   await pauseClock(page);
-  let downloaded!: () => void;
-  const fileReady = new Promise<void>((resolve) => (downloaded = resolve));
-  let returned = false;
-  const retrying = retrySequenceDownload(page, downloaded).then((file) => {
-    returned = true;
-    return file;
-  });
+  let file;
   try {
-    await fileReady;
+    file = await retrySequenceDownload(page);
     await expect(page.getByTestId("sequence-export-retry")).toHaveCount(0);
-    expect(returned, "download completion precedes the toast's keyboard-return frame").toBe(false);
+    // #413 returns focus in the Retry event: Escape must work even while animation frames are paused.
+    await expect(strip(page)).toHaveAttribute("data-step", "limits");
+    await expect(page.getByTestId("sequence-messages")).toHaveText(before);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("sequence-dialog")).toHaveCount(0);
+    await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
   } finally {
-    await page.clock.runFor(32);
     await page.clock.resume();
   }
-  const file = await retrying;
   expect(await file.failure()).toBeNull();
   const bytes = readFileSync(await file.path(), "utf8");
   const captured = await page.evaluate(() => (window as Window & { sequenceBlob?: Blob }).sequenceBlob?.text());
   expect(bytes).toBe(captured);
   expect(bytes).toContain("Storefront");
   expect(bytes).toContain('data-testid="seq-participant-orders"');
-  await expect(strip(page)).toHaveAttribute("data-step", "limits");
-  await expect(page.getByTestId("sequence-messages")).toHaveText(before);
-  await page.keyboard.press("Escape");
-  await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   await expectNothingSaved(page);

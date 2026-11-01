@@ -573,21 +573,17 @@ class WorkerRenderer implements LiveRenderer {
       this.#invalidated = true;
       return;
     }
-    // A repaint the worker did on its own (fonts loaded) brings fresh stats, but it isn't the answer
-    // to the frame in flight: only an ack releases the next frame.
-    if (m.type === "ack") {
-      if (!this.#started) {
-        this.#started = true;
-        clearTimeout(this.#startTimer);
-        // The worker draws: the SVG's own march and the dot's CSS breath step aside for its canvases.
-        if (this.#host?.march) this.#setup.root.setAttribute(MARCH_ATTR, "canvas");
-        if (this.#host?.glow) this.#setup.root.setAttribute(GLOW_ATTR, "canvas");
-      }
-      this.#inFlight = false;
-      this.#workerAnimating = m.animating;
-      if (this.#sentGeometryRevision === this.#geometryRevision) {
-        this.#setup.overlay.hidden = false;
-      }
+    if (!this.#started) {
+      this.#started = true;
+      clearTimeout(this.#startTimer);
+      // The worker draws: the SVG's own march and the dot's CSS breath step aside for its canvases.
+      if (this.#host?.march) this.#setup.root.setAttribute(MARCH_ATTR, "canvas");
+      if (this.#host?.glow) this.#setup.root.setAttribute(GLOW_ATTR, "canvas");
+    }
+    this.#inFlight = false;
+    this.#workerAnimating = m.animating;
+    if (this.#sentGeometryRevision === this.#geometryRevision) {
+      this.#setup.overlay.hidden = false;
     }
     this.drawn = m.drawn;
     this.frames = m.frames;

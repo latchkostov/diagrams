@@ -19,14 +19,7 @@ import {
 } from "./particleRenderer";
 import { MarchRenderer } from "./marchRenderer";
 import { GlowRenderer } from "./toggleGlow";
-import {
-  SnapshotUnpacker,
-  type AckMessage,
-  type FrameMessage,
-  type FromWorker,
-  type RepaintMessage,
-  type ToWorker,
-} from "./renderProtocol";
+import { SnapshotUnpacker, type AckMessage, type FrameMessage, type FromWorker, type ToWorker } from "./renderProtocol";
 import { SlowPainter } from "./slowmo/painter";
 
 interface WorkerScope {
@@ -40,11 +33,11 @@ const scope = self as unknown as WorkerScope;
 function loadFonts(): void {
   void loadCanvasFonts(scope.fonts)
     .then(() => {
-      if (!renderer || !last) return;
+      if (!renderer || epoch === null) return;
       renderer.invalidate();
       // The main loop owns whether this layer is visible. A late font must not paint a hidden
       // low-zoom canvas (or redraw an obsolete view); ask it for the next eligible frame instead.
-      scope.postMessage({ type: "invalidate", epoch: last.epoch });
+      scope.postMessage({ type: "invalidate", epoch });
     })
     .catch(() => {});
 }
@@ -92,8 +85,8 @@ let options: RenderOptions = { theme: "light", reducedMotion: false, scale: 1, t
 let lastHits: readonly number[] | null = null;
 let lastLabels = "";
 let lastSlowLabels = "";
-/** The last frame's clock, focus, speed and slow motion: a repaint (fonts loaded) draws it again. */
-let last: Pick<FrameMessage, "epoch" | "now" | "focus" | "speed" | "slow"> | null = null;
+/** The current attachment, for font invalidation without retaining an obsolete frame. */
+let epoch: number | null = null;
 
 const env: RenderEnv = {
   transform: () => [view.x, view.y, view.zoom],
@@ -166,23 +159,20 @@ function onFrame(m: FrameMessage): void {
     painter.reset();
   }
   march?.draw(view, m.marchPhase, options.reducedMotion);
-  last = { epoch: m.epoch, now: m.now, focus: m.focus, speed: m.speed, slow: m.slow };
-  drawAndReport(last, "ack", m.snap?.buf);
+  epoch = m.epoch;
+  drawAndReport(m, m.snap?.buf);
 }
 
 /**
- * Draws and tells the main thread what it needs back. An "ack" answers a frame message (and returns
- * its particle buffer, `buf`); a "repaint" (fonts loaded) only reports, so the one frame the main
- * thread may have in flight stays in flight until its own ack.
+ * Draws the supplied frame and acknowledges it, returning its particle buffer for reuse.
  */
-function drawAndReport(f: NonNullable<typeof last>, kind: "ack" | "repaint", buf?: ArrayBuffer): void {
+function drawAndReport(f: FrameMessage, buf?: ArrayBuffer): void {
   if (!renderer) return;
   renderer.draw(snap, f.now, f.focus, f.slow ? painter : undefined, f.speed);
   const base = { epoch: f.epoch, drawn: renderer.drawn, frames: renderer.frames };
-  const ack: AckMessage | RepaintMessage =
-    kind === "ack" ? { type: "ack", ...base, animating: renderer.animating } : { type: "repaint", ...base };
+  const ack: AckMessage = { type: "ack", ...base, animating: renderer.animating };
   const transfer: Transferable[] = [];
-  if (buf && ack.type === "ack") {
+  if (buf) {
     ack.buf = buf;
     transfer.push(buf);
   }

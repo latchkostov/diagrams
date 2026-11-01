@@ -240,13 +240,13 @@ describe("frame flow control", () => {
       expect(overlay.hidden).toBe(true);
       expect(renderer.labels).toEqual([]);
       expect(base.dataset.traceLabels).toBeUndefined();
-      w.send({ type: "repaint", epoch, drawn: 1, frames: 3, labels: [label] });
+      w.send({ type: "invalidate", epoch });
       expect(overlay.hidden).toBe(true);
       w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false, labels: [label] });
       expect(overlay.hidden).toBe(true);
       expect(renderer.labels).toEqual([]);
       renderer.frame(frame(0.3));
-      w.send({ type: "ack", epoch, drawn: 1, frames: 4, animating: false, labels: [label] });
+      w.send({ type: "ack", epoch, drawn: 1, frames: 3, animating: false, labels: [label] });
       expect(overlay.hidden).toBe(false);
       expect(renderer.labels).toEqual([label]);
       resize();
@@ -282,7 +282,7 @@ describe("frame flow control", () => {
     renderer.dispose();
   });
 
-  it("keeps one frame in flight: a repaint doesn't release it, its ack does", async () => {
+  it("keeps one frame in flight: invalidation doesn't release it, its ack does", async () => {
     const { renderer } = await start();
     const w = workers[0];
     renderer.frame(frame(0.1));
@@ -290,12 +290,12 @@ describe("frame flow control", () => {
     const epoch = frames(w)[0].epoch!;
     renderer.frame(frame(0.2));
     expect(frames(w)).toHaveLength(1);
-    // Fonts loaded: the worker repainted on its own and reports counts.
-    w.send({ type: "repaint", epoch, drawn: 3, frames: 2 });
-    expect(renderer.drawn).toBe(3);
+    // Fonts loaded: invalidation requests a fresh frame without painting or acknowledging this one.
+    w.send({ type: "invalidate", epoch });
+    expect(renderer.drawn).toBe(0);
     renderer.frame(frame(0.3));
     expect(frames(w)).toHaveLength(1);
-    w.send({ type: "ack", epoch, drawn: 3, frames: 2, animating: false });
+    w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false });
     renderer.frame(frame(0.4));
     expect(frames(w)).toHaveLength(2);
   });

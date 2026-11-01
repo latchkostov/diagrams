@@ -92,23 +92,21 @@ test("live.note: exported SVG excludes awaited narration", async ({ page }) => {
   expect(svg).not.toContain("Follow a request through the decision service.");
 });
 
-async function retrySurface(page: Page, id: LazySurfaceId, loaded?: () => void) {
+async function retrySurface(page: Page, id: LazySurfaceId) {
   await page.getByTestId(id === "live.sequence" ? "lazy-dialog-retry" : "lazy-load-retry").focus();
   await page.keyboard.press("Enter");
   await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("loaded");
-  loaded?.();
   // Presence has no focus field of its own. Other surfaces keep the generated contract's
-  // non-body keyboard stop. Chunk completion precedes the toast's focus-return frame.
+  // non-body keyboard stop. Wait for the actual keyboard target as well as the chunk.
   if (id === "canvas.presence") await expect(page.getByTestId("example-picker")).toBeFocused();
   else await expect.poll(() => page.evaluate(() => document.activeElement !== document.body)).toBe(true);
 }
 
 for (const id of ["canvas.presence", "live.trace"] as const)
-  test(`${id} Retry waits for the toast's actual keyboard return after its chunk loads`, async ({ page }) => {
+  test(`${id} Retry returns the keyboard without another animation frame`, async ({ page }) => {
     await page.clock.install();
     const held = await holdChunk(page, surfaceChunk(id));
     held.fail = true;
-    let retrying: Promise<void> | undefined;
     try {
       await open(page, id);
       await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("failed");
@@ -118,24 +116,15 @@ for (const id of ["canvas.presence", "live.trace"] as const)
       await pauseClock(page);
       held.fail = false;
       held.release();
-      let returned = false;
-      let loaded!: () => void;
-      const chunkLoaded = new Promise<void>((resolve) => {
-        loaded = resolve;
-      });
-      retrying = retrySurface(page, id, loaded).then(() => {
-        returned = true;
-      });
-      await chunkLoaded;
+      await retrySurface(page, id);
       await expect(page.getByTestId("lazy-load-retry")).toHaveCount(0);
-      expect(returned, "chunk completion precedes the toast's focus-return frame").toBe(false);
-      await page.clock.runFor(32);
-      await retrying;
+      await expect(picker).toBeFocused();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
       await expect(picker).toBeFocused();
     } finally {
       held.release();
-      await page.clock.runFor(32);
-      await retrying;
+      await page.clock.resume();
     }
   });
 

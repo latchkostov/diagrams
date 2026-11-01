@@ -84,6 +84,38 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("the particle worker", () => {
+  it("redraws an unchanged paused view once after font completion", async () => {
+    let ready!: () => void;
+    fonts.load.mockImplementation(() => new Promise<void>((resolve) => (ready = resolve)));
+    send({ type: "init", canvas: fakeCanvas(base), overlay: fakeCanvas({}) });
+    const packer = new SnapshotPacker();
+    const snap = packer.pack({ particles: [particle(1, 0.25)], nodes: {} });
+    send(
+      frame({
+        sync: true,
+        dict: packer.takeDict(),
+        paths: { set: [["e1", 200, new Float32Array([0, 0, 200, 0])]], remove: [] },
+        snap,
+      }),
+    );
+    const paused = frame({});
+    const draws = base.drawImage;
+    const count = lastAck().frames;
+    send(paused);
+    expect(base.drawImage).toBe(draws);
+    expect(lastAck().frames).toBe(count);
+    ready();
+    await Promise.resolve();
+    expect(posted.at(-1)).toEqual({ type: "invalidate", epoch: 1 });
+    expect(base.drawImage).toBe(draws);
+    send(paused);
+    expect(base.drawImage).toBe(draws + 1);
+    expect(lastAck().frames).toBe(count + 1);
+    send(paused);
+    expect(base.drawImage).toBe(draws + 1);
+    expect(lastAck().frames).toBe(count + 1);
+  });
+
   it("defers late font drawing until the main loop supplies a visible frame", async () => {
     let ready!: () => void;
     fonts.load.mockImplementation(() => new Promise<void>((resolve) => (ready = resolve)));

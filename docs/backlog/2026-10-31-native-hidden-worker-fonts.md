@@ -2,7 +2,7 @@
 
 Dispatched Nightly 41267020590 at 7fc2488ed reports Windows lowzoom-chips.spec.ts's worker paint count increasing from four to five after its FIFO readback barrier, with the same 160 particles. The worker has an independent asynchronous draw path: loadCanvasFonts invalidates and immediately repaints its last frame. The main loop stops supplying frames below 60%, but cannot prevent that late callback from painting the hidden layer.
 
-Font completion now posts an epoch-scoped invalidation to the existing frame loop. That loop retains the request across an in-flight acknowledgement and sends the next frame only when ordinary drawing resumes. Visible paused drawings still render once; low-zoom canvases remain idle. No new visibility mode, paint-count allowance, timeout, tolerance or skip is introduced. The legacy repaint report handling remains compatible; font completion no longer produces it.
+Font completion now posts an epoch-scoped invalidation to the existing frame loop. That loop retains the request across an in-flight acknowledgement and sends the next frame only when ordinary drawing resumes. Visible paused drawings still render once; low-zoom canvases remain idle. No new visibility mode, paint-count allowance, timeout, tolerance or skip is introduced. The November 1 review follow-up removes the unused legacy repaint protocol and explicitly covers actual drawing with unchanged paused inputs.
 
 ## Regression evidence
 

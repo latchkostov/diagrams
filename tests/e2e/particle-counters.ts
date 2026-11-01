@@ -49,7 +49,7 @@ export function installParticleCountersInPage() {
         const report = event.data;
         if (
           !report ||
-          (report.type !== "ack" && report.type !== "repaint") ||
+          report.type !== "ack" ||
           typeof report.epoch !== "number" ||
           typeof report.frames !== "number" ||
           typeof report.drawn !== "number"
