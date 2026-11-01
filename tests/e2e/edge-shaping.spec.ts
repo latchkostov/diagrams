@@ -6,6 +6,8 @@ import {
   expect,
   gotoCanvas,
   savedDiagram,
+  savedCurrentDiagram,
+  waitForAutosave,
   STORAGE_KEYS,
   waitForStableViewport,
   waitForHistoryIdle,
@@ -128,10 +130,77 @@ async function startDrag(page: Page, k: number, dx: number, dy: number) {
 async function custom(page: Page) {
   await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-route", "custom");
   await waitForHistoryIdle(page);
-  const points = (await savedDiagram(page)).edges[0].waypoints;
+  const points = (await savedCurrentDiagram(page)).edges[0].waypoints;
   if (!points) throw new Error("Expected saved bends");
   return points;
 }
+
+test("route assertions read the current drop after its autosave acknowledgement", async ({ page }) => {
+  await page.clock.install();
+  await open(page);
+  await startDrag(page, 1, 60, 0);
+  await page.mouse.up();
+  await waitForAutosave(page);
+  const previous = await custom(page);
+  await pauseClock(page);
+  const save = await page.evaluateHandle(() => {
+    const schedule = window.setTimeout;
+    const callbacks: (() => void)[] = [];
+    // Hold the actual autosave debounce callback independently of history's clock.
+    window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      if (delay !== 300 || typeof handler !== "function") return schedule(handler, delay, ...args);
+      return schedule(() => callbacks.push(() => handler(...args)), delay);
+    }) as typeof window.setTimeout;
+    return {
+      held: () => callbacks.length,
+      release: () => {
+        window.setTimeout = schedule;
+        for (const callback of callbacks.splice(0)) callback();
+      },
+    };
+  });
+  try {
+    await startDrag(page, 1, 60, 0);
+    await page.mouse.up();
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(16);
+          return (
+            (await page.evaluate(() => window.__historyProbe?.().pending)) ||
+            !(await save.evaluate(({ held }) => held()))
+          );
+        },
+        { intervals: [0] },
+      )
+      .toBe(false);
+    expect(await page.evaluate(() => window.__documentProbe?.().saved)).toBe(false);
+    await page.evaluate((prefix) => {
+      const probe = window.__documentProbe;
+      if (!probe) throw new Error("Missing current-document probe");
+      window.__documentProbe = () => {
+        console.debug("route-read-started");
+        return probe();
+      };
+      const getItem = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (this: Storage, key: string) {
+        const result = getItem.call(this, key);
+        if (key.startsWith(prefix) || key.startsWith("diagrams.doc.v1:")) console.debug("route-read-started");
+        return result;
+      };
+    }, STORAGE_KEYS.autosavePrefix);
+    const started = page.waitForEvent("console", { predicate: (message) => message.text() === "route-read-started" });
+    const reading = custom(page);
+    await started;
+    await save.evaluate(({ release }) => release());
+    const current = await reading;
+    expect(current).toHaveLength(2);
+    expect(current).not.toEqual(previous);
+  } finally {
+    await save.evaluate(({ release }) => release());
+    await save.dispose();
+  }
+});
 
 test("first inner drag freezes the drawn route, previews without writing, and undoes in one step", async ({ page }) => {
   await open(page);
