@@ -23,3 +23,7 @@ A later dispatched Windows failure reveals an independent product issue: late ca
 ## Sequence Retry keyboard return
 
 The Sequence retry fixture now acknowledges the restored SVG invoker's focus before sending Escape. A real paused return frame distinguishes the completed download from restored keyboard ownership. The product's existing focus return and modal policy stay unchanged, as do the exact downloaded bytes and tutorial completion assertions.
+
+## Trace Retry follow-up
+
+The generated lazy-surface driver now acknowledges its original non-body-focus boundary after Retry for trace and the other surfaces, retaining presence's stronger exact invoker check. Both presence and trace hold the actual return frame in regression coverage. No application focus policy or assertion is weakened.
