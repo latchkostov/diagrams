@@ -13,6 +13,8 @@ import {
   waitForStableViewport,
   waitForSelectionSettled,
   savedDiagram,
+  savedCurrentDiagram as savedBoundary,
+  waitForAutosave,
   waitForHistoryIdle,
   waitForGuides,
   STORAGE_KEYS,
@@ -360,6 +362,39 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   expectNoErrors(consoleErrors);
 });
 
+test("boundary assertions wait for the current document's save acknowledgement", async ({ page }) => {
+  await page.clock.install();
+  await seed(page, nestedFixture);
+  await page.getByTestId("group-label-grp-core").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-field-label").fill("Saved boundary");
+  await page.getByTestId("inspector-field-label").press("Enter");
+  await waitForAutosave(page);
+  await pauseClock(page);
+  await page.getByTestId("inspector-field-label").fill("Current boundary");
+  await expect(page.getByTestId("group-label-grp-core")).toHaveText("Current boundary");
+  expect(await page.evaluate(() => window.__documentProbe?.().saved)).toBe(false);
+  await page.evaluate((prefix) => {
+    const probe = window.__documentProbe;
+    if (!probe) throw new Error("Missing current-document probe");
+    window.__documentProbe = () => {
+      console.debug("boundary-read-started");
+      return probe();
+    };
+    const getItem = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (this: Storage, key: string) {
+      const result = getItem.call(this, key);
+      if (key.startsWith(prefix) || key.startsWith("diagrams.doc.v1:")) console.debug("boundary-read-started");
+      return result;
+    };
+  }, STORAGE_KEYS.autosavePrefix);
+  const started = page.waitForEvent("console", { predicate: (message) => message.text() === "boundary-read-started" });
+  const reading = savedBoundary(page);
+  await started;
+  await page.clock.runFor(1000);
+  expect((await reading).groups?.find((group) => group.id === "grp-core")?.label).toBe("Current boundary");
+});
+
 test("Alt-drag remaps a boundary subtree and leaves the original untouched through Undo and Redo", async ({
   page,
   consoleErrors,
@@ -375,7 +410,7 @@ test("Alt-drag remaps a boundary subtree and leaves the original untouched throu
   await page.getByTestId("group-label-grp-core").click();
   await waitForSelectionSettled(page);
   await fitDiagram(page);
-  const original = await savedDiagram(page);
+  const original = await savedBoundary(page);
   const handle = await boxOf(page.getByTestId("group-label-grp-core"));
   const x = handle.x + handle.width / 2;
   const y = handle.y + handle.height / 2;
@@ -387,7 +422,7 @@ test("Alt-drag remaps a boundary subtree and leaves the original untouched throu
   await page.keyboard.up("Alt");
   await waitForHistoryIdle(page);
   const assertCopy = async () => {
-    const diagram = await savedDiagram(page);
+    const diagram = await savedBoundary(page);
     const parent = diagram.groups?.find((g) => g.id === "grp-core-1");
     expect(parent).toBeDefined();
     const beforeParent = original.groups?.find((g) => g.id === "grp-core");
@@ -413,14 +448,14 @@ test("Alt-drag remaps a boundary subtree and leaves the original untouched throu
     }
   };
   await expect(assertCopy).toPass();
-  const copied = await savedDiagram(page);
+  const copied = await savedBoundary(page);
   for (const id of ["group-grp-core-1", "group-child-1", "node-member-1", "annotation-note-1"]) {
     await expect(page.getByTestId(id)).toHaveCount(1);
   }
   await page.getByTestId("undo-button").click();
-  await expect.poll(() => savedDiagram(page)).toEqual(original);
+  await expect.poll(() => savedBoundary(page)).toEqual(original);
   await page.getByTestId("redo-button").click();
-  await expect.poll(() => savedDiagram(page)).toEqual(copied);
+  await expect.poll(() => savedBoundary(page)).toEqual(copied);
   await expect(assertCopy).toPass();
   expectNoErrors(consoleErrors);
 });

@@ -1,0 +1,7 @@
+## Capture the final copy before comparing Undo and Redo
+
+Baseline Nightly 41245495563 fails Windows boundary Alt-drag Redo equality. Its expected saved copy has the parent at (160, 130); Redo has the final collision-cleared parent at (390, 350). The copy check accepts any positive translation and can therefore accept an intermediate persisted drag while a newer document is waiting to save. History debounce completion alone is not the document's autosave acknowledgement.
+
+The affected case now reads through the existing current-document save helper when capturing the original, asserting/capturing the copy, and comparing Undo and Redo. Exact equality for every original and copied boundary, member and annotation remains unchanged. No history grouping, placement rule or product geometry changes.
+
+A browser regression first flushes a saved boundary name, pauses the fake clock, then leaves a second rendered name waiting for autosave. It acknowledges the reader's first real document/storage access before advancing the save clock, preventing the test setup from overtaking the stale reader. Restoring the old storage-only reader fails the exact label assertion. The initial fixture attempted this on an example's first edit, whose zero-delay promotion can already save; explicitly flushing the first edit makes the pending second edit deterministic. Native and Linux results are recorded in the verification fragment and PR.

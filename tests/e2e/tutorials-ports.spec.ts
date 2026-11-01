@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, pageLoadTimeout, expectNoErrors, openShareChooser } from "./fixtures";
+import { test, expect, pageLoadTimeout, expectNoErrors, openShareChooser, animationFrames } from "./fixtures";
 import { openAdvanced, openAiPanel } from "./ai-helpers";
 import { emulateTracker } from "./collab-tracker";
 import type { ProductObservations } from "../../src/lib/observations";
@@ -17,6 +17,9 @@ const latest = (page: Page) =>
     if (!window.__observationLab) throw new Error("Missing observation fixture");
     return window.__observationLab.latest();
   });
+async function expectJoined(page: Page, role: "creator" | "joiner") {
+  await expect.poll(async () => (await latest(page)).collaboration).toMatchObject({ status: "joined", role });
+}
 const finished = (page: Page) => expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
 async function normalCanvas(page: Page) {
   await page.getByTestId("tutorial-exit").click();
@@ -167,6 +170,49 @@ test("AI: a deterministic Advanced reply publishes the applied turn", async ({ p
   expectNoErrors(consoleErrors);
 });
 
+test("collaboration confirmation waits for its published document-ready observation", async ({ page }) => {
+  await begin(page, "collaboration");
+  await normalCanvas(page);
+  await expect.poll(() => page.evaluate(() => window.__observationLab?.ready())).toBe(true);
+  await page.evaluate(() => {
+    const lab = window.__observationLab;
+    if (!lab) throw new Error("Missing observation fixture");
+    const read = lab.latest;
+    lab.latest = () => {
+      console.debug("collaboration-read-started");
+      return read();
+    };
+  });
+  const started = page.waitForEvent("console", {
+    predicate: (message) => message.text() === "collaboration-read-started",
+  });
+  let state = "pending";
+  let failure: unknown;
+  const reading = expectJoined(page, "joiner").then(
+    () => {
+      state = "joined";
+    },
+    (error: unknown) => {
+      state = "failed";
+      failure = error;
+    },
+  );
+  const publish = () =>
+    page.evaluate((event) => window.__observationLab?.publish("collaboration", event), fake.collaboration);
+  try {
+    await started;
+    await animationFrames(page);
+    expect(state, "peer presence does not acknowledge a document-ready publication").toBe("pending");
+    await publish();
+    await reading;
+    if (failure) throw failure;
+    expect(state).toBe("joined");
+  } finally {
+    await publish();
+    await reading;
+  }
+});
+
 test("collaboration: cancelling consent publishes nothing; a real room publishes joined and left", async ({
   browser,
   baseURL,
@@ -189,7 +235,7 @@ test("collaboration: cancelling consent publishes nothing; a real room publishes
     await page.getByTestId("room-start-confirm").click();
     await expect(page.getByTestId("room-started-dialog")).toBeVisible();
     const link = await page.getByTestId("room-link").inputValue();
-    expect((await latest(page)).collaboration).toMatchObject({ status: "joined", role: "creator" });
+    await expectJoined(page, "creator");
     await page.getByTestId("room-started-done").click();
     const guest = await other.newPage();
     await begin(guest, "collaboration");
@@ -209,7 +255,7 @@ test("collaboration: cancelling consent publishes nothing; a real room publishes
     expect((await latest(guest)).collaboration).toBeUndefined();
     await page.getByTestId("room-knock-admit").first().click();
     await expect(guest.getByTestId("room-chip")).toHaveAttribute("data-peers", "1");
-    expect((await latest(guest)).collaboration).toMatchObject({ status: "joined", role: "joiner" });
+    await expectJoined(guest, "joiner");
     await page.getByTestId("room-chip").click();
     await page.getByTestId("room-leave").click();
     await expect.poll(async () => (await latest(page)).collaboration?.status).toBe("left");
