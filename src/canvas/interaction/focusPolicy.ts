@@ -11,7 +11,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * |     | blur, resize, gesture, command,     |                                 | an action or a press that moved focus wins             |
  * |     | replaced, unmount)                  |                                 |                                                        |
  * | M3  | menu.closed                         | no invoker, or a dialog         | keep (a dialog gives focus back to its own opener)     |
- * | M4  | menu.opened                         |                                 | keep (the menu takes focus inside itself)              |
+ * | M4  | menu.opened                         | canvas menu                     | retire the old move; the menu takes focus itself       |
+ * |     |                                     | Live popover or dialog          | keep (its own controller moves focus)                  |
  * | M5  | menu.closed(escape), a Live popover | it had an invoker               | focus the invoker now (else the canvas)                |
  * | M6  | menu.closed(any other), Live popover|                                 | keep (a pick or a press leaves focus where it put it)  |
  * | M7  | menu.closed(remote): a peer deleted |                                 | the canvas after the commit, if focus was lost (the    |
@@ -124,7 +125,10 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return move({ target: { kind: "element", handle: event.invoker }, when: "commit", onlyIfLost: true });
     }
     case "menu.opened":
-      return keep({ openMenus: [...(state.openMenus ?? []), event.kind] });
+      return keep({
+        openMenus: [...(state.openMenus ?? []), event.kind],
+        pending: event.kind === "live" || event.kind === "dialog" ? state.pending : null,
+      });
     case "selection.changed": {
       const { cause, target } = event;
       if (cause === "keyboard" && target)

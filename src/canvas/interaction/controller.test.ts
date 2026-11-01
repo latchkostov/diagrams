@@ -267,6 +267,30 @@ it("segment keys yield to selection changes, menus, panning and touch gesture ow
 });
 
 describe("interaction controller: menus", () => {
+  it.each(["context", "quickAdd", "connected"] as const)(
+    "%s retires a late canvas focus move when the menu takes the keyboard",
+    (kind) => {
+      const h = harness();
+      h.env.nodes.set("a", { drawn: true });
+      h.env.active = h.nodeEl("a");
+      h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "a" } });
+      expect(h.controller.pendingTarget()).toEqual({ kind: "node", id: "a" });
+      h.controller.openMenu(kind, "menu", { via: "keyboard" });
+      const menu = h.el("menu-list");
+      h.env.active = menu;
+      h.drain();
+      expect(h.env.active).toBe(menu);
+      expect(h.focused).toEqual([]);
+      expect(h.controller.state.roving).toBe("a");
+      expect(h.controller.state.pending).toBeNull();
+      h.controller.closeMenu("escape");
+      h.env.active = null;
+      h.commit();
+      h.drain();
+      expect(h.focused).toEqual(["node:a"]);
+    },
+  );
+
   it("Esc in a menu gives focus back to its invoker once React has committed the close (M1)", () => {
     const h = harness();
     const node = h.el("node:a");
