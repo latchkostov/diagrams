@@ -130,8 +130,8 @@ for (const viewport of [
       await reachable(page.getByTestId("tutorial-exit"));
       await reachable(page.getByTestId("tutorial-skip"));
       if ((await page.getByTestId("coach-card").getAttribute("data-compact")) === "true")
-        await expect(page.getByTestId("coach-title")).toBeInViewport();
-      else await expect(page.getByTestId("tutorial-goal")).toBeInViewport();
+        await reachable(page.getByTestId("coach-title"));
+      else await reachable(page.getByTestId("tutorial-goal"));
     }
     await page.getByTestId("dock-snap-peek").click();
     await page.evaluate(() => {
@@ -163,9 +163,37 @@ for (const viewport of [
     await expect(page.getByTestId("live-note")).toHaveAttribute("data-expanded", "1");
     await reachable(page.getByTestId("tutorial-exit"));
     await reachable(page.getByTestId("tutorial-skip"));
-    if ((await page.getByTestId("coach-card").getAttribute("data-compact")) === "true")
-      await expect(page.getByTestId("coach-title")).toBeInViewport();
-    else await expect(page.getByTestId("tutorial-goal")).toBeInViewport();
+    for (const fontSize of ["16px", "24px"]) {
+      await page.evaluate((fontSize) => {
+        document.documentElement.style.fontSize = fontSize;
+      }, fontSize);
+      const instruction =
+        (await page.getByTestId("coach-card").getAttribute("data-compact")) === "true"
+          ? page.getByTestId("coach-title")
+          : page.getByTestId("tutorial-words");
+      await expect(instruction).toBeInViewport({ ratio: 1 });
+      await expect
+        .poll(async () => {
+          const note = await box(page.getByTestId("live-note"));
+          const words = await box(instruction);
+          return (
+            note.y + note.height <= words.y ||
+            words.y + words.height <= note.y ||
+            note.x + note.width <= words.x ||
+            words.x + words.width <= note.x
+          );
+        })
+        .toBe(true);
+      if (await page.getByTestId("tutorial-words").isVisible()) {
+        const scroll = await page.getByTestId("tutorial-words").evaluate((el) => {
+          el.scrollTop = el.scrollHeight;
+          return { end: el.scrollTop + el.clientHeight, height: el.scrollHeight };
+        });
+        expect(scroll.end).toBeGreaterThanOrEqual(scroll.height - 1);
+      }
+      await reachable(page.getByTestId("tutorial-exit"));
+      await reachable(page.getByTestId("tutorial-skip"));
+    }
     await page.getByTestId("live-note-close").click();
     await page.getByTestId("tutorial-exit").click();
     await expect(page.getByTestId("tutorials-view")).toBeVisible();

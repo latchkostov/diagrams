@@ -13,27 +13,21 @@ afterEach(() => {
 it("remeasures the live anchor after camera movement, also avoiding a floating instruction card", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
-  let mutated: MutationCallback = () => {};
   let resized: ResizeObserverCallback = () => {};
-  const disconnect = vi.fn();
-  vi.stubGlobal(
-    "MutationObserver",
-    class {
-      constructor(callback: MutationCallback) {
-        mutated = callback;
-      }
-      observe() {}
-      disconnect = disconnect;
-    },
-  );
+  const observedSizes = new Set<Element>();
+  const observeMutations = vi.spyOn(MutationObserver.prototype, "observe");
   vi.stubGlobal(
     "ResizeObserver",
     class {
       constructor(callback: ResizeObserverCallback) {
         resized = callback;
       }
-      observe() {}
-      disconnect() {}
+      observe(target: Element) {
+        observedSizes.add(target);
+      }
+      disconnect() {
+        observedSizes.clear();
+      }
     },
   );
   let target = new DOMRect(300, 400, 200, 60);
@@ -44,7 +38,9 @@ it("remeasures the live anchor after camera movement, also avoiding a floating i
   obstacle.setAttribute("data-tip-obstacle", "");
   obstacle.getBoundingClientRect = () => new DOMRect(300, 500, 250, 180);
   const host = document.createElement("div");
-  document.body.append(anchor, obstacle, host);
+  const camera = document.createElement("div");
+  camera.append(anchor);
+  document.body.append(camera, obstacle, host);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     return new DOMRect(Number.parseFloat(this.style.left) || 0, Number.parseFloat(this.style.top) || 0, 240, 80);
   });
@@ -59,8 +55,20 @@ it("remeasures the live anchor after camera movement, also avoiding a floating i
     for (let i = 0; i < 10; i++) await act(() => vi.advanceTimersToNextFrame());
     expect(measure).not.toHaveBeenCalled();
     target = new DOMRect(300, 540, 200, 60);
-    await act(() => {
-      for (let i = 0; i < 10; i++) mutated([{ target: anchor } as unknown as MutationRecord], {} as MutationObserver);
+    expect(observeMutations).toHaveBeenCalledWith(
+      document.body,
+      expect.objectContaining({ subtree: true, attributes: true }),
+    );
+    await act(async () => {
+      const delivered = new Promise<void>((resolve) => {
+        const observer = new MutationObserver(() => {
+          observer.disconnect();
+          resolve();
+        });
+        observer.observe(camera, { attributes: true });
+      });
+      for (let i = 0; i < 10; i++) camera.style.transform = `translateX(${i}px)`;
+      await delivered;
       vi.advanceTimersToNextFrame();
     });
     expect(measure).toHaveBeenCalledTimes(1);
@@ -72,15 +80,24 @@ it("remeasures the live anchor after camera movement, also avoiding a floating i
     ).toBe(true);
     measure.mockClear();
     await act(() => {
-      resized([], {} as ResizeObserver);
-      window.dispatchEvent(new Event("resize"));
-      window.dispatchEvent(new Event("scroll"));
+      expect(observedSizes.has(anchor)).toBe(true);
+      expect(observedSizes.has(tip)).toBe(true);
+      expect(observedSizes.has(obstacle)).toBe(true);
+      resized([{ target: anchor } as unknown as ResizeObserverEntry], {} as ResizeObserver);
       vi.advanceTimersToNextFrame();
     });
     expect(measure).toHaveBeenCalledTimes(1);
     // Own placement writes must not schedule a new measurement.
-    await act(() => {
-      mutated([{ target: tip } as unknown as MutationRecord], {} as MutationObserver);
+    await act(async () => {
+      const delivered = new Promise<void>((resolve) => {
+        const observer = new MutationObserver(() => {
+          observer.disconnect();
+          resolve();
+        });
+        observer.observe(tip, { attributes: true });
+      });
+      tip.style.left = "12px";
+      await delivered;
       vi.advanceTimersToNextFrame();
     });
     expect(measure).toHaveBeenCalledTimes(1);
@@ -104,9 +121,9 @@ it("remeasures the live anchor after camera movement, also avoiding a floating i
     expect(measure).not.toHaveBeenCalled();
   } finally {
     await act(() => root.unmount());
-    anchor.remove();
+    camera.remove();
     obstacle.remove();
     host.remove();
   }
-  expect(disconnect).toHaveBeenCalled();
+  expect(observedSizes.size).toBe(0);
 });

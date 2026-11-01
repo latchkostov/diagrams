@@ -77,3 +77,13 @@ it("keeps authored keyboard routes for native radio groups", () => {
   expect(route).toContainEqual({ press: "ArrowDown" });
   expect(withKeyboardSolutions(lesson).steps.find((s) => s.id === "default")!.keyboardSolution).toBe(route);
 });
+
+it("uses an authored keyboard solution before translating unsupported pointer gestures", () => {
+  const keyboardSolution = [{ press: "ControlOrMeta+a" }];
+  const lesson = allTutorials[0];
+  const routed = withKeyboardSolutions({
+    ...lesson,
+    steps: [{ ...lesson.steps[0], solution: [{ modClick: "node-api", modifiers: ["Control"] }], keyboardSolution }],
+  });
+  expect(routed.steps[0].keyboardSolution).toBe(keyboardSolution);
+});
