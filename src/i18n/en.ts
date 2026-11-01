@@ -5533,7 +5533,7 @@ const en = {
   "tutorials.deadLetters.finishV3":
     "You set three deliveries; a fresh command trace showed quarantine on delivery 3. DLQ replay is unavailable here, and real recovery needs a repaired cause and safe repeated handling.",
   "tutorials.retryStorm.waitGoalV2":
-    "Read Payments backlog after the slowdown clears. Predict why healthy CPU can coexist with growing backlog: retries add attempts faster than useful work completes.",
+    "Read Checkout’s Request readout after the slowdown clears. Predict why healthy CPU can coexist with waiting requests: retries add attempts faster than useful work completes.",
   "tutorials.retryStorm.finishV2":
     "You ran three quick retries; the failed backlog expectation showed overload persisting after the slowdown. Failed counts attempts, so compare useful goodput before choosing a recovery policy.",
   "tutorials.rateLimit.rejectedDoneV2":

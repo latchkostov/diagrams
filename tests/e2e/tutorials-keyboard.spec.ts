@@ -335,22 +335,38 @@ test("keyboard control traversal waits for a pending canvas focus transaction be
     });
   });
   const byTestId = page.getByTestId.bind(page);
-  let release: Promise<unknown> | undefined;
-  // Publish the fixture's pending commit when the driver observes its readiness signal.
+  const press = page.keyboard.press.bind(page.keyboard);
+  let observed = false;
+  let keys = 0;
+  let settled = false;
   page.getByTestId = (id) => {
-    if (id === "canvas-wrap" && !release)
-      release = page.evaluate(() => {
-        const canvas = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
-        if (!canvas) throw new Error("Missing focus fixture");
-        canvas.dataset.interactionState = "idle";
-      });
+    if (id === "canvas-wrap") observed = true;
     return byTestId(id);
   };
+  page.keyboard.press = (...args) => {
+    keys++;
+    return press(...args);
+  };
+  const focusing = focus(page, "last").then(() => (settled = true));
   try {
-    await focus(page, "last");
+    await expect.poll(() => observed).toBe(true);
+    await animationFrames(page);
+    expect(settled).toBe(false);
+    expect(keys).toBe(0);
+    await expect(byTestId("rf__node-fixture")).toBeFocused();
+    // Only this explicit commit releases focus, independently of any driver lookup.
+    await byTestId("canvas-wrap").evaluate((canvas) => {
+      canvas.dataset.interactionState = "idle";
+    });
+    await focusing;
+    expect(keys).toBe(1);
     await expect(byTestId("last")).toBeFocused();
   } finally {
     page.getByTestId = byTestId;
-    await release;
+    page.keyboard.press = press;
+    await byTestId("canvas-wrap").evaluate((canvas) => {
+      canvas.dataset.interactionState = "idle";
+    });
+    await focusing.catch(() => undefined);
   }
 });

@@ -55,7 +55,7 @@ export function diagnosticLesson(lesson: Tutorial, initial: () => DiagramFile): 
     start: initial,
     steps: lesson.steps.map((step) => {
       const keyboard = msg("tutorials.diagnostics.keyboardRoute");
-      const targets = step.targets.map((target) => ({ ...target, tip: step.title }));
+      const targets = step.targets;
       return {
         ...step,
         targets,

@@ -257,7 +257,10 @@ const lesson: Tutorial = {
         { testId: "live-note-continue", tip: msg("tutorials.scaleOnBacklog.drainedGoal") },
         { testId: "live-expectations-summary", tip: msg("tutorials.scaleOnBacklog.drainedGoal") },
       ],
-      demo: [{ kind: "continueNote", simulation: "wake-on-burst", atLeastMs: 10000 }],
+      demo: [
+        { kind: "runSimulation", id: "wake-on-burst" },
+        { kind: "continueNote", simulation: "wake-on-burst", atLeastMs: 10000 },
+      ],
       solution: [
         { playing: true },
         { click: "live-note-continue" },

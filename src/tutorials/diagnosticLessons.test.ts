@@ -1,5 +1,6 @@
 /* eslint-disable local/no-literal-ui-text -- Deliberate near misses and synthetic display labels. */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { LiveController } from "../live/controller";
 import type { DiagramFile, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
@@ -10,6 +11,8 @@ import { scaleOnBacklog } from "./catalog/scaleOnBacklog";
 import { circuitBreaker } from "./catalog/circuitBreaker";
 import { deadLetters } from "./catalog/deadLetters";
 import { timeoutsPools } from "./catalog/timeoutsPools";
+import { retryStorm } from "./catalog/retryStorm";
+import { t } from "../i18n";
 import type { Check, Tutorial } from "./types";
 
 const checks = (c: Check): Check[] => (c.kind === "all" ? c.checks.flatMap(checks) : [c]);
@@ -41,6 +44,25 @@ function setup(lesson: Tutorial, id: string, diagram?: DiagramFile) {
 }
 
 describe("diagnose waiting with real semantic evidence", () => {
+  it("names the observed retry-storm node in the goal, coach and solution", () => {
+    const step = retryStorm.steps.find((s) => s.id === "watch-waiting")!;
+    expect(step.check.kind).toBe("readout");
+    if (step.check.kind !== "readout") throw new Error("Expected a node readout");
+    const d = JSON.parse(readFileSync("src/examples/retry-storm.json", "utf8")) as DiagramFile;
+    const subject = step.check.subject!;
+    const node = d.nodes.find((n) => n.id === resolveSubjects(retryStorm, d)[subject])!;
+    expect(step.goal()).toContain(node.label);
+    expect(step.targets).toContainEqual(expect.objectContaining({ testId: `node-{${subject}}` }));
+    expect(step.targets[0].tip()).toContain(node.label);
+    expect(step.solution).toContainEqual({ hover: `node-{${subject}}` });
+  });
+  it("preserves field-specific coach tips on every default route", () => {
+    const step = scaleOnBacklog.steps.find((s) => s.id === "signal")!;
+    const target = step.targets.find((target) => target.testId === "autoscaling-target")!;
+    expect(target.tip()).toBe(t("tutorials.scaleOnBacklog.signalTip"));
+    for (const route of step.coach!.routes!)
+      expect(route.targets!.find((target) => target.testId === "autoscaling-target")!.tip()).toBe(target.tip());
+  });
   it("holds Starting separately from Ready and demonstrates the partition ceiling with backlog", () => {
     const s = setup(scaleOnBacklog, "wake-on-burst");
     try {

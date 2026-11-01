@@ -26,6 +26,10 @@ import { runChecks } from "../checks/run";
 import { HistoryController } from "../editor/historyController";
 import { toFlow, fromFlow } from "../canvas/convert";
 import { importAndReview } from "./catalog/importAndReview";
+import { scaleOnBacklog } from "./catalog/scaleOnBacklog";
+import { backlogScalingPractice } from "../lab/waitingPractice";
+import { stencilRole } from "../stencils/roles";
+import { matchesExpectation } from "./simulations";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -263,6 +267,72 @@ const named = (): DiagramFile => ({
     { id: "api", stencil: "generic.service", label: "Orders API", x: 200, y: 0 },
   ],
   edges: [{ id: "edge", from: "app", to: "api", kind: "sync" }],
+});
+
+it.each([
+  ["target", "skip"],
+  ["value", "skip"],
+  ["target", "fix"],
+  ["value", "fix"],
+] as const)("assistance repairs an altered backlog expectation %s via %s and completes", async (field, action) => {
+  const initial = backlogScalingPractice();
+  initial.nodes.find((n) => n.id === "render-requests")!.props!.partitions = 6;
+  const reference = structuredClone(initial.simulations![0]);
+  const changed = initial.simulations![0];
+  changed.expectations = changed.expectations!.map((e, i) => ({ ...e, id: `generated-${i}` }));
+  const expectation = changed.expectations!.find((e) => "node" in e.metric && e.metric.node === "render-workers")!;
+  if (field === "target") expectation.metric = { node: "render-requests", field: "processed" };
+  else expectation.value = 81;
+  const step = scaleOnBacklog.steps.find((s) => s.id === "drained")!;
+  const s = sandbox({ ...scaleOnBacklog, steps: [step] }, initial);
+  const controller = new LiveController(initial, { roleOf: stencilRole });
+  cleanup.push(() => controller.dispose());
+  s.hostState.canvas.live = true;
+  s.hostState.session.state = controller.getState;
+  s.host.runSimulation = vi.fn((id) => {
+    controller.selectSimulation(s.getDiagram().simulations!.find((sim) => sim.id === id)!);
+    controller.setPlaying(true);
+    return true;
+  });
+  const ui = {
+    controller,
+    events: { open: false, nodeId: null },
+    simulations: initial.simulations!,
+    saveSimulation: vi.fn((sim: NonNullable<typeof initial.simulations>[number]) => {
+      ui.simulations = s.getDiagram().simulations!.map((own) => (own.id === sim.id ? sim : own));
+      s.edit({ ...s.getDiagram(), simulations: ui.simulations });
+      return true;
+    }),
+  };
+  cleanup.push(planningHost.publish(ui as unknown as LiveUi));
+  s.host.runSimulation(changed.id);
+  const play = () => {
+    for (let t = 0; t < reference.durationMs!; t += 10) controller.advance(10);
+    controller.publish();
+    s.tick();
+  };
+  // Reproduce the learner's replay, including its two held readings.
+  play();
+  controller.resume();
+  play();
+  controller.resume();
+  play();
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  s.runner.send(action === "skip" ? { type: "skip", stepId: step.id } : { type: "fix" });
+  // Drain microtasks and advance simulation time; no real-time completion budget.
+  for (let turn = 0; turn < 24 && s.runner.getSnapshot().state.value !== "finished"; turn++) {
+    await Promise.resolve();
+    play();
+  }
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  expect(ui.saveSimulation).toHaveBeenCalledOnce();
+  expect(s.host.runSimulation).toHaveBeenCalledTimes(2);
+  const repaired = s.getDiagram().simulations![0].expectations!;
+  expect(repaired.map((e) => e.id)).toEqual(changed.expectations.map((e) => e.id));
+  expect(repaired).toHaveLength(reference.expectations!.length);
+  for (const expected of reference.expectations!)
+    expect(repaired.some((e) => matchesExpectation(e, expected))).toBe(true);
 });
 
 it("presents a patch target once while waiting for Live to apply its props", async () => {
