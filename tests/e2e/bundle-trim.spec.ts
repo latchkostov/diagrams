@@ -414,7 +414,7 @@ for (const name of [undefined, "Cache audit"])
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("quick-add")).toHaveCount(0);
     await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
-    const after = await savedDiagram(page);
+    const after = await savedQuickAdd(page);
     expect(after.nodes).toHaveLength(before.nodes.length + 1);
     const added = after.nodes.find((node) => !before.nodes.some((old) => old.id === node.id));
     expect(added).toBeDefined();
