@@ -15,3 +15,7 @@ Renderer CPU comparisons use the established performance fixture without per-fra
 ## Remaining review
 
 Low-zoom export deadlines, native latency scrolling and any replay, selection, Lab, narration, confirmation or recording failures still present in the final dispatched Nightly remain enabled and require their own evidence. No speculative camera, colour, scrolling, renderer, server, TURN or tracker repair is included.
+
+## Hidden worker repaint
+
+A later dispatched Windows failure reveals an independent product issue: late canvas fonts paint the worker's last snapshot even while low zoom hides the layer. Font completion now invalidates the normal frame loop instead of drawing independently. Visible paused drawings still request one fresh frame; hidden drawings wait until they return, using current geometry. An invalidation survives an older in-flight acknowledgement and ignores an old attachment's epoch. No controls or visual tokens change.

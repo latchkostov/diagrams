@@ -3,6 +3,9 @@ import type { Particle } from "../sim/types";
 import { DEFAULT_TOKENS } from "./particleRenderer";
 import { SnapshotPacker, type AckMessage, type FrameMessage, type FromWorker, type ToWorker } from "./renderProtocol";
 
+const fonts = vi.hoisted(() => ({ load: vi.fn<() => Promise<void>>() }));
+vi.mock("./canvasFonts", () => ({ loadCanvasFonts: fonts.load }));
+
 // The worker module, driven through its message handler with recording canvases: what the main
 // thread posts is what gets drawn, and the acks carry back what the live view reads.
 
@@ -58,6 +61,7 @@ const frame = (over: Partial<FrameMessage>): FrameMessage => ({
 
 beforeEach(async () => {
   vi.resetModules();
+  fonts.load.mockImplementation(() => new Promise(() => {}));
   posted = [];
   base = {};
   scope = { onmessage: null, postMessage: (m) => posted.push(m) };
@@ -80,6 +84,23 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("the particle worker", () => {
+  it("defers late font drawing until the main loop supplies a visible frame", async () => {
+    let ready!: () => void;
+    fonts.load.mockImplementation(() => new Promise<void>((resolve) => (ready = resolve)));
+    send({ type: "init", canvas: fakeCanvas(base), overlay: fakeCanvas({}) });
+    send(frame({ sync: true }));
+    const draws = base.clearRect;
+    const count = lastAck().frames;
+    ready();
+    await Promise.resolve();
+    expect(posted.at(-1)).toEqual({ type: "invalidate", epoch: 1 });
+    expect(base.clearRect).toBe(draws);
+    expect(lastAck().frames).toBe(count);
+    // A hidden loop supplies no frames. Returning to the drawing uses the current view, not last's.
+    send(frame({ view: { x: 50, y: 100, zoom: 1, width: 400, height: 300, dpr: 1 } }));
+    expect(lastAck().frames).toBe(count + 1);
+  });
+
   it("draws the posted particles along the posted paths and acks with hits and counts", () => {
     const packer = new SnapshotPacker();
     const snap = packer.pack({ particles: [particle(1, 0.25)], nodes: {} });

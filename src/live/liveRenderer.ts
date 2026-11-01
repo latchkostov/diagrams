@@ -507,6 +507,7 @@ class WorkerRenderer implements LiveRenderer {
   #glowKey = "|";
   #glowPending: { color: string; dpr: number } | null = null;
   #workerAnimating = false;
+  #invalidated = false;
   #geometryRevision = 0;
   #sentGeometryRevision = -1;
   // What the worker reported.
@@ -568,6 +569,10 @@ class WorkerRenderer implements LiveRenderer {
     }
     if (m.type === "ack" && m.buf) this.#packer.recycle(m.buf);
     if (m.epoch !== this.#epoch) return;
+    if (m.type === "invalidate") {
+      this.#invalidated = true;
+      return;
+    }
     // A repaint the worker did on its own (fonts loaded) brings fresh stats, but it isn't the answer
     // to the frame in flight: only an ack releases the next frame.
     if (m.type === "ack") {
@@ -650,6 +655,7 @@ class WorkerRenderer implements LiveRenderer {
       !this.#optionsDirty &&
       !this.#resetPending &&
       !this.#workerAnimating &&
+      !this.#invalidated &&
       !this.#glowPending &&
       viewKey === this.#sentViewKey &&
       f.focus === this.#sentFocus &&
@@ -708,6 +714,7 @@ class WorkerRenderer implements LiveRenderer {
       return;
     }
     this.#inFlight = true;
+    this.#invalidated = false;
     this.#sentGeometryRevision = this.#geometryRevision;
     if (!this.#started && this.#startTimer === undefined)
       this.#startTimer = setTimeout(() => this.#fail("the particle worker didn't answer"), START_TIMEOUT_MS);

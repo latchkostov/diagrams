@@ -141,6 +141,7 @@ export interface RepaintMessage extends Omit<AckMessage, "type" | "buf" | "anima
 export type FromWorker =
   | AckMessage
   | RepaintMessage
+  | { type: "invalidate"; epoch: number }
   | { type: "probe"; id: number; data: Uint8ClampedArray }
   | { type: "error"; message: string };
 

@@ -42,7 +42,9 @@ function loadFonts(): void {
     .then(() => {
       if (!renderer || !last) return;
       renderer.invalidate();
-      drawAndReport(last, "repaint");
+      // The main loop owns whether this layer is visible. A late font must not paint a hidden
+      // low-zoom canvas (or redraw an obsolete view); ask it for the next eligible frame instead.
+      scope.postMessage({ type: "invalidate", epoch: last.epoch });
     })
     .catch(() => {});
 }

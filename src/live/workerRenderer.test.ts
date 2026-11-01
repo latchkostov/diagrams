@@ -112,6 +112,27 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("worker startup failures hand over to the main thread", () => {
+  it("retains font invalidation across an in-flight ack and redraws an unchanged paused frame", async () => {
+    const { renderer } = await start();
+    const w = workers[0];
+    const paused = frame(0.1);
+    renderer.frame(paused);
+    const epoch = frames(w)[0].epoch!;
+    w.send({ type: "invalidate", epoch });
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(1);
+    w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false });
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(2);
+    w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false });
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(2);
+    w.send({ type: "invalidate", epoch: epoch - 1 });
+    renderer.frame(paused);
+    expect(frames(w)).toHaveLength(2);
+    renderer.dispose();
+  });
+
   it("a Worker constructor that throws (CSP, disabled workers)", async () => {
     mode = "throw-constructor";
     const { createLiveRenderer } = await import("./liveRenderer");
