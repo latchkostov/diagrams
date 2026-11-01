@@ -13,3 +13,18 @@ it("keeps core lessons available when both optional capabilities are compiled of
   expect(tutorialAvailable({ optional: "ai" })).toBe(false);
   expect(tutorialAvailable({ optional: "collaboration" })).toBe(false);
 });
+
+it.each([
+  { ai: false, rooms: false },
+  { ai: false, rooms: true },
+  { ai: true, rooms: false },
+])("registers optional lessons only with their own build capability (AI=$ai, rooms=$rooms)", async ({ ai, rooms }) => {
+  vi.doMock("../lib/deployment", () => ({ AI_TOOLS: ai }));
+  vi.doMock("../lib/localOnly", () => ({ ROOMS: rooms }));
+  const { allTutorials, findTutorial } = await import("./catalog");
+  expect(allTutorials.some((lesson) => lesson.optional === "ai")).toBe(ai);
+  expect(allTutorials.some((lesson) => lesson.optional === "collaboration")).toBe(rooms);
+  expect(!!findTutorial("review-agent-changes")).toBe(ai);
+  expect(!!findTutorial("work-together")).toBe(rooms);
+  expect(findTutorial("export-for-audience")).toBeDefined();
+});

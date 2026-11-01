@@ -1,3 +1,5 @@
+import { AI_TOOLS } from "../../lib/deployment";
+import { ROOMS } from "../../lib/localOnly";
 import { exportForAudience } from "./exportForAudience";
 import { workTogether } from "./workTogether";
 import { reviewAgentChanges } from "./reviewAgentChanges";
@@ -127,8 +129,8 @@ export const allTutorials: readonly Tutorial[] = [
   studyCells,
   sharePresent,
   exportForAudience,
-  workTogether,
-  reviewAgentChanges,
+  ...(ROOMS ? [workTogether] : []),
+  ...(AI_TOOLS ? [reviewAgentChanges] : []),
 ]
   .map(withKeyboardSolutions)
   .map(withCoachRoutes);

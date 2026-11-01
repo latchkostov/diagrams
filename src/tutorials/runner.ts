@@ -1,3 +1,4 @@
+import { AI_TOOLS } from "../lib/deployment";
 import { canUseAiTools, canCollaborate } from "../lib/localOnly";
 import { authoredSimulation } from "./simulations";
 import { createMachine } from "../lib/machine";
@@ -226,7 +227,7 @@ export function createTutorialRunner(
   };
   /** Bumped by Restart and Exit: a demo still running stops there. */
   const resetAgent = () =>
-    tutorial.id === "review-agent-changes" && ports.documentId
+    AI_TOOLS && tutorial.id === "review-agent-changes" && ports.documentId
       ? import("./agentPractice").then((m) => m.resetAgentPractice(ports.documentId!))
       : Promise.resolve();
   let agentReady: Promise<void> | undefined;
@@ -589,7 +590,7 @@ export function createTutorialRunner(
         if (!ports.localPeer) throw new Error("Local peers unavailable");
         return ports.localPeer(demo.action, operation.signal);
       case "copyAiContext": {
-        if (!canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
+        if (!AI_TOOLS || !canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
         if (ports.copyAiContext) return ports.copyAiContext(operation.signal);
         const signal = operation.signal;
         const id = subjects[demo.subject];
@@ -607,6 +608,7 @@ export function createTutorialRunner(
         );
       }
       case "aiDock": {
+        if (!AI_TOOLS) throw new Error("Practice AI unavailable in this build");
         if (ports.openAi) return ports.openAi();
         const signal = operation.signal;
         return import("../ai/ui/dock").then((m) => {
@@ -619,7 +621,7 @@ export function createTutorialRunner(
         ports.shareChoices();
         return;
       case "agentFixture": {
-        if (!canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
+        if (!AI_TOOLS || !canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
         if (ports.agentFixture) return ports.agentFixture(demo.action, operation.signal);
         const signal = operation.signal;
         return import("./agentPractice").then(async (practice) => {

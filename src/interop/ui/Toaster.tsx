@@ -252,18 +252,21 @@ function ToastView({
           aria-disabled={t.undoUnavailable || t.actionConsumed || undefined}
           aria-describedby={t.undoUnavailable ? `toast-undo-unavailable-${t.id}` : undefined}
           title={t.undoUnavailable ? tr("toast.undoUnavailable") : undefined}
-          onClick={() => {
+          onClick={(event) => {
             if (!toast.canRunAction(t.id)) return;
+            const control = event.currentTarget;
             const back = cameFrom.current;
             cameFrom.current = null;
             // Register a modal opened by the action before requesting dismissal of its opener.
             flushSync(() => t.action!.run());
-            if (!t.blocking) toast.dismiss(t.id);
-            if (back && !focusAction)
-              requestAnimationFrame(() => {
-                const now = document.activeElement;
-                if (back.isConnected && (!now || now === document.body)) back.focus();
-              });
+            if (!t.blocking) flushSync(() => toast.dismiss(t.id));
+            if (!focusAction) {
+              const now = document.activeElement;
+              // Retry can remove its focused button. Return the keyboard in this event, so an immediate
+              // Escape still reaches the dialog; its panel is the fallback when the origin has gone.
+              if (!now || now === document.body || control.contains(now))
+                (back?.isConnected ? back : layer?.panel)?.focus();
+            }
           }}
           data-testid={t.action.testId ?? "toast-action"}
         >

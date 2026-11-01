@@ -1,5 +1,4 @@
 import { AiMount } from "../ai/ui/AiMount";
-import { AI_PANEL } from "../lib/deployment";
 import { createPeerPracticeHost } from "./peerPracticeHost";
 import { tutorialAvailable } from "./availability";
 import { surfaceCatalogs } from "../i18n/surfaces";
@@ -55,6 +54,9 @@ import { beginObservedWork, cancelObservedWork, observationPorts } from "../lib/
 import { canUseAiTools, canUseOnDevice } from "../lib/localOnly";
 import { currentObservationSource } from "../palette/observationSource";
 import "./tutorials.css";
+
+// Fold this before chunking: a second static AiMount consumer can retain its lazy panel in AI-off builds.
+declare const __DEPLOYMENT_AI_TOOLS__: boolean;
 
 /** Live's address keys belong to the diagram that set them: a tutorial starts in editing, on its own diagram. */
 const LIVE_KEYS = ["live", "sim", "speed", "paused", "traffic"];
@@ -456,7 +458,7 @@ function Running({
             />
           </Suspense>
         </div>
-        {AI_PANEL && tutorial.optional === "ai" && (
+        {__DEPLOYMENT_AI_TOOLS__ && tutorial.optional === "ai" && (
           <AiMount view="canvas" presenting={presenting} onNewDiagram={() => runner.send({ type: "restart" })} />
         )}
       </div>
