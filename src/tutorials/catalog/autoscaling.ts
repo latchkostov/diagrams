@@ -1,10 +1,13 @@
 import { diagnosticLesson } from "./diagnosticLesson";
-import reference from "../../examples/scale-on-busy-threads.json";
+import referenceText from "../../examples/scale-on-busy-threads.json?raw";
 import type { DiagramFile } from "../../model/types";
 import { livePropertiesGoal } from "./liveProperties";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { moment, patchStep, runStep } from "./waitingSteps";
+
+// Keep the public example’s independently retryable download out of the tutorial module graph.
+const reference = JSON.parse(referenceText) as DiagramFile;
 
 const lesson: Tutorial = {
   id: "autoscaling",

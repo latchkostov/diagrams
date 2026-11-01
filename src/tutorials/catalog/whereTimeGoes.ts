@@ -1,9 +1,12 @@
 import { diagnosticLesson } from "./diagnosticLesson";
-import reference from "../../examples/where-the-time-goes.json";
+import referenceText from "../../examples/where-the-time-goes.json?raw";
 import type { DiagramFile } from "../../model/types";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { moment, runStep } from "./waitingSteps";
+
+// Keep the public example’s independently retryable download out of the tutorial module graph.
+const reference = JSON.parse(referenceText) as DiagramFile;
 
 const lesson: Tutorial = {
   id: "where-time-goes",
@@ -90,4 +93,15 @@ const lesson: Tutorial = {
   finish: { text: msg("tutorials.whereTimeGoes.finishV3") },
 };
 
-export const whereTimeGoes = diagnosticLesson(lesson, () => structuredClone(reference) as DiagramFile);
+export const whereTimeGoes = diagnosticLesson(lesson, () => {
+  const diagram = structuredClone(reference) as DiagramFile;
+  const run = diagram.simulations!.find((run) => run.id === "slow-billing-drill")!;
+  run.timeline = [
+    ...(run.timeline ?? []),
+    {
+      atMs: 9000,
+      action: { do: "note", text: msg("tutorials.whereTimeGoes.compareGoal")(), focus: ["billing"], pause: true },
+    },
+  ];
+  return diagram;
+});

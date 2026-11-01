@@ -1,9 +1,12 @@
 import { diagnosticLesson } from "./diagnosticLesson";
-import reference from "../../examples/slow-payment-provider.json";
+import referenceText from "../../examples/slow-payment-provider.json?raw";
 import type { DiagramFile } from "../../model/types";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { liveStep, patchStep, runStep } from "./waitingSteps";
+
+// Keep the public example’s independently retryable download out of the tutorial module graph.
+const reference = JSON.parse(referenceText) as DiagramFile;
 
 const lesson: Tutorial = {
   id: "timeouts-pools",

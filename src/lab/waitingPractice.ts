@@ -1,8 +1,13 @@
 import { t } from "../i18n";
-import scaling from "../examples/autoscaling-basics.json";
-import retries from "../examples/retry-storm.json";
-import invoices from "../examples/azure-service-bus-integration.json";
+import scalingText from "../examples/autoscaling-basics.json?raw";
+import retriesText from "../examples/retry-storm.json?raw";
+import invoicesText from "../examples/azure-service-bus-integration.json?raw";
 import type { DiagramFile } from "../model/types";
+
+// Practice snapshots are separate modules from the gallery’s lazy, retryable downloads.
+const scaling = JSON.parse(scalingText) as DiagramFile;
+const retries = JSON.parse(retriesText) as DiagramFile;
+const invoices = JSON.parse(invoicesText) as DiagramFile;
 
 /** Public KEDA story, narrowed to its broker and workers; the executable policy and seed stay intact. */
 export function backlogScalingPractice(): DiagramFile {

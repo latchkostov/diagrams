@@ -2529,3 +2529,28 @@ for (const route of ["Right arrow", "Skip"] as const)
     await expect(strip(page)).toHaveAttribute("data-step", "camera");
     expectNoErrors(consoleErrors);
   });
+
+test("where-time-goes: a late reader can still inspect the held waiting comparison", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  await openTutorial(page, "where-time-goes");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "run");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await page.getByTestId("tutorial-step").hover();
+  await pauseClock(page);
+  await advanceTutorialClock(
+    page,
+    async () => (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) === "9000",
+  );
+  await page.clock.fastForward(20000);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await hoverPractice(page, "node-billing");
+  await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await finishSolution(page);
+  expectNoErrors(consoleErrors);
+});

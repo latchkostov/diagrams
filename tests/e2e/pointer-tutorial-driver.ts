@@ -61,8 +61,16 @@ export async function play(page: Page, step: ResolvedUiStep) {
   } else if ("open" in step) {
     const disclosure = page.getByTestId(step.open);
     await expect(disclosure).toBeVisible();
-    if ((await disclosure.getAttribute("aria-expanded")) === "false") await disclosure.click();
-    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    const open = () =>
+      disclosure.evaluate((el) =>
+        el instanceof HTMLDetailsElement
+          ? el.open
+          : el.parentElement instanceof HTMLDetailsElement
+            ? el.parentElement.open
+            : el.getAttribute("aria-expanded") === "true",
+      );
+    if (!(await open())) await disclosure.click();
+    await expect.poll(open).toBe(true);
   } else if ("click" in step) {
     if (step.click === "canvas-pane")
       await page.getByTestId("canvas-wrap").click({ position: await emptyCanvasPoint(page) });

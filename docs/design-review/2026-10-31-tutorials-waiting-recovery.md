@@ -23,3 +23,12 @@ counters. The poison rerun creates new work and checks an actual command trace a
 3; it never offers replaying dead letters. Finishes state the change, evidence and a
 limitation or transfer question in two sentences. The designer review was static; browser
 verification is recorded separately in the release/PR report.
+
+## Integration corrections
+
+Production testing caught a native disclosure being tested through an absent ARIA
+attribute. Pointer playback now verifies the actual open state, matching keyboard
+playback. The finish-during-navigation regression uses the existing short Lab fixture,
+so it retains its exact completion assertion without depending on the breaker's new
+reading pauses. Practice snapshots are bundled independently from the public gallery's
+lazy downloads, preserving the existing failed-download Retry boundary.

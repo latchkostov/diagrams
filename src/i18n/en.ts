@@ -5427,7 +5427,7 @@ const en = {
   "tutorials.threadsBlock.summaryV3":
     "Free a caller thread while its Request still waits for a reply. This protects concurrency when CPU is quiet; first complete Where the time goes.",
   "tutorials.threadsBlock.freeGoalV3":
-    "Leave Live. Right-click the Decision service → Partner API Request, open Simulation and choose the thread-wait control to free the thread. The reply is still required; keep the connection a Request.",
+    "Leave Live. Right-click the Decision service → Partner API Request, open Simulation and choose Free the thread while waiting. The reply is still required; keep the connection a Request.",
   "tutorials.threadsBlock.freeDoneV3":
     "Before: the Request held a caller thread. After: the Request still waits for a reply, using off-thread waiting; this is not a Message.",
   "tutorials.threadsBlock.rerunGoalV3":

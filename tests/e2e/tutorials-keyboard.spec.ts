@@ -250,7 +250,7 @@ declare global {
 }
 
 test("keyboard edge navigation yields when the lesson finishes during its keypress", async ({ page }) => {
-  await page.goto("./?tutorial=circuit-breaker");
+  await page.goto("./?tutorial=lab-tutorial-next");
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("tutorial-start")).toBeFocused();
   await page.keyboard.press("Enter");
