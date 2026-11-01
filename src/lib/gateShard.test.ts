@@ -309,6 +309,8 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
   const { jobs } = parse(readFileSync(".github/workflows/nightly.yml", "utf8"));
   const native = jobs["native-e2e"];
   expect(native.strategy["fail-fast"]).toBe(false);
+  const shardRun = native.steps.find((step: { run?: string }) => step.run?.startsWith("pnpm gate"));
+  expect(shardRun.run).toContain("--shard ${{ matrix.shard }}/${{ matrix.total }}");
   for (const [os, total] of [
     ["windows-latest", 8],
     ["macos-latest", 12],

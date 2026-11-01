@@ -161,7 +161,7 @@ async function editableLatencyDetails(page: Page) {
   await waitForStableViewport(page);
   await node.click();
   await node.evaluate((el) => el.parentElement?.focus());
-  await openLiveNodeDetails(page, "billing", "latency");
+  await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
   const detail = page.getByTestId("node-detail-billing");
   await expect(detail).toBeVisible();
   await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -218,7 +218,7 @@ for (const locale of ["en-XA", "ar"]) {
       locale === "en-XA" ? pseudoText("No messages lost") : "No messages lost",
     );
     await page.getByTestId("node-billing").hover();
-    await openLiveNodeDetails(page, "billing", "latency");
+    await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
     const detail = page.getByTestId("node-latency-detail-billing");
     await expect(detail).toBeVisible();
     await expect
@@ -257,7 +257,7 @@ test("latency hover leaves the node and badges clear in a short viewport, with f
   await input.dispatchEvent("pointerup");
   await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "9400");
   await page.getByTestId("node-billing").hover();
-  await openLiveNodeDetails(page, "billing", "latency");
+  await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
   const tooltip = page.getByTestId("node-detail-billing");
   await expect(tooltip).toBeVisible();
   await expect
@@ -278,9 +278,9 @@ test("latency hover leaves the node and badges clear in a short viewport, with f
     })
     .toBe(true);
   await expect(page.getByTestId("node-latency-percentiles-billing")).toBeVisible();
-  await openLiveNodeDetails(page, "billing", "planning");
+  await openLiveNodeDetails(page, "billing", "planning", { settleCamera: true });
   await expect(tooltip.getByTestId("node-detail-more")).toBeVisible();
-  await openLiveNodeDetails(page, "billing", "latency");
+  await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
   await expect(page.getByTestId("node-latency-breakdown-billing")).toBeVisible();
   await page.getByTestId("node-billing").dblclick();
   await openInspectorLiveDetails(page, "latency");
@@ -314,7 +314,7 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await seek(1000);
   await expect(page.getByTestId("live-note")).toContainText("No messages lost");
   await page.getByTestId("node-billing").hover();
-  await openLiveNodeDetails(page, "billing", "latency");
+  await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
   const detail = page.getByTestId("node-latency-detail-billing");
   await expect(detail).toBeVisible();
   await expect
@@ -330,7 +330,7 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await seek(350);
   await seek(1000);
   await page.getByTestId("node-billing").hover();
-  await openLiveNodeDetails(page, "billing", "latency");
+  await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
   await expect(detail).toHaveText(before);
   await page.keyboard.press("c");
   await expect(page.getByTestId("node-latency-billing")).toHaveText(/^p95 3\.9 s$/);
@@ -364,7 +364,7 @@ for (const surface of ["embed", "presentation"]) {
     await input.press("ArrowRight");
     await waitForCameraIdle(page);
     await page.getByTestId("node-billing").hover();
-    await openLiveNodeDetails(page, "billing", "latency");
+    await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
     const tooltip = page.getByTestId("node-detail-billing");
     await expect(tooltip).toBeVisible();
     await expect(tooltip.getByTestId("node-detail-more")).toHaveCount(0);
@@ -404,7 +404,7 @@ for (const surface of ["embed", "presentation"]) {
     await waitForStableViewport(page);
     await waitForCameraIdle(page);
     await node.hover();
-    await openLiveNodeDetails(page, "billing", "latency");
+    await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
     const detail = page.getByTestId("node-detail-billing");
     await expect(detail).toBeVisible();
     await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -443,7 +443,7 @@ test("drill percentiles restart their window on slowdown and restoration", async
     await input.press("ArrowRight");
     await waitForCameraIdle(page);
     await page.getByTestId("node-billing").hover();
-    await openLiveNodeDetails(page, "billing", "latency");
+    await openLiveNodeDetails(page, "billing", "latency", { settleCamera: true });
   };
   await seek("300");
   const scope = page.getByTestId("node-latency-scope-billing");
