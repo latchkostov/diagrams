@@ -141,11 +141,15 @@ export function PaletteDialog({
   );
   const flat = useMemo(() => flatten(ranked), [ranked]);
   const [active, setActive] = useState(0);
-  // A new query highlights its best match before the next paint.
-  const [previous, setPrevious] = useState(ranked);
-  if (previous !== ranked) {
-    setPrevious(ranked);
-    setActive(0);
+  // A new query highlights its best match. A canvas/session refresh keeps the
+  // command the person reached, using its current action and new position.
+  const [previous, setPrevious] = useState({ flat, query, submenu });
+  if (previous.flat !== flat) {
+    const id = previous.flat[active]?.id;
+    const retained =
+      previous.query === query && previous.submenu === submenu ? flat.findIndex((command) => command.id === id) : -1;
+    setPrevious({ flat, query, submenu });
+    setActive(Math.max(0, retained));
   }
   const activeItem = flat[active];
   const optionId = (c: Command) => `${id}-opt-${c.id}`;
