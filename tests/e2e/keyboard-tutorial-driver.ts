@@ -390,7 +390,16 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
     await write(page, action.text);
   } else if ("choose" in action) {
     await focus(page, action.choose);
-    await chooseNativeSelect(page, action.choose, action.value);
+    const chosen = await chooseNativeSelect(
+      page,
+      action.choose,
+      action.value,
+      "platform",
+      action.choose === "live-speed"
+        ? () => page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")
+        : undefined,
+    );
+    if (!chosen) throw new CompletedStep();
     if (action.choose === "live-speed") {
       // The authored run can finish while this optional acceleration is selected.
       // Completion restores normal speed; the finished lesson now owns the controls.

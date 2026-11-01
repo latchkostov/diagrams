@@ -312,6 +312,51 @@ test("keyboard speed selection hands off when completion restores normal speed",
   await expect(page.getByTestId("live-speed")).toHaveValue("1");
 });
 
+test("keyboard speed selection yields when completion takes focus before native input", async ({ page }) => {
+  await page.setContent(
+    '<select data-testid="live-speed"><option value="1">1×</option><option value="8">8×</option></select><button data-testid="handoff">Next lesson</button>',
+  );
+  await page.evaluate(() => {
+    Object.assign(window, {
+      __tutorial: { snapshot: () => ({ state: { value: document.body.dataset.finished ? "finished" : "active" } }) },
+    });
+  });
+  await page.keyboard.press("Tab");
+  const locate = page.getByTestId.bind(page);
+  const press = page.keyboard.press.bind(page.keyboard);
+  let lookups = 0;
+  let keys = 0;
+  let handoff: Promise<void> | undefined;
+  page.getByTestId = (...args) => {
+    // focus() has already sampled this select when the native driver obtains its locator.
+    if (args[0] === "live-speed" && ++lookups === 2)
+      handoff = page.evaluate(() => {
+        document.body.dataset.finished = "true";
+        document.querySelector<HTMLElement>('[data-testid="handoff"]')?.focus();
+      });
+    return locate(...args);
+  };
+  page.keyboard.press = async (...args) => {
+    keys++;
+    return press(...args);
+  };
+  try {
+    const outcome = await play(page, { choose: "live-speed", value: "8" }).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    if (!handoff) throw new Error("The native selection did not start");
+    await handoff;
+    expect(outcome).toBeInstanceOf(CompletedStep);
+    expect(keys).toBe(0);
+    await expect(locate("handoff")).toBeFocused();
+    await expect(locate("live-speed")).toHaveValue("1");
+  } finally {
+    page.getByTestId = locate;
+    page.keyboard.press = press;
+  }
+});
+
 test("keyboard canvas navigation exits when the lesson has already finished", async ({ page }) => {
   await page.goto("./?tutorial=property-sheet");
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });

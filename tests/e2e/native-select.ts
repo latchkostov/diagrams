@@ -10,9 +10,31 @@ export async function chooseNativeSelect(
   id: string,
   value: string,
   input: "platform" | "typeahead" = "platform",
+  finished?: () => Promise<boolean>,
 ) {
   const select = page.getByTestId(id);
-  await expect(select).toBeFocused();
+  // An optional action can finish while its owner hands focus to another surface.
+  // Required selections still wait for the same exact native focus/open state.
+  const waitFor = async (ready: () => Promise<boolean>) => {
+    let done = false;
+    await expect
+      .poll(async () => {
+        done = !!(await finished?.());
+        return done || ready();
+      })
+      .toBe(true);
+    return !done;
+  };
+  const focused = () =>
+    select.evaluateAll((elements) => elements.length === 1 && elements[0] === document.activeElement);
+  const open = (value: boolean) =>
+    select.evaluateAll((elements, value) => elements.length === 1 && elements[0].matches(":open") === value, value);
+  const press = async (key: string) => {
+    if (await finished?.()) return false;
+    await page.keyboard.press(key);
+    return true;
+  };
+  if (!(await waitFor(focused))) return false;
   const options = await select.evaluate((el: HTMLSelectElement) =>
     Array.from(el.options)
       .filter((option) => !option.disabled)
@@ -24,9 +46,7 @@ export async function chooseNativeSelect(
     // A second choice on the same focused select otherwise extends its native search prefix.
     // A real keyboard blur resets that session; keep the selection and return to the same control.
     if (lastTypeahead.get(page) === id) {
-      await page.keyboard.press("Tab");
-      await page.keyboard.press("Shift+Tab");
-      await expect(select).toBeFocused();
+      if (!(await press("Tab")) || !(await press("Shift+Tab")) || !(await waitFor(focused))) return false;
     }
     lastTypeahead.set(page, id);
     // Use the shortest unambiguous prefix: action selects can reset after each character.
@@ -44,22 +64,23 @@ export async function chooseNativeSelect(
     // A trusted printable char event follows the browser's default selection path in every alphabet.
     const session = await page.context().newCDPSession(page);
     try {
-      for (const text of prefix) await session.send("Input.dispatchKeyEvent", { type: "char", text });
+      for (const text of prefix) {
+        if (await finished?.()) return false;
+        await session.send("Input.dispatchKeyEvent", { type: "char", text });
+      }
     } finally {
       await session.detach();
     }
   } else if (index === 0 || index === options.length - 1) {
-    await page.keyboard.press(index === 0 ? "Home" : "End");
+    if (!(await press(index === 0 ? "Home" : "End"))) return false;
   } else {
-    await page.keyboard.press("Alt+ArrowDown");
-    await expect.poll(() => select.evaluate((el) => el.matches(":open"))).toBe(true);
-    await page.keyboard.press("Home");
+    if (!(await press("Alt+ArrowDown")) || !(await waitFor(() => open(true))) || !(await press("Home"))) return false;
     await animationFrames(page);
     for (let i = 0; i < index; i++) {
-      await page.keyboard.press("ArrowDown");
+      if (!(await press("ArrowDown"))) return false;
       await animationFrames(page);
     }
-    await page.keyboard.press("Enter");
-    await expect.poll(() => select.evaluate((el) => el.matches(":open"))).toBe(false);
+    if (!(await press("Enter")) || !(await waitFor(() => open(false)))) return false;
   }
+  return !(await finished?.());
 }
