@@ -2,6 +2,7 @@ import {
   animationFrames,
   waitForCameraIdle,
   test,
+  performanceTest,
   expect,
   expectNoErrors,
   gotoLive,
@@ -390,42 +391,42 @@ async function settleRenderer(page: Page) {
 }
 
 test.describe("live rendering stays off the main thread", () => {
-  test("the worker path draws nothing on the main thread and runs no endless animation while live", async ({
-    page,
-    consoleErrors,
-  }) => {
-    // Two live page loads (the worker path, then the fallback), each of which may take the page-load budget on a busy
-    // dev server (nightly #78: 14 s and 12 s, out of 30).
-    test.slow();
-    await page.addInitScript(COUNT_DRAWS);
-    await goLive(page, "worker");
-    await settleRenderer(page);
-    await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-glow", "canvas");
-    const playing: Awaited<ReturnType<typeof busyWindow>>[] = [];
-    for (let i = 0; i < 3; i++) {
-      const sample = await busyWindow(page, 30);
-      playing.push(sample);
-      expect(sample.frames, "the worker kept drawing alongside page frames").toBeGreaterThan(sample.pageFrames / 8);
-      expect(sample.draws, "main-thread canvas calls across page frames").toBe(0);
-      expect(sample.running).toEqual([]);
-    }
+  performanceTest(
+    "the worker path draws nothing on the main thread and runs no endless animation while live",
+    async ({ page, consoleErrors }) => {
+      // Two live page loads (the worker path, then the fallback), each of which may take the page-load budget on a busy
+      // dev server (nightly #78: 14 s and 12 s, out of 30).
+      test.slow();
+      await page.addInitScript(COUNT_DRAWS);
+      await goLive(page, "worker");
+      await settleRenderer(page);
+      await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-glow", "canvas");
+      const playing: Awaited<ReturnType<typeof busyWindow>>[] = [];
+      for (let i = 0; i < 3; i++) {
+        const sample = await busyWindow(page, 30);
+        playing.push(sample);
+        expect(sample.frames, "the worker kept drawing alongside page frames").toBeGreaterThan(sample.pageFrames / 8);
+        expect(sample.draws, "main-thread canvas calls across page frames").toBe(0);
+        expect(sample.running).toEqual([]);
+      }
 
-    // The fallback really is on the main thread: the same check counts its drawing.
-    await goLive(page, "main");
-    await settleRenderer(page);
-    const fallback: typeof playing = [];
-    for (let i = 0; i < 3; i++) {
-      const sample = await busyWindow(page, 30);
-      fallback.push(sample);
-      expect(sample.draws).toBeGreaterThan(sample.frames);
-    }
-    // And the point of the worker: the main thread's work per frame (all of it, not only the animation frames) is
-    // well under the fallback's, which draws it all there: about 0.4 to 0.6 of it, measured; 0.8 at most. Both
-    // measured in the same run, in thread CPU time. Not a budget in ms.
-    const median = (samples: typeof playing) => samples.map((sample) => sample.msPerFrame).sort((a, b) => a - b)[1];
-    expect(median(playing), JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(median(fallback) * 0.8);
-    expectNoErrors(consoleErrors);
-  });
+      // The fallback really is on the main thread: the same check counts its drawing.
+      await goLive(page, "main");
+      await settleRenderer(page);
+      const fallback: typeof playing = [];
+      for (let i = 0; i < 3; i++) {
+        const sample = await busyWindow(page, 30);
+        fallback.push(sample);
+        expect(sample.draws).toBeGreaterThan(sample.frames);
+      }
+      // And the point of the worker: the main thread's work per frame (all of it, not only the animation frames) is
+      // well under the fallback's, which draws it all there: about 0.4 to 0.6 of it, measured; 0.8 at most. Both
+      // measured in the same run, in thread CPU time. Not a budget in ms.
+      const median = (samples: typeof playing) => samples.map((sample) => sample.msPerFrame).sort((a, b) => a - b)[1];
+      expect(median(playing), JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(median(fallback) * 0.8);
+      expectNoErrors(consoleErrors);
+    },
+  );
 });
 
 /** The fallback took over on fresh canvases (once live view is up): particles and the march paint, the dot breathes in CSS. */
