@@ -92,6 +92,53 @@ test("live.note: exported SVG excludes awaited narration", async ({ page }) => {
   expect(svg).not.toContain("Follow a request through the decision service.");
 });
 
+async function retrySurface(page: Page, id: LazySurfaceId, loaded?: () => void) {
+  await page.getByTestId(id === "live.sequence" ? "lazy-dialog-retry" : "lazy-load-retry").focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("loaded");
+  loaded?.();
+  // This decorative surface has no focus field of its own. Retry's toast returns
+  // the keyboard to its invoker on a frame, independently of the chunk resolving.
+  if (id === "canvas.presence") await expect(page.getByTestId("example-picker")).toBeFocused();
+}
+
+test("presence Retry waits for the toast's actual keyboard return after its chunk loads", async ({ page }) => {
+  await page.clock.install();
+  const held = await holdChunk(page, surfaceChunk("canvas.presence"));
+  held.fail = true;
+  let retrying: Promise<void> | undefined;
+  try {
+    await open(page, "canvas.presence");
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["canvas.presence"]?.state))
+      .toBe("failed");
+    const picker = page.getByTestId("example-picker");
+    await picker.focus();
+    await page.getByTestId("lazy-load-retry").focus();
+    await pauseClock(page);
+    held.fail = false;
+    held.release();
+    let returned = false;
+    let loaded!: () => void;
+    const chunkLoaded = new Promise<void>((resolve) => {
+      loaded = resolve;
+    });
+    retrying = retrySurface(page, "canvas.presence", loaded).then(() => {
+      returned = true;
+    });
+    await chunkLoaded;
+    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(0);
+    expect(returned, "chunk completion precedes the toast's focus-return frame").toBe(false);
+    await page.clock.runFor(32);
+    await retrying;
+    await expect(picker).toBeFocused();
+  } finally {
+    held.release();
+    await page.clock.runFor(32);
+    await retrying;
+  }
+});
+
 for (const [id, , , policy] of lazySurfaces) {
   if (policy === "await")
     test(`${id}: image export waits for its real chunk`, async ({ page }) => {
@@ -189,9 +236,7 @@ for (const [id, , , policy] of lazySurfaces) {
       if (id === "live.simulations") await expect(page.getByTestId("sim-panel-load-retry")).toBeFocused();
       else await expect(focus).toBeFocused();
       mode = "pass";
-      await page.getByTestId(id === "live.sequence" ? "lazy-dialog-retry" : "lazy-load-retry").focus();
-      await page.keyboard.press("Enter");
-      await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("loaded");
+      await retrySurface(page, id);
       if (before) expect(await savedDiagram(page)).toEqual(before);
       expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
     } finally {
