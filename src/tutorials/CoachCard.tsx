@@ -77,9 +77,6 @@ export function CoachCard({
       const actionsMissing = actions ? Math.max(0, actions.scrollHeight - actions.offsetHeight) : 0;
       const head = el.offsetHeight - (words?.offsetHeight ?? 0) - margin + actionsMissing;
       const phone = window.matchMedia(PHONE).matches;
-      const wordsHeight = Math.min(words?.scrollHeight ?? 0, window.innerHeight * (phone ? 0.28 : 0.4));
-      const full = head + wordsHeight + (wordsHeight ? 6 : 0);
-      const size = { width: el.offsetWidth, height: collapsed ? el.offsetHeight : full };
       const bar = Math.max(
         find("tutorial-bar")?.getBoundingClientRect().bottom ?? 0,
         find("tutorial-tools")?.getBoundingClientRect().bottom ?? 0,
@@ -97,6 +94,12 @@ export function CoachCard({
         width: window.innerWidth,
         height: Math.max(0, window.innerHeight - bar),
       });
+      // Translated action rows may wrap. Keep all actions in the available viewport and scroll only the words.
+      const wordsBudget = Math.max(0, area.height - head - 24);
+      el.style.setProperty("--coach-words-max", `${wordsBudget}px`);
+      const wordsHeight = Math.min(words?.scrollHeight ?? 0, window.innerHeight * (phone ? 0.28 : 0.4), wordsBudget);
+      const full = head + wordsHeight + (wordsHeight ? 6 : 0);
+      const size = { width: el.offsetWidth, height: collapsed ? el.offsetHeight : full };
       const located = anchored && targets.length > 0 ? locate({ targets, subjects, edges, selected }) : null;
       const progress = located ? `${located.testId}:${located.tip}` : null;
       if (progress !== previousTarget.current) {

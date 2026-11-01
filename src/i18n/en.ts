@@ -5588,5 +5588,234 @@ const en = {
     "Go Live, pick Slow Billing drill in Simulations and wait for the reading pause at 9 s. The held card will let you compare the sampled tail with waiting and work.",
   "tutorials.whereTimeGoes.runDoneV3":
     "The seeded slowdown is paused on a real reading. Compare Billing’s latency and waiting/work totals next.",
+  "tutorials.trackSharing": "Share, present & work together",
+  "tutorials.syllabus.blurbSharing": "Choose an audience and keep control of shared work.",
+  "tutorials.sharing.extensionComplete": "Optional extension complete",
+  "tutorials.sharing.optional": "Optional extension",
+  "tutorials.sharing.optionalExplanation":
+    "Chapter and whole-syllabus seals require only core lessons, which work offline. Collaboration and AI are optional extensions; local exercises need no account, external model or real partner.",
+  "tutorials.sharing.unavailable":
+    "This optional lesson is unavailable in this build. Core seals remain attainable offline.",
+  "tutorials.sharing.demo":
+    "Local demonstration: two isolated peers in this page. No person joins and no network connection is made. This does not certify a real collaboration session.",
+  "tutorials.exportAudience.title": "Give someone the right artifact",
+  "tutorials.exportAudience.summary":
+    "Export a picture and a runnable story for different audiences. Match the artifact to the decision; first learn Present and saved simulations (four minutes).",
+  "tutorials.exportAudience.svgTitle": "Export a scalable picture",
+  "tutorials.exportAudience.svgGoal":
+    "Open File → More formats → Image, open Options and choose SVG, then Export. A static picture explains structure but cannot replay traffic.",
+  "tutorials.exportAudience.svgDone":
+    "The SVG writer produced bytes from this diagram; opening a dialog alone would not export it.",
+  "tutorials.exportAudience.pngTitle": "Export a PNG for a slide",
+  "tutorials.exportAudience.pngGoal":
+    "Open Image again and export PNG. Its pixels work in slide tools; SVG stays scalable. Both carry the title by default and omit editing handles.",
+  "tutorials.exportAudience.pngDone": "PNG bytes were downloaded; a picture has no editable model or simulation.",
+  "tutorials.exportAudience.htmlTitle": "Give a reader an offline replay",
+  "tutorials.exportAudience.htmlGoal":
+    "In File → More formats, choose Interactive HTML and Download with the saved simulations. Open the file in a browser to replay the story offline.",
+  "tutorials.exportAudience.htmlDone":
+    "The HTML writer completed a self-contained file with saved runs; no upload was required.",
+  "tutorials.exportAudience.audienceTitle": "Choose who receives the file",
+  "tutorials.exportAudience.audienceGoal":
+    "Read and press Done: anyone with an unprotected HTML file can open it. Require a password encrypts it; share the password separately. Diagram JSON is editable. A recording captures one take; an embed needs a host. No publication is required here.",
+  "tutorials.exportAudience.audienceDone": "Done records your audience decision, not an access-control test.",
+  "tutorials.exportAudience.finish":
+    "You exported SVG, PNG and a runnable HTML story; successful writers supplied the bytes. Choose editable JSON for coauthors and control who receives the file; a static picture cannot replay the model.",
+  "tutorials.sharePresent.summaryV2":
+    "Present a connected order story and choose its audience. Readability keeps a review on the architecture; first learn drawing and Live (two minutes).",
+  "tutorials.sharePresent.presentGoalV2":
+    "Choose Present and inspect the connected order story, title and annotations. Editing chrome disappears so the audience can read the diagram.",
+  "tutorials.sharePresent.shareGoalV2":
+    "Open File → Share and read the audience choices. Opening Share makes no public link and uploads no diagram; Interactive HTML can be handed to a reader as a file.",
+  "tutorials.sharePresent.audienceTitle": "Read before handing it over",
+  "tutorials.sharePresent.audienceGoal":
+    "Read the choices, close Share and press Done. Anyone with a link can open it; a password protects its contents. Private disables links and AI, while local image and HTML exports remain available.",
+  "tutorials.sharePresent.finishV2":
+    "You presented a connected story and read the sharing choices before handing it over. The next lesson exports real artifacts; readability acknowledgment does not verify access control.",
+  "tutorials.workTogether.title": "Know what your collaborator controls",
+  "tutorials.workTogether.summary":
+    "Try roles, shared edits, following and leaving with two isolated local peers. Editing differs from driving a run; first learn Present and saved simulations (five minutes, optional demonstration).",
+  "tutorials.workTogether.joinTitle": "Start the local demonstration",
+  "tutorials.workTogether.joinGoal":
+    "Read the demonstration notice, then start its two isolated peers. The host owns roles; the second peer initially views only. Ordinary Edit together needs consent and configured transport; this exercise makes no connection.",
+  "tutorials.workTogether.joinDone":
+    "Two local collaboration sessions synchronized the fixture; no real partner joined.",
+  "tutorials.workTogether.editTitle": "Compare viewing and editing",
+  "tutorials.workTogether.editGoal":
+    "Try roles and peer edit: the supplied edit is refused as a viewer, then Can edit is granted and the edit is retried. Observe the host receiving the permitted label change.",
+  "tutorials.workTogether.editDone":
+    "The viewer edit was refused; a signed editor grant allowed the peer change to converge.",
+  "tutorials.workTogether.watchTitle": "Follow the host’s saved run",
+  "tutorials.workTogether.watchGoal":
+    "Choose Follow local run. The host drives a saved simulation and the peer follows it. This is separate from following the camera; editing permission does not give control of Live.",
+  "tutorials.workTogether.watchDone": "The local follower received the saved run and processed its traffic.",
+  "tutorials.workTogether.leaveTitle": "Leave and inspect the recovery copy",
+  "tutorials.workTogether.leaveGoal":
+    "Leave the local peers to stop following. Inspect the retained copy. This demonstration keeps it only in memory; ordinary rooms keep device recovery, and Save a copy is a deliberate separate action.",
+  "tutorials.workTogether.leaveDone": "Both sessions left; the in-memory copy still contains the permitted peer edit.",
+  "tutorials.workTogether.finish":
+    "You tested a refused viewer edit, a permitted peer edit and a followed run, then left with an in-memory copy. This optional local demonstration does not certify a real two-person session.",
+  "tutorials.workTogether.start": "Start local peers",
+  "tutorials.workTogether.edit": "Try roles and peer edit",
+  "tutorials.workTogether.watch": "Follow local run",
+  "tutorials.workTogether.leave": "Leave local peers",
+  "tutorials.workTogether.api": "Status API",
+  "tutorials.workTogether.worker": "Status worker",
+  "tutorials.workTogether.edited": "Reviewed status worker",
+  "tutorials.workTogether.run": "Status checks",
+  "tutorials.agentReview.title": "Keep control of an AI edit",
+  "tutorials.agentReview.summary":
+    "Review supplied public replies, Undo and Revert their changes. Review an agent edit like any other; first learn Properties and Undo (four minutes, optional extension). No model or account is used.",
+  "tutorials.agentReview.openTitle": "Read the ways to use AI",
+  "tutorials.agentReview.openGoal":
+    "Open AI and read its supported paths, then press Done. The dock shows turns; Advanced accepts pasted replies. This lesson supplies public replies locally: send nothing to a chatbot and enter no API key.",
+  "tutorials.agentReview.openDone": "Done acknowledges the explanation; no agent was contacted.",
+  "tutorials.agentReview.applyTitle": "Apply the supplied worker reply",
+  "tutorials.agentReview.applyGoal":
+    "Open Advanced, paste supplied reply 1 from Read note into the reply box and choose Apply. Inspect the highlighted worker and connection; no external model runs.",
+  "tutorials.agentReview.applyDone": "The reply parser and turn pipeline added the worker and connection as one edit.",
+  "tutorials.agentReview.undoTitle": "Undo this change",
+  "tutorials.agentReview.undoGoal":
+    "In the first turn choose Undo this change. Confirm that worker and connection disappear; Undo belongs to the latest unchanged history step.",
+  "tutorials.agentReview.undoDone": "Undo reversed the turn’s own history step and removed the worker.",
+  "tutorials.agentReview.againTitle": "Apply the first reply again",
+  "tutorials.agentReview.againGoal":
+    "Paste supplied reply 1 into Advanced again and Apply. This creates the checkpoint to restore after another edit.",
+  "tutorials.agentReview.againDone": "A new turn restored the worker checkpoint.",
+  "tutorials.agentReview.renameTitle": "Review a second supplied turn",
+  "tutorials.agentReview.renameGoal":
+    "Paste supplied reply 2 and Apply. Inspect the changed label {name} before deciding whether to keep it.",
+  "tutorials.agentReview.renameDone": "The second reply changed the label without adding another worker.",
+  "tutorials.agentReview.revertTitle": "Revert to the worker checkpoint",
+  "tutorials.agentReview.revertGoal":
+    "On the turn that added the worker again, choose Revert to here. Confirm the original {name} label returns. Revert restores that snapshot as a new undoable edit.",
+  "tutorials.agentReview.revertDone": "Revert restored the reviewed checkpoint and recorded a new turn.",
+  "tutorials.agentReview.limitsTitle": "Keep the data boundary deliberate",
+  "tutorials.agentReview.limitsGoal":
+    "Read and press Done: Private blocks copied prompts and external agents; an explicitly allowed on-device model has different limits. Fixture turns run locally. Skill installation, downloads and sending context are outside this lesson.",
+  "tutorials.agentReview.limitsDone": "No external agent or answer quality was tested.",
+  "tutorials.agentReview.finish":
+    "You applied public replies, inspected edits, used Undo and restored a checkpoint with Revert. These local turns teach review controls, not model quality or real-agent completion.",
+  "tutorials.agentReview.reply1": "Supplied public reply 1",
+  "tutorials.agentReview.reply2": "Supplied public reply 2",
+
+  "tutorials.studies.checklist": "Milestone checklist",
+  "tutorials.studyCheckout.summaryV2":
+    "Keep checkout work under tenfold demand, preserve orders and respect a partner quota. Use load, persistence and pacing as three milestones; finish the waiting and resilience chapters first (20 minutes).",
+  "tutorials.studyCheckout.rushGoalV2":
+    "Milestone 1: handle 40 requests/s without checkout drops. Tenfold saves Traffic ×10 over a base 4/s; compare effective demand with the 100/s partner before changing replicas and replaying.",
+  "tutorials.studyCheckout.rushHintV2":
+    "Checklist: keep Traffic ×10; give checkout enough replicas; replay Tenfold; read processed, dropped and rejected together. Low traffic is not a capacity fix.",
+  "tutorials.studyCheckout.rushDoneV2":
+    "The seeded tenfold run processed checkout work with no drops; the saved load is still ×10.",
+  "tutorials.studyCheckout.ordersGoalV2":
+    "Milestone 2: keep the Request to {orders} and add a Message branch through a Kafka topic to a Java consumer. This illustrates an outbox path; database write and event publication are not atomic in this model.",
+  "tutorials.studyCheckout.ordersHintV2":
+    "Checklist: {checkout} → {orders} stays Request; {checkout} → topic is Message; topic → consumer is Message. Wiring is configuration, not durability proof.",
+  "tutorials.studyCheckout.quotaGoalV2":
+    "Milestone 3: pace {checkout} → Payments with a pool of one and replay {quotaRun}. This run keeps Traffic ×10 and replaces the partner quota with 10/s; compare successful calls and rejected calls.",
+  "tutorials.studyCheckout.quotaHintV2":
+    "Checklist: offered load is 40/s; the partner allows 10/s; keep the quota and traffic; change the caller pool, then replay. Do not solve refusal by disconnecting the partner.",
+  "tutorials.studyCheckout.finishV2":
+    "You raised checkout capacity, added an event path and paced partner calls; seeded completions, drops and refusals supplied the evidence. Compare those assumptions with the reference: atomic outbox persistence and production capacity still need independent verification.",
+  "tutorials.studyCheckout.checklistV2":
+    "1. Demand: 4/s ×10; checkout processes work without drops.\n2. Orders: Request to the database; Message through topic to consumer.\n3. Partner: saved 10/s quota, pool of one, successful work with bounded refusals.\nCompare the assumptions and counters with the optional reference, not its layout.",
+  "tutorials.studyDispatch.summaryV2":
+    "Size dispatch consumers against partition parallelism, then test a busier run. Separate effective fleet size from useful consumers; first complete partitions and backlog scaling (20 minutes).",
+  "tutorials.studyDispatch.rushGoalV2":
+    "Milestone 1: predict whether two partitions can keep up with {rushRun} at 15 pings/s. Raise dispatcher replicas to two, replay and inspect backlog plus processed work at the saved expectation.",
+  "tutorials.studyDispatch.rushHintV2":
+    "Checklist: {rushRun} offers 15/s instead of the document’s 20/s; inspect two effective replicas and two partitions, then read the backlog expectation and throughput.",
+  "tutorials.studyDispatch.fixGoalV2":
+    "Milestone 2: {partitionsRun} offers a new saved 30/s load. Give the dispatcher four replicas and the topic at least four partitions, then replay. An extra replica beyond the partition count cannot claim another partition.",
+  "tutorials.studyDispatch.fixHintV2":
+    "Checklist: four effective replicas; at least four effective partitions; run {partitionsRun}; read its own backlog threshold and useful work. Saved-run setup can replace document settings.",
+  "tutorials.studyDispatch.finishV2":
+    "You expanded the fleet and lifted its partition ceiling; each saved run’s backlog expectation and processed work showed the effect. Compare useful consumers and offered load with the reference; replicas alone do not guarantee throughput.",
+  "tutorials.studyDispatch.checklistV2":
+    "1. {rushRun}: saved 15/s, two replicas, two partitions, bounded backlog and processed work.\n2. {partitionsRun}: saved 30/s, four replicas, at least four partitions, its own backlog threshold.\nCompare assumptions and effective values with the optional reference.",
+  "tutorials.studyPayments.summaryV2":
+    "Declare safe retries, bound caller waiting and isolate poison disputes. Use three milestones with separate configuration and replay evidence; first complete waiting, breakers and dead letters (25 minutes).",
+  "tutorials.studyPayments.safeTitleV2": "Declare safe retries",
+  "tutorials.studyPayments.safeGoalV2":
+    "Milestone 1: add a Message outbox and consumer, then declare the {psp} Request retry idempotent. This is a model declaration: it does not prove the real payment processor cannot double-charge.",
+  "tutorials.studyPayments.safeHintV2":
+    "Checklist: {payments} → outbox → consumer carries Messages; {psp} retries are idempotent. A real outbox needs atomic persistence and an actual deduplication contract.",
+  "tutorials.studyPayments.brownoutGoalV2":
+    "Milestone 2: set the {psp} caller deadline to 250 ms and enable its breaker, then run {brownoutRun}. The callee takes about 1000 ms; observe the breaker opening. Timeout ends the caller wait, not the callee’s work.",
+  "tutorials.studyPayments.brownoutHintV2":
+    "Checklist: effective caller deadline 1–250 ms; breaker enabled; same seeded brownout. Review waiting and failure evidence; do not claim the slow {psp} was cancelled.",
+  "tutorials.studyPayments.poisonGoalV2":
+    "Milestone 3: add an SQS dead-letter path from the outbox and mark that connection DLQ. Set the consumer failure rate to 1, replay {poisonRun} and inspect both dead-lettered and parked counts. Replay of parked messages is not available here.",
+  "tutorials.studyPayments.poisonHintV2":
+    "Checklist: distinct outbox and DLQ; DLQ connection marked; failing consumer; fresh poison run; both the outbox dead-letter count and DLQ processed count increase.",
+  "tutorials.studyPayments.finishV2":
+    "You declared idempotent retries, bounded caller waits and added a poison-message path; the brownout and parked-message counters supplied replay evidence. Compare the reference’s assumptions: this model proves neither atomic persistence nor freedom from double charges.",
+  "tutorials.studyPayments.checklistV2":
+    "1. Configure: Message outbox, consumer, idempotent {psp} retry declaration.\n2. Brownout: effective 250 ms deadline, open breaker, slow callee still works.\n3. Poison: marked DLQ path, failing consumer, dead-letter and parked counts.\nInvestigate parked messages outside this tool; no DLQ replay is offered.",
+  "tutorials.studyFanout.summaryV2":
+    "Pace three providers and isolate a failed channel with its own queues. Build one channel, repeat its checklist, then compare all three outcomes; first complete queues, quotas and dead letters (25 minutes).",
+  "tutorials.studyFanout.limitsGoalV2":
+    "Milestone 1: set a caller pool of one for Email, SMS and Push, then replay {limitsRun}. Each provider must process work with zero quota refusals; raising quotas or disconnecting a channel is not the experiment.",
+  "tutorials.studyFanout.limitsHintV2":
+    "Checklist per provider: pool of one; unchanged quota; processed work; zero rejected. SMS has the smallest quota, but evidence is required from all three channels.",
+  "tutorials.studyFanout.queuesGoalV2":
+    "Milestone 2: build the Email channel first: router → main queue → sender, plus a separate marked DLQ branch. Set maximum deliveries to two. Repeat for SMS and Push using their own queues; keep all three provider pools.",
+  "tutorials.studyFanout.queuesHintV2":
+    "Email / SMS / Push checklist: one main queue on that channel, its own distinct DLQ, Message connections, DLQ connection marked, delivery limit two. No queue is shared across channels.",
+  "tutorials.studyFanout.outageGoalV2":
+    "Milestone 3: replay {outageRun} and compare all three channels. SMS parks failed work and later processes again; Email and Push process during the outage without neighbour failures. Keep each provider within its quota.",
+  "tutorials.studyFanout.outageHintV2":
+    "Checklist: Email and Push during-outage expectations pass; no neighbour failures; SMS dead-lettered and DLQ processed both increase; all providers process work with zero refusals.",
+  "tutorials.studyFanout.finishV2":
+    "You paced every provider and added separate channel queues; all-channel throughput, refusals and SMS parking showed the outage’s reach. Compare the reference’s isolation assumptions and investigate parked SMS outside this tool; DLQ replay is not available here.",
+  "tutorials.studyFanout.checklistV2":
+    "Email: main queue → sender → provider; separate DLQ; delivery limit two; pool one.\nSMS: its own main queue, sender and DLQ; limit two; pool one; poison work parks.\nPush: its own main queue, sender and DLQ; limit two; pool one.\nReplay: every provider processes; Email and Push remain healthy during the {outageRun}.",
+  "tutorials.studyRag.summaryV2":
+    "Meet a sampled answer budget, approximate cache shares and survive reindexing. Separate these three milestones; first complete caller waiting and latency lessons (20 minutes). No AI editor or external model runs.",
+  "tutorials.studyRag.budgetGoalV2":
+    "Milestone 1: reduce {llm} latency to 1000 ms, then replay {questionsRun}. Keep the Request paths and sufficient deadlines; read p95 only alongside at least eight model completions and zero failures.",
+  "tutorials.studyRag.budgetHintV2":
+    "Checklist: Request topology intact; caller deadlines do not expire before the budget; p95 ≤2000 ms; at least eight model completions; zero failures. Model throughput is not answer quality.",
+  "tutorials.studyRag.samplingGoalV2":
+    "Milestone 2: add Redis with share 80%; set vector-search and model shares to 20% each. These are independent samples approximating cache hits, not correlated cache-aside misses. This step checks configuration; reindexing supplies replay evidence.",
+  "tutorials.studyRag.samplingHintV2":
+    "Checklist: Redis Request 80%; vector Request 20%; model Request 20%. A hit and both misses are not one correlated decision in this model.",
+  "tutorials.studyRag.sampledReindexGoalV2":
+    "Milestone 3: reduce vector-search latency to 50 ms and replay Reindex. Read the slow-search fault, p95 ≤2000 ms, at least two model completions, more cache completions than model work and zero downstream failures.",
+  "tutorials.studyRag.sampledReindexHintV2":
+    "Checklist: keep the configured shares and Request paths; minimum throughput makes p95 meaningful; cache work exceeds model work; failures stay zero. These are model estimates, not production measurements.",
+  "tutorials.studyRag.sampledFinishV2":
+    "You changed the answer budget, independent cache shares and vector latency; sampled p95, useful work and failure counters supplied evidence. Compare the reference’s assumptions: this models throughput and latency, not answer quality, correlated cache behavior or the AI editor.",
+  "tutorials.studyRag.checklistV2":
+    "1. Budget: intact Requests, p95 ≤2000 ms, at least eight model completions, no failures.\n2. Approximate cache: Redis 80%, vector and model 20% independently.\n3. Reindex: vector 50 ms before ×5 slowdown, minimum model work, more cache work, zero failures.\nReview sample size and assumptions before transferring the result.",
+  "tutorials.studyCells.summaryV2":
+    "Contain a cell failure, then evacuate a region with useful spare capacity. Read the map before close-up evidence; first complete boundaries, health checks and faults (25 minutes).",
+  "tutorials.studyCells.splitGoalV2":
+    "Milestone 1: put {booking} alone in one boundary, then connect a Java neighbour to East and put it in a different boundary. Read the map: boundaries describe cells; zoomed-out chips and trouble pills guide you back to close-up properties.",
+  "tutorials.studyCells.splitHintV2":
+    "Checklist: two distinct boundaries; {booking} in cell A; Java service in cell B; both Requests from East. Use Fit view for the map, select a chip to navigate, then inspect the service close up.",
+  "tutorials.studyCells.deployGoalV2":
+    "Milestone 2: replay {deployRun}. Inspect {booking} failures in cell A, then useful processed work with zero failures in cell B. A disconnected healthy neighbour supplies no isolation evidence.",
+  "tutorials.studyCells.deployHintV2":
+    "Checklist: cell A actually fails; cell B actually processes at least five with zero failures; both stay connected to East. Trouble pills help find the affected cell; counters prove the outcome.",
+  "tutorials.studyCells.evacuateGoalV2":
+    "Milestone 3: add a second regional load balancer from {global}, connect a Go backup and put it in its own cell boundary. Replay {evacuateRun}: inspect East down and at least ten backup completions with no backup drops or failures.",
+  "tutorials.studyCells.evacuateHintV2":
+    "Checklist: Global → spare region → backup are Requests; backup belongs to a distinct cell; East is down; spare processes work without drops or failures. Check the spare’s close-up counters, not just its green map chip.",
+  "tutorials.studyCells.finishV2":
+    "You separated cells and added a spare region; failing-cell evidence, healthy-neighbour throughput and backup completions showed containment and evacuation. Compare the reference’s spare-capacity assumptions: this model does not prove real regional independence or recovery readiness.",
+  "tutorials.studyCells.checklistV2":
+    "1. Map: separate cell A and cell B boundaries, both reached from East.\n2. Bad deploy: A fails; B processes useful work without failures.\n3. Evacuation: a distinct spare-region cell processes work while East is down, with no backup drops or failures.\nCompare counters and capacity assumptions with the optional reference.",
+  "tutorials.syllabus.overallV2": "{done} of {total} core lessons · {seals} of {totalSeals} seals",
+  "tutorials.syllabus.coreCriterion": "Finish all {count} core lessons. Optional extensions do not block this seal.",
+
+  "tutorials.agentReview.contextTitle": "Copy the public practice context",
+  "tutorials.agentReview.contextGoal":
+    "Select Status API, open Advanced and choose Copy prompt. Copy prompt includes the whole practice diagram, regardless of selection. It goes only to your clipboard: paste nothing into a chatbot. Next you will apply the locally supplied reply.",
+  "tutorials.agentReview.contextDone":
+    "The clipboard writer succeeded for the public practice diagram; no model received it.",
+
+  "tutorials.sharePresentAudience.title": "Present a story and choose its audience",
 } as const;
 export default en;

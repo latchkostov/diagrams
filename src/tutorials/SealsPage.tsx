@@ -32,13 +32,13 @@ export function SealsPage({
           <h1 ref={headingRef} tabIndex={-1}>
             {t("tutorials.syllabus.seals")}
           </h1>
-          <p>{t("tutorials.syllabus.sealsIntro")}</p>
+          <p>{t("tutorials.sharing.optionalExplanation")}</p>
         </div>
         <span className="tutorials-seals-count">{t("tutorials.syllabus.earnedCount", { count: awards.length })}</span>
       </header>
       <div className="tutorials-seal-grid" data-testid="tutorials-seals-page">
         {seals.map((seal) => {
-          const list = tutorials.filter((lesson) => !seal.track || lesson.track === seal.track);
+          const list = tutorials.filter((lesson) => !lesson.optional && (!seal.track || lesson.track === seal.track));
           const done = list.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
           const earned = awards.includes(seal.id);
           const at = progress.marks?.[seal.id];
@@ -66,7 +66,7 @@ export function SealsPage({
               <p>
                 {seal.track
                   ? t("tutorials.syllabus.chapterCriterion", { count: list.length, chapter: seal.numeral })
-                  : t("tutorials.syllabus.wholeCriterion", { count: list.length })}
+                  : t("tutorials.syllabus.coreCriterion", { count: list.length })}
               </p>
               <span>{status}</span>
             </article>

@@ -1,0 +1,88 @@
+import { msg } from "../../i18n";
+import type { Tutorial, UiStep } from "../types";
+
+const menu = (id: string): UiStep[] => [{ click: "file-button" }, { click: "file-more-formats" }, { click: id }];
+export const exportForAudience: Tutorial = {
+  id: "export-for-audience",
+  version: 1,
+  track: "sharing",
+  level: 1,
+  minutes: 4,
+  chrome: "app",
+  title: msg("tutorials.exportAudience.title"),
+  summary: msg("tutorials.exportAudience.summary"),
+  start: { example: "kafka-order-pipeline" },
+  subjects: {},
+  steps: [
+    {
+      id: "svg",
+      title: msg("tutorials.exportAudience.svgTitle"),
+      goal: msg("tutorials.exportAudience.svgGoal"),
+      done: msg("tutorials.exportAudience.svgDone"),
+      check: { kind: "export", format: "svg" },
+      sticky: true,
+      targets: [
+        { testId: "image-export", tip: msg("tutorials.exportAudience.svgTitle") },
+        { testId: "image-format-svg", tip: msg("tutorials.exportAudience.svgTitle") },
+        { testId: "file-button", tip: msg("tutorials.exportAudience.svgTitle") },
+      ],
+      demo: [{ kind: "exportArtifact", format: "svg" }],
+      keyboardSolution: [
+        { activate: "file-button" },
+        { activate: "file-more-formats" },
+        { activate: "export-image" },
+        { open: "image-options-toggle" },
+        { activate: "image-format-png" },
+        { press: "Tab" },
+        { press: "Enter" },
+        { activate: "image-export" },
+      ],
+      solution: [
+        ...menu("export-image"),
+        { open: "image-options-toggle" },
+        { click: "image-format-svg" },
+        { click: "image-export" },
+      ],
+    },
+    {
+      id: "png",
+      title: msg("tutorials.exportAudience.pngTitle"),
+      goal: msg("tutorials.exportAudience.pngGoal"),
+      done: msg("tutorials.exportAudience.pngDone"),
+      check: { kind: "export", format: "png" },
+      sticky: true,
+      targets: [
+        { testId: "image-export", tip: msg("tutorials.exportAudience.pngTitle") },
+        { testId: "file-button", tip: msg("tutorials.exportAudience.pngTitle") },
+      ],
+      demo: [{ kind: "exportArtifact", format: "png" }],
+      solution: [...menu("export-image"), { click: "image-export" }],
+    },
+    {
+      id: "html",
+      title: msg("tutorials.exportAudience.htmlTitle"),
+      goal: msg("tutorials.exportAudience.htmlGoal"),
+      done: msg("tutorials.exportAudience.htmlDone"),
+      check: { kind: "export", format: "html" },
+      sticky: true,
+      targets: [
+        { testId: "html-export-download", tip: msg("tutorials.exportAudience.htmlTitle") },
+        { testId: "file-button", tip: msg("tutorials.exportAudience.htmlTitle") },
+      ],
+      demo: [{ kind: "exportArtifact", format: "html" }],
+      solution: [...menu("export-html"), { click: "html-export-download" }],
+    },
+    {
+      id: "audience",
+      title: msg("tutorials.exportAudience.audienceTitle"),
+      goal: msg("tutorials.exportAudience.audienceGoal"),
+      done: msg("tutorials.exportAudience.audienceDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "file-button", tip: msg("tutorials.exportAudience.audienceTitle") }],
+      demo: [],
+      solution: [{ click: "tutorial-skip" }],
+    },
+  ],
+  finish: { text: msg("tutorials.exportAudience.finish") },
+};

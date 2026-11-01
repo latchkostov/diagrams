@@ -1,3 +1,7 @@
+import { AiMount } from "../ai/ui/AiMount";
+import { AI_PANEL } from "../lib/deployment";
+import { createPeerPracticeHost } from "./peerPracticeHost";
+import { tutorialAvailable } from "./availability";
 import { surfaceCatalogs } from "../i18n/surfaces";
 import { ModeSwitch, HistoryButtons } from "../components/ModeSwitch";
 import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -46,7 +50,7 @@ import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
 import { solutionNow, type ResolvedUiStep } from "./solution";
 import { keyboardSolutionNow, type ResolvedKeyboardStep } from "./keyboard";
-import { createPracticeImport, createPracticePrivacy, tutorialFilePolicy } from "./filePolicy";
+import { createPracticeExports, createPracticeImport, createPracticePrivacy, tutorialFilePolicy } from "./filePolicy";
 import { beginObservedWork, cancelObservedWork, observationPorts } from "../lib/observations";
 import { canUseAiTools, canUseOnDevice } from "../lib/localOnly";
 import { currentObservationSource } from "../palette/observationSource";
@@ -77,6 +81,16 @@ export function TutorialApp({ id }: { id: string }) {
       : tutorials;
   const tutorial = catalog.find((x) => x.id === id && !x.quarantined);
   if (!tutorial) return <Unknown id={id} />;
+  if (!tutorialAvailable(tutorial))
+    return (
+      <div className="view-loading">
+        <p data-testid="tutorial-unavailable">{t("tutorials.sharing.unavailable")}</p>
+        <p>{t("tutorials.sharing.optionalExplanation")}</p>
+        <button className="btn" data-testid="tutorial-exit" onClick={() => leaveLesson(tutorial)}>
+          {t("tutorials.section")}
+        </button>
+      </div>
+    );
   return (
     <Suspense
       fallback={
@@ -139,6 +153,9 @@ function Running({
   const [temporaryPrivacy] = useState(createPracticePrivacy);
   const practicePrivacy = useSyncExternalStore(temporaryPrivacy.subscribe, temporaryPrivacy.get);
   const [practiceImport] = useState(createPracticeImport);
+  const [peers] = useState(createPeerPracticeHost);
+  const peerState = useSyncExternalStore(peers.subscribe, peers.getSnapshot);
+  const [practiceExports] = useState(createPracticeExports);
   useEffect(() => {
     if (!presenting) return;
     const key = (event: KeyboardEvent) => {
@@ -155,6 +172,14 @@ function Running({
       documentId: getDiagramIdentity(TUTORIAL_SLUG),
       present: setPresenting,
       importPractice: practiceImport.run,
+      shareChoices: practiceExports.share,
+      exportArtifact: practiceExports.run,
+      cancelPractice: peers.reset,
+      localPeer: (action, signal) => {
+        const editor = paletteHost.get().canvas?.editor;
+        if (!editor) throw new Error("Practice unavailable");
+        return peers.run(action, editor, signal);
+      },
     });
   });
   const [start] = useState(() => structuredClone(initial));
@@ -224,6 +249,40 @@ function Running({
     temporaryPrivacy,
     importDestination: tutorial.id === "import-and-review" ? filePolicy.import : undefined,
   });
+  useEffect(() => {
+    return practiceExports.connect({
+      share: () => {
+        void interop.openShareChooser();
+      },
+      export: async (format, signal) => {
+        signal.throwIfAborted();
+        const source = currentObservationSource();
+        const abort = () => {
+          if (source) cancelObservedWork(source);
+        };
+        signal.addEventListener("abort", abort, { once: true });
+        try {
+          const result =
+            format === "html"
+              ? await import("../export/exportHtml").then((m) => {
+                  signal.throwIfAborted();
+                  const diagram = paletteHost.get().canvas?.editor.getDiagram();
+                  if (!diagram) throw new Error("Diagram unavailable");
+                  return m.exportInteractiveHtml(diagram, {
+                    theme: "light",
+                    simulations: diagram.simulations?.map((s) => s.id),
+                    startSimulation: diagram.simulations?.[0]?.id ?? null,
+                  });
+                })
+              : await interop.exportImage(format);
+          signal.throwIfAborted();
+          if (result.status !== "success") throw new Error("Practice export failed");
+        } finally {
+          signal.removeEventListener("abort", abort);
+        }
+      },
+    });
+  }, [interop, practiceExports]);
   const sharing = "dialogKind" in interop && interop.dialogKind === "chooser";
   const importFiles = interop.importFiles;
   useEffect(() => {
@@ -358,6 +417,8 @@ function Running({
             snap={snap}
             send={runner.send}
             saveCopy={saveCopy}
+            runPeer={runner.localPeer}
+            peerState={peerState}
           />
         )}
       </div>
@@ -396,6 +457,9 @@ function Running({
             />
           </Suspense>
         </div>
+        {AI_PANEL && tutorial.optional === "ai" && (
+          <AiMount view="canvas" presenting={presenting} onNewDiagram={() => runner.send({ type: "restart" })} />
+        )}
       </div>
       {state.value === "intro" && (
         <Intro tutorial={tutorial} snap={snap} send={runner.send} onCancel={() => tutorialRoute.close()} />
@@ -510,6 +574,8 @@ function Intro({
       }
     >
       <p className="tutorial-intro-summary">{tutorial.summary()}</p>
+      {tutorial.optional && <p data-testid="tutorial-intro-optional">{t("tutorials.sharing.optionalExplanation")}</p>}
+      {tutorial.id === "work-together" && <p>{t("tutorials.sharing.demo")}</p>}
       <h3 className="tutorial-intro-head">{t("tutorials.youWill")}</h3>
       <ol className="tutorial-intro-steps">
         {tutorial.steps.map((s, i) => (
@@ -568,11 +634,15 @@ function LessonCoach({
   snap,
   send,
   saveCopy,
+  runPeer,
+  peerState,
 }: {
   tutorial: Tutorial;
   snap: RunnerSnapshot;
   send(e: RunnerEvent): void;
   saveCopy(): void;
+  runPeer(action: "join" | "edit" | "watch" | "leave"): Promise<void>;
+  peerState: ReturnType<ReturnType<typeof createPeerPracticeHost>["getSnapshot"]>;
 }) {
   const step = tutorial.steps[snap.state.index];
   const waiting = snap.state.value === "active" || snap.state.value === "hinting";
@@ -596,6 +666,8 @@ function LessonCoach({
           snap={snap}
           send={send}
           saveCopy={saveCopy}
+          runPeer={runPeer}
+          peerState={peerState}
           card={{
             folded: help.state.folded,
             onFold: () => help.send({ type: "fold" }),
@@ -617,12 +689,16 @@ function CoachInstructions({
   snap,
   send,
   saveCopy,
+  runPeer,
+  peerState,
   card,
 }: {
   tutorial: Tutorial;
   snap: RunnerSnapshot;
   send: (e: RunnerEvent) => void;
   saveCopy(): void;
+  runPeer(action: "join" | "edit" | "watch" | "leave"): Promise<void>;
+  peerState: ReturnType<ReturnType<typeof createPeerPracticeHost>["getSnapshot"]>;
   /** Coach: the strip's content as an anchored card, with a head (step count, title) that folds the rest. */
   card: {
     folded: boolean;
@@ -710,6 +786,52 @@ function CoachInstructions({
             <p className="tutorial-goal" data-testid="tutorial-goal">
               <CardGoal step={step} card={card} />
             </p>
+            {step.note && (card.hint || phase === "hinting") && (
+              <label>
+                {step.note.title()}
+                {step.note.code ? (
+                  <textarea
+                    readOnly
+                    data-testid="tutorial-note"
+                    dir="ltr"
+                    className="ix-mono"
+                    aria-label={step.note.title()}
+                    value={typeof step.note.text === "string" ? step.note.text : step.note.text()}
+                    rows={5}
+                  />
+                ) : (
+                  <span className="tutorial-checklist" data-testid="tutorial-note">
+                    {typeof step.note.text === "string" ? step.note.text : step.note.text()}
+                  </span>
+                )}
+              </label>
+            )}
+            {step.check.kind === "localPeer" && (
+              <div>
+                <p data-testid="tutorial-peer-notice">{t("tutorials.sharing.demo")}</p>
+                <button
+                  className="btn btn-primary"
+                  data-testid={`tutorial-peer-${step.check.action}`}
+                  disabled={peerState.value === "busy"}
+                  onClick={() => {
+                    if (step.check.kind === "localPeer") void runPeer(step.check.action);
+                  }}
+                >
+                  {step.check.action === "join"
+                    ? t("tutorials.workTogether.start")
+                    : step.check.action === "edit"
+                      ? t("tutorials.workTogether.edit")
+                      : step.check.action === "watch"
+                        ? t("tutorials.workTogether.watch")
+                        : t("tutorials.workTogether.leave")}
+                </button>
+              </div>
+            )}
+            {peerState.copy && (
+              <p data-testid="tutorial-peer-recovery">
+                {peerState.copy.title}: {peerState.copy.nodes.map((n) => n.label).join(", ")}
+              </p>
+            )}
             <span className="tutorial-target-hint" data-testid="tutorial-target-hint" />
             {phase === "failed" ? (
               <p className="tutorial-near-miss" role="status" data-testid="tutorial-recovery">
@@ -926,7 +1048,7 @@ function CardHelp({
           onClick={card.onHint}
           data-testid="coach-hint"
         >
-          {t("tutorials.coach.hint")}
+          {step.note ? t("workbench.readNote") : t("tutorials.coach.hint")}
         </button>
         <button
           className="btn btn-ghost"
@@ -995,6 +1117,6 @@ declare global {
 
 // eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
 export async function tutorialWhenReady() {
-  await surfaceCatalogs(["tutorialTitles", "tutorials", "stencils"]);
+  await surfaceCatalogs(["tutorialTitles", "tutorials", "stencils", "exports", "simulation"]);
   return TutorialApp;
 }

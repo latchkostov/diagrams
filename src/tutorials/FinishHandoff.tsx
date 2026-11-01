@@ -30,11 +30,13 @@ export function FinishHandoff({
   const releaseBackground = useRef<(() => void) | undefined>(undefined);
   const next = nextTutorial(tutorial, catalog, progress);
   const chapter = chapters[tutorial.track];
-  const list = catalog.filter((lesson) => lesson.track === tutorial.track && !lesson.quarantined);
+  const list = catalog.filter((lesson) => lesson.track === tutorial.track && !lesson.quarantined && !lesson.optional);
   const done = list.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
-  const whole = catalog
-    .filter((lesson) => !lesson.quarantined)
-    .every((lesson) => lessonProgress(progress, lesson)?.completed);
+  const whole =
+    !tutorial.optional &&
+    catalog
+      .filter((lesson) => !lesson.quarantined && !lesson.optional)
+      .every((lesson) => lessonProgress(progress, lesson)?.completed);
   const awards = justEarnedSeals(before, progress, catalog);
   const award = seals.find((seal) => seal.id === (whole ? "whole-syllabus" : chapter.seal));
   const earned = !!award && awards.includes(award.id);
@@ -151,11 +153,13 @@ export function FinishHandoff({
                 {logged}
               </p>
               <h2 id="tutorial-handoff-title" ref={heading} tabIndex={-1} data-testid="tutorial-handoff-heading">
-                {whole
-                  ? t("tutorials.handoff.finished")
-                  : done === list.length
-                    ? t("tutorials.handoff.chapterComplete", { chapter: chapter.numeral })
-                    : t("tutorials.handoff.chapterProgress", { chapter: chapter.numeral, done, total: list.length })}
+                {tutorial.optional
+                  ? t("tutorials.sharing.extensionComplete")
+                  : whole
+                    ? t("tutorials.handoff.finished")
+                    : done === list.length
+                      ? t("tutorials.handoff.chapterComplete", { chapter: chapter.numeral })
+                      : t("tutorials.handoff.chapterProgress", { chapter: chapter.numeral, done, total: list.length })}
               </h2>
               <p className="handoff-chapter">{earned ? t("tutorials.handoff.sealEarned", { name }) : name}</p>
             </div>
@@ -172,6 +176,9 @@ export function FinishHandoff({
           </ol>
           <p className="tutorial-handoff-recap" data-testid="tutorial-handoff-recap">
             {tutorial.finish.text()}
+            {(tutorial.optional || tutorial.track === "sharing") && (
+              <span data-testid="tutorial-handoff-optional">{t("tutorials.sharing.optionalExplanation")}</span>
+            )}
           </p>
         </header>
         {/* Native scroll keys stay in the reading region instead of reaching the canvas. */}
@@ -188,6 +195,7 @@ export function FinishHandoff({
         >
           {next && (
             <div className="tutorial-handoff-next" data-testid="tutorial-handoff-next">
+              {next.optional && <p data-testid="tutorial-handoff-next-optional">{t("tutorials.sharing.optional")}</p>}
               <BlueprintBoard key={next.id} lesson={next} catalog={catalog} />
               <p className="handoff-summary">{next.summary()}</p>
               <ol className="handoff-steps" data-testid="tutorial-handoff-steps">

@@ -50,6 +50,14 @@ export const chapters = {
     label: msg("tutorials.trackStudies"),
     blurb: msg("tutorials.syllabus.blurbStudies"),
   },
+  sharing: {
+    id: "sharing",
+    order: 7,
+    numeral: "VII",
+    seal: "chapter-sharing",
+    label: msg("tutorials.trackSharing"),
+    blurb: msg("tutorials.syllabus.blurbSharing"),
+  },
 } as const;
 
 export const tracks = Object.values(chapters).sort((a, b) => a.order - b.order);

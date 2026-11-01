@@ -1,3 +1,4 @@
+import { canUseAiTools, canCollaborate } from "../lib/localOnly";
 import { authoredSimulation } from "./simulations";
 import { createMachine } from "../lib/machine";
 import { t } from "../i18n";
@@ -112,6 +113,13 @@ export function createTutorialRunner(
     documentId?: string;
     present?(on: boolean): void;
     importPractice?(signal: AbortSignal): Promise<void>;
+    agentFixture?(action: "add" | "rename" | "undo" | "revert", signal: AbortSignal): Promise<void>;
+    shareChoices?(): void;
+    openAi?(): void;
+    copyAiContext?(signal: AbortSignal): Promise<void>;
+    exportArtifact?(format: "svg" | "png" | "html", signal: AbortSignal): Promise<void>;
+    cancelPractice?(): void;
+    localPeer?(action: "join" | "edit" | "watch" | "leave", signal: AbortSignal): Promise<void>;
   },
 ) {
   const host = ports.host ?? paletteHost;
@@ -143,6 +151,7 @@ export function createTutorialRunner(
       "import",
       "aiTurn",
       "collaboration",
+      "localPeer",
       "live",
       "processed",
       "metric",
@@ -181,6 +190,7 @@ export function createTutorialRunner(
       "import",
       "aiTurn",
       "collaboration",
+      "localPeer",
       "checks",
       "gallery",
       "history",
@@ -215,10 +225,16 @@ export function createTutorialRunner(
     listeners.forEach((l) => l());
   };
   /** Bumped by Restart and Exit: a demo still running stops there. */
+  const resetAgent = () =>
+    tutorial.id === "review-agent-changes" && ports.documentId
+      ? import("./agentPractice").then((m) => m.resetAgentPractice(ports.documentId!))
+      : Promise.resolve();
+  let agentReady = resetAgent();
   let generation = 0;
   let operation = new AbortController();
   const activeJobs = new Map<string, object>();
   const cancelWork = () => {
+    ports.cancelPractice?.();
     if (boundDocument?.id) cancelObservedWork({ documentId: boundDocument.id, identity: boundDocument.identity });
     observations = {};
     generation++;
@@ -226,6 +242,7 @@ export function createTutorialRunner(
     operation = new AbortController();
     activeJobs.clear();
     repairs.reset();
+    agentReady = resetAgent();
     changed.forEach((f) => f());
   };
   const changed = new Set<() => void>();
@@ -551,6 +568,55 @@ export function createTutorialRunner(
             if (!(await until(() => ed.getDocumentVersion().revision !== before, run))) return false;
           } while (demo.absent || demo.present);
         })();
+      }
+      case "exportArtifact":
+        if (!ports.exportArtifact) throw new Error("Export unavailable");
+        return ports.exportArtifact(demo.format, operation.signal);
+      case "localPeer":
+        if (!canCollaborate(h.canvas)) throw new Error("Practice peers unavailable for this diagram");
+        if (!ports.localPeer) throw new Error("Local peers unavailable");
+        return ports.localPeer(demo.action, operation.signal);
+      case "copyAiContext": {
+        if (!canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
+        if (ports.copyAiContext) return ports.copyAiContext(operation.signal);
+        const signal = operation.signal;
+        const id = subjects[demo.subject];
+        if (id) ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+        return Promise.all([import("../ai/ui/copyContext"), import("../ai/ui/prompt"), import("../ai/privacy")]).then(
+          async ([copy, prompt, privacy]) => {
+            signal.throwIfAborted();
+            if (!canUseAiTools(host.get().canvas)) throw new Error("Practice AI unavailable for this diagram");
+            const dock = await import("../ai/ui/dock");
+            signal.throwIfAborted();
+            dock.aiDock.set({ open: true });
+            const text = prompt.buildPrompt({ request: "", describe: privacy.describeForAi(ed, host.get().canvas) });
+            if (!(await copy.copyAiContext(text, signal))) throw new Error("Clipboard unavailable");
+          },
+        );
+      }
+      case "aiDock": {
+        if (ports.openAi) return ports.openAi();
+        const signal = operation.signal;
+        return import("../ai/ui/dock").then((m) => {
+          signal.throwIfAborted();
+          m.aiDock.set({ open: true });
+        });
+      }
+      case "shareChoices":
+        if (!ports.shareChoices) throw new Error("Sharing unavailable");
+        ports.shareChoices();
+        return;
+      case "agentFixture": {
+        if (!canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
+        if (ports.agentFixture) return ports.agentFixture(demo.action, operation.signal);
+        const signal = operation.signal;
+        return import("./agentPractice").then(async (practice) => {
+          await agentReady;
+          signal.throwIfAborted();
+          if (!ports.documentId) throw new Error("Document unavailable");
+          if (!canUseAiTools(host.get().canvas)) throw new Error("Practice AI unavailable for this diagram");
+          practice.agentPractice(ed, ports.documentId, demo.action);
+        });
       }
       case "importFixture":
         if (!ports.importPractice) throw new Error("Import unavailable");
@@ -1134,6 +1200,19 @@ export function createTutorialRunner(
     const offActions = actionRegistry.subscribe(observe);
     const offDependencies = dependencyVisibility.subscribe(observe);
     const offPlanning = planningHost.subscribe(observe);
+    const offDock = workbenchDock.subscribe(() => {
+      const canvas = host.get().canvas;
+      if (canvas)
+        observations.dock = {
+          documentId: canvas.documentId ?? "",
+          identity: canvas.editor.getDocumentVersion().identity,
+          tab: workbenchDock.get().value,
+          snap: workbenchDock.get().snap,
+          live: !!canvas.live,
+          presenting: app.presenting,
+        };
+      observe();
+    });
     const offOverlay = capacityOverlay.subscribe(observe);
     const offTools = tools.subscribe(observe);
     const watch = <K extends keyof ProductObservations>(key: K) =>
@@ -1141,11 +1220,23 @@ export function createTutorialRunner(
         if (
           ["exports", "imports", "ai", "collaboration"].includes(key) &&
           !inStep(state) &&
-          !(key === "imports" && state.value === "reconstructing" && tutorial.id === "import-and-review")
+          !(
+            state.value === "reconstructing" &&
+            (key === "ai" ||
+              key === "collaboration" ||
+              key === "exports" ||
+              (key === "imports" && tutorial.id === "import-and-review"))
+          )
         )
           return;
         const canvas = host.get().canvas;
         if (!canvas || event.documentId !== canvas.documentId) return;
+        if (
+          key === "exports" &&
+          event.revision !== undefined &&
+          event.revision !== canvas.editor.getDocumentVersion().revision
+        )
+          return;
         if (
           "identity" in event &&
           !sameObservationSource(event, {
@@ -1183,6 +1274,7 @@ export function createTutorialRunner(
       offActions();
       offDependencies();
       offPlanning();
+      offDock();
       offOverlay();
       offTools();
       offObservations.forEach((off) => off());
@@ -1204,6 +1296,17 @@ export function createTutorialRunner(
     },
     connect,
     send,
+    async localPeer(action: "join" | "edit" | "watch" | "leave") {
+      const run = generation;
+      const step = state.index;
+      try {
+        if (!canCollaborate(host.get().canvas)) throw new Error("Practice peers unavailable for this diagram");
+        if (!ports.localPeer) throw new Error("Practice unavailable");
+        await ports.localPeer(action, operation.signal);
+      } catch {
+        if (run === generation) send({ type: "demoFailed", steps: [step], purpose: "interactive" });
+      }
+    },
     appChanged(next: typeof app) {
       app = next;
       observe();

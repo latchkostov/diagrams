@@ -113,7 +113,7 @@
   display: grid;
   gap: 6px;
   margin-block-start: 6px;
-  max-block-size: 40vh;
+  max-block-size: min(40vh, var(--coach-words-max, 40vh));
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -209,7 +209,7 @@
 }
 
 .coach-card.is-sheet .tutorial-words {
-  max-block-size: 28dvh;
+  max-block-size: min(28dvh, var(--coach-words-max, 28dvh));
 }
 
 .coach-card.is-sheet .tutorial-goal {

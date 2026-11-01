@@ -1,3 +1,4 @@
+import { tutorialAvailable } from "./availability";
 import { safeStorage } from "../lib/storage";
 import { tracks, tutorials } from "./catalog";
 import { chapterSeals, earnedSeals, lessonProgress, type SealLesson } from "./seals";
@@ -43,7 +44,7 @@ export function writeTutorials(edit: (s: StoredTutorials) => StoredTutorials): v
 }
 
 /** Progress saved for another version does not count toward lessons. Seals keep their dates. */
-export function savedProgress(t: Pick<Tutorial, "id" | "version" | "quarantined">) {
+export function savedProgress(t: Pick<Tutorial, "id" | "version" | "quarantined" | "completionFromVersion">) {
   return lessonProgress(readTutorials(), { ...t, track: "basics" });
 }
 
@@ -55,8 +56,13 @@ export function nextTutorial(
 ): Tutorial | undefined {
   const ordered = tracks.flatMap((track) => catalog.filter((lesson) => lesson.track === track.id));
   const index = ordered.findIndex((lesson) => lesson.id === current.id);
-  return [...ordered.slice(index + 1), ...ordered.slice(0, index)].find(
-    (lesson) => !lesson.quarantined && lesson.id !== current.id && !lessonProgress(progress, lesson)?.completed,
+  const remaining = [...ordered.slice(index + 1), ...ordered.slice(0, index)];
+  return [...remaining.filter((lesson) => !lesson.optional), ...remaining.filter((lesson) => lesson.optional)].find(
+    (lesson) =>
+      !lesson.quarantined &&
+      tutorialAvailable(lesson) &&
+      lesson.id !== current.id &&
+      !lessonProgress(progress, lesson)?.completed,
   );
 }
 
@@ -71,10 +77,17 @@ export function recordSeals(
   return { ...snapshot, marks };
 }
 
-export function saveProgress(tutorial: Pick<Tutorial, "id" | "version">, step: number, completed: boolean) {
+export function saveProgress(
+  tutorial: Pick<Tutorial, "id" | "version" | "completionFromVersion">,
+  step: number,
+  completed: boolean,
+) {
   writeTutorials((s) => {
     const previous = s.progress?.[tutorial.id];
-    const finished = completed || (previous?.version === tutorial.version && !!previous.completed);
+    const finished =
+      completed ||
+      (!!previous?.completed &&
+        (previous.version === tutorial.version || previous.version === tutorial.completionFromVersion));
     // A legacy completed entry has no known date. Replaying it must not invent one.
     const completedAt = previous?.completedAt ?? (completed && !previous?.completed ? Date.now() : undefined);
     return recordSeals(
@@ -107,9 +120,10 @@ export function withoutProgress(
   );
   const ids = new Set(selected.map((lesson) => lesson.id));
   const affectedTracks = new Set("track" in scope ? [scope.track] : selected.map((lesson) => lesson.track));
+  const affectsCore = "track" in scope || selected.some((lesson) => !lesson.optional);
   const removedMarks = new Set<string>([
-    "whole-syllabus",
-    ...chapterSeals.filter((seal) => affectedTracks.has(seal.track)).map((seal) => seal.id),
+    ...(affectsCore ? ["whole-syllabus"] : []),
+    ...chapterSeals.filter((seal) => affectsCore && affectedTracks.has(seal.track)).map((seal) => seal.id),
   ]);
   return {
     ...snapshot,

@@ -1,3 +1,6 @@
+import { exportForAudience } from "./exportForAudience";
+import { workTogether } from "./workTogether";
+import { reviewAgentChanges } from "./reviewAgentChanges";
 import { scaleOnBacklog } from "./scaleOnBacklog";
 import { withCoachRoutes } from "../coachRoutes";
 import { authorASimulation } from "./authorASimulation";
@@ -78,7 +81,6 @@ export const allTutorials: readonly Tutorial[] = [
   commandPalette,
   libraryReuse,
   importAndReview,
-  sharePresent,
   apiGateway,
   routeByAddress,
   kafkaTopic,
@@ -123,6 +125,10 @@ export const allTutorials: readonly Tutorial[] = [
   studyFanout,
   studyRag,
   studyCells,
+  sharePresent,
+  exportForAudience,
+  workTogether,
+  reviewAgentChanges,
 ]
   .map(withKeyboardSolutions)
   .map(withCoachRoutes);

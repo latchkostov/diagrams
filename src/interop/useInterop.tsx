@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import type { ExportResult } from "./exportResult";
 import type { ImportResult } from "./importResult";
 import type { DiagramFile } from "../model/types";
 import type { CanvasHandle } from "../canvas/CanvasView";
@@ -335,25 +336,30 @@ export function useInterop({
     fn: (
       notify: (show: (words: typeof import("./ui/fileMessages")) => void) => void,
       writer: ReturnType<typeof createFileWriter>,
-    ) => Promise<void> | void,
-  ) => {
+    ) => unknown,
+  ): Promise<ExportResult> => {
     // Start the message download beside the operation, without awaiting before a system picker opens.
     const messages = import("./ui/fileMessages");
     messages.catch(() => {});
     const writer = createFileWriter();
     try {
-      await fn((show) => {
+      const result = await fn((show) => {
         // Notifications are best effort. They never delay a file operation or turn its success into failure.
         void messages.then(show).catch(() => {});
       }, writer);
+      if (typeof result === "object" && result !== null && "status" in result) {
+        if (result.status === "failure" || result.status === "cancelled") return { status: result.status };
+      }
+      return { status: writer.signal.aborted ? "cancelled" : "success" };
     } catch (err) {
-      if (writer.signal.aborted) return;
+      if (writer.signal.aborted) return { status: "cancelled" };
       if (err instanceof StorageError && err.standalone) toast.error(err.message);
       else
         void messages.then(
           (words) => toast.error(words.fileFailure(what, message(err))),
           () => toast.error(message(err)),
         );
+      return { status: "failure" };
     } finally {
       writer.finish();
     }
@@ -411,7 +417,7 @@ export function useInterop({
         // Cancelled as it finished: still nothing downloaded.
         if (cancel.signal.aborted) {
           toast.dismiss(busy);
-          return;
+          return { status: "cancelled" } as const;
         }
         check();
         const suffix =
@@ -423,6 +429,7 @@ export function useInterop({
         toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
       } catch (err) {
         if (!cancel.signal.aborted) throw err;
+        return { status: "cancelled" } as const;
       } finally {
         writer.signal.removeEventListener("abort", cancelWork);
         cancel.signal.removeEventListener("abort", abort);

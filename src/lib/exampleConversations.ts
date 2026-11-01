@@ -1,3 +1,4 @@
+import { TUTORIAL_SLUG } from "../tutorials/sandbox";
 import { AI_THREAD_PREFIX } from "./aiThreadKey";
 import { safeStorage } from "./storage";
 
@@ -42,6 +43,7 @@ export const exampleIdentity = (slug: string) => `example:${slug}`;
 export function readConversation(identity: string): string | null {
   const cached = cache.get(identity);
   if (cached && "raw" in cached) return touch(identity).raw!;
+  if (identity === exampleIdentity(TUTORIAL_SLUG)) return null;
   let raw = safeStorage.getItem(AI_THREAD_PREFIX + identity);
   if (identity.startsWith("example:")) {
     // Older versions used a generation key. Read it only as a fallback; never migrate it.
@@ -81,6 +83,7 @@ export function withoutConversationSnapshots(raw: string): string {
 export function saveConversation(identity: string, raw: string | null): boolean {
   const example = identity.startsWith("example:");
   if (example) touch(identity).raw = raw;
+  if (identity === exampleIdentity(TUTORIAL_SLUG)) return true;
   const key = AI_THREAD_PREFIX + identity;
   // An explicit empty conversation masks any read-only legacy fallback.
   if (raw === null) return example ? safeStorage.setItem(key, '{"turns":[]}') : safeStorage.removeItem(key);

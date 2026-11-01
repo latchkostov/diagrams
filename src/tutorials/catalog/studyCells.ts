@@ -5,13 +5,13 @@ import { studyAdd, studyRun } from "./studyShared";
 
 export const studyCells: Tutorial = {
   id: "study-cells",
-  version: 1,
+  version: 2,
   track: "studies",
   level: 3,
   minutes: 25,
   study: true,
   title: msg("tutorials.studyCells.title"),
-  summary: msg("tutorials.studyCells.summary"),
+  summary: msg("tutorials.studyCells.summaryV2"),
   start: () => ({
     format: "diagrams/v2",
     title: t("tutorials.studyCells.title"),
@@ -83,8 +83,9 @@ export const studyCells: Tutorial = {
     {
       id: "split-into-cells",
       title: msg("tutorials.studyCells.splitTitle"),
-      goal: msg("tutorials.studyCells.splitGoal"),
-      hint: msg("tutorials.studyCells.splitHint"),
+      goal: () => t("tutorials.studyCells.splitGoalV2", { booking: t("tutorials.studyCells.booking") }),
+      hint: () => t("tutorials.studyCells.splitHintV2", { booking: t("tutorials.studyCells.booking") }),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyCells.checklistV2") },
       done: msg("tutorials.studyCells.splitDone"),
       check: {
         kind: "all",
@@ -95,7 +96,12 @@ export const studyCells: Tutorial = {
           { kind: "relation", from: "east", to: "neighbour", relation: "flow", edgeKind: "sync" },
         ],
       },
-      targets: [{ testId: "node-{east}", tip: msg("tutorials.studyCells.splitHint") }],
+      targets: [
+        {
+          testId: "node-{east}",
+          tip: () => t("tutorials.studyCells.splitHintV2", { booking: t("tutorials.studyCells.booking") }),
+        },
+      ],
       demo: [
         { kind: "add", subject: "neighbour", stencil: "service.java", after: "east" },
         { kind: "connect", from: "east", to: "booking" },
@@ -116,13 +122,22 @@ export const studyCells: Tutorial = {
     {
       id: "contain-bad-deploy",
       title: msg("tutorials.studyCells.deployTitle"),
-      goal: msg("tutorials.studyCells.deployGoal"),
-      hint: msg("tutorials.studyCells.deployHint"),
+      goal: () =>
+        t("tutorials.studyCells.deployGoalV2", {
+          deployRun: t("tutorials.studyCells.deployRun"),
+          booking: t("tutorials.studyCells.booking"),
+        }),
+      hint: msg("tutorials.studyCells.deployHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyCells.checklistV2") },
       done: msg("tutorials.studyCells.deployDone"),
       sticky: true,
       check: {
         kind: "all",
         checks: [
+          { kind: "member", subject: "booking", boundary: "cellA" },
+          { kind: "member", subject: "neighbour", boundary: "cellB" },
+          { kind: "relation", from: "east", to: "booking", relation: "flow", edgeKind: "sync" },
+          { kind: "relation", from: "east", to: "neighbour", relation: "flow", edgeKind: "sync" },
           { kind: "simulation", id: "bad-deploy", atLeastMs: 5000 },
           { kind: "fault", subject: "booking", fault: "fail" },
           {
@@ -145,15 +160,20 @@ export const studyCells: Tutorial = {
           },
         ],
       },
-      targets: [{ testId: "node-{booking}", tip: msg("tutorials.studyCells.deployHint"), dim: false }],
+      targets: [{ testId: "node-{booking}", tip: msg("tutorials.studyCells.deployHintV2"), dim: false }],
       demo: [{ kind: "runSimulation", id: "bad-deploy" }],
       solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "bad-deploy" }],
     },
     {
       id: "evacuate-region",
       title: msg("tutorials.studyCells.evacuateTitle"),
-      goal: msg("tutorials.studyCells.evacuateGoal"),
-      hint: msg("tutorials.studyCells.evacuateHint"),
+      goal: () =>
+        t("tutorials.studyCells.evacuateGoalV2", {
+          global: t("tutorials.studyCells.global"),
+          evacuateRun: t("tutorials.studyCells.evacuateRun"),
+        }),
+      hint: msg("tutorials.studyCells.evacuateHintV2"),
+      note: { title: msg("tutorials.studies.checklist"), text: msg("tutorials.studyCells.checklistV2") },
       done: msg("tutorials.studyCells.evacuateDone"),
       sticky: true,
       check: {
@@ -174,7 +194,7 @@ export const studyCells: Tutorial = {
           { kind: "metric", subject: "backup", field: "dropped", op: "=", value: 0 },
         ],
       },
-      targets: [{ testId: "node-{global}", tip: msg("tutorials.studyCells.evacuateHint") }],
+      targets: [{ testId: "node-{global}", tip: msg("tutorials.studyCells.evacuateHintV2") }],
       demo: [
         { kind: "add", subject: "west", stencil: "load-balancer", after: "global" },
         { kind: "add", subject: "backup", stencil: "service.go", after: "west" },
@@ -195,7 +215,7 @@ export const studyCells: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.studyCells.finish"),
+    text: msg("tutorials.studyCells.finishV2"),
     example: { slug: "cell-based-bookings", label: msg("tutorials.studyCells.reference") },
   },
 };

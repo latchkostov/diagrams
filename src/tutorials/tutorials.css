@@ -739,3 +739,20 @@
   transform: none;
   background: transparent;
 }
+
+.tutorial-checklist {
+  display: block;
+  white-space: pre-line;
+  font-weight: normal;
+  line-height: 1.5;
+}
+.tutorial-words textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 6rem;
+  user-select: text;
+}
+.tutorial-handoff-recap > span {
+  display: block;
+  margin-block-start: 8px;
+}

@@ -30,6 +30,7 @@ import { scaleOnBacklog } from "./catalog/scaleOnBacklog";
 import { backlogScalingPractice } from "../lab/waitingPractice";
 import { stencilRole } from "../stencils/roles";
 import { matchesExpectation } from "./simulations";
+import { workbenchDock } from "../canvas/inspector/dockState";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -169,6 +170,46 @@ function sandbox(
     tick: () => sessions.forEach((f) => f()),
   };
 }
+
+it("an AI dock transition completes its step without a canvas edit", () => {
+  workbenchDock.close();
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], sticky: true, demo: [], check: { kind: "dock", tab: "ai" } }],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  workbenchDock.show("ai");
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  workbenchDock.close();
+});
+
+it("image/HTML export completion rejects bytes captured from an older edit revision", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], sticky: true, demo: [], check: { kind: "export", format: "svg" } }],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  const captured = s.editor.getDocumentVersion();
+  s.edit({ ...s.getDiagram(), title: "A later edit" });
+  observationPorts.exports.publish({
+    documentId: "sandbox",
+    identity: captured.identity,
+    revision: captured.revision,
+    format: "svg",
+    bytes: 40,
+  });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  observationPorts.exports.publish({
+    documentId: "sandbox",
+    ...s.editor.getDocumentVersion(),
+    format: "svg",
+    bytes: 40,
+  });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
 
 it("independent add demos do not reuse a rail action's stale selected anchor", async () => {
   const s = sandbox();

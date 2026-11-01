@@ -5,13 +5,13 @@ import { studyAdd, studyRun } from "./studyShared";
 
 export const studyPayments: Tutorial = {
   id: "study-payments",
-  version: 1,
+  version: 2,
   track: "studies",
   level: 3,
   minutes: 25,
   study: true,
   title: msg("tutorials.studyPayments.title"),
-  summary: msg("tutorials.studyPayments.summary"),
+  summary: msg("tutorials.studyPayments.summaryV2"),
   start: () => ({
     format: "diagrams/v2",
     title: t("tutorials.studyPayments.title"),
@@ -92,9 +92,17 @@ export const studyPayments: Tutorial = {
   steps: [
     {
       id: "never-double-charge",
-      title: msg("tutorials.studyPayments.safeTitle"),
-      goal: msg("tutorials.studyPayments.safeGoal"),
-      hint: msg("tutorials.studyPayments.safeHint"),
+      title: msg("tutorials.studyPayments.safeTitleV2"),
+      goal: () => t("tutorials.studyPayments.safeGoalV2", { psp: t("tutorials.studyPayments.psp") }),
+      hint: () =>
+        t("tutorials.studyPayments.safeHintV2", {
+          payments: t("tutorials.studyPayments.payments"),
+          psp: t("tutorials.studyPayments.psp"),
+        }),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () => t("tutorials.studyPayments.checklistV2", { psp: t("tutorials.studyPayments.psp") }),
+      },
       done: msg("tutorials.studyPayments.safeDone"),
       check: {
         kind: "all",
@@ -111,7 +119,16 @@ export const studyPayments: Tutorial = {
           },
         ],
       },
-      targets: [{ testId: "node-{payments}", tip: msg("tutorials.studyPayments.safeHint") }],
+      targets: [
+        {
+          testId: "node-{payments}",
+          tip: () =>
+            t("tutorials.studyPayments.safeHintV2", {
+              payments: t("tutorials.studyPayments.payments"),
+              psp: t("tutorials.studyPayments.psp"),
+            }),
+        },
+      ],
       demo: [
         { kind: "add", subject: "outbox", stencil: "kafka.topic", after: "payments" },
         { kind: "add", subject: "consumer", stencil: "service.java", after: "outbox" },
@@ -140,8 +157,16 @@ export const studyPayments: Tutorial = {
     {
       id: "survive-psp-brownout",
       title: msg("tutorials.studyPayments.brownoutTitle"),
-      goal: msg("tutorials.studyPayments.brownoutGoal"),
-      hint: msg("tutorials.studyPayments.brownoutHint"),
+      goal: () =>
+        t("tutorials.studyPayments.brownoutGoalV2", {
+          brownoutRun: t("tutorials.studyPayments.brownoutRun"),
+          psp: t("tutorials.studyPayments.psp"),
+        }),
+      hint: () => t("tutorials.studyPayments.brownoutHintV2", { psp: t("tutorials.studyPayments.psp") }),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () => t("tutorials.studyPayments.checklistV2", { psp: t("tutorials.studyPayments.psp") }),
+      },
       done: msg("tutorials.studyPayments.brownoutDone"),
       sticky: true,
       check: {
@@ -167,7 +192,12 @@ export const studyPayments: Tutorial = {
           { kind: "metric", subject: "payments", edge: ["payments", "psp"], field: "breaker", op: "=", value: "open" },
         ],
       },
-      targets: [{ testId: "node-{psp}", tip: msg("tutorials.studyPayments.brownoutHint") }],
+      targets: [
+        {
+          testId: "node-{psp}",
+          tip: () => t("tutorials.studyPayments.brownoutHintV2", { psp: t("tutorials.studyPayments.psp") }),
+        },
+      ],
       demo: [
         {
           kind: "patch",
@@ -192,8 +222,12 @@ export const studyPayments: Tutorial = {
     {
       id: "dead-letter-disputes",
       title: msg("tutorials.studyPayments.poisonTitle"),
-      goal: msg("tutorials.studyPayments.poisonGoal"),
-      hint: msg("tutorials.studyPayments.poisonHint"),
+      goal: () => t("tutorials.studyPayments.poisonGoalV2", { poisonRun: t("tutorials.studyPayments.poisonRun") }),
+      hint: msg("tutorials.studyPayments.poisonHintV2"),
+      note: {
+        title: msg("tutorials.studies.checklist"),
+        text: () => t("tutorials.studyPayments.checklistV2", { psp: t("tutorials.studyPayments.psp") }),
+      },
       done: msg("tutorials.studyPayments.poisonDone"),
       sticky: true,
       check: {
@@ -206,7 +240,7 @@ export const studyPayments: Tutorial = {
           { kind: "metric", subject: "dlq", field: "processed", op: ">=", value: 1 },
         ],
       },
-      targets: [{ testId: "node-{outbox}", tip: msg("tutorials.studyPayments.poisonHint") }],
+      targets: [{ testId: "node-{outbox}", tip: msg("tutorials.studyPayments.poisonHintV2") }],
       demo: [
         { kind: "add", subject: "dlq", stencil: "aws.sqs", after: "outbox" },
         { kind: "live" },
@@ -240,7 +274,7 @@ export const studyPayments: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.studyPayments.finish"),
+    text: msg("tutorials.studyPayments.finishV2"),
     example: { slug: "payments-ledger", label: msg("tutorials.studyPayments.reference") },
   },
 };

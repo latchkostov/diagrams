@@ -25,6 +25,7 @@ export function createObservationPort<T>() {
 export interface ObservationSource {
   documentId: string;
   identity: object;
+  revision?: number;
 }
 export interface ProductObservations {
   navigation: ObservationSource & { nodeId: string };
@@ -58,10 +59,21 @@ export interface ProductObservations {
   sequenceExport: ObservationSource & { traceId: number; format: "svg" | "mermaid" | "png"; bytes: number };
   exports: ObservationSource & { format: ExportFormat; bytes: number };
   imports: ObservationSource & { format: FormatId; source?: string };
-  ai: ObservationSource & { kind: "change" | "explain" | "revert"; changed: readonly string[] };
+  ai: ObservationSource & {
+    kind: "change" | "explain" | "revert" | "undo" | "context";
+    copiedBytes?: number;
+    changed: readonly string[];
+  };
   collaboration: ObservationSource & {
     status: "joining" | "joined" | "left";
     role?: "creator" | "joiner";
+    practice?: {
+      phase: "join" | "edit" | "watch" | "leave";
+      viewerRefused?: boolean;
+      converged?: boolean;
+      run?: string;
+      recovery?: boolean;
+    };
   };
 }
 export const observationPorts: {

@@ -1044,7 +1044,7 @@ test("command-palette: adding a topic waits for Go to without requiring an unrel
   expectNoErrors(consoleErrors);
 });
 
-test("share-present: Present, reload, then Continue lands on Share", async ({ page, consoleErrors }) => {
+test("share-present: Continue reconstructs presentation before returning to Share", async ({ page, consoleErrors }) => {
   await openTutorial(page, "share-present");
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("present-toggle").click();
@@ -1052,10 +1052,16 @@ test("share-present: Present, reload, then Continue lands on Share", async ({ pa
   await page.reload();
   await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
   await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "leave");
+  await expect(page.getByTestId("present-exit")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(strip(page)).toHaveAttribute("data-step", "share");
   await expect(strip(page)).toHaveAttribute("data-state", "active");
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-share").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "audience");
+  await page.keyboard.press("Escape");
+  await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   expectNoErrors(consoleErrors);
 });
@@ -1065,13 +1071,21 @@ test("share-present exits to the original diagram without saving, and offers Int
 }) => {
   await gotoCanvas(page, "retry-storm");
   await page.getByTestId("view-tutorials").click();
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
-  await finishSolution(page);
+  for (const current of ["present", "leave", "share"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", current);
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+    await expect(strip(page)).not.toHaveAttribute("data-step", current);
+  }
+  await expect(strip(page)).toHaveAttribute("data-step", "audience");
   await expect(page.getByTestId("share-chooser")).toBeVisible();
   await expect(page.getByTestId("share-option-html")).toBeFocused();
   await expectNothingSaved(page);
   await page.keyboard.press("Escape");
+  await finishSolution(page);
   await page.getByTestId("tutorial-exit").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await page.getByTestId("view-canvas").click();
@@ -1094,19 +1108,24 @@ test("share-present: Exit preserves existing diagram edits", async ({ page, cons
   const slug = await page.getByTestId("example-picker").getAttribute("data-diagram-slug");
   if (!slug) throw new Error("Original diagram has no slug");
   await page.getByTestId("view-tutorials").click();
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
-  await page.getByTestId("node-seed-0").dblclick();
+  const practiceId = await page.evaluate(() => window.__tutorial?.diagram()?.nodes[0]?.id);
+  if (!practiceId) throw new Error("Practice diagram has no node");
+  const practiceNode = page.getByTestId(`node-${practiceId}`);
+  await practiceNode.dblclick();
   await page.getByTestId("inspector-field-label").fill("Sandbox edit only");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("node-seed-0")).toContainText("Sandbox edit only");
+  await expect(practiceNode).toContainText("Sandbox edit only");
   await page.getByTestId("tutorial-exit").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await page.getByTestId("view-canvas").click();
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", slug);
   await expect(page.getByTestId(originalTestId)).toContainText("My edited service");
   await expect(page.getByTestId(/^node-/)).toHaveCount(original.nodes.length);
-  await expect(page.getByTestId("node-seed-0")).toHaveCount(0);
+  await expect(practiceNode).toHaveCount(0);
   expect(await savedDiagram(page)).toEqual(original);
   expectNoErrors(consoleErrors);
 });
@@ -1782,10 +1801,14 @@ test("shortcuts Tutorials navigation preserves the opened device file Save bindi
   await page.getByTestId("shortcuts-tutorials").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
   await expect(page.getByTestId("shortcuts-dialog")).toHaveCount(0);
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("view-tutorials").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible();
+  if ((await page.getByTestId("tutorials-chapter-sharing").getAttribute("aria-expanded")) !== "true")
+    await page.getByTestId("tutorials-chapter-sharing").click();
   await page.getByTestId("tutorial-open-share-present").click();
   await page.getByTestId("tutorial-start").click();
   await page.getByTestId("shortcuts-button").click();

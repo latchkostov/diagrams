@@ -274,6 +274,10 @@ export async function skipAll(page: Page, clocked = false) {
   const lesson = await page.getByTestId("tutorial-app").evaluateAll((apps) => apps[0]?.getAttribute("data-tutorial"));
   while ((await strip(page).getAttribute("data-phase")) === "step") {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
+    if (lesson === "share-present" && (await page.getByTestId("present-exit").isVisible()))
+      await page.keyboard.press("Escape");
+    if (lesson === "share-present" && (await page.getByTestId("share-chooser").isVisible()))
+      await page.keyboard.press("Escape");
     if (lesson === "sequence-evidence" && (await page.getByTestId("sequence-dialog").isVisible())) {
       await page.keyboard.press("Escape");
       await expect(page.getByTestId("sequence-dialog")).toHaveCount(0);
@@ -367,7 +371,7 @@ export async function runPointerSolution(page: Page, consoleErrors: string[], id
       "read-compensation",
     ]);
   if (id === "command-palette") expect(seen).toEqual(["add", "goto", "action"]);
-  if (id === "share-present") expect(seen).toEqual(["present", "leave", "share"]);
+  if (id === "share-present") expect(seen).toEqual(["present", "leave", "share", "audience"]);
   await expect(page.getByTestId("tutorial-progress")).toBeVisible();
   if (id === "library-reuse") {
     expect(await savedEntries(page)).toHaveLength(1);

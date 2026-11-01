@@ -1,6 +1,8 @@
 import { backlogScalingPractice, breakerPractice, deadLetterPractice } from "./waitingPractice";
 import { resourcePractice, experimentPractice } from "./simulationPractice";
 import { addressPractice, policyPractice, checksPractice } from "./buildingBlockSeeds";
+import { workTogether } from "../tutorials/catalog/workTogether";
+import { reviewAgentChanges } from "../tutorials/catalog/reviewAgentChanges";
 import { workbenchTour } from "../tutorials/catalog/workbenchTour";
 import { libraryReuse } from "../tutorials/catalog/libraryReuse";
 import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixture";
@@ -312,7 +314,7 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
-  ...[workbenchTour, libraryReuse].map((lesson): Preset => ({
+  ...[workbenchTour, libraryReuse, workTogether, reviewAgentChanges].map((lesson): Preset => ({
     kind: "diagram",
     id: `tutorial-${lesson.id}-practice`,
     title: lesson.title(),
