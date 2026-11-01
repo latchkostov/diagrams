@@ -26,6 +26,53 @@ for (const id of keyboardTutorialGroups[0]) {
   });
 }
 
+test("keyboard connection hands off when creation completes the step before optional port edits", async ({ page }) => {
+  await page.goto("./?tutorial=request-vs-message");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "connect");
+  await expect(
+    play(page, { connect: "node-api", to: "node-topic", fromSide: "right", side: "left" }),
+  ).rejects.toBeInstanceOf(CompletedStep);
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "live");
+  expect(
+    await page.evaluate(
+      () => window.__tutorial?.diagram().edges.filter((edge) => edge.from === "api" && edge.to === "topic").length,
+    ),
+  ).toBe(1);
+});
+
+test("keyboard Live command waits for the requested session before its next input", async ({ page }) => {
+  let requested = false;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/(?:assets\/LiveSession-[\w-]+\.js|src\/live\/LiveSession\.tsx)(?:\?.*)?$/, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await page.goto("./?tutorial=timeouts-pools");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  let settled = false;
+  const entering = command(page, "live:toggle", ">").then(() => (settled = true));
+  try {
+    await expect.poll(() => requested).toBe(true);
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-busy", "true");
+    await animationFrames(page);
+    expect(settled).toBe(false);
+    release();
+    await entering;
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-busy", "false");
+    await expect(page.getByTestId("live-sim-picker")).toBeVisible();
+  } finally {
+    release();
+    await entering;
+  }
+});
+
 test("native keyboard controls use their focus observation without extra animation frames", async ({ page }) => {
   await page.setContent(
     '<button data-testid="first">First</button><button data-testid="target">Target</button><button data-testid="last">Last</button>',
@@ -82,6 +129,27 @@ test("trace-slowmo: keyboard Escape stops when the lesson finishes, preserving L
   }
   expect(completed).toBe(true);
   await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("keyboard menu confirmation releases the camera work deferred by that menu", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="canvas-wrap" data-camera-state="deferred" data-interaction-state="menu-open"><input data-testid="quick-add-search"></div>',
+  );
+  await page.getByTestId("quick-add-search").evaluate((input) => {
+    input.addEventListener("keydown", (event) => {
+      if ((event as KeyboardEvent).key !== "Enter") return;
+      const canvas = input.parentElement;
+      if (!canvas) throw new Error("Missing menu's camera owner");
+      input.remove();
+      canvas.setAttribute("data-interaction-state", "idle");
+      canvas.setAttribute("data-camera-state", "idle");
+      canvas.setAttribute("data-confirmations", "1");
+    });
+  });
+  await page.getByTestId("quick-add-search").focus();
+  await play(page, { press: "Enter" });
+  await expect(page.getByTestId("quick-add-search")).toHaveCount(0);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-confirmations", "1");
 });
 
 test("keyboard scheduled-note navigation advances the simulation until its real pause", async ({ page }) => {

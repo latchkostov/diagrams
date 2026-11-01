@@ -2,6 +2,8 @@ import process from "node:process";
 import { expect, type Page } from "@playwright/test";
 import { animationFrames } from "./fixtures";
 
+const lastTypeahead = new WeakMap<Page, string>();
+
 /** macOS popup menus live outside CDP; closed-select typeahead is a native keyboard path. */
 export async function chooseNativeSelect(
   page: Page,
@@ -19,6 +21,14 @@ export async function chooseNativeSelect(
   const index = options.findIndex((option) => option.value === value);
   expect(index).toBeGreaterThanOrEqual(0);
   if (process.platform === "darwin" || input === "typeahead") {
+    // A second choice on the same focused select otherwise extends its native search prefix.
+    // A real keyboard blur resets that session; keep the selection and return to the same control.
+    if (lastTypeahead.get(page) === id) {
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
+      await expect(select).toBeFocused();
+    }
+    lastTypeahead.set(page, id);
     // Use the shortest unambiguous prefix: action selects can reset after each character.
     const label = Array.from(options[index].label.trimStart());
     let prefix = "";

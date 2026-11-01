@@ -40,11 +40,20 @@ async function chooseRow(page: Page, id: string) {
 
 export async function command(page: Page, id: string, query: string) {
   if (await page.evaluate(() => window.__tutorial?.snapshot().state.value === "finished")) throw new CompletedStep();
+  const enteringLive =
+    id === "live:toggle" && (await page.getByTestId("live-toggle").getAttribute("aria-pressed")) === "false";
   await page.keyboard.press("ControlOrMeta+k");
   await expect(page.getByTestId("command-input")).toBeFocused();
   await write(page, query);
   await chooseRow(page, `command-item-${id}`);
   await page.keyboard.press("Enter");
+  if (id === "live:toggle") {
+    if (enteringLive) await waitForLiveSession(page);
+    else {
+      await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
+      await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    }
+  }
 }
 
 export async function node(page: Page, id: string) {
@@ -353,12 +362,24 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
       action.choose === "sim-panel-add-step" || /^sim-panel-step-\d+-focus$/.test(action.choose) ? "" : action.value,
     );
   } else if ("connect" in action) {
+    const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
     const from = action.connect.slice(5),
       to = action.to.slice(5);
     await node(page, from);
     await page.keyboard.press("Shift+F10");
     await menuItem(page, "node.connect");
     await menuItem(page, `connect:${to}`);
+    // Creating the edge can complete the step before its optional port choices. The next step
+    // owns the canvas now, and may deliberately disable those editing shortcuts.
+    if (
+      await page.evaluate((step) => {
+        const state = window.__tutorial?.snapshot().state;
+        return (
+          !!state && (state.value === "completing" || state.value === "finished" || state.stepIds[state.index] !== step)
+        );
+      }, step)
+    )
+      throw new CompletedStep();
     if (action.side || action.fromSide) {
       const id = await page.evaluate(
         ({ from, to }) => window.__tutorial?.diagram().edges.find((edge) => edge.from === from && edge.to === to)?.id,
@@ -388,7 +409,20 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
     if (action.into) await expect(page.getByTestId(action.into)).toBeFocused();
     await page.keyboard.insertText(action.type);
   } else {
-    await waitForCameraIdle(page);
+    // An open menu intentionally defers pane work. Its Enter/Escape must run before
+    // the camera can become idle; canvas keys still wait for their settled frame.
+    await expect
+      .poll(() =>
+        page
+          .getByTestId("canvas-wrap")
+          .evaluate(
+            (canvas) =>
+              canvas.getAttribute("data-camera-state") === "idle" ||
+              (canvas.getAttribute("data-camera-state") === "deferred" &&
+                canvas.getAttribute("data-interaction-state") === "menu-open"),
+          ),
+      )
+      .toBe(true);
     if (action.press === "ControlOrMeta+d")
       await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
     await page.keyboard.press(action.press);

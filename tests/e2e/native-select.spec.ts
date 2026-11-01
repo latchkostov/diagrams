@@ -1,6 +1,18 @@
 import { test, expect, gotoLive } from "./fixtures";
 import { chooseNativeSelect } from "./native-select";
 
+test("successive native typeahead choices start independent searches", async ({ page }) => {
+  await page.setContent(
+    '<select data-testid="choice"><option value="a">Alpha</option><option value="b">Beta</option><option value="c">Charlie</option></select><button data-testid="after">After</button>',
+  );
+  await page.keyboard.press("Tab");
+  await chooseNativeSelect(page, "choice", "b", "typeahead");
+  await expect(page.getByTestId("choice")).toHaveValue("b");
+  await chooseNativeSelect(page, "choice", "c", "typeahead");
+  await expect(page.getByTestId("choice")).toHaveValue("c");
+  await expect(page.getByTestId("choice")).toBeFocused();
+});
+
 for (const [language, busy, waiting] of [
   ["English", "threads busy", "threads waiting"],
   ["Arabic", "الخيوط المشغولة", "الخيوط المنتظرة"],

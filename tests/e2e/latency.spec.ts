@@ -1,4 +1,4 @@
-import { fitDiagram, openInspectorLiveDetails } from "./fixtures";
+import { animationFrames, fitDiagram, openInspectorLiveDetails } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { pseudoText } from "../../src/i18n/pseudo";
 import type { Locator, Page } from "@playwright/test";
@@ -9,13 +9,41 @@ async function scrollGesture(detail: Locator, direction: "start" | "end", action
   const pending = await detail.evaluateHandle((el, direction) => {
     let finish!: () => void;
     const finished = new Promise<void>((resolve) => (finish = resolve));
-    const cancel = () => el.removeEventListener("scrollend", done);
+    let frame = 0;
+    let acknowledged = false;
+    let ended = false;
+    const cancel = () => {
+      el.removeEventListener("scrollend", onEnd);
+      el.removeEventListener("wheel", onInput, true);
+      el.removeEventListener("keydown", onInput, true);
+      cancelAnimationFrame(frame);
+    };
     const done = () => {
       cancel();
       finish();
     };
-    if (direction === "start" ? el.scrollTop === 0 : el.scrollTop + el.clientHeight >= el.scrollHeight - 1) finish();
-    else el.addEventListener("scrollend", done);
+    const onEnd = () => {
+      ended = true;
+      if (acknowledged) done();
+    };
+    const onInput = () => {
+      ended = false;
+      el.removeEventListener("wheel", onInput, true);
+      el.removeEventListener("keydown", onInput, true);
+      // Playwright's input command can return before native delivery. Even a wheel at
+      // the boundary must be consumed before Home can hand scrolling the other way.
+      frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => {
+          acknowledged = true;
+          const atBoundary =
+            direction === "start" ? el.scrollTop === 0 : el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+          if (ended || atBoundary) done();
+        });
+      });
+    };
+    el.addEventListener("scrollend", onEnd);
+    el.addEventListener("wheel", onInput, true);
+    el.addEventListener("keydown", onInput, true);
     return { finished, cancel };
   }, direction);
   try {
@@ -39,6 +67,38 @@ test("a scroll gesture finishes before the driver hands off the next input", asy
   await scroller.hover();
   await scrollGesture(scroller, "end", () => page.mouse.wheel(0, 300));
   expect(await scroller.getAttribute("data-scrolling")).toBe("false");
+});
+
+test("a boundary scroll waits for native input delivery before handing off", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="scroll" tabindex="0" style="height:100px;overflow:auto"><div style="height:1000px">Native scroll</div></div>',
+  );
+  const scroller = page.getByTestId("scroll");
+  await scroller.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await scroller.hover();
+  let enqueued = false;
+  let returned = false;
+  const waiting = scrollGesture(scroller, "end", async () => {
+    enqueued = true;
+  }).then(() => {
+    returned = true;
+  });
+  try {
+    await expect.poll(() => enqueued).toBe(true);
+    await animationFrames(page);
+    expect(returned, "being at the boundary does not acknowledge an undelivered wheel").toBe(false);
+    await page.mouse.wheel(0, 300);
+    await waiting;
+    expect(returned).toBe(true);
+    await scroller.focus();
+    await scrollGesture(scroller, "start", () => page.keyboard.press("Home"));
+    await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBe(0);
+  } finally {
+    await page.mouse.wheel(0, 300);
+    await waiting;
+  }
 });
 
 async function editableLatencyDetails(page: Page) {
