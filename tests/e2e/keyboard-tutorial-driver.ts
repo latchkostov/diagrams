@@ -25,6 +25,10 @@ async function write(page: Page, text: string) {
 async function chooseRow(page: Page, id: string) {
   const row = page.getByTestId(id);
   await expect(row).toBeVisible();
+  if (id.startsWith("context-menu-item-"))
+    await expect
+      .poll(() => row.evaluate((el) => el.closest("[data-testid][data-depth]")?.contains(document.activeElement)))
+      .toBe(true);
   const seen = new Set<string>();
   while ((await row.getAttribute("data-active")) !== "true") {
     const active = await page.getByTestId(/^(command-item-|context-menu-item-)/).evaluateAll((items) =>

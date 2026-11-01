@@ -7,6 +7,9 @@ import { test, expect, gotoLive, waitForCameraIdle, waitForStableViewport, expec
 /** Reaching a position can precede the compositor's final scroll; don't overlap native gestures. */
 async function scrollGesture(detail: Locator, direction: "start" | "end", action: () => Promise<unknown>) {
   const pending = await detail.evaluateHandle((el, direction) => {
+    const atBoundary = () =>
+      direction === "start" ? el.scrollTop === 0 : el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    const startedAtBoundary = atBoundary();
     let finish!: () => void;
     const finished = new Promise<void>((resolve) => (finish = resolve));
     let frame = 0;
@@ -35,9 +38,7 @@ async function scrollGesture(detail: Locator, direction: "start" | "end", action
       frame = requestAnimationFrame(() => {
         frame = requestAnimationFrame(() => {
           acknowledged = true;
-          const atBoundary =
-            direction === "start" ? el.scrollTop === 0 : el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-          if (ended || atBoundary) done();
+          if (ended || (startedAtBoundary && atBoundary())) done();
         });
       });
     };
@@ -97,6 +98,48 @@ test("a boundary scroll waits for native input delivery before handing off", asy
     await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBe(0);
   } finally {
     await page.mouse.wheel(0, 300);
+    await waiting;
+  }
+});
+
+test("a gesture that reaches the boundary still awaits its real scroll end", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="scroll" tabindex="0" style="height:100px;overflow:auto"><div style="height:1000px">Native scroll</div></div>',
+  );
+  const scroller = page.getByTestId("scroll");
+  await scroller.evaluate((el) => {
+    el.dataset.hold = "true";
+    el.addEventListener(
+      "scrollend",
+      (event) => {
+        if (el.dataset.hold === "true") {
+          el.dataset.ended = "true";
+          event.stopImmediatePropagation();
+        }
+      },
+      true,
+    );
+  });
+  await scroller.hover();
+  let returned = false;
+  const waiting = scrollGesture(scroller, "end", () => page.mouse.wheel(0, 2000)).then(() => {
+    returned = true;
+  });
+  try {
+    await expect(scroller).toHaveAttribute("data-ended", "true");
+    await animationFrames(page);
+    expect(returned, "reaching the boundary does not acknowledge a held native scrollend").toBe(false);
+    await scroller.evaluate((el) => {
+      el.dataset.hold = "false";
+      el.dispatchEvent(new Event("scrollend"));
+    });
+    await waiting;
+    expect(returned).toBe(true);
+  } finally {
+    await scroller.evaluate((el) => {
+      el.dataset.hold = "false";
+      el.dispatchEvent(new Event("scrollend"));
+    });
     await waiting;
   }
 });

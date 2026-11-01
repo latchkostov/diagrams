@@ -110,6 +110,57 @@ async function finishBySkipping(page: Page, clocked = false) {
   await expect(strip).toHaveAttribute("data-phase", "finished");
 }
 
+async function dismissHandoff(page: Page) {
+  await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
+}
+
+test("handoff Escape waits for its real focus-and-listener frame", async ({ page }) => {
+  await page.goto("./?tutorial=quick-add");
+  await page.getByTestId("tutorial-start").click();
+  const held = await page.evaluateHandle(() => {
+    const request = window.requestAnimationFrame.bind(window);
+    const cancel = window.cancelAnimationFrame.bind(window);
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let sequence = 0;
+    window.requestAnimationFrame = (callback) => {
+      if (!document.querySelector('[data-testid="tutorial-handoff-heading"]')) return request(callback);
+      const id = --sequence;
+      callbacks.set(id, callback);
+      return id;
+    };
+    window.cancelAnimationFrame = (id) => {
+      if (id < 0) callbacks.delete(id);
+      else cancel(id);
+    };
+    return {
+      pending: () => callbacks.size,
+      frames: () => new Promise<void>((resolve) => request(() => request(() => resolve()))),
+      release() {
+        window.requestAnimationFrame = request;
+        window.cancelAnimationFrame = cancel;
+        for (const callback of callbacks.values()) request(callback);
+        callbacks.clear();
+      },
+    };
+  });
+  let dismissing: Promise<void> | undefined;
+  try {
+    await finishBySkipping(page);
+    await expect.poll(() => held.evaluate(({ pending }) => pending())).toBeGreaterThan(0);
+    dismissing = dismissHandoff(page);
+    await held.evaluate(({ frames }) => frames());
+    await held.evaluate(({ release }) => release());
+    await dismissing;
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  } finally {
+    await held.evaluate(({ release }) => release());
+    await dismissing;
+    await held.dispose();
+  }
+});
+
 test("legacy chapter seal keeps its first date across reloads", async ({ page }) => {
   const progress = Object.fromEntries(
     readdirSync("src/tutorials/catalog")
@@ -171,8 +222,7 @@ test("handoff starts the next lesson directly and Escape leaves the canvas usabl
   await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
   await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "step");
   await finishBySkipping(page);
-  await page.keyboard.press("Escape");
-  await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
+  await dismissHandoff(page);
   await expect(page.getByTestId("canvas-wrap")).toBeFocused();
   await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "finished");
   await page.getByTestId("canvas-wrap").click({ position: { x: 40, y: 40 }, button: "right" });

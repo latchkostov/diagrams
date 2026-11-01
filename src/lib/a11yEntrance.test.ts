@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 import { expectNoViolations } from "../../tests/e2e/a11y-helpers";
+import { expectNoRelationshipViolations } from "../../tests/e2e/relationships-a11y";
 
 const { analyze } = vi.hoisted(() => ({ analyze: vi.fn() }));
 vi.mock("@playwright/test", async () => ({ expect: (await import("vitest")).expect }));
@@ -43,6 +44,16 @@ it.each(["view-in", "ix-fade", "ix-rise"])("does not start an accessibility scan
   const h = harness([name]);
   const scan = expectNoViolations(h.page, "tutorials-view");
   // Drain the awaited promise chain before checking that the held entrance still blocks the scan.
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(analyze).not.toHaveBeenCalled();
+  h.finish();
+  await scan;
+  expect(analyze).toHaveBeenCalledOnce();
+});
+
+it.each(["view-in", "ix-fade", "ix-rise"])("relationship scans await their held %s entrance", async (name) => {
+  const h = harness([name]);
+  const scan = expectNoRelationshipViolations(h.page);
   await new Promise<void>((resolve) => setImmediate(resolve));
   expect(analyze).not.toHaveBeenCalled();
   h.finish();

@@ -5,6 +5,8 @@ import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, openMissingDlq, pageLoadTimeout } from "./fixtures";
 import { MOD, SLUG, openAdvanced } from "./ai-helpers";
+import { animationFrames } from "./fixtures";
+import { chunk, holdChunk } from "./chunk";
 
 // The privacy audit's fixes (docs/PRIVACY-AUDIT.md): what a private diagram must never leave behind in the address
 // bar, the browser's history, a request, a third party's script, a link embed or this browser's storage. Every
@@ -112,6 +114,13 @@ async function openClearDevice(page: Page) {
 }
 
 const appOrigin = () => new URL(test.info().project.use.baseURL ?? "http://localhost").origin;
+
+async function engageDownloadedToast(page: Page, name = "quillfeather-payroll.diagram.json") {
+  await expect(page.getByTestId("toast")).toContainText(`Downloaded ${name}.`);
+  const dismiss = page.getByTestId("toast-dismiss");
+  await dismiss.focus();
+  await expect(dismiss).toBeFocused();
+}
 
 test.describe("the address bar and history", () => {
   test("a private diagram's simulation id never goes in the address bar; a public one's does", async ({
@@ -512,6 +521,37 @@ test.describe("this browser's storage", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("save-toast setup waits for the real save message after its download", async ({ page, context }) => {
+    const messages = await holdChunk(page, chunk("fileMessages", "src/interop/ui/fileMessages.ts"));
+    try {
+      await page.addInitScript(() => {
+        Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+      });
+      await gotoCanvas(page, SLUG);
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+      await page.getByTestId("node-shopper").click({ button: "right" });
+      await page.getByTestId("context-menu-item-item.copy-for-ai").click();
+      await expect(page.getByTestId("toast")).toContainText("Copied");
+      await page.getByTestId("canvas-wrap").focus();
+      const saved = page.waitForEvent("download");
+      await page.keyboard.press(`${MOD}+s`);
+      const file = await saved;
+      // The download is emitted before its independently loaded success message.
+      // The earlier copy toast is not the save notification this test intends to engage.
+      let engaged = false;
+      const engaging = engageDownloadedToast(page, file.suggestedFilename()).then(() => {
+        engaged = true;
+      });
+      await expect.poll(messages.requested).toBe(true);
+      await animationFrames(page);
+      expect(engaged, "the saved file does not acknowledge its delayed success toast").toBe(false);
+      messages.release();
+      await engaging;
+    } finally {
+      messages.release();
+    }
+  });
+
   test("a private toast waiting behind a toast in use still gets Clear conversation", async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
@@ -524,14 +564,13 @@ test.describe("this browser's storage", () => {
       .fill('[{ "op": "add_node", "kind": "Kafka topic", "label": "quillfeather-runs" }]');
     await page.getByTestId("ai-apply").click();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
-    // A toast the keyboard is on: the palette opened from it hands the keyboard back to it as it closes.
     await page.getByTestId("canvas-wrap").focus();
     const saved = page.waitForEvent("download");
     await page.keyboard.press(`${MOD}+s`);
     await saved;
+    await engageDownloadedToast(page);
     const inUse = page.getByTestId("toast-dismiss");
     await expect(inUse).toHaveCount(1);
-    await inUse.focus();
     await page.keyboard.press(`${MOD}+k`);
     await page.getByTestId("command-input").fill("private");
     await page.keyboard.press("Enter");

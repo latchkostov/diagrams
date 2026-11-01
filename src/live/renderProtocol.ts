@@ -122,7 +122,7 @@ export interface AckMessage {
   buf?: ArrayBuffer;
   drawn: number;
   frames: number;
-  /** Pulses or flashes are fading, or fonts just loaded: post again next frame. */
+  /** Pulses or flashes are fading: post again next frame. */
   animating: boolean;
   /** x, y (pane CSS px), message id per hit target, when they changed. */
   hits?: Float64Array;
@@ -130,17 +130,9 @@ export interface AckMessage {
   slowLabels?: PaintedLabel[];
 }
 
-/**
- * A repaint the worker did on its own (fonts finished loading): fresh counts, hits and labels, but
- * not an answer to a frame, so it doesn't release the next one.
- */
-export interface RepaintMessage extends Omit<AckMessage, "type" | "buf" | "animating"> {
-  type: "repaint";
-}
-
 export type FromWorker =
   | AckMessage
-  | RepaintMessage
+  | { type: "invalidate"; epoch: number }
   | { type: "probe"; id: number; data: Uint8ClampedArray }
   | { type: "error"; message: string };
 

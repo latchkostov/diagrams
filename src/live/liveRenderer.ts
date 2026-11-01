@@ -507,6 +507,7 @@ class WorkerRenderer implements LiveRenderer {
   #glowKey = "|";
   #glowPending: { color: string; dpr: number } | null = null;
   #workerAnimating = false;
+  #invalidated = false;
   #geometryRevision = 0;
   #sentGeometryRevision = -1;
   // What the worker reported.
@@ -568,21 +569,21 @@ class WorkerRenderer implements LiveRenderer {
     }
     if (m.type === "ack" && m.buf) this.#packer.recycle(m.buf);
     if (m.epoch !== this.#epoch) return;
-    // A repaint the worker did on its own (fonts loaded) brings fresh stats, but it isn't the answer
-    // to the frame in flight: only an ack releases the next frame.
-    if (m.type === "ack") {
-      if (!this.#started) {
-        this.#started = true;
-        clearTimeout(this.#startTimer);
-        // The worker draws: the SVG's own march and the dot's CSS breath step aside for its canvases.
-        if (this.#host?.march) this.#setup.root.setAttribute(MARCH_ATTR, "canvas");
-        if (this.#host?.glow) this.#setup.root.setAttribute(GLOW_ATTR, "canvas");
-      }
-      this.#inFlight = false;
-      this.#workerAnimating = m.animating;
-      if (this.#sentGeometryRevision === this.#geometryRevision) {
-        this.#setup.overlay.hidden = false;
-      }
+    if (m.type === "invalidate") {
+      this.#invalidated = true;
+      return;
+    }
+    if (!this.#started) {
+      this.#started = true;
+      clearTimeout(this.#startTimer);
+      // The worker draws: the SVG's own march and the dot's CSS breath step aside for its canvases.
+      if (this.#host?.march) this.#setup.root.setAttribute(MARCH_ATTR, "canvas");
+      if (this.#host?.glow) this.#setup.root.setAttribute(GLOW_ATTR, "canvas");
+    }
+    this.#inFlight = false;
+    this.#workerAnimating = m.animating;
+    if (this.#sentGeometryRevision === this.#geometryRevision) {
+      this.#setup.overlay.hidden = false;
     }
     this.drawn = m.drawn;
     this.frames = m.frames;
@@ -650,6 +651,7 @@ class WorkerRenderer implements LiveRenderer {
       !this.#optionsDirty &&
       !this.#resetPending &&
       !this.#workerAnimating &&
+      !this.#invalidated &&
       !this.#glowPending &&
       viewKey === this.#sentViewKey &&
       f.focus === this.#sentFocus &&
@@ -708,6 +710,7 @@ class WorkerRenderer implements LiveRenderer {
       return;
     }
     this.#inFlight = true;
+    this.#invalidated = false;
     this.#sentGeometryRevision = this.#geometryRevision;
     if (!this.#started && this.#startTimer === undefined)
       this.#startTimer = setTimeout(() => this.#fail("the particle worker didn't answer"), START_TIMEOUT_MS);

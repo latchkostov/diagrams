@@ -6,6 +6,7 @@ import {
   pageLoadTimeout,
   pauseClock,
   waitForLiveSession,
+  gotoLive,
 } from "./fixtures";
 import {
   CompletedStep,
@@ -25,6 +26,60 @@ for (const id of keyboardTutorialGroups[0]) {
     await runKeyboardTutorial(page, consoleErrors, id);
   });
 }
+
+test("keyboard menu navigation waits for the placed menu's actual focus", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1");
+  await node(page, "orders");
+  await page.evaluate(() => {
+    const original = HTMLElement.prototype.focus;
+    const pending: (() => void)[] = [];
+    const hold = (window.__keyboardFocusHold = {
+      pending: false,
+      release() {
+        HTMLElement.prototype.focus = original;
+        for (const focus of pending.splice(0)) focus();
+        delete window.__keyboardFocusHold;
+      },
+    });
+    HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+      if (this.getAttribute("role") === "menu") {
+        hold.pending = true;
+        pending.push(() => original.call(this, options));
+      } else original.call(this, options);
+    };
+  });
+  await page.keyboard.press("Shift+F10");
+  await expect.poll(() => page.evaluate(() => window.__keyboardFocusHold?.pending)).toBe(true);
+  let arrows = 0;
+  const press = page.keyboard.press.bind(page.keyboard);
+  page.keyboard.press = async (...args) => {
+    if (args[0] === "ArrowDown") arrows++;
+    return press(...args);
+  };
+  const navigating = focus(page, "context-menu-item-sim.fault");
+  try {
+    await animationFrames(page);
+    expect(arrows, "visible rows do not own the keyboard before menu focus").toBe(0);
+    await page.evaluate(() => window.__keyboardFocusHold?.release());
+    await navigating;
+    await expect(page.getByTestId("context-menu-item-sim.fault")).toHaveAttribute("data-active", "true");
+  } finally {
+    await page.evaluate(() => window.__keyboardFocusHold?.release());
+    page.keyboard.press = press;
+    await navigating;
+  }
+});
+
+test("keyboard row navigation recognises a searchable menu's focused search field", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1");
+  await page.getByTestId("live-toggle").click();
+  await node(page, "orders");
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.getByTestId("quick-add-search")).toBeFocused();
+  await page.keyboard.insertText("PostgreSQL");
+  await focus(page, "context-menu-item-quick-add:postgres");
+  await expect(page.getByTestId("context-menu-item-quick-add:postgres")).toHaveAttribute("data-active", "true");
+});
 
 test("keyboard connection hands off when creation completes the step before optional port edits", async ({ page }) => {
   await page.goto("./?tutorial=request-vs-message");

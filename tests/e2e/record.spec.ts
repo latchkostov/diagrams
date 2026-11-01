@@ -299,8 +299,10 @@ test.describe("record video", () => {
   });
 
   test("start → countdown → indicator → stop → review → download", async ({ page, consoleErrors }) => {
+    await page.clock.install();
     await stubCapture(page);
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&paused=1`);
+    await pauseClock(page);
     await openRecord(page);
     await page.getByTestId("record-opt-from-start").uncheck();
     await page.getByTestId("record-start").click();
@@ -308,9 +310,21 @@ test.describe("record video", () => {
     await expect(page.getByTestId("record-countdown")).toBeVisible();
     // The share prompt asked for this tab, without sound.
     expect(await rec(page, "options")).toMatchObject({ preferCurrentTab: true, audio: false });
+    for (const count of ["2", "1"]) {
+      await page.clock.runFor(1000);
+      await expect(page.getByTestId("record-countdown")).toContainText(count);
+    }
+    await page.clock.runFor(1000);
     await expect(page.getByTestId("record-indicator")).toBeVisible({ timeout: 6_000 });
     await expect(page.getByTestId("record-countdown")).toHaveCount(0);
-    await expect.poll(() => rec(page, "started")).toBe(true);
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(16);
+        return rec(page, "started");
+      })
+      .toBe(true);
+    await page.clock.runFor(1000);
+    const measuredAt = await page.evaluate(() => performance.now());
     // Framed to the canvas area, in presentation view, with the live bar and top bar out of the way.
     expect(await rec(page, "framedTo")).toBe("app");
     expect(await rec(page, "mime")).toBe("video/webm;codecs=vp9");
@@ -318,8 +332,12 @@ test.describe("record video", () => {
     await expect(page.getByTestId("topbar")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
     await expect(page.getByTestId("record-elapsed")).toHaveText("0:01", { timeout: 4_000 });
+    expect(await page.evaluate(() => performance.now()), "locator work leaves the measured second frozen").toBe(
+      measuredAt,
+    );
 
     await page.getByTestId("record-stop").click();
+    await page.clock.fastForward(100);
     const review = page.getByTestId("record-review");
     await expect(review).toBeVisible();
     await expect(page.getByTestId("record-meta")).toContainText(/0:0\d · 48 KB · WebM \(VP9\)/);
