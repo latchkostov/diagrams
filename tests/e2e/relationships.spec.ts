@@ -14,7 +14,7 @@ import {
   STORAGE_KEYS,
 } from "./fixtures";
 import { routingFixture } from "../../src/lab/routingFixture";
-import AxeBuilder from "@axe-core/playwright";
+import { expectNoRelationshipViolations as expectNoViolations } from "./relationships-a11y";
 import type { Locator, Page } from "@playwright/test";
 import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
 
@@ -24,7 +24,6 @@ import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
  * data-testid only (axe's include takes CSS, so it uses a [data-testid] attribute selector).
  */
 const SLUG = "aks-app-config-key-vault";
-const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 
 test("configured vendor route tables survive inspector stencil changes and Undo", async ({ page }) => {
@@ -58,17 +57,6 @@ async function box(locator: Locator) {
   const b = await locator.boundingBox();
   if (!b) throw new Error("Expected a visible element");
   return b;
-}
-
-async function expectNoViolations(page: Page, scope?: string) {
-  let axe = new AxeBuilder({ page }).withTags(WCAG);
-  // Focus arrives before the menu's fade finishes. Audit the painted colours,
-  // rather than a transient partially transparent frame on a faster machine.
-  if (scope) await expect(page.getByTestId(scope)).toHaveCSS("opacity", "1");
-  if (scope) axe = axe.include(`[data-testid="${scope}"]`);
-  const { violations } = await axe.analyze();
-  const report = violations.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).join(", ")})`);
-  expect(report, report.join("\n")).toEqual([]);
 }
 
 /** Drags from one node's handle to another's, the way people draw an edge. */
@@ -440,19 +428,21 @@ test.describe("relationships", () => {
     await expect(summary).toHaveAttribute("data-total", "0");
   });
 
-  test("axe: canvas with dependencies, hint and settings editor", async ({ page }) => {
-    await expectNoViolations(page);
-    // A flow into a typed stencil gets a one-line hint offering the dependency.
-    await page.getByTestId("edge-label-api-to-mi").click({ button: "right" });
-    await menuItem(page, "edge.relationship").click();
-    await menuItem(page, "relation:message").click();
-    await page.getByTestId("edge-label-api-to-mi").click();
-    await expect(page.getByTestId("inspector-relation-hint")).toBeVisible();
-    await expectNoViolations(page, "inspector");
-    await page.getByTestId("inspector-relation-hint-apply").click();
-    await expect(page.getByTestId("edge-api-to-mi")).toHaveAttribute("data-relation", "identity");
-    await expect(page.getByTestId("inspector-relation-hint")).toHaveCount(0);
-  });
+  for (const theme of ["light", "dark"])
+    test(`axe: canvas with dependencies, hint and settings editor (${theme})`, async ({ page }) => {
+      if (theme === "dark") await toggleTheme(page);
+      await expectNoViolations(page);
+      // A flow into a typed stencil gets a one-line hint offering the dependency.
+      await page.getByTestId("edge-label-api-to-mi").click({ button: "right" });
+      await menuItem(page, "edge.relationship").click();
+      await menuItem(page, "relation:message").click();
+      await page.getByTestId("edge-label-api-to-mi").click();
+      await expect(page.getByTestId("inspector-relation-hint")).toBeVisible();
+      await expectNoViolations(page, "inspector");
+      await page.getByTestId("inspector-relation-hint-apply").click();
+      await expect(page.getByTestId("edge-api-to-mi")).toHaveAttribute("data-relation", "identity");
+      await expect(page.getByTestId("inspector-relation-hint")).toHaveCount(0);
+    });
 });
 
 async function pasteSettings(page: Page, text: string) {
