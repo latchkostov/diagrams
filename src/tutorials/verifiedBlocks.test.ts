@@ -20,9 +20,10 @@ import { checksAndFixes } from "./catalog/checksAndFixes";
 import { partitions } from "./catalog/partitions";
 import { repairedRun } from "./repair";
 
-function play(d: DiagramFile, id: string) {
+function play(d: DiagramFile, id: string, traffic = false) {
   const c = new LiveController(d);
   c.selectSimulation(d.simulations!.find((run) => run.id === id)!);
+  if (traffic) c.setTraffic(true);
   c.setPlaying(true);
   for (let tick = 0; tick < 1000; tick++) c.advance(10);
   c.publish();
@@ -373,5 +374,36 @@ it("unknown-address evidence rejects quota and unusable-target refusals", () => 
   for (const reason of ["quota: requests", "route-no-eligible-target"]) {
     view.session.snapshot.nodes.gateway.rejectionReasons = { [reason]: 10 };
     expect(holds(check(routeByAddress, "refuse"), view, subjects)).toBe(false);
+  }
+});
+
+it("api-gateway rejects bypass wiring during the saved run", () => {
+  const d: DiagramFile = {
+    ...(apiGateway.start as () => DiagramFile)(),
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "", x: 0, y: 0, props: { ratePerSec: 10 } },
+      { id: "gw", stencil: "kong", label: "", x: 200, y: 0 },
+      { id: "orders", stencil: "generic.service", label: "", x: 400, y: 0 },
+      { id: "users", stencil: "generic.service", label: "", x: 400, y: 200 },
+    ],
+    edges: [
+      { id: "to-gateway", from: "app", to: "gw", kind: "sync" },
+      { id: "orders", from: "gw", to: "orders", kind: "sync" },
+      { id: "users", from: "gw", to: "users", kind: "sync" },
+    ],
+  };
+  const valid = play(d, "tutorial-flow", true);
+  const bypass = structuredClone(d);
+  bypass.edges[0].to = "orders";
+  const wrong = play(bypass, "tutorial-flow", true);
+  try {
+    expect(met(apiGateway, "watch", d, valid)).toBe(true);
+    expect(valid.getState().snapshot.nodes.users.processed).toBeGreaterThanOrEqual(5);
+    expect(wrong.getState().snapshot.nodes.orders.processed).toBeGreaterThanOrEqual(5);
+    expect(wrong.getState().snapshot.nodes.users.processed).toBe(0);
+    expect(met(apiGateway, "watch", bypass, wrong)).toBe(false);
+  } finally {
+    valid.dispose();
+    wrong.dispose();
   }
 });

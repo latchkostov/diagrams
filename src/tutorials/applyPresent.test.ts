@@ -18,8 +18,13 @@ import { threads } from "../ai/ui/threadStore";
 import { holds, resolveSubjects } from "./checks";
 import { observationPorts } from "../lib/observations";
 import { paletteHost } from "../palette/host";
+import * as clients from "../collab/client";
+import * as signing from "../collab/signing";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 const complete = (list = tutorials.filter((t) => !t.optional)) => ({
   progress: Object.fromEntries(list.map((t) => [t.id, { version: t.version, completed: true, step: 0 }])),
 });
@@ -203,5 +208,69 @@ it("uses two isolated signed peers, refuses the viewer, follows a saved run and 
     practice.dispose();
     off();
     host.mockRestore();
+  }
+});
+
+it("reset during pending join suppresses late completion and closes the late client", async () => {
+  if (typeof workTogether.start !== "function") throw new Error("Inline fixture expected");
+  const h = editorHarness(workTogether.start());
+  const before = h.api.getDiagram();
+  const practice = createLocalPeerPractice();
+  vi.spyOn(paletteHost, "get").mockReturnValue({
+    canvas: { documentId: "pending-peer", editor: h.api, live: false, focusNode: vi.fn(), addStencil: vi.fn() },
+    live: null,
+    session: null,
+    pendingRun: null,
+  });
+  const events = vi.fn();
+  const off = observationPorts.collaboration.subscribe(events);
+  const original = clients.openRoomClient;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let opened: clients.RoomClient | undefined;
+  let close: ReturnType<typeof vi.spyOn> | undefined;
+  let destroy: ReturnType<typeof vi.spyOn> | undefined;
+  vi.spyOn(clients, "openRoomClient").mockImplementationOnce(async (...args) => {
+    opened = await original(...args);
+    close = vi.spyOn(opened.binding, "close");
+    destroy = vi.spyOn(opened.session.doc, "destroy");
+    await held;
+    return opened;
+  });
+  try {
+    const pending = practice.run("join", h.api);
+    await vi.waitFor(() => expect(opened).toBeDefined());
+    practice.reset();
+    release();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(close).toHaveBeenCalledOnce();
+    expect(destroy).toHaveBeenCalledOnce();
+    expect(events).not.toHaveBeenCalled();
+    expect(h.api.getDiagram()).toEqual(before);
+    expect(practice.getSnapshot().value).toBe("idle");
+    await practice.run("join", h.api);
+    expect(practice.getSnapshot()).toMatchObject({ value: "ready", phase: "join" });
+    expect(events).toHaveBeenCalledOnce();
+  } finally {
+    release();
+    practice.dispose();
+    off();
+  }
+});
+
+it("failed peer action can retry", async () => {
+  if (typeof workTogether.start !== "function") throw new Error("Inline fixture expected");
+  const h = editorHarness(workTogether.start());
+  const practice = createLocalPeerPractice();
+  vi.spyOn(signing, "newIdentity").mockRejectedValueOnce(new Error("Signing failed"));
+  try {
+    await expect(practice.run("join", h.api)).rejects.toThrow("Signing failed");
+    expect(practice.getSnapshot().value).toBe("failed");
+    await practice.run("join", h.api);
+    expect(practice.getSnapshot()).toMatchObject({ value: "ready", phase: "join" });
+  } finally {
+    practice.dispose();
   }
 });

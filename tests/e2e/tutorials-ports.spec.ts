@@ -154,16 +154,20 @@ test("imports: close and failure publish nothing; normal Open publishes only aft
   expectNoErrors(consoleErrors);
 });
 
-test("AI: a deterministic Advanced reply publishes the applied turn", async ({ page, consoleErrors }) => {
+test("AI: applied turn completes the active step", async ({ page, consoleErrors }) => {
   await begin(page, "ai");
-  await normalCanvas(page);
   await openAiPanel(page);
   await openAdvanced(page);
+  await page.getByTestId("ai-reply").fill("not a reply");
+  await page.getByTestId("ai-apply").click();
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-phase", "step");
+  expect((await latest(page)).ai).toBeUndefined();
   await page
     .getByTestId("ai-reply")
     .fill(JSON.stringify([{ op: "add_node", kind: "Kafka topic", label: "Public events" }]));
   await page.getByTestId("ai-apply").click();
   await expect(page.getByTestId("ai-turn-0-summary")).toBeVisible();
+  await finished(page);
   const event = (await latest(page)).ai;
   expect(event?.kind).toBe("change");
   expect(event?.changed.length).toBeGreaterThan(0);
@@ -298,8 +302,10 @@ for (const lifecycle of ["Restart", "Exit", "replacement"] as const) {
     await page.getByTestId("command-input").fill("draw.io");
     await page.getByTestId("command-item-action:export:drawio").click();
     await expect.poll(held.requested).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.__observationLab?.pending())).toBeGreaterThan(0);
     await interrupt(page);
     await releaseAndEvaluate(page, writer, held.release);
+    await expect.poll(() => page.evaluate(() => window.__observationLab?.pending())).toBe(0);
     expect(downloads).toEqual([]);
     expect((await latest(page)).exports).toBeUndefined();
     expectNoErrors(consoleErrors);

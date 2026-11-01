@@ -11,12 +11,46 @@ import { threads } from "../ai/ui/threadStore";
 import { observationPorts } from "../lib/observations";
 import { paletteHost } from "../palette/host";
 import type { DiagramFile } from "../model/types";
+import { createTutorialRunner } from "./runner";
 
 afterEach(() => vi.restoreAllMocks());
 const start = () => {
   if (typeof reviewAgentChanges.start !== "function") throw new Error("Inline fixture expected");
   return reviewAgentChanges.start();
 };
+
+it("replacement runner ports isolate AI practice construction and cancellation from global history", async () => {
+  const { h, documentId, run } = practice();
+  run("add");
+  const before = threads.get(documentId);
+  expect(before).toHaveLength(1);
+  const cancelPractice = vi.fn();
+  const runner = createTutorialRunner(reviewAgentChanges, {
+    close: vi.fn(),
+    documentId,
+    initial: start(),
+    host: {
+      get: () => ({
+        canvas: { documentId, editor: h.api, live: false, focusNode: vi.fn(), addStencil: vi.fn() },
+        live: null,
+        session: null,
+        pendingRun: null,
+      }),
+      subscribe: () => () => {},
+    },
+    agentFixture: vi.fn(),
+    openAi: vi.fn(),
+    copyAiContext: vi.fn(),
+    cancelPractice,
+  });
+  const off = runner.connect();
+  await vi.dynamicImportSettled();
+  expect(threads.get(documentId)).toBe(before);
+  off();
+  await Promise.resolve();
+  expect(cancelPractice).toHaveBeenCalledOnce();
+  expect(threads.get(documentId)).toBe(before);
+});
 function practice(initial: DiagramFile = start()) {
   const h = editorHarness(initial);
   const history = new HistoryController(toFlow(initial), 0);
@@ -44,9 +78,9 @@ function practice(initial: DiagramFile = start()) {
   };
   const documentId = "example:tutorial-regression";
   resetAgentPractice(documentId);
-  vi.spyOn(paletteHost, "get").mockReturnValue({ canvas: { documentId, editor: h.api } } as unknown as ReturnType<
-    typeof paletteHost.get
-  >);
+  vi.spyOn(paletteHost, "get").mockReturnValue({
+    canvas: { documentId, editor: h.api, live: false, focusNode: vi.fn(), addStencil: vi.fn() },
+  } as unknown as ReturnType<typeof paletteHost.get>);
   return {
     h,
     documentId,

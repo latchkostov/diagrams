@@ -4,6 +4,7 @@ import {
   cancelObservedWork,
   createObservationPort,
   observationPorts,
+  unsettledObservedWork,
   type ProductObservations,
 } from "../lib/observations";
 import { holds, type SandboxView } from "./checks";
@@ -112,4 +113,16 @@ it("the port has no replay or persisted action history", () => {
   port.publish(2);
   expect(listener).toHaveBeenCalledWith(2);
   off();
+});
+
+it("reports operation settlement only after finish, even when cancellation is already requested", () => {
+  const before = unsettledObservedWork();
+  const work = beginObservedWork(source);
+  expect(unsettledObservedWork()).toBe(before + 1);
+  cancelObservedWork(source);
+  expect(work.signal.aborted).toBe(true);
+  expect(unsettledObservedWork()).toBe(before + 1);
+  work.finish();
+  work.finish();
+  expect(unsettledObservedWork()).toBe(before);
 });

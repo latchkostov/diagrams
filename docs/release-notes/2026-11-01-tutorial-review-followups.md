@@ -1,0 +1,11 @@
+## Tutorial review follow-ups
+
+Tutorials keep the CPU capacity explanation visible until Done, and the circuit-breaker Open and Testing readings wait for the Request readout. Private practice sessions explain their retained privacy without offering a switch that cannot succeed. Handoff previews use the same lesson numbers as the syllabus and retain an inserted connection's label.
+
+The reset dialog uses the existing chapter descriptors directly. AI practice initialization, retry and conversation cleanup belong to the mounted practice host, behind runner ports. Coach placement shares the callouts' protected-overlay discovery, stops while hosted in the completion handoff, and filters unrelated note-layout mutations. Dock observations notify readers only when facts change.
+
+Coverage now exercises persisted legacy seal dates, generated keyboard coach routes, unavailable-target fallback, expanded-note separation, parser recovery, real applied AI events, settled cancelled exports, restored AI Undo/Revert, Mermaid refusal/Retry, live gateway miswiring, tooltip subscriptions, and pending local-peer cancellation/recovery. The previous no-room-for-a-tip design was superseded by the docked coach; the current unavailable-target fallback is covered instead.
+
+Already resolved on the starting master: unrelated progress survives scoped resets (R-145e7ad350); finding checks target the repaired subject (R-c1f14c8b55); explicitly authored keyboard solutions are preserved (R-bbf6cf482a). The last item gains an unsupported-pointer-gesture regression here. The earlier non-modal canvas-interaction request (R-6b44e80f97) is superseded by the owner-selected v7 finish treatment: covered canvas/inspector controls remain inert until Stay, Escape or the scrim dismisses the sheet. Existing handoff tests verify that current contract.
+
+Authored timeline-note identity and room-document observation rebinding, including the connected-runner admitted-join integration case, remain in the accompanying backlog fragment. No engine changes, new feature controls, budget increases or reserve increases are included. The parity suite compared all 3,178 goldens with zero changed, added, missing or stale files. No goldens were re-recorded.

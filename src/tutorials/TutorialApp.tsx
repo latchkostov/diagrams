@@ -1,4 +1,5 @@
 import { AiMount } from "../ai/ui/AiMount";
+import { createAgentPracticeHost } from "./agentPracticeHost";
 import { createPeerPracticeHost } from "./peerPracticeHost";
 import { surfaceCatalogs } from "../i18n/surfaces";
 import { ModeSwitch, HistoryButtons } from "../components/ModeSwitch";
@@ -155,6 +156,11 @@ function Running({
   const practicePrivacy = useSyncExternalStore(temporaryPrivacy.subscribe, temporaryPrivacy.get);
   const [practiceImport] = useState(createPracticeImport);
   const [peers] = useState(createPeerPracticeHost);
+  const [agent] = useState(() => createAgentPracticeHost(getDiagramIdentity(TUTORIAL_SLUG)));
+  const hasAgentPractice = tutorial.steps.some((step) => step.demo.some((demo) => demo.kind === "agentFixture"));
+  useEffect(() => {
+    if (hasAgentPractice) return agent.connect();
+  }, [agent, hasAgentPractice]);
   const peerState = useSyncExternalStore(peers.subscribe, peers.getSnapshot);
   const [practiceExports] = useState(createPracticeExports);
   useEffect(() => {
@@ -175,7 +181,17 @@ function Running({
       importPractice: practiceImport.run,
       shareChoices: practiceExports.share,
       exportArtifact: practiceExports.run,
-      cancelPractice: peers.reset,
+      cancelPractice: () => {
+        peers.reset();
+        agent.reset();
+      },
+      openAi: agent.open,
+      copyAiContext: agent.copy,
+      agentFixture: (action, signal) => {
+        const editor = paletteHost.get().canvas?.editor;
+        if (!editor) throw new Error("Practice unavailable");
+        return agent.run(action, editor, signal);
+      },
       localPeer: (action, signal) => {
         const editor = paletteHost.get().canvas?.editor;
         if (!editor) throw new Error("Practice unavailable");

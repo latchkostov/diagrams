@@ -6,6 +6,13 @@ import { cancelObservedWork, observationPorts } from "../lib/observations";
 import { svgToPng } from "../interop/image";
 import { SequenceDialog } from "./SequenceDialog";
 import { toast } from "../interop/ui/toast";
+import { LiveController } from "./controller";
+import type { DiagramFile } from "../model/types";
+import type { MessageTrace } from "../sim/types";
+import { holds } from "../tutorials/checks";
+import { sequenceEvidence } from "../tutorials/catalog/sequenceEvidence";
+import { toMermaid } from "../trace/mermaid";
+import { buildSequence } from "../trace/sequence";
 
 const context = vi.hoisted(() => {
   const source = { documentId: "sequence-source", identity: {} };
@@ -32,6 +39,89 @@ afterEach(() => {
   context.current = context.source;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+it("Mermaid refusal cannot complete Sequence evidence; Retry publishes current-trace bytes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "scrollTo").mockImplementation(() => {});
+  const write = vi.fn().mockRejectedValueOnce(new Error("Clipboard refused")).mockResolvedValue(undefined);
+  vi.stubGlobal("navigator", { clipboard: { writeText: write } });
+  const fallback = vi.fn(() => false);
+  vi.stubGlobal("document", document);
+  Object.defineProperty(document, "execCommand", { configurable: true, value: fallback });
+  const diagram: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Public sequence",
+    nodes: [
+      { id: "source", stencil: "client.mobile", label: "Source", x: 0, y: 0 },
+      { id: "target", stencil: "generic.service", label: "Target", x: 300, y: 0 },
+    ],
+    edges: [{ id: "request", from: "source", to: "target", kind: "sync" }],
+  };
+  const trace: MessageTrace = {
+    rootId: 37,
+    type: "Request",
+    origin: "source",
+    startedAt: 0,
+    done: true,
+    partial: false,
+    truncated: false,
+    steps: [
+      { t: 0, kind: "emit", node: "source", id: 37, type: "Request" },
+      { t: 0, kind: "send", edge: "request", node: "source", until: 10, id: 37, type: "Request" },
+      { t: 10, kind: "arrive", edge: "request", node: "target", id: 37, type: "Request" },
+      { t: 20, kind: "end", node: "target", id: 37, type: "Request" },
+    ],
+  };
+  const controller = new LiveController(diagram);
+  let exported: ReturnType<typeof observationPorts.sequenceExport.get>;
+  const listener = vi.fn((event) => {
+    exported = event;
+  });
+  const off = observationPorts.sequenceExport.subscribe(listener);
+  const check = sequenceEvidence.steps.find((step) => step.id === "export")!.check;
+  const complete = () =>
+    holds(
+      check,
+      {
+        diagram,
+        live: true,
+        processed: () => 0,
+        session: { ...controller.getState(), trace: { current: trace } },
+        observations: { sequence: observationPorts.sequence.get(), sequenceExport: exported },
+      },
+      {},
+    );
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(() => root.render(<SequenceDialog diagram={diagram} trace={trace} theme="light" onClose={() => {}} />));
+    expect(complete()).toBe(false);
+    await act(() => host.querySelector<HTMLButtonElement>('[data-testid="sequence-copy-mermaid"]')!.click());
+    expect(write).toHaveBeenCalledOnce();
+    expect(fallback).toHaveBeenCalledExactlyOnceWith("copy");
+    expect(listener).not.toHaveBeenCalled();
+    expect(complete()).toBe(false);
+    const retry = vi.mocked(toast.error).mock.calls.at(-1)?.[1]?.action?.run;
+    expect(retry).toBeTypeOf("function");
+    await act(async () => retry?.());
+    const expected = toMermaid(buildSequence(trace, diagram));
+    expect(write).toHaveBeenLastCalledWith(expected);
+    expect(listener).toHaveBeenCalledExactlyOnceWith({
+      ...context.source,
+      traceId: 37,
+      format: "mermaid",
+      bytes: new Blob([expected]).size,
+    });
+    expect(complete()).toBe(true);
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+    controller.dispose();
+    off();
+    Reflect.deleteProperty(document, "execCommand");
+  }
 });
 
 for (const cancelled of [false, true])

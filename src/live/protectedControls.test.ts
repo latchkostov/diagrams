@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { expect, it, vi } from "vitest";
 import { OpCounter } from "../test/opCounter";
-import { observeProtectedControls } from "./protectedControls";
+import { observeProtectedControls } from "../canvas/protectedControls";
 
 /** Resolve when the DOM has delivered this mutation, without an elapsed-time wait. */
 function mutate(root: Element, change: () => void) {

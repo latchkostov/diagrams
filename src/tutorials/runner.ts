@@ -116,7 +116,7 @@ export function createTutorialRunner(
     importPractice?(signal: AbortSignal): Promise<void>;
     agentFixture?(action: "add" | "rename" | "undo" | "revert", signal: AbortSignal): Promise<void>;
     shareChoices?(): void;
-    openAi?(): void;
+    openAi?(signal: AbortSignal): void | Promise<void>;
     copyAiContext?(signal: AbortSignal): Promise<void>;
     exportArtifact?(format: "svg" | "png" | "html", signal: AbortSignal): Promise<void>;
     cancelPractice?(): void;
@@ -226,22 +226,6 @@ export function createTutorialRunner(
     listeners.forEach((l) => l());
   };
   /** Bumped by Restart and Exit: a demo still running stops there. */
-  const resetAgent = () =>
-    AI_TOOLS && tutorial.id === "review-agent-changes" && ports.documentId
-      ? import("./agentPractice").then((m) => m.resetAgentPractice(ports.documentId!))
-      : Promise.resolve();
-  let agentReady: Promise<void> | undefined;
-  const prepareAgent = () => {
-    if (agentReady) return agentReady;
-    const pending = resetAgent();
-    agentReady = pending;
-    // Observe eager chunk failures immediately, and let Retry initialize afresh.
-    void pending.catch(() => {
-      if (agentReady === pending) agentReady = undefined;
-    });
-    return pending;
-  };
-  void prepareAgent();
   let generation = 0;
   let operation = new AbortController();
   const activeJobs = new Map<string, object>();
@@ -254,8 +238,6 @@ export function createTutorialRunner(
     operation = new AbortController();
     activeJobs.clear();
     repairs.reset();
-    agentReady = undefined;
-    void prepareAgent();
     changed.forEach((f) => f());
   };
   const changed = new Set<() => void>();
@@ -591,30 +573,15 @@ export function createTutorialRunner(
         return ports.localPeer(demo.action, operation.signal);
       case "copyAiContext": {
         if (!AI_TOOLS || !canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
-        if (ports.copyAiContext) return ports.copyAiContext(operation.signal);
-        const signal = operation.signal;
         const id = subjects[demo.subject];
         if (id) ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
-        return Promise.all([import("../ai/ui/copyContext"), import("../ai/ui/prompt"), import("../ai/privacy")]).then(
-          async ([copy, prompt, privacy]) => {
-            signal.throwIfAborted();
-            if (!canUseAiTools(host.get().canvas)) throw new Error("Practice AI unavailable for this diagram");
-            const dock = await import("../ai/ui/dock");
-            signal.throwIfAborted();
-            dock.aiDock.set({ open: true });
-            const text = prompt.buildPrompt({ request: "", describe: privacy.describeForAi(ed, host.get().canvas) });
-            if (!(await copy.copyAiContext(text, signal))) throw new Error("Clipboard unavailable");
-          },
-        );
+        if (!ports.copyAiContext) throw new Error("AI context unavailable");
+        return ports.copyAiContext(operation.signal);
       }
       case "aiDock": {
         if (!AI_TOOLS) throw new Error("Practice AI unavailable in this build");
-        if (ports.openAi) return ports.openAi();
-        const signal = operation.signal;
-        return import("../ai/ui/dock").then((m) => {
-          signal.throwIfAborted();
-          m.aiDock.set({ open: true });
-        });
+        if (!ports.openAi) throw new Error("AI dock unavailable");
+        return ports.openAi(operation.signal);
       }
       case "shareChoices":
         if (!ports.shareChoices) throw new Error("Sharing unavailable");
@@ -622,15 +589,8 @@ export function createTutorialRunner(
         return;
       case "agentFixture": {
         if (!AI_TOOLS || !canUseAiTools(h.canvas)) throw new Error("Practice AI unavailable for this diagram");
-        if (ports.agentFixture) return ports.agentFixture(demo.action, operation.signal);
-        const signal = operation.signal;
-        return import("./agentPractice").then(async (practice) => {
-          await prepareAgent();
-          signal.throwIfAborted();
-          if (!ports.documentId) throw new Error("Document unavailable");
-          if (!canUseAiTools(host.get().canvas)) throw new Error("Practice AI unavailable for this diagram");
-          practice.agentPractice(ed, ports.documentId, demo.action);
-        });
+        if (!ports.agentFixture) throw new Error("AI practice unavailable");
+        return ports.agentFixture(demo.action, operation.signal);
       }
       case "importFixture":
         if (!ports.importPractice) throw new Error("Import unavailable");

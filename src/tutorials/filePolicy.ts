@@ -51,6 +51,7 @@ export function createPracticePrivacy() {
   let flags: Readonly<{ private: boolean; onDevice?: boolean }> = { private: false };
   const listeners = new Set<() => void>();
   return {
+    sticky: true,
     get: () => flags,
     setPrivate(on: boolean) {
       // Private content can still be recovered through Undo after a public import.

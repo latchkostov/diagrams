@@ -1,8 +1,9 @@
+// @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
 import { build, type Rollup } from "vite";
 import { resolve } from "node:path";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 afterEach(() => {
   vi.doUnmock("../lib/deployment");
   vi.doUnmock("../lib/localOnly");
@@ -84,7 +85,6 @@ it("bundles unavailable stubs without prompt strings, lesson implementations or 
 it("keeps the next lesson number aligned with the hub when collaboration is compiled off", async () => {
   vi.doMock("../lib/deployment", () => ({ AI_TOOLS: true }));
   vi.doMock("../lib/localOnly", () => ({ ROOMS: false }));
-  vi.doMock("./BlueprintBoard", () => ({ BlueprintBoard: () => null }));
   const { tutorials } = await import("./catalog");
   const { FinishHandoff } = await import("./FinishHandoff");
   const progress = {
@@ -101,15 +101,29 @@ it("keeps the next lesson number aligned with the hub when collaboration is comp
         ]),
     ),
   };
-  const html = renderToStaticMarkup(
-    createElement(FinishHandoff, {
-      tutorial: tutorials.find((lesson) => lesson.id === "export-for-audience")!,
-      catalog: tutorials,
-      before: {},
-      progress,
-    }),
-  );
-  expect(html).toContain('data-testid="tutorial-next"');
-  expect(html).toContain("Start 7.4");
-  expect(html).not.toContain("Start 7.3");
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(() =>
+      root.render(
+        createElement(FinishHandoff, {
+          tutorial: tutorials.find((lesson) => lesson.id === "export-for-audience")!,
+          catalog: tutorials,
+          before: {},
+          progress,
+        }),
+      ),
+    );
+    const html = host.innerHTML;
+    expect(html).toContain('data-testid="tutorial-next"');
+    expect(html).toContain("Start 7.4");
+    expect(html).toContain('data-testid="tutorial-handoff-lesson-number">7.4</span>');
+    expect(html).not.toContain("Start 7.3");
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+    vi.unstubAllGlobals();
+  }
 });

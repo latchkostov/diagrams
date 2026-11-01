@@ -1,3 +1,4 @@
+import { protectedControls, observeProtectedControls } from "../canvas/protectedControls";
 import { intersect, intersects, type Box } from "./placement";
 import { fillTestId } from "./checks";
 import type { Target } from "./types";
@@ -37,6 +38,19 @@ export const CHROME = [
   "live-events",
   "tutorial-tools",
 ];
+
+/** Shared occupied-space contract plus tutorial teaching chrome. */
+export function coachObstacles(): HTMLElement[] {
+  return [
+    ...new Set([
+      ...document.querySelectorAll<HTMLElement>(protectedControls),
+      ...CHROME.flatMap((id) => {
+        const el = find(id);
+        return el ? [el] : [];
+      }),
+    ]),
+  ];
+}
 
 /** Resolve only visible, unclipped targets; a field wins over its containing disclosure. */
 export function locate({ targets, subjects, edges, selected }: TargetProps): Located | null {
@@ -81,11 +95,14 @@ export function locate({ targets, subjects, edges, selected }: TargetProps): Loc
     }
     if (visible.width < 1 || visible.height < 1) continue;
     if (priority(target) < 2 && (visible.width < rect.width - 1 || visible.height < rect.height - 1)) continue;
-    const obstacles = CHROME.flatMap((id) => {
-      const chrome = find(id);
-      return chrome?.checkVisibility() && !chrome.contains(el) ? [box(chrome)] : [];
-    });
-    if (obstacles.some((obstacle) => intersects(obstacle, visible))) continue;
+    const obstacles = coachObstacles().flatMap((chrome) =>
+      chrome.checkVisibility() && !chrome.contains(el) && !el.contains(chrome) ? [box(chrome)] : [],
+    );
+    if (obstacles.some((obstacle) => intersects(obstacle, visible))) {
+      // A portal menu can sit above a dock. Geometry alone must not reject its exposed controls.
+      const hit = document.elementFromPoint(visible.x + visible.width / 2, visible.y + visible.height / 2);
+      if (!hit || (hit !== el && !el.contains(hit))) continue;
+    }
     return {
       testId: testId!,
       tip: target.tip(),
@@ -140,8 +157,10 @@ export function observeCoach(card: HTMLElement | null, measure: () => void) {
   window.addEventListener("scroll", schedule, true);
   window.visualViewport?.addEventListener("resize", schedule);
   window.visualViewport?.addEventListener("scroll", schedule);
+  const offProtected = observeProtectedControls(document.body, immediate);
   immediate();
   return () => {
+    offProtected();
     if (frame) cancelAnimationFrame(frame);
     mutations.disconnect();
     sizes.disconnect();

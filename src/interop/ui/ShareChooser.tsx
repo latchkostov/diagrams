@@ -31,7 +31,7 @@ export interface ShareChooserProps {
   /** Edit together…: the room's start dialog (its consent first). */
   onEditTogether?: () => void;
   /** Opens the Private diagram dialog (its one confirmation for Make not private). */
-  onMakeNotPrivate: () => void;
+  onMakeNotPrivate?: () => void;
   onClose: () => void;
 }
 
@@ -190,7 +190,7 @@ export function ShareChooser({
         {(SHARE_LINKS || rooms) && privacy && (
           <p className="ix-share-note" data-testid="share-private-note">
             <Glyph name="lock" size={13} />
-            {privacy === "private" ? (
+            {privacy === "private" && onMakeNotPrivate ? (
               <span>
                 {rooms ? t("share.privateOffRooms") : t("share.privateOff")}{" "}
                 {SHARE_LINKS && COLLAB_MODE !== "server" && (

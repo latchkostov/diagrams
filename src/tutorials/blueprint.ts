@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import { stencilLabel } from "../i18n/stencils";
-import type { DiagramFile } from "../model/types";
+import type { DiagramEdge, DiagramFile } from "../model/types";
+import { splitEdge } from "../model/edgeSplit";
 import { getStencil } from "../stencils/registry";
 import { resolveMultiplier, resolveScale } from "../sim/units";
 import { resolveSubjects } from "./checks";
@@ -39,7 +40,7 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
   const subjects = resolveSubjects(lesson, initial);
   const nodes = new Map<string, BlueprintNode>();
   const props = new Map<string, Record<string, unknown>>();
-  const edges: BlueprintEdge[] = [];
+  const edges: (DiagramEdge & { marks: number[]; subject?: string })[] = [];
   const changes: SettingChange[] = [];
   const inputs = new Map<string, number>();
   const start = lesson.start;
@@ -83,7 +84,7 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
   for (const edge of initial.edges) {
     const from = subjectById.get(edge.from),
       to = subjectById.get(edge.to);
-    if (from && to) edges.push({ from, to, marks: [], subject: subjectById.get(edge.id), label: edge.label });
+    if (from && to) edges.push({ ...edge, from, to, marks: [], subject: subjectById.get(edge.id) });
   }
   const connect = (from: string, to: string, step: number, numbered = true) => {
     const existing = edges.find((e) => e.from === from && e.to === to);
@@ -93,7 +94,7 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
       const subject = Object.entries(lesson.subjects).find(
         ([, spec]) => spec.edge?.[0] === from && spec.edge[1] === to,
       )?.[0];
-      edges.push({ from, to, marks: numbered ? [step] : [], ...(subject ? { subject } : {}) });
+      edges.push({ id: `${from}->${to}`, from, to, marks: numbered ? [step] : [], ...(subject ? { subject } : {}) });
     }
   };
   let drawing = false;
@@ -112,9 +113,19 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
         if (demo.kind === "add" && demo.after) connect(demo.after, demo.subject, number, false);
         if (demo.kind === "insert") {
           const old = edges.findIndex((e) => e.from === demo.edge[0] && e.to === demo.edge[1]);
-          if (old >= 0) edges.splice(old, 1);
-          connect(demo.edge[0], demo.subject, number, false);
-          connect(demo.subject, demo.edge[1], number, false);
+          if (old >= 0) {
+            const original = edges[old];
+            const [first, second] = splitEdge(original, demo.subject, {
+              first: original.id,
+              second: `${original.id}->${demo.subject}`,
+            });
+            edges.splice(
+              old,
+              1,
+              { ...first, marks: [...original.marks], ...(original.subject ? { subject: original.subject } : {}) },
+              { ...second, marks: [] },
+            );
+          }
         }
       } else if (demo.kind === "connect") {
         drawing = true;
@@ -179,7 +190,18 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
     }
   }
   const kind = drawing || !changes.length ? (nodes.size ? "drawing" : "steps") : "settings";
-  return { kind, nodes: [...nodes.values()], edges, changes };
+  return {
+    kind,
+    nodes: [...nodes.values()],
+    changes,
+    edges: edges.map(({ from, to, marks, subject, label }) => ({
+      from,
+      to,
+      marks,
+      ...(subject ? { subject } : {}),
+      ...(label !== undefined ? { label } : {}),
+    })),
+  };
 }
 
 /** The input this step teaches, omitting setup clicks and settlement Enter presses. */

@@ -102,16 +102,22 @@ export const sameObservationSource = (a: ObservationSource, b: ObservationSource
   a.documentId === b.documentId && a.identity === b.identity;
 
 const pending = new Set<{ source: ObservationSource; controller: AbortController }>();
+// Diagnostics must distinguish a cancellation request from the operation's eventual finally block.
+const settling = import.meta.env.DEV || import.meta.env.VITE_E2E === "1" ? new Set<object>() : undefined;
+export const unsettledObservedWork = () => settling?.size ?? 0;
 
 /** A file operation belongs to the document that started it, including while its lazy writer loads. */
 export function beginObservedWork(source: ObservationSource | undefined) {
   const controller = new AbortController();
   const job = source && { source, controller };
   if (job) pending.add(job);
+  const ticket = {};
+  settling?.add(ticket);
   return {
     signal: controller.signal,
     finish() {
       if (job) pending.delete(job);
+      settling?.delete(ticket);
     },
   };
 }

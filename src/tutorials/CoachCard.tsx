@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { t } from "../i18n";
-import { CHROME, box, find, locate, observeCoach, externalCoachTarget } from "./coachTarget";
+import { coachObstacles, box, find, locate, observeCoach, externalCoachTarget } from "./coachTarget";
 import { clearPanes, intersect, type Box } from "./placement";
 import { keepCard, placeCard, placeHome, placeSheet, type CardPlace, type SheetPlace } from "./coachPlacement";
 import type { Target } from "./types";
@@ -67,10 +67,19 @@ export function CoachCard({
   const [now, setNow] = useState<string | null>(null);
 
   useLayoutEffect(() => {
+    if (complete && completionHost?.isConnected) {
+      const membership = new MutationObserver(() => {
+        if (!completionHost.isConnected) setCompletionHost(null);
+      });
+      membership.observe(document.body, { childList: true, subtree: true });
+      return () => membership.disconnect();
+    }
     const measure = () => {
+      const host = complete ? find("tutorial-completion-mount") : null;
+      setCompletionHost(host);
+      if (host) return;
       const el = card.current;
       if (!el) return;
-      setCompletionHost(complete ? find("tutorial-completion-mount") : null);
       const words = el.querySelector<HTMLElement>(".tutorial-words");
       const actions = el.querySelector<HTMLElement>(".tutorial-actions");
       const margin = words ? parseFloat(getComputedStyle(words).marginBlockStart) || 0 : 0;
@@ -112,7 +121,7 @@ export function CoachCard({
       const external = externalCoachTarget(el, target, located?.rect ?? null);
       // Chrome holding the target still walls the card off: the card points into a bar, never sits on it.
       const hard = [
-        ...CHROME.map(find),
+        ...coachObstacles(),
         ...document.querySelectorAll<HTMLElement>(`${OPEN}, [data-testid^="grow-chip-"]`),
       ]
         .filter(
@@ -165,7 +174,7 @@ export function CoachCard({
       setCompact(next.mode === "sheet" ? next.sheet.compact : nextCompact);
     };
     return observeCoach(card.current, measure);
-  }, [targets, subjects, edges, selected, anchored, ring, collapsed, complete, onProgress]);
+  }, [targets, subjects, edges, selected, anchored, ring, collapsed, complete, completionHost, onProgress]);
 
   const place = layout?.mode === "card" ? layout.place : null;
   const sheet = layout?.mode === "sheet" ? layout : null;

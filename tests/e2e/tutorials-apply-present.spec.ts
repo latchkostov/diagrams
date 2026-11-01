@@ -329,3 +329,37 @@ test("batch6 assisted Undo completes after the learner already used toolbar Undo
   await expectNothingSaved(page);
   expectNoErrors(consoleErrors);
 });
+
+for (const [step, index, action, next] of [
+  ["undo", 4, "ai-turn-0-undo", "again"],
+  ["revert", 7, "ai-turn-1-revert", "limits"],
+] as const)
+  test(`Continue restores usable AI Undo and Revert: ${step}`, async ({ page, consoleErrors }) => {
+    await page.addInitScript(
+      (index) =>
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({
+            progress: { "review-agent-changes": { version: 1, step: index, completed: false } },
+          }),
+        ),
+      index,
+    );
+    await openTutorial(page, "review-agent-changes");
+    await page.getByTestId("tutorial-start").click();
+    await expect(strip(page)).toHaveAttribute("data-step", step);
+    await expect(strip(page)).toHaveAttribute("data-state", "active");
+    await expect(page.getByTestId(action)).toBeEnabled();
+    const labels = () => page.evaluate(() => window.__tutorial?.diagram()?.nodes.map((n) => n.label));
+    expect(await labels()).toContain(step === "undo" ? "Status worker" : "Unreviewed worker");
+    await page.getByTestId(action).click();
+    await expect(strip(page)).toHaveAttribute("data-step", next);
+    const after = await labels();
+    if (step === "undo") expect(after).toEqual(["Status API"]);
+    else {
+      expect(after).toContain("Status worker");
+      expect(after).not.toContain("Unreviewed worker");
+    }
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
