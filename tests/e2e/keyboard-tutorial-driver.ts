@@ -204,6 +204,7 @@ export async function focus(page: Page, id: string) {
         completed: ["completing", "finished"].includes(window.__tutorial?.snapshot().state.value ?? ""),
         reading,
         active: active?.getAttribute("data-testid") ?? `${active?.tagName ?? "none"}:${document.hasFocus()}`,
+        menuFocused: !!active?.closest("[data-testid][data-depth]"),
         roving,
       };
     }, settle);
@@ -228,6 +229,20 @@ export async function focus(page: Page, id: string) {
     // Canvas Tab publishes its destination before the reveal/focus transaction settles.
     // A second key during that transaction is intentionally ignored by the canvas.
     if (/^(rf__node-|node-live-focus-)/.test(previous)) {
+      // Opening quick-add hands focus from this node to the placed search. The
+      // menu remains open after that handoff, so interaction idle cannot acknowledge it.
+      if ((await page.getByTestId("canvas-wrap").getAttribute("data-interaction-state")) === "menu-open") {
+        await expect
+          .poll(
+            async () => {
+              state = await readState();
+              return state.completed || state.focused || state.menuFocused;
+            },
+            { intervals: [0] },
+          )
+          .toBe(true);
+        continue;
+      }
       await waitForInteractionIdle(page);
       await waitForCameraIdle(page);
     }
