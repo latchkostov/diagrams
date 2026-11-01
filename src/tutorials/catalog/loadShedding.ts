@@ -158,5 +158,5 @@ export const loadShedding: Tutorial = {
       ],
     },
   ],
-  finish: { text: msg("tutorials.loadShedding.finish") },
+  finish: { text: msg("tutorials.loadShedding.finishV2") },
 };

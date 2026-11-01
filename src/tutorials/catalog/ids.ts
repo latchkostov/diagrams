@@ -38,6 +38,7 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "timeouts-pools" },
   { id: "backlog-lag" },
   { id: "autoscaling" },
+  { id: "scale-on-backlog" },
   { id: "scale-to-zero" },
   { id: "rates-and-inputs" },
   { id: "read-a-node" },

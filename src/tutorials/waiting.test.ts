@@ -57,16 +57,27 @@ function met(tutorial: Tutorial, step: string, c: LiveController, diagram: Diagr
 }
 
 describe("waiting lessons against their seeded runs", () => {
+  it("holds Billing's sampled wait/work reading for a late reader", () => {
+    run(whereTimeGoes, "slow-billing-drill", (c, diagram) => {
+      play(c, 60000);
+      expect(c.getState().run).toMatchObject({ time: 9000, waiting: true });
+      expect(met(whereTimeGoes, "read-p95", c, diagram, "billing")).toBe(true);
+      expect(met(whereTimeGoes, "waiting-vs-working", c, diagram, "billing")).toBe(true);
+    });
+  });
   it("Billing's p95 needs the slowdown, and the waiting comparison needs a real backlog", () => {
     run(whereTimeGoes, "slow-billing-drill", (c, diagram) => {
       play(c, 2000);
+      expect(met(whereTimeGoes, "run", c, diagram)).toBe(false);
       expect(met(whereTimeGoes, "read-p95", c, diagram, "billing")).toBe(false);
       play(c, 3000);
+      expect(met(whereTimeGoes, "run", c, diagram)).toBe(false);
       expect(c.getState().snapshot.nodes.billing.latency!.p95).toBeGreaterThanOrEqual(1050 / 0.7);
       expect(met(whereTimeGoes, "read-p95", c, diagram)).toBe(false);
       expect(met(whereTimeGoes, "read-p95", c, diagram, "billing")).toBe(true);
       expect(met(whereTimeGoes, "waiting-vs-working", c, diagram, "billing")).toBe(false);
       play(c, 4000);
+      expect(met(whereTimeGoes, "run", c, diagram)).toBe(true);
       expect(met(whereTimeGoes, "waiting-vs-working", c, diagram, "billing")).toBe(true);
     });
   });
@@ -226,13 +237,13 @@ describe("waiting lessons against their seeded runs", () => {
     // The p3-w2 payment example puts Connection pool behind its own disclosure.
     expect(initial(timeoutsPools).planning?.revision).toBe("p3-w2");
     expect(timeoutsPools.steps.find((step) => step.id === "pool-40")!.solution).toContainEqual({
-      click: "inspector-section-call-advanced",
+      open: "inspector-section-call-advanced",
     });
   });
 
   it("registers six lessons and releases the decided cold-start lesson", () => {
     for (const lesson of [whereTimeGoes, threadsBlock, timeoutsPools, backlogLag, autoscaling, scaleToZero]) {
-      expect(lesson.version).toBe(2);
+      expect(lesson.version).toBe(lesson.id === "backlog-lag" ? 2 : 3);
       expect(tutorialEntries).toContainEqual({ id: lesson.id, ...(lesson.quarantined ? { quarantined: true } : {}) });
       const diagram = initial(lesson);
       for (const step of lesson.steps)

@@ -1,3 +1,4 @@
+import { scaleOnBacklog } from "./scaleOnBacklog";
 import { withCoachRoutes } from "../coachRoutes";
 import { authorASimulation } from "./authorASimulation";
 import { sequenceEvidence } from "./sequenceEvidence";
@@ -96,6 +97,7 @@ export const allTutorials: readonly Tutorial[] = [
   timeoutsPools,
   backlogLag,
   autoscaling,
+  scaleOnBacklog,
   scaleToZero,
   ratesAndInputs,
   readANode,

@@ -86,5 +86,5 @@ export const backlogLag: Tutorial = {
       },
     ),
   ],
-  finish: { text: msg("tutorials.backlogLag.finish") },
+  finish: { text: msg("tutorials.backlogLag.finishV3") },
 };

@@ -499,7 +499,7 @@ for (const entry of ["Skip", "Continue"] as const)
         localStorage.setItem(
           "diagrams.tutorials.v1",
           JSON.stringify({
-            progress: { "threads-block": { version: 2, step: 3, completed: false } },
+            progress: { "threads-block": { version: 3, step: 3, completed: false } },
           }),
         ),
       );
@@ -586,17 +586,22 @@ test("scale-to-zero: the cold-start note holds the readout for a late learner", 
 });
 
 test("where-time-goes: Latency can be expanded and read before Done finishes", async ({ page }) => {
+  await page.clock.install();
   await page.addInitScript(() =>
     localStorage.setItem(
       "diagrams.tutorials.v1",
       JSON.stringify({
-        progress: { "where-time-goes": { version: 2, step: 3, completed: false } },
+        progress: { "where-time-goes": { version: 3, step: 4, completed: false } },
       }),
     ),
   );
   await openTutorial(page, "where-time-goes");
   await page.getByTestId("tutorial-start").click();
+  await pauseClock(page);
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "read-breakdown");
   await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
+  await page.clock.resume();
   const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
   for (const action of solution.slice(0, -1)) await play(page, action);
   await expect(page.getByTestId("hover-section-latency")).toHaveAttribute("aria-expanded", "true");
@@ -2533,3 +2538,29 @@ for (const route of ["Right arrow", "Skip"] as const)
     await expect(strip(page)).toHaveAttribute("data-step", "camera");
     expectNoErrors(consoleErrors);
   });
+
+test("where-time-goes: a late reader can still inspect the held waiting comparison", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  await openTutorial(page, "where-time-goes");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "run");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await page.getByTestId("tutorial-step").hover();
+  await pauseClock(page);
+  await advanceTutorialClock(
+    page,
+    async () => (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) === "9000",
+  );
+  await page.clock.fastForward(20000);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "9000");
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await page.clock.resume();
+  await hoverPractice(page, "node-billing");
+  await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await finishSolution(page);
+  expectNoErrors(consoleErrors);
+});

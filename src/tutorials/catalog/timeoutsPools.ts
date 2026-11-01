@@ -1,15 +1,21 @@
+import { diagnosticLesson } from "./diagnosticLesson";
+import referenceText from "../../examples/slow-payment-provider.json?raw";
+import type { DiagramFile } from "../../model/types";
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 import { liveStep, patchStep, runStep } from "./waitingSteps";
 
-export const timeoutsPools: Tutorial = {
+// Keep the public example’s independently retryable download out of the tutorial module graph.
+const reference = JSON.parse(referenceText) as DiagramFile;
+
+const lesson: Tutorial = {
   id: "timeouts-pools",
-  version: 2,
+  version: 3,
   track: "waiting",
   level: 2,
   minutes: 5,
   title: msg("tutorials.timeoutsPools.title"),
-  summary: msg("tutorials.timeoutsPools.summary"),
+  summary: msg("tutorials.timeoutsPools.summaryV3"),
   start: { example: "slow-payment-provider" },
   subjects: {
     checkout: { stencils: ["generic.service"] },
@@ -44,12 +50,12 @@ export const timeoutsPools: Tutorial = {
       [
         { click: "live-toggle" },
         { dblclick: "edge-{checkout->payment}" },
-        { click: "inspector-section-edge-simulation" },
+        { open: "inspector-section-edge-simulation" },
         { fill: "inspector-field-deadlineMs", text: "600" },
         { press: "Enter" },
       ],
       {
-        title: msg("tutorials.timeoutsPools.timeoutTitle"),
+        title: msg("tutorials.timeoutsPools.timeoutTitleV3"),
         goal: msg("tutorials.timeoutsPools.timeoutGoal"),
         done: msg("tutorials.timeoutsPools.timeoutDone"),
       },
@@ -66,8 +72,8 @@ export const timeoutsPools: Tutorial = {
       "timeout-600",
       {
         title: msg("tutorials.timeoutsPools.timeoutRunTitle"),
-        goal: msg("tutorials.timeoutsPools.timeoutRunGoal"),
-        done: msg("tutorials.timeoutsPools.timeoutRunDone"),
+        goal: msg("tutorials.timeoutsPools.timeoutRunGoalV3"),
+        done: msg("tutorials.timeoutsPools.timeoutRunDoneV3"),
       },
       false,
       {
@@ -90,12 +96,12 @@ export const timeoutsPools: Tutorial = {
       [
         { click: "live-toggle" },
         { dblclick: "edge-{checkout->payment}" },
-        { click: "inspector-section-call-advanced" },
+        { open: "inspector-section-call-advanced" },
         { fill: "inspector-field-poolConnections", text: "40" },
         { press: "Enter" },
       ],
       {
-        title: msg("tutorials.timeoutsPools.poolTitle"),
+        title: msg("tutorials.timeoutsPools.poolTitleV3"),
         goal: msg("tutorials.timeoutsPools.poolGoal"),
         done: msg("tutorials.timeoutsPools.poolDone"),
       },
@@ -112,12 +118,38 @@ export const timeoutsPools: Tutorial = {
       "pool-40",
       {
         title: msg("tutorials.timeoutsPools.poolRunTitle"),
-        goal: msg("tutorials.timeoutsPools.poolRunGoal"),
-        done: msg("tutorials.timeoutsPools.poolRunDone"),
+        goal: msg("tutorials.timeoutsPools.poolRunGoalV3"),
+        done: msg("tutorials.timeoutsPools.poolRunDoneV3"),
       },
       false,
-      { kind: "simulation", id: "pool-40", atLeastMs: 5000 },
+      {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "pool-40", atLeastMs: 5000 },
+          {
+            kind: "prop",
+            edge: ["checkout", "payment"],
+            prop: ["caller", "deadlineMs"],
+            effective: true,
+            op: "=",
+            value: 600,
+          },
+          {
+            kind: "prop",
+            edge: ["checkout", "payment"],
+            prop: ["caller", "poolConnections"],
+            effective: true,
+            op: "=",
+            value: 40,
+          },
+          { kind: "compare", left: { edge: ["checkout", "payment"], metric: "calls.inFlight" }, op: "<=", right: 40 },
+          { kind: "compare", left: { edge: ["checkout", "payment"], metric: "calls.timedOut" }, op: ">=", right: 1 },
+          { kind: "compare", left: { edge: ["checkout", "payment"], metric: "calls.late" }, op: ">=", right: 1 },
+        ],
+      },
     ),
   ],
-  finish: { text: msg("tutorials.timeoutsPools.finish") },
+  finish: { text: msg("tutorials.timeoutsPools.finishV3") },
 };
+
+export const timeoutsPools = diagnosticLesson(lesson, () => structuredClone(reference) as DiagramFile);

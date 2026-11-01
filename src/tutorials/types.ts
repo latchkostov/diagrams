@@ -103,7 +103,7 @@ export type NodeMetric =
   | `latency.${"p50" | "p95" | "p99" | "waitMs" | "workMs"}`
   | `threads.${"working" | "waiting" | "queued"}`
   | `fleet.${"desired" | "ready" | "starting" | "draining"}`;
-export type EdgeMetric = NumericKeys<EdgeSimState>;
+export type EdgeMetric = NumericKeys<EdgeSimState> | `calls.${NumericKeys<NonNullable<EdgeSimState["calls"]>>}`;
 /**
  * Every node a subject spec would fit (stencils, else role), bound or not: "every worker". within: only those in this
  * boundary subject ("every service in cell A").
@@ -134,7 +134,8 @@ export interface SimulationMatch {
   expectations?: number;
   traffic?: readonly TrafficProfile[];
   note?: { focus: string; pause: boolean; atMs: number };
-  expectation?: Pick<Expectation, "metric" | "op" | "value" | "when">;
+  notes?: readonly { focus: string; pause: boolean; atMs: number }[];
+  expectation?: Pick<Expectation, "metric" | "op" | "value" | "when" | "atMs">;
   fault?: { node: string; atMs: number; kind?: "slow" | "fail" };
   seed?: number;
   scale?: number;
@@ -242,7 +243,7 @@ export type Check =
     ))
   /** A Fault is active on the subject; absent: none is (Restore cleared it), while Live runs. */
   | ({ kind: "fault"; fault?: FaultKind; absent?: true } & PropertyTarget)
-  | { kind: "trace"; complete?: true; origin?: string }
+  | { kind: "trace"; complete?: true; origin?: string; deadLetter?: { subject: string; attempt?: number } }
   /** Slow motion is on; finished: its message's journey has played to the end (the machine's `finished`). */
   | { kind: "slowmo"; finished?: true; ready?: true }
   /** A Live panel or view is open (or closed), as Live publishes it. */
@@ -293,7 +294,7 @@ export type Demo =
   /** Continuous traffic on or off, through Live's own control (the registry's "sim.traffic"). */
   | { kind: "traffic"; on: boolean }
   /** Follow the next message, through Live's own "Trace a message › Next message". */
-  | { kind: "trace"; subject?: string }
+  | { kind: "trace"; subject?: string; deadLetter?: true }
   /**
    * Watch one message in slow motion, through Live's own action: from this subject ("Watch one message in slow motion"
    * on its menu), or the next anywhere ("Trace a message › Next message, in slow motion").

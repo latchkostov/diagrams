@@ -10,7 +10,7 @@ import { chunk, holdChunk } from "./chunk";
 test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page, consoleErrors }) => {
   await page.goto("./?view=tutorials");
   await expect(page.getByTestId("tutorials-resume")).toContainText("Start here: 1.1", { timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 58 lessons · 0 of 7 seals");
+  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 59 lessons · 0 of 7 seals");
   await expect(page.getByTestId("tutorials-chapter-basics")).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByTestId("tutorial-open-workbench-tour")).toHaveAccessibleName(/^Start 1\.1 .*Not started/);
   await expectNoViolations(page, "tutorials-view");
@@ -45,7 +45,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await expect(page.getByTestId("tutorial-open-workbench-tour")).toHaveAccessibleName(/^Review 1\.1 .*Done/);
   await page.getByTestId("tutorials-seals").click();
   await expect(page.getByTestId("tutorials-seal-chapter-basics")).toContainText("Not yet · 1 of 15");
-  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 58");
+  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("Not yet · 1 of 59");
   await expectNoViolations(page, "tutorials-view");
   await page.getByTestId("tutorials-seals-back").click();
   await page.getByTestId("tutorials-reset-basics").click();
@@ -69,7 +69,7 @@ test("syllabus: finish, inspect seals, reset a chapter and Undo", async ({ page,
   await page.getByTestId("view-tutorials").click();
   await page.getByTestId("tutorials-reset-undo").click();
   await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
-  await expect(page.getByTestId("tutorials-overall")).toContainText("1 of 58 lessons");
+  await expect(page.getByTestId("tutorials-overall")).toContainText("1 of 59 lessons");
   await page.reload();
   await expect(page.getByTestId("tutorial-status-workbench-tour")).toHaveText(`Done · ${today}`);
   // The header opens the same dialog, with an explicit Everything scope.

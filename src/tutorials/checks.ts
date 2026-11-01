@@ -490,7 +490,14 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.live &&
         !!view.session?.trace &&
         (!check.complete || !!view.session.trace.current?.done) &&
-        (!check.origin || view.session.trace.current?.origin === subjects[check.origin])
+        (!check.origin || view.session.trace.current?.origin === subjects[check.origin]) &&
+        (!check.deadLetter ||
+          !!view.session.trace.current?.steps.some(
+            (s) =>
+              s.kind === "deadletter" &&
+              s.node === subjects[check.deadLetter!.subject] &&
+              (check.deadLetter!.attempt === undefined || s.attempt === check.deadLetter!.attempt),
+          ))
       );
     case "slowmo": {
       const slow = view.slowmo;
@@ -599,7 +606,14 @@ export function metricValue(
   const node = (id: string | undefined, field: NodeMetric) =>
     id ? finite(reading(session.snapshot.nodes[id], field)) : undefined;
   const edge = (id: string | undefined, field: EdgeMetric) =>
-    id ? finite(session.snapshot.edges[id]?.[field]) : undefined;
+    id
+      ? finite(
+          readPath(
+            session.snapshot.edges[id] as unknown as Record<string, unknown>,
+            field.split(".") as [string, ...string[]],
+          ),
+        )
+      : undefined;
   const between = (pair: readonly [string, string]) => {
     const from = subjects[pair[0]],
       to = subjects[pair[1]];

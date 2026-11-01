@@ -250,7 +250,7 @@ declare global {
 }
 
 test("keyboard edge navigation yields when the lesson finishes during its keypress", async ({ page }) => {
-  await page.goto("./?tutorial=circuit-breaker");
+  await page.goto("./?tutorial=lab-tutorial-next");
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("tutorial-start")).toBeFocused();
   await page.keyboard.press("Enter");
@@ -320,4 +320,53 @@ test("keyboard control traversal uses Tab for a menu with native button stops", 
   await expect(page.getByTestId("first")).toBeFocused();
   await focus(page, "middle");
   await expect(page.getByTestId("middle")).toBeFocused();
+});
+
+test("keyboard control traversal waits for a pending canvas focus transaction before Tab", async ({ page }) => {
+  await page.setContent(
+    '<div data-testid="canvas-wrap" data-interaction-state="focus-pending" data-camera-state="idle"><button data-testid="rf__node-fixture">Canvas node</button></div><button data-testid="last">Transport</button>',
+  );
+  await page.getByTestId("rf__node-fixture").focus();
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
+    if (!canvas) throw new Error("Missing focus fixture");
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Tab" && canvas.dataset.interactionState !== "idle") event.preventDefault();
+    });
+  });
+  const byTestId = page.getByTestId.bind(page);
+  const press = page.keyboard.press.bind(page.keyboard);
+  let observed = false;
+  let keys = 0;
+  let settled = false;
+  page.getByTestId = (id) => {
+    if (id === "canvas-wrap") observed = true;
+    return byTestId(id);
+  };
+  page.keyboard.press = (...args) => {
+    keys++;
+    return press(...args);
+  };
+  const focusing = focus(page, "last").then(() => (settled = true));
+  try {
+    await expect.poll(() => observed).toBe(true);
+    await animationFrames(page);
+    expect(settled).toBe(false);
+    expect(keys).toBe(0);
+    await expect(byTestId("rf__node-fixture")).toBeFocused();
+    // Only this explicit commit releases focus, independently of any driver lookup.
+    await byTestId("canvas-wrap").evaluate((canvas) => {
+      canvas.dataset.interactionState = "idle";
+    });
+    await focusing;
+    expect(keys).toBe(1);
+    await expect(byTestId("last")).toBeFocused();
+  } finally {
+    page.getByTestId = byTestId;
+    page.keyboard.press = press;
+    await byTestId("canvas-wrap").evaluate((canvas) => {
+      canvas.dataset.interactionState = "idle";
+    });
+    await focusing.catch(() => undefined);
+  }
 });
