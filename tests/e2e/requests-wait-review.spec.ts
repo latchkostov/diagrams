@@ -1,7 +1,7 @@
 import { test, expect, gotoLive, pauseClock, STORAGE_KEYS } from "./fixtures";
 import type { DiagramFile } from "../../src/model/types";
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
-import { installThreadVerification } from "./thread-verification";
+import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
 
 for (const failureRate of [0, 0.3]) {
   test(`timeout outcomes keep independent loss warnings visible at failure rate ${failureRate}`, async ({ page }) => {
@@ -137,7 +137,44 @@ test("a held verification keeps one request outstanding and then posts only the 
   for (let i = 0; i < 10; i++) await page.getByTestId("capacity-capacity-mult").fill(i % 2 ? "7" : "6");
   expect(await page.evaluate(() => window.__threadVerification?.requests.length)).toBe(1);
   await page.getByTestId("capacity-close").click();
-  await page.evaluate(() => window.__threadVerification?.release?.());
+  // Keep the real request held until the driver observes reply readiness. This
+  // proves that request-count assertions do not race the native worker's clock.
+  const held = await page.evaluateHandle(() => {
+    const probe = window.__threadVerification;
+    if (!probe?.release) throw new Error("Expected the first verification to remain held");
+    const release = probe.release;
+    const settled = probe.whenSettled;
+    let waiting = false;
+    probe.release = () => {};
+    probe.whenSettled = () => {
+      waiting = true;
+      return settled();
+    };
+    return {
+      waiting: () => waiting,
+      release,
+      cleanup: () => {
+        probe.whenSettled = settled;
+        release();
+      },
+    };
+  });
+  let finished = false;
+  const finishing = (async () => {
+    await page.evaluate(() => window.__threadVerification?.release?.());
+    await waitForThreadVerification(page);
+    finished = true;
+  })();
+  try {
+    await expect.poll(async () => finished || (await held.evaluate((probe) => probe.waiting()))).toBe(true);
+    expect(finished).toBe(false);
+    await held.evaluate((probe) => probe.release());
+    await finishing;
+  } finally {
+    await held.evaluate((probe) => probe.cleanup());
+    await finishing.catch(() => {});
+    await held.dispose();
+  }
   await expect.poll(() => page.evaluate(() => window.__threadVerification?.requests.length)).toBe(2);
   await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
   const requests = await page.evaluate(() => window.__threadVerification?.requests);
