@@ -129,7 +129,7 @@ it("shows the annotation lesson's steps without a blank drawing board", async ()
   expect(host.querySelectorAll('[data-testid="tutorial-handoff-step-title"]')).toHaveLength(3);
 });
 
-it("isolates covered ancestors and wraps both sheet boundaries, restoring previous inertness", async () => {
+it("isolates dimmed regions and wraps both sheet boundaries, restoring previous inertness", async () => {
   await act(() =>
     root.render(
       <>
@@ -159,6 +159,37 @@ it("isolates covered ancestors and wraps both sheet boundaries, restoring previo
   expect(canvas.inert).toBeFalsy();
   expect(outside.inert).toBe(true);
   expect(document.activeElement).toBe(canvas);
+});
+
+it("leaves the strip, app bar and handoff dialogs active while covering the workbench", async () => {
+  await act(() =>
+    root.render(
+      <div data-testid="tutorial-app">
+        <button data-testid="file-button" />
+        <button data-testid="tutorial-save-copy" />
+        <button data-testid="tutorial-exit" />
+        <div data-testid="canvas-wrap">
+          <button data-testid="canvas-node" />
+        </div>
+        <div data-testid="inspector">
+          <input />
+        </div>
+        <div className="live-transport-mount">
+          <button />
+        </div>
+        <FinishHandoff tutorial={mobileApi} catalog={[mobileApi, quickAdd]} before={{}} progress={{}} />
+        <input data-testid="command-input" />
+      </div>,
+    ),
+  );
+  for (const id of ["file-button", "tutorial-save-copy", "tutorial-exit", "command-input"])
+    expect(host.querySelector(`[data-testid="${id}"]`)!.closest("[inert]")).toBeNull();
+  for (const id of ["canvas-wrap", "inspector"])
+    expect(host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!.inert).toBe(true);
+  expect(host.querySelector<HTMLElement>(".live-transport-mount")!.inert).toBe(true);
+  const input = host.querySelector<HTMLInputElement>('[data-testid="command-input"]')!;
+  input.focus();
+  expect(document.activeElement).toBe(input);
 });
 
 it("keeps a named connection's markers and label clear of its nodes", async () => {

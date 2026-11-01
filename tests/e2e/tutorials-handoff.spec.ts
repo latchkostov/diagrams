@@ -20,6 +20,29 @@ async function finish(page: Page) {
   await expect(page.getByTestId("tutorial-handoff-next-title")).toBeInViewport({ ratio: 1 });
 }
 
+async function tabTo(page: Page, id: string) {
+  const target = page.getByTestId(id);
+  const limit = await page.getByTestId(/./).count();
+  for (let i = 0; i < limit; i++) {
+    if (await target.evaluate((el) => document.activeElement === el)) break;
+    await page.keyboard.press("Tab");
+  }
+  await expect(target).toBeFocused();
+}
+
+test("finish keeps Save a copy and Exit reachable by keyboard while the canvas stays inert", async ({ page }) => {
+  await begin(page, "library-reuse");
+  await finish(page);
+  await tabTo(page, "tutorial-save-copy");
+  await expect(page.getByTestId("tutorial-handoff")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-open-copy")).toBeVisible();
+  await tabTo(page, "tutorial-exit");
+  expect(await page.getByTestId("canvas-wrap").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
+});
+
 test("keyboard-only completion reaches the sheet and starts the next lesson", async ({
   page,
   consoleErrors,
@@ -176,38 +199,47 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`v7 focus stays inside the sheet in both directions on ${width}`, async ({ page }) => {
+  test(`v7 focus cycles through the sheet and uncovered controls in both directions on ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await begin(page, "quick-add");
     await finish(page);
-    const body = page.getByTestId("tutorial-handoff-body");
     const last = page.getByTestId("tutorial-done-exit");
-    await page.keyboard.press("Shift+Tab");
-    await expect(last).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(body).toBeFocused();
-    for (const id of [
-      "tutorial-next",
-      "tutorial-handoff-dismiss",
-      "tutorial-pick-chapter",
-      "tutorial-done-exit",
-      "tutorial-handoff-body",
-    ]) {
+    await expect(page.getByTestId("tutorial-handoff-body")).toBeFocused();
+    for (const id of ["tutorial-next", "tutorial-handoff-dismiss", "tutorial-pick-chapter", "tutorial-done-exit"]) {
       await page.keyboard.press("Tab");
       await expect(page.getByTestId(id)).toBeFocused();
     }
-    await page.keyboard.press("Shift+Tab");
-    await expect(last).toBeFocused();
-    for (const id of [
-      "tutorial-pick-chapter",
-      "tutorial-handoff-dismiss",
-      "tutorial-next",
-      "tutorial-handoff-body",
-      "tutorial-done-exit",
-    ]) {
+    for (const id of ["tutorial-pick-chapter", "tutorial-handoff-dismiss", "tutorial-next", "tutorial-handoff-body"]) {
       await page.keyboard.press("Shift+Tab");
       await expect(page.getByTestId(id)).toBeFocused();
     }
+    for (const key of ["Tab", "Shift+Tab"]) {
+      const seen = new Set<string>();
+      const limit = await page.getByTestId(/./).count();
+      for (let i = 0; i < limit; i++) {
+        await page.keyboard.press(key);
+        const active = await page.evaluate(() => ({
+          id: document.activeElement?.getAttribute("data-testid") ?? "",
+          covered: !!document.activeElement?.closest("[inert]"),
+        }));
+        expect(active.covered).toBe(false);
+        expect(active.id).not.toBe("");
+        if (seen.has(active.id)) break;
+        seen.add(active.id);
+      }
+      for (const id of [
+        "tutorial-handoff-body",
+        "tutorial-next",
+        "tutorial-handoff-dismiss",
+        "tutorial-pick-chapter",
+        "tutorial-done-exit",
+        "tutorial-restart",
+        "tutorial-exit",
+      ])
+        expect(seen.has(id), `${key} reaches ${id}`).toBe(true);
+    }
+    await tabTo(page, "tutorial-done-exit");
     // Even a direct focus request cannot activate the covered canvas or its inspector controls.
     for (const id of ["canvas-wrap", "inspector-field-label"]) {
       const control = page.getByTestId(id);

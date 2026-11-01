@@ -54,34 +54,34 @@ export function FinishHandoff({
   useEffect(() => {
     const panel = sheet.current;
     if (dismissed || !panel) return;
-    // The sheet is nested beside the canvas. Isolate sibling branches up to the page root,
-    // preserving pre-existing inertness and leaving the clickable scrim available.
+    // Only the dimmed workbench is covered. The tutorial strip, app bar and their
+    // dialogs remain usable, including a palette opened as the lesson finishes.
     const background = new Map<HTMLElement, boolean>();
-    for (let branch: HTMLElement | null = sheet.current; branch?.parentElement; branch = branch.parentElement) {
-      for (const sibling of branch.parentElement.children) {
-        if (
-          sibling instanceof HTMLElement &&
-          sibling !== branch &&
-          !sibling.matches('[data-testid="tutorial-handoff-scrim"]')
-        ) {
-          background.set(sibling, sibling.inert);
-          sibling.inert = true;
-        }
-      }
+    for (const region of document.querySelectorAll<HTMLElement>(
+      '[data-testid="canvas-wrap"], [data-testid="inspector"], .live-transport-mount',
+    )) {
+      background.set(region, region.inert);
+      region.inert = true;
     }
     const release = () => {
       background.forEach((inert, element) => (element.inert = inert));
       background.clear();
     };
     releaseBackground.current = release;
+    const focusScope = panel.closest<HTMLElement>('[data-testid="tutorial-app"]') ?? panel;
     const trapTab = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      const controls = [...panel.querySelectorAll<HTMLElement>('button, [tabindex="0"]')].filter(
-        (control) => !control.matches(":disabled") && !control.hidden,
+      if (event.key !== "Tab" || event.defaultPrevented) return;
+      const controls = [
+        ...focusScope.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex="0"]'),
+      ].filter(
+        (control) => control.tabIndex >= 0 && !control.matches(":disabled") && !control.closest("[inert], [hidden]"),
       );
       const first = controls[0],
         last = controls.at(-1);
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === heading.current)) {
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || (focusScope === panel && document.activeElement === heading.current))
+      ) {
         event.preventDefault();
         last?.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -89,7 +89,7 @@ export function FinishHandoff({
         first?.focus();
       }
     };
-    panel.addEventListener("keydown", trapTab);
+    focusScope.addEventListener("keydown", trapTab);
     const dismiss = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
@@ -119,7 +119,7 @@ export function FinishHandoff({
     return () => {
       release();
       releaseBackground.current = undefined;
-      panel.removeEventListener("keydown", trapTab);
+      focusScope.removeEventListener("keydown", trapTab);
       stop?.();
       cancelAnimationFrame(frame);
       window.removeEventListener("keydown", dismiss);
@@ -134,7 +134,6 @@ export function FinishHandoff({
         className="tutorial-handoff"
         data-testid="tutorial-handoff"
         role="dialog"
-        aria-modal="true"
         aria-labelledby="tutorial-handoff-title"
       >
         <header className="handoff-header">
