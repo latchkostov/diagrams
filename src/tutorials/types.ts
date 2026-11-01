@@ -473,3 +473,11 @@ export interface Tutorial extends TutorialMetadata {
   steps: readonly TutorialStep[];
   finish: { text: Words; example?: { slug: string; label: Words } };
 }
+
+/** A catalog row and deep-link explanation, with no runnable lesson or fixture. */
+export interface UnavailableTutorial extends Pick<Tutorial, "id" | "title" | "summary" | "track"> {
+  optional: NonNullable<Tutorial["optional"]>;
+  unavailable: Words;
+}
+
+export type TutorialEntry = Tutorial | UnavailableTutorial;

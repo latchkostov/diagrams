@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import { formatDate } from "../i18n/format";
 import { chapters } from "./chapters";
+import { tutorialCatalog, tutorials } from "./catalog";
 import { justEarnedSeals, leaveLesson, lessonNumber, startNextLesson } from "./handoff";
 import { nextTutorial, type StoredTutorials } from "./progress";
 import { lessonProgress, seals } from "./seals";
@@ -226,7 +227,9 @@ export function FinishHandoff({
               data-testid="tutorial-next"
               onClick={() => startNextLesson(next)}
             >
-              {t("tutorials.handoff.start", { number: lessonNumber(next, catalog) })}
+              {t("tutorials.handoff.start", {
+                number: lessonNumber(next, catalog === tutorials ? tutorialCatalog : catalog),
+              })}
             </button>
           )}
           <button className="btn btn-ghost handoff-stay" data-testid="tutorial-handoff-dismiss" onClick={dismissSheet}>

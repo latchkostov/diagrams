@@ -1,6 +1,5 @@
 import { AiMount } from "../ai/ui/AiMount";
 import { createPeerPracticeHost } from "./peerPracticeHost";
-import { tutorialAvailable } from "./availability";
 import { surfaceCatalogs } from "../i18n/surfaces";
 import { ModeSwitch, HistoryButtons } from "../components/ModeSwitch";
 import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -22,7 +21,7 @@ import { loadingDialog } from "../interop/ui/lazyDialogs";
 import { CommandPalette } from "../palette/CommandPalette";
 import { t, useLocale } from "../i18n";
 import { tRich } from "../i18n/rich";
-import { trackLabel, tracks, tutorials } from "./catalog";
+import { findTutorial, trackLabel, tracks, tutorials } from "./catalog";
 import { lazyComponent, loadOnce } from "../lib/lazyLoad";
 import { readTutorials, subscribeTutorials, tutorialsSnapshot } from "./progress";
 import { FinishHandoff } from "./FinishHandoff";
@@ -81,12 +80,12 @@ export function TutorialApp({ id }: { id: string }) {
     (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && id.startsWith("lab-tutorial-")
       ? use(loadRuntimeFixtures())(id)
       : tutorials;
-  const tutorial = catalog.find((x) => x.id === id && !x.quarantined);
+  const tutorial = catalog === tutorials ? findTutorial(id) : catalog.find((x) => x.id === id && !x.quarantined);
   if (!tutorial) return <Unknown id={id} />;
-  if (!tutorialAvailable(tutorial))
+  if ("unavailable" in tutorial)
     return (
       <div className="view-loading">
-        <p data-testid="tutorial-unavailable">{t("tutorials.sharing.unavailable")}</p>
+        <p data-testid="tutorial-unavailable">{tutorial.unavailable()}</p>
         <p>{t("tutorials.sharing.optionalExplanation")}</p>
         <button className="btn" data-testid="tutorial-exit" onClick={() => leaveLesson(tutorial)}>
           {t("tutorials.section")}

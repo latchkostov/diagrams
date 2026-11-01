@@ -6,7 +6,7 @@ import { ContextMenu } from "../components/ContextMenu";
 import { t, useLocale } from "../i18n";
 import { formatDate } from "../i18n/format";
 import { notify, toast } from "../interop/ui/toast";
-import { tracks, tutorials } from "./catalog";
+import { tracks, tutorials, tutorialCatalog } from "./catalog";
 import {
   earnedSeals,
   readTutorials,
@@ -25,10 +25,10 @@ import { SealsPage } from "./SealsPage";
 import { ResetProgressDialog } from "./ResetProgressDialog";
 import { lessonReturn, lessonNumber as numberedLesson } from "./handoff";
 import { tutorialRoute } from "./route";
-import type { TrackId, Tutorial } from "./types";
+import type { TrackId, TutorialEntry } from "./types";
 import "./tutorials.css";
 
-const lessonNumber = (lesson: Tutorial) => numberedLesson(lesson, tutorials);
+const lessonNumber = (lesson: TutorialEntry) => numberedLesson(lesson, tutorialCatalog);
 
 export function TutorialsView() {
   useLocale();
@@ -55,7 +55,7 @@ export function TutorialsView() {
     if (id) document.querySelector(`[data-testid="tutorial-open-${id}"]`)?.scrollIntoView({ block: "nearest" });
     writeTutorials((s) => recordSeals(s, tutorials));
   }, []);
-  const launch = (lesson: Tutorial) => {
+  const launch = (lesson: TutorialEntry) => {
     lessonReturn.lesson = lesson;
     tutorialRoute.open(lesson.id);
   };
@@ -185,8 +185,8 @@ export function TutorialsView() {
               </section>
             )}
             {tracks.map((track) => {
-              const list = tutorials.filter((lesson) => lesson.track === track.id);
-              const required = list.filter((lesson) => !lesson.optional);
+              const list = tutorialCatalog.filter((lesson) => lesson.track === track.id);
+              const required = tutorials.filter((lesson) => lesson.track === track.id && !lesson.optional);
               const finished = required.filter((lesson) => lessonProgress(progress, lesson)?.completed).length;
               const seal = { id: track.seal, numeral: track.numeral };
               const earned = awards.includes(seal.id);
@@ -248,8 +248,8 @@ export function TutorialsView() {
                     <div className="tutorials-chapter-foot">
                       <span>
                         {t("tutorials.syllabus.chapterNote", {
-                          count: list.length,
-                          minutes: list.reduce((sum, lesson) => sum + lesson.minutes, 0),
+                          count: required.length,
+                          minutes: required.reduce((sum, lesson) => sum + lesson.minutes, 0),
                         })}
                       </span>
                       <button
@@ -311,8 +311,8 @@ export function TutorialsView() {
   );
 }
 
-function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson: Tutorial }) {
-  const p = lessonProgress(progress, lesson);
+function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson: TutorialEntry }) {
+  const p = "unavailable" in lesson ? undefined : lessonProgress(progress, lesson);
   return (
     <span
       aria-hidden="true"
@@ -323,8 +323,16 @@ function ProgressGlyph({ progress, lesson }: { progress: StoredTutorials; lesson
   );
 }
 
-function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: StoredTutorials; onOpen: () => void }) {
-  const p = lessonProgress(progress, lesson);
+function LessonRow({
+  lesson,
+  progress,
+  onOpen,
+}: {
+  lesson: TutorialEntry;
+  progress: StoredTutorials;
+  onOpen: () => void;
+}) {
+  const p = "unavailable" in lesson ? undefined : lessonProgress(progress, lesson);
   const going = !!p && !p.completed && p.step > 0;
   const action = going ? t("tutorials.continue") : p?.completed ? t("tutorials.syllabus.review") : t("tutorials.start");
   const state = p?.completed
@@ -332,13 +340,19 @@ function LessonRow({ lesson, progress, onOpen }: { lesson: Tutorial; progress: S
     : going
       ? t("tutorials.syllabus.going")
       : t("tutorials.syllabus.notStarted");
-  const status = p?.completed
-    ? p.completedAt === undefined
-      ? t("tutorials.syllabus.done")
-      : t("tutorials.syllabus.doneDate", { date: formatDate(p.completedAt) })
-    : going
-      ? t("tutorials.syllabus.step", { step: Math.min(p.step + 1, lesson.steps.length), total: lesson.steps.length })
-      : t("tutorials.syllabus.lessonMeta", { minutes: lesson.minutes, level: lesson.level });
+  const status =
+    "unavailable" in lesson
+      ? lesson.unavailable()
+      : p?.completed
+        ? p.completedAt === undefined
+          ? t("tutorials.syllabus.done")
+          : t("tutorials.syllabus.doneDate", { date: formatDate(p.completedAt) })
+        : going
+          ? t("tutorials.syllabus.step", {
+              step: Math.min(p.step + 1, lesson.steps.length),
+              total: lesson.steps.length,
+            })
+          : t("tutorials.syllabus.lessonMeta", { minutes: lesson.minutes, level: lesson.level });
   return (
     <li className={`tutorials-row${going ? " is-going" : ""}`} data-testid={`tutorial-card-${lesson.id}`}>
       <span className="tutorials-number">{lessonNumber(lesson)}</span>
