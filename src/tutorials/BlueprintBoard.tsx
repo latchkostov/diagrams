@@ -112,41 +112,43 @@ export function BlueprintBoard({ lesson, catalog }: { lesson: Tutorial; catalog:
     state.diagram && buildBlueprint(lesson, typeof lesson.start === "function" ? lesson.start() : state.diagram);
   return (
     <div
-      className={`handoff-board${blueprint?.kind === "settings" ? " is-settings" : blueprint?.edges.some((edge) => edge.label) ? " is-labeled" : ""}`}
+      className={`handoff-board${blueprint?.kind === "steps" ? " is-steps" : blueprint?.kind === "settings" ? " is-settings" : blueprint?.edges.some((edge) => edge.label) ? " is-labeled" : ""}`}
       data-testid="tutorial-handoff-board"
     >
-      <div className="handoff-board-content" data-testid="tutorial-handoff-board-content">
-        {blueprint ? (
-          blueprint.kind === "settings" ? (
-            <dl className="handoff-settings" data-testid="tutorial-handoff-settings">
-              {blueprint.changes.map((change, i) => (
-                <div key={i}>
-                  <dt>
-                    <span className="handoff-mark" aria-hidden>
-                      {change.step}
-                    </span>
-                    {change.setting}
-                    {change.detail && <span>{change.detail}</span>}
-                  </dt>
-                  <dd>
-                    <span>{valueText(change.before)}</span>
-                    <span aria-label={t("tutorials.handoff.becomes")}>→</span>
-                    <strong>{valueText(change.after)}</strong>
-                  </dd>
-                </div>
-              ))}
-            </dl>
+      {blueprint?.kind !== "steps" && (
+        <div className="handoff-board-content" data-testid="tutorial-handoff-board-content">
+          {blueprint ? (
+            blueprint.kind === "settings" ? (
+              <dl className="handoff-settings" data-testid="tutorial-handoff-settings">
+                {blueprint.changes.map((change, i) => (
+                  <div key={i} data-testid="tutorial-handoff-setting">
+                    <dt>
+                      <span className="handoff-mark" aria-hidden>
+                        {change.step}
+                      </span>
+                      {change.setting}
+                      {change.detail && <span>{change.detail}</span>}
+                    </dt>
+                    <dd>
+                      <span data-testid="tutorial-handoff-setting-before">{valueText(change.before)}</span>
+                      <span aria-label={t("tutorials.handoff.becomes")}>→</span>
+                      <strong data-testid="tutorial-handoff-setting-after">{valueText(change.after)}</strong>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <Drawing blueprint={blueprint} />
+            )
+          ) : state.value === "failed" ? (
+            <button className="btn" data-testid="tutorial-handoff-preview-retry" onClick={loader.retry}>
+              {t("common.retry")}
+            </button>
           ) : (
-            <Drawing blueprint={blueprint} />
-          )
-        ) : state.value === "failed" ? (
-          <button className="btn" data-testid="tutorial-handoff-preview-retry" onClick={loader.retry}>
-            {t("common.retry")}
-          </button>
-        ) : (
-          <span>{t("common.loading")}</span>
-        )}
-      </div>
+            <span>{t("common.loading")}</span>
+          )}
+        </div>
+      )}
       <div className="handoff-titleblock">
         <span className="handoff-lesson-number">{lessonNumber(lesson, catalog)}</span>
         <div>

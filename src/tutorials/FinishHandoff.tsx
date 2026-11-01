@@ -26,6 +26,8 @@ export function FinishHandoff({
 }) {
   const [dismissed, setDismissed] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  const sheet = useRef<HTMLElement>(null);
+  const releaseBackground = useRef<(() => void) | undefined>(undefined);
   const next = nextTutorial(tutorial, catalog, progress);
   const chapter = chapters[tutorial.track];
   const list = catalog.filter((lesson) => lesson.track === tutorial.track && !lesson.quarantined);
@@ -45,11 +47,49 @@ export function FinishHandoff({
         ? t("tutorials.handoff.loggedToday")
         : t("tutorials.handoff.loggedDate", { date: formatDate(at) });
   const dismissSheet = () => {
+    releaseBackground.current?.();
     setDismissed(true);
     document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus();
   };
   useEffect(() => {
-    if (dismissed) return;
+    const panel = sheet.current;
+    if (dismissed || !panel) return;
+    // The sheet is nested beside the canvas. Isolate sibling branches up to the page root,
+    // preserving pre-existing inertness and leaving the clickable scrim available.
+    const background = new Map<HTMLElement, boolean>();
+    for (let branch: HTMLElement | null = sheet.current; branch?.parentElement; branch = branch.parentElement) {
+      for (const sibling of branch.parentElement.children) {
+        if (
+          sibling instanceof HTMLElement &&
+          sibling !== branch &&
+          !sibling.matches('[data-testid="tutorial-handoff-scrim"]')
+        ) {
+          background.set(sibling, sibling.inert);
+          sibling.inert = true;
+        }
+      }
+    }
+    const release = () => {
+      background.forEach((inert, element) => (element.inert = inert));
+      background.clear();
+    };
+    releaseBackground.current = release;
+    const trapTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const controls = [...panel.querySelectorAll<HTMLElement>('button, [tabindex="0"]')].filter(
+        (control) => !control.matches(":disabled") && !control.hidden,
+      );
+      const first = controls[0],
+        last = controls.at(-1);
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === heading.current)) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    panel.addEventListener("keydown", trapTab);
     const dismiss = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
@@ -77,6 +117,9 @@ export function FinishHandoff({
     // A modal can close on this same Escape. Focus and listen after its cleanup and that event finish.
     schedule();
     return () => {
+      release();
+      releaseBackground.current = undefined;
+      panel.removeEventListener("keydown", trapTab);
       stop?.();
       cancelAnimationFrame(frame);
       window.removeEventListener("keydown", dismiss);
@@ -86,7 +129,14 @@ export function FinishHandoff({
   return (
     <>
       <div className="handoff-scrim" data-testid="tutorial-handoff-scrim" aria-hidden onClick={dismissSheet} />
-      <section className="tutorial-handoff" data-testid="tutorial-handoff" aria-labelledby="tutorial-handoff-title">
+      <section
+        ref={sheet}
+        className="tutorial-handoff"
+        data-testid="tutorial-handoff"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorial-handoff-title"
+      >
         <header className="handoff-header">
           <div className="handoff-heading-row">
             <span data-testid={earned || whole ? `tutorial-handoff-seal-${award?.id}` : undefined}>

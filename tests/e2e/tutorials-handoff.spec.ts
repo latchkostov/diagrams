@@ -127,15 +127,108 @@ for (const close of ["stay", "scrim", "escape"] as const) {
   });
 }
 
-test("v7 settings preview reads the actual lesson's before and after values", async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 2560, height: 1440 });
-  await begin(page, "checks-and-fixes");
+for (const width of [2560, 390]) {
+  test(`v7 settings preview remains readable on ${width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 1440 });
+    await begin(page, "checks-and-fixes");
+    await finish(page);
+    await expect(page.getByTestId("tutorial-next")).toHaveText("Start 3.1");
+    await expect(page.getByTestId("tutorial-handoff-settings")).toContainText("2→6");
+    await expect(page.getByTestId("tutorial-handoff-settings")).toContainText("1→3");
+    await expect(page.getByTestId("tutorial-handoff-settings")).toContainText("1→2");
+    const rows = page.getByTestId("tutorial-handoff-setting");
+    expect(await rows.count()).toBe(3);
+    for (const row of await rows.all()) {
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+      await expect(row.getByTestId("tutorial-handoff-setting-before")).toBeVisible();
+      await expect(row.getByTestId("tutorial-handoff-setting-after")).toBeVisible();
+      await expect(row.getByTestId("tutorial-handoff-setting-before")).toBeInViewport({ ratio: 1 });
+      await expect(row.getByTestId("tutorial-handoff-setting-after")).toBeInViewport({ ratio: 1 });
+      const value = await row.getByTestId("tutorial-handoff-setting-after").boundingBox();
+      const footer = await page.getByTestId("tutorial-handoff-footer").boundingBox();
+      if (!value || !footer) throw new Error("Missing settings value or footer");
+      expect(value.y + value.height).toBeLessThanOrEqual(footer.y);
+    }
+    await expect(page.getByTestId("tutorial-next")).toBeInViewport({ ratio: 1 });
+    await expect(page.getByTestId("tutorial-done-exit")).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: testInfo.outputPath("v7-settings.png") });
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`v7 long settings preview scrolls to its last value on ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await begin(page, "lab-tutorial-handoff-settings");
+    await finish(page);
+    const rows = page.getByTestId("tutorial-handoff-setting");
+    await expect(rows).toHaveCount(12);
+    await expect(rows.last()).not.toBeInViewport();
+    await rows.last().scrollIntoViewIfNeeded();
+    await expect(rows.last().getByTestId("tutorial-handoff-setting-before")).toHaveText("13");
+    await expect(rows.last().getByTestId("tutorial-handoff-setting-after")).toHaveText("14");
+    await expect(rows.last().getByTestId("tutorial-handoff-setting-before")).toBeVisible();
+    await expect(rows.last().getByTestId("tutorial-handoff-setting-after")).toBeVisible();
+    await expect(rows.last()).toBeInViewport({ ratio: 1 });
+    await expect(page.getByTestId("tutorial-next")).toBeInViewport({ ratio: 1 });
+    await expect(page.getByTestId("tutorial-done-exit")).toBeInViewport({ ratio: 1 });
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`v7 focus stays inside the sheet in both directions on ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await begin(page, "quick-add");
+    await finish(page);
+    const body = page.getByTestId("tutorial-handoff-body");
+    const last = page.getByTestId("tutorial-done-exit");
+    await page.keyboard.press("Shift+Tab");
+    await expect(last).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(body).toBeFocused();
+    for (const id of [
+      "tutorial-next",
+      "tutorial-handoff-dismiss",
+      "tutorial-pick-chapter",
+      "tutorial-done-exit",
+      "tutorial-handoff-body",
+    ]) {
+      await page.keyboard.press("Tab");
+      await expect(page.getByTestId(id)).toBeFocused();
+    }
+    await page.keyboard.press("Shift+Tab");
+    await expect(last).toBeFocused();
+    for (const id of [
+      "tutorial-pick-chapter",
+      "tutorial-handoff-dismiss",
+      "tutorial-next",
+      "tutorial-handoff-body",
+      "tutorial-done-exit",
+    ]) {
+      await page.keyboard.press("Shift+Tab");
+      await expect(page.getByTestId(id)).toBeFocused();
+    }
+    // Even a direct focus request cannot activate the covered canvas or its inspector controls.
+    for (const id of ["canvas-wrap", "inspector-field-label"]) {
+      const control = page.getByTestId(id);
+      await expect(control).toHaveCount(1);
+      expect(await control.evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+      await control.evaluate((el) => (el as HTMLElement).focus());
+      await expect(last).toBeFocused();
+    }
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("tutorial-handoff")).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    expect(await page.getByTestId("canvas-wrap").evaluate((el) => !!el.closest("[inert]"))).toBe(false);
+  });
+}
+
+test("v7 annotation preview uses its steps instead of an empty drawing", async ({ page }) => {
+  await begin(page, "boundaries");
   await finish(page);
-  await expect(page.getByTestId("tutorial-next")).toHaveText("Start 3.1");
-  await expect(page.getByTestId("tutorial-handoff-settings")).toContainText("2→6");
-  await expect(page.getByTestId("tutorial-handoff-settings")).toContainText("1→3");
-  await expect(page.getByTestId("tutorial-handoff-settings")).toContainText("1→2");
-  await page.screenshot({ path: testInfo.outputPath("v7-settings.png") });
+  await expect(page.getByTestId("tutorial-handoff-drawing")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-handoff-step-title")).toHaveCount(3);
+  await expect(page.getByTestId("tutorial-handoff-step-3")).toBeInViewport({ ratio: 1 });
 });
 
 test("editing hover card follows its node and clears the grow coach", async ({ page }) => {

@@ -264,6 +264,12 @@
   min-height: 0;
   max-height: 320px;
 }
+.handoff-board.is-steps {
+  flex: none;
+}
+.handoff-board.is-steps .handoff-titleblock {
+  border-top: 0;
+}
 .handoff-settings {
   width: 100%;
   margin: 0;

@@ -13,6 +13,9 @@ import { BlueprintBoard } from "./BlueprintBoard";
 import { state as locale } from "../i18n";
 import { quickAdd } from "./catalog/quickAdd";
 import { dotsAndSides } from "./catalog/dotsAndSides";
+import { annotate } from "./catalog/annotate";
+import { circuitBreaker } from "./catalog/circuitBreaker";
+import { loadTutorialStart } from "./start";
 import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
 import { initialEditorMode, type EditorModeState } from "../canvas/interaction/mode";
 
@@ -106,6 +109,56 @@ it("places a node's numbered markers in reading order", async () => {
   const x = (number: string) =>
     Number(/translate\((\d+)/.exec(marks.find((mark) => mark.textContent === number)!.getAttribute("transform")!)![1]);
   expect(x("2")).toBeLessThan(x("3"));
+});
+
+it("renders configuration presence as readable Off → On values", async () => {
+  const initial = await loadTutorialStart(circuitBreaker);
+  const lesson = { ...circuitBreaker, start: () => initial };
+  await act(() => root.render(<BlueprintBoard lesson={lesson} catalog={[lesson]} />));
+  expect(host.querySelector('[data-testid="tutorial-handoff-setting-before"]')?.textContent).toBe("Off");
+  expect(host.querySelector('[data-testid="tutorial-handoff-setting-after"]')?.textContent).toBe("On");
+});
+
+it("shows the annotation lesson's steps without a blank drawing board", async () => {
+  await act(() =>
+    root.render(<FinishHandoff tutorial={quickAdd} catalog={[quickAdd, annotate]} before={{}} progress={{}} />),
+  );
+  expect(host.querySelector('[data-testid="tutorial-handoff-drawing"]')).toBeNull();
+  expect(host.querySelector('[data-testid="tutorial-handoff-board-content"]')).toBeNull();
+  expect(host.querySelector('[data-testid="tutorial-handoff-next-title"]')?.textContent).toBe(annotate.title());
+  expect(host.querySelectorAll('[data-testid="tutorial-handoff-step-title"]')).toHaveLength(3);
+});
+
+it("isolates covered ancestors and wraps both sheet boundaries, restoring previous inertness", async () => {
+  await act(() =>
+    root.render(
+      <>
+        <button data-testid="outside" inert />
+        <div>
+          <button data-testid="canvas-wrap" />
+          <FinishHandoff tutorial={mobileApi} catalog={[mobileApi, quickAdd]} before={{}} progress={{}} />
+        </div>
+      </>,
+    ),
+  );
+  const canvas = host.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')!;
+  const outside = host.querySelector<HTMLElement>('[data-testid="outside"]')!;
+  expect(canvas.inert).toBe(true);
+  const first = host.querySelector<HTMLElement>('[data-testid="tutorial-handoff-body"]')!;
+  const last = host.querySelector<HTMLElement>('[data-testid="tutorial-done-exit"]')!;
+  for (const from of [first, host.querySelector<HTMLElement>('[data-testid="tutorial-handoff-heading"]')!]) {
+    from.focus();
+    await act(() =>
+      from.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true })),
+    );
+    expect(document.activeElement).toBe(last);
+  }
+  await act(() => last.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true })));
+  expect(document.activeElement).toBe(first);
+  await act(() => host.querySelector<HTMLButtonElement>('[data-testid="tutorial-handoff-dismiss"]')!.click());
+  expect(canvas.inert).toBeFalsy();
+  expect(outside.inert).toBe(true);
+  expect(document.activeElement).toBe(canvas);
 });
 
 it("keeps a named connection's markers and label clear of its nodes", async () => {

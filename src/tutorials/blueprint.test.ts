@@ -7,6 +7,8 @@ import { insertOnEdge } from "./catalog/insertOnEdge";
 import { ratesAndInputs } from "./catalog/ratesAndInputs";
 import { dotsAndSides } from "./catalog/dotsAndSides";
 import { dependencies2 } from "./catalog/dependencies2";
+import { circuitBreaker } from "./catalog/circuitBreaker";
+import { annotate } from "./catalog/annotate";
 import { loadTutorialStart } from "./start";
 import { t } from "../i18n";
 
@@ -67,6 +69,33 @@ it("builds a before → after settings card from the real starting value and aut
   expect(board.changes[0]).toEqual({ step: 1, setting: ratesAndInputs.steps[0].title(), before: 2, after: 6 });
   expect(board.changes).toContainEqual({ step: 5, setting: ratesAndInputs.steps[4].title(), before: 1, after: 3 });
   expect(board.changes.at(-1)).toMatchObject({ before: 1, after: 2 });
+});
+
+it("previews enabling the circuit breaker from its starting diagram as Off → On", async () => {
+  const initial = await loadTutorialStart(circuitBreaker);
+  const board = buildBlueprint(circuitBreaker, initial);
+  expect(board.kind).toBe("settings");
+  expect(board.changes).toEqual([{ step: 1, setting: circuitBreaker.steps[0].title(), before: false, after: true }]);
+});
+
+it("previews removing an optional configuration as On → Off", () => {
+  const lesson = {
+    ...quickAdd,
+    subjects: { api: { stencils: ["generic.service"] } },
+    steps: [{ ...quickAdd.steps[0], demo: [{ kind: "prop" as const, subject: "api", props: { breaker: undefined } }] }],
+  };
+  const board = buildBlueprint(lesson, {
+    format: "diagrams/v1",
+    title: "",
+    edges: [],
+    nodes: [{ id: "api", stencil: "generic.service", label: quickAdd.title(), x: 0, y: 0, props: { breaker: {} } }],
+  });
+  expect(board.kind).toBe("settings");
+  expect(board.changes).toEqual([{ step: 1, setting: lesson.steps[0].title(), before: true, after: false }]);
+});
+
+it("uses steps only when the annotation lesson has no drawable subjects", async () => {
+  expect(buildBlueprint(annotate, await loadTutorialStart(annotate)).kind).toBe("steps");
 });
 
 it("turns nested setting patches into named scalar changes, never JSON arrays or objects", () => {

@@ -28,7 +28,7 @@ export interface SettingChange {
   detail?: string;
 }
 export interface Blueprint {
-  kind: "drawing" | "settings";
+  kind: "drawing" | "settings" | "steps";
   nodes: BlueprintNode[];
   edges: BlueprintEdge[];
   changes: SettingChange[];
@@ -55,6 +55,15 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
         const left = (a ?? {}) as Record<string, unknown>,
           right = (b ?? {}) as Record<string, unknown>;
         const label = typeof right.key === "string" ? right.key : typeof left.key === "string" ? left.key : name;
+        // An optional configuration object enables a feature even when it has no explicit settings.
+        if (a === undefined || b === undefined)
+          changes.push({
+            step,
+            setting,
+            before: a !== undefined,
+            after: b !== undefined,
+            ...(label ? { detail: label } : {}),
+          });
         for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) visit(left[key], right[key], label);
       } else changes.push({ step, setting, before: a, after: b, ...(name ? { detail: name } : {}) });
     };
@@ -169,7 +178,8 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
       }
     }
   }
-  return { kind: drawing || !changes.length ? "drawing" : "settings", nodes: [...nodes.values()], edges, changes };
+  const kind = drawing || !changes.length ? (nodes.size ? "drawing" : "steps") : "settings";
+  return { kind, nodes: [...nodes.values()], edges, changes };
 }
 
 /** The input this step teaches, omitting setup clicks and settlement Enter presses. */

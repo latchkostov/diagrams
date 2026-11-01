@@ -33,15 +33,19 @@ export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let obstacles = [...document.querySelectorAll("[data-tip-obstacle]")];
+    const pane = tip.anchor?.closest('[data-testid="canvas-wrap"]');
     const position = () => {
       const { width, height } = el.getBoundingClientRect();
       const target = tip.anchor?.isConnected ? tip.anchor.getBoundingClientRect() : tip.rect;
-      const pane = tip.anchor?.closest('[data-testid="canvas-wrap"]')?.getBoundingClientRect();
-      const area = pane ?? { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
-      const obstacles = [...document.querySelectorAll("[data-tip-obstacle]")]
-        .map((node) => node.getBoundingClientRect())
-        .filter((r) => r.width && r.height);
-      const place = placeNodeTip(target, { width, height }, area, obstacles);
+      const area = pane?.getBoundingClientRect() ?? {
+        x: 0,
+        y: 0,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      const blocked = obstacles.map((node) => node.getBoundingClientRect()).filter((r) => r.width && r.height);
+      const place = placeNodeTip(target, { width, height }, area, blocked);
       el.style.visibility = place ? "" : "hidden";
       if (place) {
         el.style.left = `${place.x}px`;
@@ -49,12 +53,71 @@ export function NodeTooltip({ tip, loading = false }: { tip: NodeTip; loading?: 
       }
     };
     let frame = 0;
+    const moving = new Set<Element>();
     const update = () => {
+      frame = 0;
       position();
-      frame = requestAnimationFrame(update);
+      if (moving.size) schedule();
     };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    const relevant = (node: Node) =>
+      node instanceof Element &&
+      node !== el &&
+      !el.contains(node) &&
+      [tip.anchor, pane, ...obstacles].some((target) => target && (node.contains(target) || target.contains(node)));
+    const sizes = new ResizeObserver(schedule);
+    const observeSizes = () => {
+      sizes.disconnect();
+      for (const target of [el, tip.anchor, pane, ...obstacles]) if (target) sizes.observe(target);
+    };
+    const mutations = new MutationObserver((records) => {
+      const next = [...document.querySelectorAll("[data-tip-obstacle]")];
+      const changed = next.length !== obstacles.length || next.some((node, i) => node !== obstacles[i]);
+      if (changed || records.some((record) => relevant(record.target))) {
+        obstacles = next;
+        if (changed) observeSizes();
+        schedule();
+      }
+    });
+    mutations.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["style", "class", "hidden", "dir", "data-tip-obstacle"],
+    });
+    const movement = (event: Event) => {
+      if (!(event.target instanceof Element) || !relevant(event.target)) return;
+      if (event.type === "transitionrun" || event.type === "animationstart") moving.add(event.target);
+      else moving.delete(event.target);
+      schedule();
+    };
+    const events = [
+      "transitionrun",
+      "transitionend",
+      "transitioncancel",
+      "animationstart",
+      "animationend",
+      "animationcancel",
+    ];
+    for (const event of events) document.addEventListener(event, movement, true);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    window.visualViewport?.addEventListener("resize", schedule);
+    window.visualViewport?.addEventListener("scroll", schedule);
+    observeSizes();
     update();
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      mutations.disconnect();
+      sizes.disconnect();
+      for (const event of events) document.removeEventListener(event, movement, true);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      window.visualViewport?.removeEventListener("resize", schedule);
+      window.visualViewport?.removeEventListener("scroll", schedule);
+    };
   }, [tip]);
   return (
     <div
