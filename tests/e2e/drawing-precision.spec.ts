@@ -8,12 +8,12 @@ import {
   gotoCanvas,
   expectNoErrors,
   waitForStableViewport,
-  viewportTransform,
   pauseClock,
   STORAGE_KEYS,
 } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
+import { precisionDragStart, precisionViewport as view } from "./drag-geometry";
 
 // Drawing precision (docs/research/drawing-ux.md, batch 2): smart guides, equal spacing and grid-true
 // nudges (D6), and one set of text-editing rules with type-ahead and a preloaded palette (D7).
@@ -66,14 +66,6 @@ async function box(locator: Locator): Promise<Box> {
   if (!b) throw new Error("Expected a visible element");
   return b;
 }
-const centre = (b: Box) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
-
-async function view(page: Page) {
-  const t = await viewportTransform(page);
-  const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(t);
-  if (!m) throw new Error(`Unexpected transform: ${t}`);
-  return { x: Number(m[1]), y: Number(m[2]), zoom: Number(m[3]) };
-}
 
 /** A node's position in flow coordinates (its React Flow wrapper's translate). */
 async function flowPos(page: Page, testId: string) {
@@ -93,8 +85,7 @@ const guides = (page: Page) => page.getByTestId("smart-guides");
  * The button stays down: the caller releases it.
  */
 async function dragBy(page: Page, testId: string, dx: number, dy: number, free = false) {
-  const { zoom } = await view(page);
-  const press = centre(await box(page.getByTestId(testId)));
+  const { zoom, press } = await precisionDragStart(page, testId);
   await page.mouse.move(press.x, press.y);
   // React Flow can activate at mouse-down or at the first move. Observe the actual guide-session
   // boundary rather than adding the activation move to every requested flow-space offset.
