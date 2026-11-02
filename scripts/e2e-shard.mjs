@@ -106,7 +106,15 @@ export function updateTimings(reports, root = process.cwd()) {
       }
     for (const child of suite.suites ?? []) walk(child, [...titles, child.title]);
   };
-  for (const file of reports) for (const s of JSON.parse(fs.readFileSync(file, "utf8")).suites ?? []) walk(s, []);
+  let completeReports = 0;
+  for (const file of reports) {
+    const report = JSON.parse(fs.readFileSync(file, "utf8"));
+    // A checkpoint may omit tests and suite titles: it cannot establish a file's
+    // full cost, and its flattened titles can count the same samples twice.
+    if (report.interrupted) continue;
+    completeReports++;
+    for (const s of report.suites ?? []) walk(s, []);
+  }
   if (!runs.size) throw new Error("No successful first attempts in the timing reports");
   const measured = {};
   for (const { file, ms } of runs.values())
@@ -120,7 +128,9 @@ export function updateTimings(reports, root = process.cwd()) {
   }
   const about = "Seconds of test time per e2e spec file on CI, for scripts/e2e-shard.mjs. Regenerate, don't hand-edit.";
   fs.writeFileSync(path.join(root, TIMINGS), JSON.stringify({ about, seconds }, null, 2) + "\n");
-  console.log(`e2e-shard: wrote ${Object.keys(seconds).length} spec timings from ${reports.length} report(s).`);
+  console.log(
+    `e2e-shard: wrote ${Object.keys(seconds).length} spec timings from ${completeReports} complete report(s).`,
+  );
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
