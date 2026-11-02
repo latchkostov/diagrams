@@ -253,8 +253,9 @@ for (const [id, index] of [
       expect(predecessor.nodes).toHaveLength(1);
     }
     if (id === "work-together") await expect(page.getByTestId("tutorial-peer-watch")).toBeVisible();
-    await page.clock.resume();
-    await skipAll(page);
+    // Reference replays finish on authored time, independently of the host's frame rate.
+    // Keep Continue's paused clock and drive each remaining milestone through its real observation.
+    await skipAll(page, true);
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });
