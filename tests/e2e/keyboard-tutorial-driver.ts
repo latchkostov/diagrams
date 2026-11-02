@@ -158,6 +158,11 @@ export async function focus(page: Page, id: string) {
     );
     const destination = stops.findIndex((stop) => stop === el || stop.contains(el) || el.contains(stop));
     let active = document.activeElement;
+    const inspector = el.closest('[data-testid="inspector"]');
+    // Wrapping through the canvas changes selection and replaces these fields.
+    // Within one Inspector, take the direct DOM-order route to the requested control.
+    if (active && inspector?.contains(active))
+      return !!(el.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING);
     for (let parent = active; parent; parent = parent.parentElement) {
       if (!parent.hasAttribute("data-live-readout")) continue;
       active = stops.find((stop) => stop.getAttribute("data-id") === parent.getAttribute("data-item")) ?? active;

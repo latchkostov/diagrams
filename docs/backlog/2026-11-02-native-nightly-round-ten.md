@@ -39,9 +39,10 @@ are excluded. Test inventory, repetitions, workers, shard count and deadlines mu
 
 ## Still investigating
 
-The macOS study-payments menu and load-shedding queue-details failures need their actual transition
-states retained; the keyboard name correction does not claim to fix them. Presentation Home ends
-at 39 px after Home is delivered; its exact assertion stays enabled. Windows capture/live/watch,
+The study-payments menu observation is consistent with the independently reproduced palette
+ownership bug below; a passing rerun alone does not establish that every observation shares it.
+The load-shedding trace shows the driver's selection departure described below. Presentation Home
+ends at 39 px after Home is delivered; its exact assertion stays enabled. Windows capture/live/watch,
 brownout/replay, planner disclosure, held-paint, DLQ and trace-label cases remain enabled.
 
 ## Keyboard input verification
@@ -80,3 +81,30 @@ SUMMARY: 818ea1dae5826dabb2cc67431a753c39ea7b58ea | unit={"passed":229,"failed":
 ```
 
 This quick gate likewise tests working edits on its starting HEAD.
+
+## Driver repair: reaching fields without changing their subject
+
+The macOS load-shedding trace uses Shift+Tab from API's Label, passes through the canvas, and
+ends on Client's source settings. Canvas focus correctly moves selection with it. The requested
+queue disclosure belongs to API, so waiting longer cannot repair this route. The driver's
+shortest cyclic path must not cross the canvas when both endpoints are in the current Inspector.
+Use their direct document-order route, with ordinary Tab/Shift+Tab, and retain global navigation
+for other surfaces. No product Tab or selection rule changes.
+
+The controlled forward and backward browser cases reach a same-named target but count one
+canvas focus entry with the original route. Both fail again when the correction is temporarily
+reverted, and both pass with zero entries when restored. Windows also passes api-gateway,
+study-payments and load-shedding twice each. Those six passes are validation, not a measured
+natural flake-rate improvement; the controlled regressions establish the route correction.
+
+The new route cases, affected keyboard-0/5/6 specs, Checks simulations and relay sharing all pass
+twice in Linux, six workers sharing four CPUs: 124 production plus four Dev executions. Every
+formerly interrupted case finishes in both local repeats. The harness and fragment cohort passes
+45 units. Application and output bytes are unchanged from the preceding product parity check;
+no golden is re-recorded.
+
+```text
+SUMMARY: 1cacd30fb0461d7dbf3e68f4475bd13f176d339e | unit={"passed":45,"failed":0,"skipped":0} parity="not run" e2e={"passed":128,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+This subset runs working edits on its stated starting HEAD, including the native-profile harness.
