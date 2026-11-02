@@ -1,44 +1,35 @@
+import type { DiagramFile } from "../model/types";
 import { t } from "../i18n";
-import type { Action, ActionContext, MenuItem } from "./actions";
+import type { Action, ActionContext } from "./actions";
 
-const eligible = (ctx: ActionContext) =>
-  ctx.editor.getDiagram().nodes.filter((n) => ctx.selection.nodeIds.includes(n.id));
-
-/** Keep the three boundary operations under one row; palette identities remain exactly as before. */
-export function foldBoundaryActions(actions: Action[]): Action[] {
-  const ids = new Set(["selection.group", "selection.add-to-boundary", "selection.remove-from-boundary"]);
-  const members = [...ids].flatMap((id) => actions.filter((a) => a.id === id));
-  return [
-    ...actions.map((a) => (ids.has(a.id) ? { ...a, paletteOnly: true } : a)),
-    {
-      id: "selection.boundary",
-      section: "arrange",
-      order: 28,
-      targets: ["node", "selection"],
-      get label() {
-        return t("inspector.boundary");
-      },
-      icon: "boundary",
-      when: (ctx) => ctx.surface !== "palette",
-      children: (ctx) =>
-        members
-          .filter((a) => !a.when || a.when(ctx))
-          .map((a): MenuItem => ({
-            type: "item",
-            id: a.id,
-            label: typeof a.label === "function" ? a.label(ctx) : a.label,
-            icon: a.icon,
-            shortcut: a.shortcut,
-            keywords: a.keywords,
-            searchable: a.searchable,
-            hint: typeof a.hint === "function" ? a.hint(ctx) : a.hint,
-            disabled: a.enabled ? !a.enabled(ctx) : false,
-            children: a.children?.(ctx),
-            run: a.children ? undefined : () => a.run?.(ctx),
-          })),
-    },
-  ];
+// A registry build gets a fresh context; all rows share its lazily read snapshot.
+interface Snapshot {
+  groups: NonNullable<DiagramFile["groups"]>;
+  eligible: DiagramFile["nodes"];
+  counts: Map<string, number>;
 }
+const snapshots = new WeakMap<ActionContext, Snapshot>();
+function snapshot(ctx: ActionContext): Snapshot {
+  const cached = snapshots.get(ctx);
+  if (cached) return cached;
+  const d: DiagramFile = ctx.editor.getDiagram();
+  const selected = new Set(ctx.selection.nodeIds);
+  const eligible = d.nodes.filter((n) => selected.has(n.id));
+  const counts = new Map<string, number>();
+  for (const n of d.nodes) if (n.group) counts.set(n.group, (counts.get(n.group) ?? 0) + 1);
+  const value = { groups: d.groups ?? [], eligible, counts };
+  snapshots.set(ctx, value);
+  return value;
+}
+const eligible = (ctx: ActionContext) => snapshot(ctx).eligible;
+
+export const boundaryMenu = {
+  id: "selection.boundary",
+  get label() {
+    return t("inspector.boundary");
+  },
+  icon: "boundary" as const,
+};
 
 export function boundaryActions(): Action[] {
   return [
@@ -47,28 +38,32 @@ export function boundaryActions(): Action[] {
       keywords: "adopt membership move into boundary",
       section: "arrange",
       targets: ["node", "selection"],
+      inspectorSelection: true,
+      menuGroup: boundaryMenu,
       order: 28,
       get label() {
         return t("menu.selectionAddBoundary");
       },
       icon: "boundary",
       hint: (ctx) => t("inspector.nodes", { count: eligible(ctx).length }),
-      enabled: (ctx) => eligible(ctx).length > 0 && !!ctx.editor.getDiagram().groups?.length,
+      enabled: (ctx) => eligible(ctx).length > 0 && !!snapshot(ctx).groups.length,
       get searchable() {
         return t("menu.selectionSearchBoundaries");
       },
       children: (ctx) => {
-        const d = ctx.editor.getDiagram();
-        const groups = d.groups ?? [];
+        const { groups, eligible: nodes, counts } = snapshot(ctx);
+        const byId = new Map(groups.map((g) => [g.id, g]));
+        const memberships = new Set(nodes.map((n) => n.group));
         return groups.map((g) => {
           const path: string[] = [];
           let parent = g.group;
           const seen = new Set([g.id]);
-          while (parent && !seen.has(parent)) {
+          // Limit both traversal and output before concatenating imported labels.
+          while (parent && !seen.has(parent) && path.length < 6) {
             seen.add(parent);
-            const ancestor = groups.find((a) => a.id === parent);
+            const ancestor = byId.get(parent);
             if (!ancestor) break;
-            path.unshift(ancestor.label || ancestor.id);
+            path.unshift((ancestor.label || ancestor.id).slice(0, 80));
             parent = ancestor.group;
           }
           return {
@@ -77,10 +72,8 @@ export function boundaryActions(): Action[] {
             documentScoped: true,
             label: g.label || t("chrome.untitledBoundary"),
             keywords: `adopt membership move into ${g.id} ${path.join(" ")}`,
-            hint: [...path, t("inspector.nodes", { count: d.nodes.filter((n) => n.group === g.id).length })].join(
-              " / ",
-            ),
-            disabled: !eligible(ctx).some((n) => n.group !== g.id),
+            hint: [...path, t("inspector.nodes", { count: counts.get(g.id) ?? 0 })].join(" / "),
+            disabled: !nodes.length || (memberships.size === 1 && memberships.has(g.id)),
             run: () => {
               void ctx.editor.transferBoundary(ctx.selection.nodeIds, g.id);
             },
@@ -93,6 +86,8 @@ export function boundaryActions(): Action[] {
       keywords: "leave detach outside membership",
       section: "arrange",
       targets: ["node", "selection"],
+      inspectorSelection: true,
+      menuGroup: boundaryMenu,
       order: 29,
       get label() {
         return t("menu.selectionRemoveBoundary");

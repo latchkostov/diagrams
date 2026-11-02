@@ -617,7 +617,13 @@ function CanvasInner({
     nodeSize: getNodeVariant(nodeVariant).size,
     zoomTo: zoomToSelection,
     hovered: () => hovered.current,
-    reveal: () => revealSelection(),
+    focusedNode: () => interaction.state.roving,
+    reveal: (id) =>
+      id
+        ? controller.whenSelectionMeasured(() =>
+            controller.dispatch({ type: "reveal.requested", cause: "placement", scope: { kind: "nodes", ids: [id] } }),
+          )
+        : revealSelection(),
     announceSelection: (text) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })),
     nameNew: (make, fallback) => nameNew.current(make, fallback),
     flushSave: (diagram) => {
@@ -1245,10 +1251,7 @@ function CanvasInner({
           x: bounds.left,
           y: bounds.bottom,
           label: tr("menu.selectionActions"),
-          items: () =>
-            actionRegistry
-              .build({ target: "selection", selection, editor })
-              .filter((item) => item.type === "item" && item.id === "selection.boundary"),
+          items: () => actionRegistry.build({ target: "selection", surface: "inspector", selection, editor }),
         },
         { via: "keyboard", platform: platform() },
       );

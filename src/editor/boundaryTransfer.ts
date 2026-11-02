@@ -7,7 +7,7 @@ import {
   type MemberBox,
   type Rect,
 } from "../canvas/membership";
-import { boundsOf, findClearTranslation, type Box } from "../canvas/placement";
+import { boundsOf, findClearTranslation, overlaps, COPY_MARGIN, type Box } from "../canvas/placement";
 import type { XY } from "./types";
 
 export interface BoundaryTransfer {
@@ -82,9 +82,38 @@ export function planBoundaryTransfer(
       if (at.some((n) => groupOf(grown, n) !== destination)) return null;
       return growth;
     };
-    const delta = findClearTranslation(boxes, destination === undefined ? [...occupied, ...currentGroups] : occupied, {
-      accept: (d) => fit(d) !== null,
-    });
+    const obstacles = destination === undefined ? [...occupied, ...currentGroups] : occupied;
+    // Start beyond outer faces, regardless of boundary size. The union also supplies an escape
+    // from overlapping/nested ancestors; each local collision search retains its fixed budget.
+    const surrounding = currentGroups.filter((g) => overlaps(bounds, g));
+    const faces = [...surrounding, ...(surrounding.length ? [boundsOf(surrounding)!] : [])];
+    const starts =
+      destination === undefined && faces.length
+        ? faces
+            .flatMap((g) => [
+              { x: g.x - bounds.x - bounds.width - COPY_MARGIN, y: 0 },
+              { x: g.x + g.width - bounds.x + COPY_MARGIN, y: 0 },
+              { x: 0, y: g.y - bounds.y - bounds.height - COPY_MARGIN },
+              { x: 0, y: g.y + g.height - bounds.y + COPY_MARGIN },
+            ])
+            .filter((d) => !currentGroups.some((g) => overlaps({ ...bounds, x: bounds.x + d.x, y: bounds.y + d.y }, g)))
+            .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
+            .slice(0, 24)
+        : [{ x: 0, y: 0 }];
+    let delta: XY | null = null;
+    for (const start of starts) {
+      const local = findClearTranslation(
+        boxes.map((n) => ({ ...n, x: n.x + start.x, y: n.y + start.y })),
+        obstacles,
+        {
+          accept: (d) => fit({ x: start.x + d.x, y: start.y + d.y }) !== null,
+        },
+      );
+      if (local) {
+        delta = { x: start.x + local.x, y: start.y + local.y };
+        break;
+      }
+    }
     if (!delta) return null;
     const growth = fit(delta)!;
     currentGroups = currentGroups.map((g) => ({ ...g, ...growth.get(g.id) }));

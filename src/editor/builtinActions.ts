@@ -1,5 +1,5 @@
 import { revisionAtLeast } from "../model/revisions";
-import { boundaryActions, foldBoundaryActions } from "./boundaryActions";
+import { boundaryActions, boundaryMenu } from "./boundaryActions";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingTopology";
@@ -355,7 +355,7 @@ export function annotateMenu(add: (kind: AnnotationKind, shape?: AnnotationShape
 }
 
 export function builtinActions(): Action[] {
-  return foldBoundaryActions([
+  return [
     // ---------------- canvas ----------------
     {
       id: "canvas.add-node",
@@ -1166,6 +1166,7 @@ export function builtinActions(): Action[] {
     ...boundaryActions(),
     {
       id: "selection.group",
+      menuGroup: boundaryMenu,
       section: "arrange",
       targets: ["selection", "node"],
       get label() {
@@ -1364,5 +1365,5 @@ export function builtinActions(): Action[] {
       danger: true,
       run: (ctx) => ctx.editor.deleteGroupWithContents(ctx.groupId!),
     },
-  ]);
+  ];
 }

@@ -265,7 +265,7 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
         event.keyboard &&
         event.zoom !== undefined &&
         (event.cause === "edge-navigation"
-          ? state.mode === "edit" && event.zoom < 0.5
+          ? event.zoom < (state.mode === "edit" ? 0.5 : 0.6)
           : event.zoom < 0.6 && (event.cause === "focus" || event.cause === "navigation"))
       )
         return next(

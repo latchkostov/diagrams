@@ -185,8 +185,10 @@ export interface EditorDeps {
   zoomTo?: (nodeIds: ReadonlySet<string>, edgeIds: ReadonlySet<string>) => void;
   /** The node under the pointer, if any (Shift+2 with nothing selected). */
   hovered?: () => string | undefined;
-  /** Brings the selection into view once it's measured (a copy or a paste may land off screen). */
-  reveal?: () => void;
+  /** The interaction controller's current canvas focus target, captured before asynchronous work. */
+  focusedNode?: () => string | undefined;
+  /** Reveals a node, or the selection when omitted, once measured; leaves DOM focus with its invoker. */
+  reveal?: (id?: string) => void;
   announceSelection?: (text: string) => void;
   /** Makes a node, brings it into view and opens its name, keeping keys typed meanwhile (the canvas). */
   nameNew?: (make: () => NewNode | null, fallback: string) => void;
@@ -1615,6 +1617,7 @@ export function createEditor(
       return { adopted: r.adopted, released: r.released };
     },
     transferBoundary: async (ids, groupId) => {
+      const focused = deps().focusedNode?.();
       const { planBoundaryTransfer } = await import("./boundaryTransfer");
       const ns = currentNodes();
       const eligible = ns
@@ -1633,7 +1636,13 @@ export function createEditor(
           .map((e) => e.id),
       );
       const marks = (deps().edgeMarks?.() ?? []).filter((mark) => !mark.edge || !ownEdges.has(mark.edge));
-      const plan = planBoundaryTransfer(memberBoxes(ns), groupRects(ns), eligible, groupId, marks);
+      const plan = planBoundaryTransfer(
+        memberBoxes(ns.filter((n) => isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind)))),
+        groupRects(ns),
+        eligible,
+        groupId,
+        marks,
+      );
       if (!plan) {
         notify(t("chrome.couldnTFindRoomNothingMoved"));
         return false;
@@ -1669,7 +1678,8 @@ export function createEditor(
       notify(text, {
         action: { label: t("shortcuts.undo"), run: () => api.undo(), undoes: true, testId: "toast-undo-boundary" },
       });
-      deps().reveal?.();
+      const reveal = focused && selection.nodeIds.includes(focused) ? focused : selection.nodeIds[0];
+      if (reveal) deps().reveal?.(reveal);
       return true;
     },
     moveIntoBoundary: async (ids, groupId, options) => {

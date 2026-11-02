@@ -60,7 +60,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     shrink by themselves; **Fit to contents** (right-click and the inspector) does.
   - **Resizing** a boundary takes in the nodes now inside it and lets go of those outside, and says so ("Added 2
     nodes to Payments", with Undo).
-  - **Add to boundary… / Remove from boundary** (node/selection menu, Ctrl+K and Inspector's
+  - **Add to boundary… / Remove from boundary** (node/selection menu's **Boundary** submenu, Ctrl+K and Inspector's
     **Selection actions**) physically move explicit selected nodes. Add preserves their relative
     positions; Remove keeps each source-boundary subset together, outside every boundary. Existing
     members stay put, source boundaries do not shrink, and a failure moves nothing. Membership,
