@@ -147,8 +147,11 @@ test("card width measurement avoids repeated layout invalidations within one fra
 test("traffic intensity does not remeasure a settled frame, while spotlight changes do", async ({ page }) => {
   await page.clock.install();
   await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1&traffic=0");
-  await pauseClock(page);
+  // Faster Live downloads can publish controls before initial framing finishes.
+  // Let its animation frames settle before freezing the measurement's clock.
   await waitForStableViewport(page);
+  await waitForCameraIdle(page);
+  await pauseClock(page);
   await waitForCameraIdle(page);
   const canvas = page.getByTestId("canvas-wrap");
   await expect(canvas).toHaveAttribute("data-detail-view", "overview");
