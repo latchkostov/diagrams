@@ -31,11 +31,12 @@ duration of 24.807 seconds. Its final started case is the long-run Checks typing
 relay sharing and the two dev StrictMode Checks cases have not started. The partial report has
 no completed-test evidence of a hang. Do not count these four as passes or infer that the relay hung.
 
-The Linux-derived file weights understate native wall work. A diagnostic plan using the 23
-complete macOS reports from this run and the earlier round-9 dispatch estimates the largest
-existing assignment at 1,255.2 seconds; native-weighted redistribution estimates about 1,110.
-These are same-measurement planning estimates, not an observed improvement. Interrupted reports
-are excluded. Test inventory, repetitions, workers, shard count and deadlines must stay intact.
+The Linux-derived file weights understate native wall work. A separate profile uses the 23
+complete macOS reports from this run and the earlier round-9 dispatch. Using the current inventory
+and the same mean fallback for unmeasured files on both plans, the largest old assignment estimates
+1,341.9 seconds; native-weighted redistribution estimates 1,121.1 (ratio 0.835). These are planning
+estimates, not an observed improvement. Interrupted reports are excluded. Test inventory,
+repetitions, workers, shard count and deadlines stay intact.
 
 ## Still investigating
 
@@ -108,3 +109,16 @@ SUMMARY: 1cacd30fb0461d7dbf3e68f4475bd13f176d339e | unit={"passed":45,"failed":0
 ```
 
 This subset runs working edits on its stated starting HEAD, including the native-profile harness.
+
+## Native profile verification
+
+The new timing profile is generated, not hand-edited. The existing Linux/Windows timing file is
+byte-unchanged. Two new harness regressions fail with the original script temporarily restored:
+one distinguishes the native and ordinary plans, and the other imports a complete native report
+while excluding an interrupted child. The restored harness passes all 40 focused units; the final
+Linux harness/fragment cohort passes 45. Its same-run browser subset above completes all four
+formerly unfinished cases twice, without changing their source or limits.
+
+The hosted macOS outcome still needs the dispatched Nightly; a local Linux pass is not recorded
+as proof that the native deadline is repaired. The complete measurement provenance and refresh
+command are in [the native shard fragment](2026-11-02-native-nightly-macos-shards.md).
