@@ -50,8 +50,8 @@ export interface ActionContext {
   editor: EditorApi;
   /** The canvas mode the menu is for. Default "edit". */
   mode?: EditorMode;
-  /** Who's asking: a context menu (default) or the command palette. */
-  surface?: "menu" | "palette";
+  /** Who's asking: a context menu (default), the command palette or Inspector overflow. */
+  surface?: "menu" | "palette" | "inspector";
   /** Palette insertion hands focus to a new shape once React Flow has measured it. */
   focusPlaced?: (id: string) => void;
 }
@@ -104,9 +104,15 @@ export interface MenuItem {
 export interface Action {
   /** Unique, stable id, e.g. "node.rename" or "sim.inject-10". */
   id: string;
+  /** Search aliases shared by the menu and Ctrl+K. */
+  keywords?: string;
   /** Section id; see `builtinSections`. Unknown sections sort last. */
   section: string;
   targets: readonly MenuTarget[];
+  /** Offered in the Inspector Selection actions overflow. */
+  inspectorSelection?: boolean;
+  /** Fold related context-menu actions under one row; palette and Inspector keep direct routes. */
+  menuGroup?: Pick<MenuItem, "id" | "label" | "icon">;
   /** Modes the action is offered in. Default ["edit"]. */
   modes?: readonly EditorMode[];
   label: string | ((ctx: ActionContext) => string);
@@ -208,10 +214,13 @@ export class ActionRegistry {
 
   /** Menu rows for a context: visible actions grouped by section, separators between sections. */
   build(ctx: ActionContext): MenuNode[] {
+    // Per-opening identity lets action projections share a snapshot without retaining stale diagrams.
+    ctx = { ...ctx };
     const bySection = new Map<string, { action: Action; seq: number }[]>();
     for (const e of this.actions.values()) {
       const a = e.action;
       if (!a.targets.includes(ctx.target)) continue;
+      if (ctx.surface === "inspector" && !a.inspectorSelection) continue;
       if (!(a.modes ?? EDIT_ONLY).includes(ctx.mode ?? "edit")) continue;
       if (a.paletteOnly && ctx.surface !== "palette") continue;
       if (a.when && !safe(() => a.when!(ctx), false)) continue;
@@ -221,11 +230,27 @@ export class ActionRegistry {
     const order = (id: string) => this.sections.get(id)?.order ?? 1000;
     const out: MenuNode[] = [];
     for (const id of [...bySection.keys()].sort((a, b) => order(a) - order(b))) {
-      const items = bySection
+      const entries = bySection
         .get(id)!
-        .sort((a, b) => (a.action.order ?? 100) - (b.action.order ?? 100) || a.seq - b.seq)
-        .map(({ action }) => toItem(action, ctx))
-        .filter((i): i is MenuItem => i !== null);
+        .sort((a, b) => (a.action.order ?? 100) - (b.action.order ?? 100) || a.seq - b.seq);
+      const items: MenuItem[] = [];
+      const menuGroups = new Map<string, MenuItem>();
+      for (const { action } of entries) {
+        const item = toItem(action, ctx);
+        if (!item) continue;
+        const group = (ctx.surface ?? "menu") === "menu" ? action.menuGroup : undefined;
+        if (!group) {
+          items.push(item);
+          continue;
+        }
+        let parent = menuGroups.get(group.id);
+        if (!parent) {
+          parent = { type: "item", ...group, children: [] };
+          menuGroups.set(group.id, parent);
+          items.push(parent);
+        }
+        parent.children!.push(item);
+      }
       if (!items.length) continue;
       if (out.length) out.push({ type: "separator" });
       const title = this.sections.get(id)?.title;
@@ -252,6 +277,7 @@ function toItem(a: Action, ctx: ActionContext): MenuItem | null {
     type: "item",
     id: a.id,
     label: typeof a.label === "function" ? a.label(ctx) : a.label,
+    keywords: a.keywords,
     paletteLabel: typeof a.paletteLabel === "function" ? a.paletteLabel(ctx) : a.paletteLabel,
     icon: a.icon,
     shortcut: a.shortcut,

@@ -10,6 +10,13 @@
 // stays.
 
 const en = {
+  "menu.selectionActions": "Selection actions",
+  "menu.selectionAddBoundary": "Add to boundary…",
+  "menu.selectionRemoveBoundary": "Remove from boundary",
+  "menu.selectionSearchBoundaries": "Search boundaries",
+  "menu.selectionAddedBoundary": "Added {count, plural, one {# node} other {# nodes}} to {name}. {selection}.",
+  "menu.selectionRemovedBoundary":
+    "Removed {count, plural, one {# node} other {# nodes}} from boundaries. {selection}.",
   "tutorials.handoff.nextLesson": "Next lesson",
   "tutorials.handoff.time": "Time",
   "tutorials.handoff.minutes": "{count} min",

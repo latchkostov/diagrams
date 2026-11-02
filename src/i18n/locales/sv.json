@@ -2824,5 +2824,11 @@
   "workbench.sheetPeek": "Förhandsvisning",
   "workbench.sheetHalf": "Halv höjd",
   "workbench.sheetFull": "Full höjd",
-  "workbench.speed": "Hastighet"
+  "workbench.speed": "Hastighet",
+  "menu.selectionActions": "Markeringsåtgärder",
+  "menu.selectionAddBoundary": "Lägg till i avgränsning…",
+  "menu.selectionRemoveBoundary": "Ta bort från avgränsning",
+  "menu.selectionSearchBoundaries": "Sök avgränsningar",
+  "menu.selectionAddedBoundary": "Tillagda i {name}: {count, plural, other {# noder} one {# nod}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Borttagna från avgränsningar: {count, plural, other {# noder} one {# nod}}. {selection}."
 }

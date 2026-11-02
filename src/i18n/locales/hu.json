@@ -2831,5 +2831,11 @@
   "workbench.sheetPeek": "Előnézet",
   "workbench.sheetHalf": "Félmagasság",
   "workbench.sheetFull": "Teljes magasság",
-  "workbench.speed": "Sebesség"
+  "workbench.speed": "Sebesség",
+  "menu.selectionActions": "Kijelölési műveletek",
+  "menu.selectionAddBoundary": "Hozzáadás határhoz…",
+  "menu.selectionRemoveBoundary": "Eltávolítás a határból",
+  "menu.selectionSearchBoundaries": "Határok keresése",
+  "menu.selectionAddedBoundary": "Hozzáadva ehhez: {name}: {count, plural, other {# csomópont} one {# csomópont}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Eltávolítva a határokból: {count, plural, other {# csomópont} one {# csomópont}}. {selection}."
 }

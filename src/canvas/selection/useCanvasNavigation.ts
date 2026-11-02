@@ -250,7 +250,7 @@ export function useCanvasNavigation({
         if (!e) return false;
         editor.select({ edgeIds: [e.id] });
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
-        revealSelection(undefined, 0, "navigation");
+        revealSelection(undefined, 0, "edge-navigation");
         const said = edgeAriaLabel(
           labelOf(e.source),
           labelOf(e.target),

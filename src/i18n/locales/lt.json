@@ -2796,5 +2796,11 @@
   "workbench.sheetPeek": "Peržiūra",
   "workbench.sheetHalf": "Pusė aukščio",
   "workbench.sheetFull": "Visas aukštis",
-  "workbench.speed": "Greitis"
+  "workbench.speed": "Greitis",
+  "menu.selectionActions": "Pasirinkimo veiksmai",
+  "menu.selectionAddBoundary": "Pridėti prie ribos…",
+  "menu.selectionRemoveBoundary": "Pašalinti iš ribos",
+  "menu.selectionSearchBoundaries": "Ieškoti ribų",
+  "menu.selectionAddedBoundary": "Pridėta prie {name}: {count, plural, other {# mazgų} one {# mazgas} few {# mazgų}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Pašalinta iš ribų: {count, plural, other {# mazgų} one {# mazgas} few {# mazgų}}. {selection}."
 }

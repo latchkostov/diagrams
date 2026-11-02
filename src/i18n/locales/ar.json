@@ -2954,5 +2954,11 @@
   "workbench.sheetPeek": "لمحة",
   "workbench.sheetHalf": "نصف الارتفاع",
   "workbench.sheetFull": "الارتفاع الكامل",
-  "workbench.speed": "السرعة"
+  "workbench.speed": "السرعة",
+  "menu.selectionActions": "إجراءات التحديد",
+  "menu.selectionAddBoundary": "إضافة إلى حدود…",
+  "menu.selectionRemoveBoundary": "إزالة من الحدود",
+  "menu.selectionSearchBoundaries": "البحث في الحدود",
+  "menu.selectionAddedBoundary": "أضيفت إلى {name}: {count, plural, zero {# عقد} one {# عقدة} two {# عقد} few {# عقد} many {# عقد} other {# عقد}}. {selection}.",
+  "menu.selectionRemovedBoundary": "أزيلت من الحدود: {count, plural, zero {# عقد} one {# عقدة} two {# عقد} few {# عقد} many {# عقد} other {# عقد}}. {selection}."
 }

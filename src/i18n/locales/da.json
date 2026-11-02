@@ -2833,5 +2833,11 @@
   "workbench.sheetPeek": "Kig",
   "workbench.sheetHalf": "Halv højde",
   "workbench.sheetFull": "Fuld højde",
-  "workbench.speed": "Hastighed"
+  "workbench.speed": "Hastighed",
+  "menu.selectionActions": "Markeringshandlinger",
+  "menu.selectionAddBoundary": "Føj til afgrænsning…",
+  "menu.selectionRemoveBoundary": "Fjern fra afgrænsning",
+  "menu.selectionSearchBoundaries": "Søg i afgrænsninger",
+  "menu.selectionAddedBoundary": "Føjet til {name}: {count, plural, other {# noder} one {# node}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Fjernet fra afgrænsninger: {count, plural, other {# noder} one {# node}}. {selection}."
 }

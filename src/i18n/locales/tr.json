@@ -2806,5 +2806,11 @@
   "workbench.sheetPeek": "Önizleme",
   "workbench.sheetHalf": "Yarım yükseklik",
   "workbench.sheetFull": "Tam yükseklik",
-  "workbench.speed": "Hız"
+  "workbench.speed": "Hız",
+  "menu.selectionActions": "Seçim işlemleri",
+  "menu.selectionAddBoundary": "Sınıra ekle…",
+  "menu.selectionRemoveBoundary": "Sınırdan çıkar",
+  "menu.selectionSearchBoundaries": "Sınır ara",
+  "menu.selectionAddedBoundary": "{name} içine eklendi: {count, plural, other {# düğüm} one {# düğüm}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Sınırlardan çıkarıldı: {count, plural, other {# düğüm} one {# düğüm}}. {selection}."
 }

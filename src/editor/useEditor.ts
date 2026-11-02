@@ -185,8 +185,11 @@ export interface EditorDeps {
   zoomTo?: (nodeIds: ReadonlySet<string>, edgeIds: ReadonlySet<string>) => void;
   /** The node under the pointer, if any (Shift+2 with nothing selected). */
   hovered?: () => string | undefined;
-  /** Brings the selection into view once it's measured (a copy or a paste may land off screen). */
-  reveal?: () => void;
+  /** The interaction controller's current canvas focus target, captured before asynchronous work. */
+  focusedNode?: () => string | undefined;
+  /** Reveals a node, or the selection when omitted, once measured; leaves DOM focus with its invoker. */
+  reveal?: (id?: string) => void;
+  announceSelection?: (text: string) => void;
   /** Makes a node, brings it into view and opens its name, keeping keys typed meanwhile (the canvas). */
   nameNew?: (make: () => NewNode | null, fallback: string) => void;
   /** This diagram is private (local-only or the Private switch): copies from it say so. */
@@ -1592,6 +1595,72 @@ export function createEditor(
       if (!r.group.size) return { adopted: [], released: [] };
       deps().setNodes((cur) => cur.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n)));
       return { adopted: r.adopted, released: r.released };
+    },
+    transferBoundary: async (ids, groupId) => {
+      const focused = deps().focusedNode?.();
+      const { planBoundaryTransfer } = await import("./boundaryTransfer");
+      const ns = currentNodes();
+      const eligible = ns
+        .filter(isDiagram)
+        .filter((n) => ids.includes(n.id))
+        .map((n) => n.id);
+      const moving = new Set(
+        ns
+          .filter(isDiagram)
+          .filter((n) => eligible.includes(n.id) && n.data.group !== groupId)
+          .map((n) => n.id),
+      );
+      const ownEdges = new Set(
+        currentEdges()
+          .filter((e) => moving.has(e.source) && moving.has(e.target))
+          .map((e) => e.id),
+      );
+      const marks = (deps().edgeMarks?.() ?? []).filter((mark) => !mark.edge || !ownEdges.has(mark.edge));
+      const plan = planBoundaryTransfer(
+        memberBoxes(ns.filter((n) => isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind)))),
+        groupRects(ns),
+        eligible,
+        groupId,
+        marks,
+      );
+      if (!plan) {
+        notify(t("chrome.couldnTFindRoomNothingMoved"));
+        return false;
+      }
+      if (!plan.positions.size) return true;
+      if (
+        !commitNodes(
+          (cur) =>
+            cur.map((n) => {
+              const at = plan.positions.get(n.id);
+              if (at) return { ...withGroup(n, groupId), position: at };
+              const grow = isGroup(n) ? plan.growth.get(n.data.groupId) : undefined;
+              return grow ? { ...n, position: { x: grow.x, y: grow.y }, width: grow.width, height: grow.height } : n;
+            }),
+          (es) => carryWaypoints(es, positionDeltas(plan.positions)),
+          {},
+        )
+      )
+        return false;
+      const selection = api.getSelection();
+      const selected = selection.nodeIds.length + selection.edgeIds.length + selection.groupIds.length;
+      const text = groupId
+        ? t("menu.selectionAddedBoundary", {
+            count: plan.positions.size,
+            name: api.getGroup(groupId)?.label || t("chrome.untitledBoundary"),
+            selection: t("ai.selected", { count: selected }),
+          })
+        : t("menu.selectionRemovedBoundary", {
+            count: plan.positions.size,
+            selection: t("ai.selected", { count: selected }),
+          });
+      deps().announceSelection?.(text);
+      notify(text, {
+        action: { label: t("shortcuts.undo"), run: () => api.undo(), undoes: true, testId: "toast-undo-boundary" },
+      });
+      const reveal = focused && selection.nodeIds.includes(focused) ? focused : selection.nodeIds[0];
+      if (reveal) deps().reveal?.(reveal);
+      return true;
     },
     moveIntoBoundary: async (ids, groupId, options) => {
       const { placeBoundaryMembers } = await import("./boundaryPlacement");

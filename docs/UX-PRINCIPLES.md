@@ -60,6 +60,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     shrink by themselves; **Fit to contents** (right-click and the inspector) does.
   - **Resizing** a boundary takes in the nodes now inside it and lets go of those outside, and says so ("Added 2
     nodes to Payments", with Undo).
+  - **Add to boundary… / Remove from boundary** (node/selection menu's **Boundary** submenu, Ctrl+K and Inspector's
+    **Selection actions**) physically move explicit selected nodes. Add preserves their relative
+    positions; Remove keeps each source-boundary subset together, outside every boundary. Existing
+    members stay put, source boundaries do not shrink, and a failure moves nothing. Membership,
+    positions and safe growth are one Undo step. These commands are available only in Edit.
 - **Annotations** document a diagram and never take part in the simulation. Four kinds, one word each:
   - **Text**: plain words on the canvas (titles, captions), no chrome. `T` adds text at the pointer.
   - **Note**: a tinted sticky note.
@@ -169,7 +174,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   through nodes in reading order (rows from the top, each left to right; in a top-to-bottom diagram, columns),
   meeting each boundary just before its first member; past the last one Tab leaves the canvas. **Ctrl+Alt+arrows**
   (⌃⌥ on a Mac) go to the nearest node that way, and **Ctrl+Alt+]** and **[** to the node's outgoing and incoming
-  edges (again: the next one). Selection and focus move together, the view follows, and a screen reader hears
+  edges (again: the next one). In Edit below 50% zoom, edge navigation enters readable **Focus**,
+  framing both endpoints and their one-hop neighbours, as a pointer edge selection does. At exactly
+  50%, edge navigation keeps the manual zoom. Selection and focus move together, the view follows, and a screen reader hears
   the node, its boundary, its place in the order and its edges ("Payments service, Go Service, processor, in AKS.
   6 of 16. 2 out, 1 in."). Controls on a node or an edge (a node's dependency pips, an edge's settings) aren't Tab
   stops of their own: their list opens when the node or edge is reached from the keyboard, and the announcement

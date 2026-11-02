@@ -317,3 +317,50 @@ describe("Run simulations on the canvas right-click and in Ctrl+K", () => {
     }
   });
 });
+
+it("projects Inspector selection actions from registrations, including extensions", () => {
+  const registry = new ActionRegistry(builtinSections);
+  registry.register([
+    {
+      id: "extension.inspect",
+      section: "arrange",
+      targets: ["selection"],
+      label: "Extension",
+      inspectorSelection: true,
+    },
+    { id: "extension.canvas", section: "arrange", targets: ["selection"], label: "Canvas" },
+  ]);
+  expect(ids(registry.build({ ...ctx("selection"), surface: "inspector" }))).toEqual(["extension.inspect"]);
+  expect(ids(registry.build(ctx("selection")))).toEqual(["extension.inspect", "extension.canvas"]);
+});
+
+it("folds boundary commands within the menu budget while keeping palette and Inspector routes", async () => {
+  const { builtinActions } = await import("./builtinActions");
+  const registry = new ActionRegistry(builtinSections);
+  registry.register(builtinActions());
+  const context = ctx("node");
+  context.nodeId = "n";
+  context.selection.nodeIds = ["n"];
+  context.editor.getDiagram = () => ({
+    format: "diagrams/v1",
+    title: "Test",
+    nodes: [{ id: "n", label: "Node", stencil: "service.node", x: 0, y: 0, group: "g" }],
+    edges: [],
+    groups: [{ id: "g", label: "Boundary", x: 0, y: 0, width: 400, height: 400 }],
+  });
+  context.editor.getNode = () => context.editor.getDiagram().nodes[0];
+  const menu = registry.build(context).filter((i): i is import("./actions").MenuItem => i.type === "item");
+  expect(menu.length).toBeLessThanOrEqual(12);
+  expect(ids(menu.find((i) => i.id === "selection.boundary")!.children!)).toEqual([
+    "selection.add-to-boundary",
+    "selection.remove-from-boundary",
+    "selection.group",
+  ]);
+  expect(ids(registry.build({ ...context, surface: "palette" }))).toEqual(
+    expect.arrayContaining(["selection.add-to-boundary", "selection.remove-from-boundary", "selection.group"]),
+  );
+  expect(ids(registry.build({ ...context, surface: "inspector" }))).toEqual([
+    "selection.add-to-boundary",
+    "selection.remove-from-boundary",
+  ]);
+});

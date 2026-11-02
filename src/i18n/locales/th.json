@@ -2798,5 +2798,11 @@
   "workbench.sheetPeek": "ดูคร่าว ๆ",
   "workbench.sheetHalf": "ครึ่งความสูง",
   "workbench.sheetFull": "เต็มความสูง",
-  "workbench.speed": "ความเร็ว"
+  "workbench.speed": "ความเร็ว",
+  "menu.selectionActions": "การดำเนินการกับรายการที่เลือก",
+  "menu.selectionAddBoundary": "เพิ่มในขอบเขต…",
+  "menu.selectionRemoveBoundary": "นำออกจากขอบเขต",
+  "menu.selectionSearchBoundaries": "ค้นหาขอบเขต",
+  "menu.selectionAddedBoundary": "เพิ่มใน {name}: {count, plural, other {# โหนด}}. {selection}.",
+  "menu.selectionRemovedBoundary": "นำออกจากขอบเขต: {count, plural, other {# โหนด}}. {selection}."
 }

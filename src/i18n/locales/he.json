@@ -2805,5 +2805,11 @@
   "workbench.sheetPeek": "הצצה",
   "workbench.sheetHalf": "חצי גובה",
   "workbench.sheetFull": "גובה מלא",
-  "workbench.speed": "מהירות"
+  "workbench.speed": "מהירות",
+  "menu.selectionActions": "פעולות בחירה",
+  "menu.selectionAddBoundary": "הוספה לגבול…",
+  "menu.selectionRemoveBoundary": "הסרה מהגבול",
+  "menu.selectionSearchBoundaries": "חיפוש גבולות",
+  "menu.selectionAddedBoundary": "נוספו אל {name}: {count, plural, other {# צמתים} one {# צומת} two {# צמתים}}. {selection}.",
+  "menu.selectionRemovedBoundary": "הוסרו מהגבולות: {count, plural, other {# צמתים} one {# צומת} two {# צמתים}}. {selection}."
 }

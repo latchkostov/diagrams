@@ -2826,5 +2826,11 @@
   "workbench.sheetPeek": "Voorbeeld",
   "workbench.sheetHalf": "Halve hoogte",
   "workbench.sheetFull": "Volledige hoogte",
-  "workbench.speed": "Snelheid"
+  "workbench.speed": "Snelheid",
+  "menu.selectionActions": "Selectieacties",
+  "menu.selectionAddBoundary": "Toevoegen aan grens…",
+  "menu.selectionRemoveBoundary": "Uit grens verwijderen",
+  "menu.selectionSearchBoundaries": "Grenzen zoeken",
+  "menu.selectionAddedBoundary": "Toegevoegd aan {name}: {count, plural, other {# knooppunten} one {# knooppunt}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Uit grenzen verwijderd: {count, plural, other {# knooppunten} one {# knooppunt}}. {selection}."
 }

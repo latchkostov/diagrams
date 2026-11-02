@@ -2815,5 +2815,11 @@
   "workbench.sheetPeek": "Преглед",
   "workbench.sheetHalf": "Половин височина",
   "workbench.sheetFull": "Пълна височина",
-  "workbench.speed": "Скорост"
+  "workbench.speed": "Скорост",
+  "menu.selectionActions": "Действия за избора",
+  "menu.selectionAddBoundary": "Добавяне към рамка…",
+  "menu.selectionRemoveBoundary": "Премахване от рамка",
+  "menu.selectionSearchBoundaries": "Търсене на рамки",
+  "menu.selectionAddedBoundary": "Добавени към {name}: {count, plural, other {# възела} one {# възел}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Премахнати от рамките: {count, plural, other {# възела} one {# възел}}. {selection}."
 }
