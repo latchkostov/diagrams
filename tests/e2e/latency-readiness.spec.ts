@@ -1,5 +1,61 @@
 import type { Page } from "@playwright/test";
-import { test, expect, openLiveNodeDetails } from "./fixtures";
+import { test, expect, openLiveNodeDetails, waitForCameraIdle, waitForStableViewport } from "./fixtures";
+
+function observeCameraReadiness(page: Page) {
+  let cameraRead!: () => void;
+  const reachedCamera = new Promise<"camera">((resolve) => (cameraRead = () => resolve("camera")));
+  // Observe the camera assertion, not a canvas lookup: the pane/stable-viewport
+  // helper also looks up canvas-wrap and must not release a held camera.
+  // Playwright's pinned matcher delegates to Locator._expect; forward it unchanged.
+  const driver = new Proxy(page, {
+    get(target, key, receiver) {
+      if (key === "getByTestId")
+        return (...args: Parameters<Page["getByTestId"]>) => {
+          const locator = target.getByTestId(...args);
+          if (args[0] !== "canvas-wrap") return locator;
+          return new Proxy(locator, {
+            get(target, key, receiver) {
+              const value: unknown = Reflect.get(target, key, receiver);
+              if (key === "_expect" && typeof value === "function")
+                return (
+                  expression: string,
+                  options: { expressionArg?: string; expectedText?: { string?: string }[]; isNot?: boolean },
+                ) => {
+                  if (
+                    expression === "to.have.attribute.value" &&
+                    options.expressionArg === "data-camera-state" &&
+                    options.expectedText?.[0]?.string === "idle" &&
+                    !options.isNot
+                  )
+                    cameraRead();
+                  return Reflect.apply(value, target, [expression, options]) as unknown;
+                };
+              return value;
+            },
+          });
+        };
+      return Reflect.get(target, key, receiver) as unknown;
+    },
+  });
+  return { driver, reachedCamera };
+}
+
+test("camera readiness observation ignores a settled viewport's canvas lookup", async ({ page }) => {
+  await page.setContent(`
+    <div data-testid="canvas-wrap" data-camera-state="pending">
+      <div class="react-flow__viewport" style="transform:translate(0px, 0px) scale(1)"></div>
+    </div>`);
+  const { driver, reachedCamera } = observeCameraReadiness(page);
+  let observed = false;
+  void reachedCamera.then(() => (observed = true));
+  await waitForStableViewport(driver);
+  await expect(driver.getByTestId("canvas-wrap")).toHaveAttribute("data-camera-state", "pending");
+  await expect(driver.getByTestId("canvas-wrap")).not.toHaveAttribute("data-camera-state", "idle");
+  expect(observed).toBe(false);
+  await page.getByTestId("canvas-wrap").evaluate((canvas) => (canvas.dataset.cameraState = "idle"));
+  await waitForCameraIdle(driver);
+  expect(observed).toBe(true);
+});
 
 for (const phase of ["pending", "animating", "idle"])
   test(`pinning Live details waits for focus-triggered movement (${phase} camera)`, async ({ page }) => {
@@ -35,20 +91,7 @@ for (const phase of ["pending", "animating", "idle"])
       });
       row.addEventListener("click", () => row.setAttribute("aria-expanded", "true"));
     }, phase);
-    let cameraRead!: () => void;
-    const reachedCamera = new Promise<"camera">((resolve) => (cameraRead = () => resolve("camera")));
-    // Observe the driver's real readiness request, keeping the card stationary throughout
-    // the held pan. Stable card geometry alone cannot acknowledge pending camera work.
-    const driver = new Proxy(page, {
-      get(target, key, receiver) {
-        if (key === "getByTestId")
-          return (...args: Parameters<Page["getByTestId"]>) => {
-            if (args[0] === "canvas-wrap") cameraRead();
-            return target.getByTestId(...args);
-          };
-        return Reflect.get(target, key, receiver) as unknown;
-      },
-    });
+    const { driver, reachedCamera } = observeCameraReadiness(page);
     const opening = openLiveNodeDetails(driver, "billing", "latency", { settleCamera: true });
     try {
       expect(await Promise.race([reachedCamera, opening.then(() => "pinned")])).toBe("camera");

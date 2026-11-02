@@ -15,3 +15,11 @@ The existing real-room browser test observes producer events after exiting the t
 ## Tutorials-only audit — 2026-11-02
 
 Both entries remain open after checking master d0ac286b3. Stable note identity needs a persisted model/editor/save/import contract; room observation binding needs changes to the producer in `src/collab/room/lifecycle.ts`, which retains the initiating source. Neither has a safe tutorials-only fix. R-8ecc02383f's connected-runner room coverage stays deferred with the binding change, as requested for the P2 batch. See `docs/release-notes/2026-11-02-tutorials-p2-audit.md` for the complete resolved-item audit.
+
+## Cross-module audit — 2026-11-02
+
+Both producer/model gaps remain on master a99037759. The low-risk flake/P2 batch keeps them open:
+note identity requires a persisted correspondence contract, and room ownership requires a mount
+binding plus connected-runner coverage across admission and navigation. The
+[focused design note](../design-review/2026-11-02-flakes-cross-module-p2.md) records concrete ownership,
+compatibility and regression requirements for the follow-up. No schema or editor heuristic is added.
