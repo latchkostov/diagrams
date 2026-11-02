@@ -218,7 +218,7 @@ it("minifies private Live controller and renderer member names", () => {
     "overlayDrawn",
   ])
     expect(code, member).not.toContain(member);
-  const live = chunks.find((chunk) => chunk.name === "LiveSession");
+  const live = liveChunk();
   expect(live).toBeDefined();
   expect(live!.code).not.toContain(".getImageData(");
   // The ordinary production sub-path smoke reads these counters, without VITE_E2E.
@@ -270,7 +270,43 @@ const canvasChunk = (b: Build = plain()) => {
   return canvas;
 };
 
+/** Identify the implementation, not Rolldown's empty namespace facade with the same name. */
+const liveChunk = (b: Build = plain()) => {
+  const live = b.chunks.find((chunk) =>
+    Object.entries(chunk.modules).some(
+      ([id, module]) => /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/.test(id) && module.renderedLength > 0,
+    ),
+  );
+  if (!live) throw new Error("No LiveSession implementation chunk");
+  expect(live.name).toBe("LiveSession");
+  return live;
+};
+
 describe("production bundle split", () => {
+  it("compresses Live's existing static graph together without coupling independent consumers to its UI", () => {
+    for (const build of [plain(), rooms]) {
+      const canvas = closure([...startup(build), canvasChunk(build)], build);
+      const live = liveChunk(build)!;
+      const extra = [...closure([live], build)].filter((chunk) => !canvas.has(chunk));
+      // Rolldown emits a tiny namespace facade for the dynamic session import as well.
+      expect(extra.map((chunk) => chunk.name).sort()).toEqual([
+        "LiveSession",
+        "LiveSession",
+        "format",
+        "list",
+        "live-shared",
+      ]);
+      expect(
+        extra.filter((chunk) => Object.values(chunk.modules).every((module) => !module.renderedLength)),
+      ).toHaveLength(1);
+      const shared = extra.find((chunk) => chunk.name === "live-shared")!;
+      const sharedNames = [...closure([shared], build)].map((chunk) => chunk.name);
+      expect(sharedNames).not.toContain("CanvasView");
+      expect(sharedNames).not.toContain("LiveSession");
+      const dialogs = build.chunks.find((chunk) => chunk.name === "dialogs")!;
+      expect([...closure([dialogs], build)].map((chunk) => chunk.name)).not.toContain("live-shared");
+    }
+  });
   it("keeps every emitted locale catalog within its gzip budget", () => {
     const catalogs = plain().chunks.filter((c) =>
       Object.keys(c.modules).some((id) => id.includes("virtual:i18n/catalog/")),
@@ -283,7 +319,7 @@ describe("production bundle split", () => {
   it("keeps the third trim's canvas and Live reserve", () => {
     const b = plain();
     const canvas = closure([...startup(b), canvasChunk(b)], b);
-    const live = b.chunks.find((c) => c.name === "LiveSession");
+    const live = liveChunk(b);
     expect(live).toBeDefined();
     const extra = [...closure([live!], b)].filter((c) => !canvas.has(c));
     expect(
@@ -430,7 +466,7 @@ describe("production bundle split", () => {
     ];
     for (const build of [plain(), rooms]) {
       expect(found(bundled(closure([canvasChunk(build)], build)), canvasFeatures)).toEqual([]);
-      const live = build.chunks.find((chunk) => chunk.name === "LiveSession")!;
+      const live = liveChunk(build)!;
       expect(found(bundled(closure([live], build)), liveFeatures)).toEqual([]);
       expect(found(bundled(build.chunks), [...canvasFeatures, ...liveFeatures])).toEqual(
         [...canvasFeatures, ...liveFeatures].map(([name]) => name),
@@ -495,7 +531,7 @@ describe("production bundle split", () => {
   });
 
   it("opens Live without the simulation editor and drill preset controls", () => {
-    const live = chunks.find((c) => c.name === "LiveSession");
+    const live = liveChunk();
     expect(live).toBeDefined();
     const editor: [string, RegExp][] = [
       ["event log", /[/\\]src[/\\]live[/\\]EventLog\.tsx$/],
@@ -525,7 +561,7 @@ describe("production bundle split", () => {
     ];
     const recovery: [string, RegExp] = ["download recovery", /[/\\]src[/\\]live[/\\]TroubleDownloadError\.tsx$/];
     for (const build of [plain(), rooms]) {
-      const live = build.chunks.find((c) => c.name === "LiveSession");
+      const live = liveChunk(build);
       expect(live).toBeDefined();
       expect(found(bundled(closure([live!], build)), [...optional, ...oracles])).toEqual([]);
       expect(found(bundled(build.chunks), optional)).toEqual(optional.map(([what]) => what));
@@ -540,7 +576,7 @@ describe("production bundle split", () => {
   });
 
   it("loads fault playback and outage lookup with Live, and run results with narration", () => {
-    const live = chunks.find((c) => c.name === "LiveSession");
+    const live = liveChunk();
     expect(live).toBeDefined();
     expect(
       found(
@@ -571,7 +607,7 @@ describe("production bundle split", () => {
   it("loads the trace card on demand, apart from the Live session", () => {
     const card: [string, RegExp][] = [["trace card", /[/\\]src[/\\]live[/\\]TraceCard\.tsx$/]];
     for (const build of [plain(), rooms]) {
-      const live = build.chunks.find((c) => c.name === "LiveSession");
+      const live = liveChunk(build);
       expect(live).toBeDefined();
       expect(found(bundled(closure([live!], build)), card)).toEqual([]);
       expect(found(bundled(build.chunks), card)).toEqual(["trace card"]);

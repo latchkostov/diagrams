@@ -149,6 +149,20 @@ function canvasChunks() {
           )
         )
           groups.set(id, "canvas-shared");
+      // Live's static graph already downloads together. Give it the same two-part
+      // layout as the canvas instead of paying a gzip dictionary and import wrappers
+      // for each shared helper. Preserve independent consumers (planning, checks,
+      // the Lab) by keeping their dependencies in the shared part.
+      const live = ids.find((id) => /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/.test(id));
+      if (!live) return;
+      const beforeLive = reach([...initial, canvas]);
+      const liveOwn = [...reach([live])].filter((id) => !beforeLive.has(id));
+      // Reuse the independent-consumer closure above: optional canvas readouts
+      // and the Lab may use Live UI, but Your diagrams must never acquire it.
+      for (const id of liveOwn)
+        // File dialogs need their formatters even while a Live download is held.
+        if (!/[/\\]src[/\\]i18n[/\\]/.test(id) && (/[/\\]src[/\\].*\.tsx?$/.test(id) || id.endsWith("?url")))
+          groups.set(id, shared.has(id) ? "live-shared" : "LiveSession");
     },
   };
   return {
