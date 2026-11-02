@@ -60,3 +60,23 @@ SUMMARY: 12c1bbd4e2629ead61cc461c81df364ab47ec830 | unit={"passed":160,"failed":
 This quick gate tests working edits on the stated starting HEAD, not a committed-head stamp.
 An exploratory direct command was stopped during unused-server startup before any test ran;
 the subsequent native regressions explicitly select Chromium and stop their own servers.
+
+## Product repair: a palette destination leaves quick-add open
+
+An ordinary Windows sequence reproduces the ownership bug: open quick-add, open Ctrl+K and go
+to a node. The palette closes but quick-add remains and its camera hold stays deferred. Both
+navigation to the current node and navigation to another node fail the exact menu-absence check.
+Close the old menu through the interaction controller before deciding the palette's focus move.
+Both native cases pass with the repair, including the next Alt+arrow. Three controller regressions
+also fail when only the repair is temporarily reverted; all 107 controller tests pass when restored.
+
+The affected palette specs and annotation, drawing, polish, viewport, platform and Inspector
+neighbours run five times in Linux, six workers sharing four CPUs. All 570 executions pass.
+The unit cohort passes 229 cases, including all 32 startup/reserve heavy checks. Build, size and
+regeneration/i18n pass; full parity keeps all 3,178 goldens unchanged. No golden is re-recorded.
+
+```text
+SUMMARY: 818ea1dae5826dabb2cc67431a753c39ea7b58ea | unit={"passed":229,"failed":0,"skipped":0} parity={"goldens":3178,"changed":0,"added":0,"missing":0,"stale":0} e2e={"passed":570,"failed":0,"flaky":0,"skipped":0} gate_failures=0
+```
+
+This quick gate likewise tests working edits on its starting HEAD.

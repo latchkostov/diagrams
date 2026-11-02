@@ -784,6 +784,9 @@ export function createInteractionController<P = unknown>(
     dispatch(event: FocusEvent, then?: Done) {
       if (event.type === "naming.done") toMode({ type: "naming.done" });
       if (event.type === "selection.changed") {
+        // A palette destination replaces the old choice, including when it selects
+        // the same node. Leaving quick-add open would keep its camera hold alive.
+        if (event.cause === "palette") closeMenu("command");
         cause = event.cause;
         decided = true;
       }
