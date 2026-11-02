@@ -2816,5 +2816,11 @@
   "workbench.sheetPeek": "Προεπισκόπηση",
   "workbench.sheetHalf": "Μισό ύψος",
   "workbench.sheetFull": "Πλήρες ύψος",
-  "workbench.speed": "Ταχύτητα"
+  "workbench.speed": "Ταχύτητα",
+  "menu.selectionActions": "Ενέργειες επιλογής",
+  "menu.selectionAddBoundary": "Προσθήκη σε όριο…",
+  "menu.selectionRemoveBoundary": "Αφαίρεση από όριο",
+  "menu.selectionSearchBoundaries": "Αναζήτηση ορίων",
+  "menu.selectionAddedBoundary": "Προστέθηκαν στο {name}: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Αφαιρέθηκαν από τα όρια: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}."
 }

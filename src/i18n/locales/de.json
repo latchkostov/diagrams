@@ -2828,5 +2828,11 @@
   "workbench.sheetPeek": "Vorschau",
   "workbench.sheetHalf": "Halbe Höhe",
   "workbench.sheetFull": "Volle Höhe",
-  "workbench.speed": "Geschwindigkeit"
+  "workbench.speed": "Geschwindigkeit",
+  "menu.selectionActions": "Auswahlaktionen",
+  "menu.selectionAddBoundary": "Zu Begrenzung hinzufügen…",
+  "menu.selectionRemoveBoundary": "Aus Begrenzung entfernen",
+  "menu.selectionSearchBoundaries": "Begrenzungen suchen",
+  "menu.selectionAddedBoundary": "Zu {name} hinzugefügt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Aus Begrenzungen entfernt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}."
 }

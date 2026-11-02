@@ -2811,5 +2811,11 @@
   "workbench.sheetPeek": "Eelvaade",
   "workbench.sheetHalf": "Pool kõrgust",
   "workbench.sheetFull": "Täiskõrgus",
-  "workbench.speed": "Kiirus"
+  "workbench.speed": "Kiirus",
+  "menu.selectionActions": "Valiku toimingud",
+  "menu.selectionAddBoundary": "Lisa piiridesse…",
+  "menu.selectionRemoveBoundary": "Eemalda piiridest",
+  "menu.selectionSearchBoundaries": "Otsi piire",
+  "menu.selectionAddedBoundary": "Lisatud piiridesse {name}: {count, plural, other {# sõlme} one {# sõlm}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Piiridest eemaldatud: {count, plural, other {# sõlme} one {# sõlm}}. {selection}."
 }

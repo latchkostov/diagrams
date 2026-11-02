@@ -2809,5 +2809,11 @@
   "workbench.sheetPeek": "Pré-visualização",
   "workbench.sheetHalf": "Meia altura",
   "workbench.sheetFull": "Altura total",
-  "workbench.speed": "Velocidade"
+  "workbench.speed": "Velocidade",
+  "menu.selectionActions": "Ações da seleção",
+  "menu.selectionAddBoundary": "Adicionar ao limite…",
+  "menu.selectionRemoveBoundary": "Remover do limite",
+  "menu.selectionSearchBoundaries": "Pesquisar limites",
+  "menu.selectionAddedBoundary": "Adicionados a {name}: {count, plural, other {# nós} one {# nó}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Removidos dos limites: {count, plural, other {# nós} one {# nó}}. {selection}."
 }

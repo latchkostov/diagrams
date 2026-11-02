@@ -617,7 +617,14 @@ function CanvasInner({
     nodeSize: getNodeVariant(nodeVariant).size,
     zoomTo: zoomToSelection,
     hovered: () => hovered.current,
-    reveal: () => revealSelection(),
+    focusedNode: () => interaction.state.roving,
+    reveal: (id) =>
+      id
+        ? controller.whenSelectionMeasured(() =>
+            controller.dispatch({ type: "reveal.requested", cause: "placement", scope: { kind: "nodes", ids: [id] } }),
+          )
+        : revealSelection(),
+    announceSelection: (text) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })),
     nameNew: (make, fallback) => nameNew.current(make, fallback),
     flushSave: (diagram) => {
       const mod = flushSave(diagram);
@@ -1234,6 +1241,23 @@ function CanvasInner({
     () => ({ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }),
     [nodeCount, edges.length, groupNodes.length],
   );
+  const openSelectionActions = useCallback(
+    (button: HTMLElement) => {
+      const bounds = button.getBoundingClientRect();
+      const selection = editor.getSelection();
+      interaction.openMenu(
+        "context",
+        {
+          x: bounds.left,
+          y: bounds.bottom,
+          label: tr("menu.selectionActions"),
+          items: () => actionRegistry.build({ target: "selection", surface: "inspector", selection, editor }),
+        },
+        { via: "keyboard", platform: platform() },
+      );
+    },
+    [editor, interaction],
+  );
   const inspectorResize = useCallback(() => setSheetResize((revision) => revision + 1), []);
   const inspectorToggle = useCallback(() => {
     interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
@@ -1654,6 +1678,7 @@ function CanvasInner({
             </div>
             {!hideChrome && (
               <Inspector
+                onSelectionActions={editGestures ? openSelectionActions : undefined}
                 privacy={privacy}
                 diagramReset={
                   modified &&

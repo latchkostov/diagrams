@@ -2800,5 +2800,11 @@
   "workbench.sheetPeek": "Priekšskatījums",
   "workbench.sheetHalf": "Pusaugstums",
   "workbench.sheetFull": "Pilns augstums",
-  "workbench.speed": "Ātrums"
+  "workbench.speed": "Ātrums",
+  "menu.selectionActions": "Atlases darbības",
+  "menu.selectionAddBoundary": "Pievienot robežai…",
+  "menu.selectionRemoveBoundary": "Noņemt no robežas",
+  "menu.selectionSearchBoundaries": "Meklēt robežas",
+  "menu.selectionAddedBoundary": "Pievienoti pie {name}: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Noņemti no robežām: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}."
 }

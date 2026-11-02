@@ -95,6 +95,13 @@ export function focusSelectionViewport(
   const selected = ids?.size
     ? new Set(ids)
     : new Set([...s.nodeLookup.values()].filter((n) => n.selected && !n.hidden).map((n) => n.id));
+  // An edge-only selection focuses its endpoints, just as a pointer selection does.
+  if (!ids?.size)
+    for (const edge of s.edges)
+      if (edge.selected && !edge.hidden) {
+        selected.add(edge.source);
+        selected.add(edge.target);
+      }
   if (!selected.size && root.dataset?.detailHover && s.nodeLookup.has(root.dataset.detailHover))
     selected.add(root.dataset.detailHover);
   if (!selected.size) {

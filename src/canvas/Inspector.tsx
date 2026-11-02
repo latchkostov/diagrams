@@ -194,6 +194,18 @@ export const Inspector = memo(function Inspector(p: InspectorProps) {
           <span className="sr-only" id={id + "-title"} data-testid="inspector-title">
             {title}
           </span>
+          {n > 0 && p.onSelectionActions && (
+            <button
+              className="icon-btn"
+              data-testid="inspector-selection-actions"
+              aria-haspopup="menu"
+              aria-label={t("menu.selectionActions")}
+              title={t("menu.selectionActions")}
+              onClick={(event) => p.onSelectionActions?.(event.currentTarget)}
+            >
+              <Icon name="chevron-down" />
+            </button>
+          )}
           <button
             className="icon-btn"
             onClick={p.onToggle}
@@ -207,7 +219,7 @@ export const Inspector = memo(function Inspector(p: InspectorProps) {
       </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
-    [p.onResize, p.onToggle, locale, title, activeTab, warnings, fresh, id, checksAvailable],
+    [n, p.onSelectionActions, p.onResize, p.onToggle, locale, title, activeTab, warnings, fresh, id, checksAvailable],
   );
   if (p.collapsed) {
     return within(

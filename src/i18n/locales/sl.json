@@ -2823,5 +2823,11 @@
   "workbench.sheetPeek": "Predogled",
   "workbench.sheetHalf": "Polovična višina",
   "workbench.sheetFull": "Polna višina",
-  "workbench.speed": "Hitrost"
+  "workbench.speed": "Hitrost",
+  "menu.selectionActions": "Dejanja izbire",
+  "menu.selectionAddBoundary": "Dodaj v mejo…",
+  "menu.selectionRemoveBoundary": "Odstrani iz meje",
+  "menu.selectionSearchBoundaries": "Poišči meje",
+  "menu.selectionAddedBoundary": "Dodano v {name}: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Odstranjeno iz meja: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}."
 }

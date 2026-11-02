@@ -2817,5 +2817,11 @@
   "workbench.sheetPeek": "Aperçu",
   "workbench.sheetHalf": "Mi-hauteur",
   "workbench.sheetFull": "Pleine hauteur",
-  "workbench.speed": "Vitesse"
+  "workbench.speed": "Vitesse",
+  "menu.selectionActions": "Actions de sélection",
+  "menu.selectionAddBoundary": "Ajouter à une périmètre…",
+  "menu.selectionRemoveBoundary": "Retirer de la périmètre",
+  "menu.selectionSearchBoundaries": "Rechercher des périmètres",
+  "menu.selectionAddedBoundary": "Ajoutés à {name}: {count, plural, one {# nœud} other {# nœuds}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Retirés des périmètres: {count, plural, one {# nœud} other {# nœuds}}. {selection}."
 }

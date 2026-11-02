@@ -228,6 +228,18 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
                   </span>
                 </div>
               ))}
+              {g === "Selection" && (
+                <>
+                  <div className="sc-row">
+                    <span>{t("menu.selectionAddBoundary")}</span>
+                    <kbd>{formatCombo("Mod+K")}</kbd>
+                  </div>
+                  <div className="sc-row">
+                    <span>{t("menu.selectionRemoveBoundary")}</span>
+                    <kbd>{formatCombo("Mod+K")}</kbd>
+                  </div>
+                </>
+              )}
               {g === "Edit" && (
                 <>
                   {LINE.map(([k, v]) => (

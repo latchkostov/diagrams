@@ -2820,5 +2820,11 @@
   "workbench.sheetPeek": "Forhåndsvisning",
   "workbench.sheetHalf": "Halv høyde",
   "workbench.sheetFull": "Full høyde",
-  "workbench.speed": "Hastighet"
+  "workbench.speed": "Hastighet",
+  "menu.selectionActions": "Markeringshandlinger",
+  "menu.selectionAddBoundary": "Legg til i avgrensning…",
+  "menu.selectionRemoveBoundary": "Fjern fra avgrensning",
+  "menu.selectionSearchBoundaries": "Søk etter avgrensninger",
+  "menu.selectionAddedBoundary": "Lagt til i {name}: {count, plural, other {# noder} one {# node}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Fjernet fra avgrensninger: {count, plural, other {# noder} one {# node}}. {selection}."
 }

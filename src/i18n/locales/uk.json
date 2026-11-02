@@ -2820,5 +2820,11 @@
   "workbench.sheetPeek": "Попередній перегляд",
   "workbench.sheetHalf": "Половина висоти",
   "workbench.sheetFull": "Повна висота",
-  "workbench.speed": "Швидкість"
+  "workbench.speed": "Швидкість",
+  "menu.selectionActions": "Дії з виділенням",
+  "menu.selectionAddBoundary": "Додати до межі…",
+  "menu.selectionRemoveBoundary": "Вилучити з межі",
+  "menu.selectionSearchBoundaries": "Пошук меж",
+  "menu.selectionAddedBoundary": "Додано до {name}: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Вилучено з меж: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}."
 }
