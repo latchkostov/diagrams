@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
@@ -16,6 +16,7 @@ import {
   revealPan,
 } from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
+afterEach(() => vi.unstubAllGlobals());
 
 for (const dock of ["bottom", "left", "bottom with Focus clipping"] as const)
   it(`reveals a selected card inside the exposed canvas with a ${dock} dock`, () => {
@@ -56,6 +57,60 @@ for (const dock of ["bottom", "left", "bottom with Focus clipping"] as const)
     }
     expect(revealPan(root, view!, card)).toBeNull();
   });
+
+for (const avoidOverlay of [false, true])
+  it(
+    avoidOverlay
+      ? "avoids floating controls without crossing the exposed frame"
+      : "reveals a fitting card when preferred margins cannot fit",
+    () => {
+      const bounds = { left: 0, top: 0, right: 800, bottom: 700, width: 800, height: 700 };
+      const sheet = { left: 0, top: 200, right: 800, bottom: 700 };
+      const overlay = { x: 80, y: 110, width: 300, height: 30 };
+      vi.stubGlobal("getComputedStyle", () => ({ visibility: "visible" }));
+      const control = {
+        dataset: {},
+        getBoundingClientRect: () => ({
+          left: overlay.x,
+          top: overlay.y,
+          width: overlay.width,
+          height: overlay.height,
+        }),
+      };
+      let controlsVisible = false;
+      const root = {
+        clientWidth: bounds.width,
+        clientHeight: bounds.height,
+        getBoundingClientRect: () => bounds,
+        querySelectorAll: () => (controlsVisible ? [control] : []),
+        dataset: { detailView: "focus" },
+        ownerDocument: {
+          querySelector: (selector: string) =>
+            selector.includes('"inspector"') ? { getBoundingClientRect: () => sheet } : null,
+        },
+      } as unknown as HTMLElement;
+      const card = { x: 100, y: 450, width: 220, height: 72 };
+      const viewport = { x: 0, y: 0, zoom: 1 };
+      const withoutControls = revealPan(root, viewport, card)!;
+      controlsVisible = avoidOverlay;
+      const view = revealPan(root, viewport, card)!;
+      expect(view).not.toBeNull();
+      expect(view.zoom).toBe(viewport.zoom);
+      const painted = { ...card, x: card.x + view.x, y: card.y + view.y };
+      if (avoidOverlay) {
+        const beforeAvoidance = { ...card, x: card.x + withoutControls.x, y: card.y + withoutControls.y };
+        expect(intersects(beforeAvoidance, overlay)).toBe(true);
+        expect(Math.hypot(view.x - withoutControls.x, view.y - withoutControls.y)).toBeGreaterThan(0);
+        expect(intersects(painted, overlay)).toBe(false);
+      }
+      const frame = innerFrame(bounds.width, sheet.top, "focus", false);
+      expect(painted.x).toBeGreaterThanOrEqual(frame.x);
+      expect(painted.x + painted.width).toBeLessThanOrEqual(frame.x + frame.width);
+      expect(painted.y - FRAME_CARD_SPACE.top).toBeGreaterThanOrEqual(frame.y);
+      expect(painted.y + painted.height + FRAME_CARD_SPACE.bottom).toBeLessThanOrEqual(frame.y + frame.height);
+      expect(revealPan(root, view, card)).toBeNull();
+    },
+  );
 
 it("keeps the established centre fallback for an oversized selection", () => {
   const root = {

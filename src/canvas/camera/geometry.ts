@@ -252,12 +252,6 @@ export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, mus
   // Focus/Follow clip a card together with its badge space. A revealed card must
   // clear that complete footprint, or clipping can hide it and drop its focus.
   const decoratedBottom = Math.max(VIEW_MARGIN.bottom, frame.height - inner.y - inner.height + FRAME_CARD_SPACE.bottom);
-  // An oversized selection cannot retain that complete footprint. Keep its
-  // established centering fallback instead of shifting the whole diagram.
-  const bottom =
-    cropped && must.height * k <= Math.max(0, frame.height - VIEW_MARGIN.top - decoratedBottom)
-      ? decoratedBottom
-      : VIEW_MARGIN.bottom;
   const safe = cropped
     ? {
         x: frame.x + inner.x,
@@ -266,12 +260,23 @@ export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, mus
         height: Math.max(0, inner.height - FRAME_CARD_SPACE.top - FRAME_CARD_SPACE.bottom),
       }
     : frame;
+  // Only a selection larger than the safe frame needs the established centring
+  // fallback. Preferred breathing room must yield before card decorations do.
+  const bottom = cropped && must.height * k <= safe.height ? decoratedBottom : VIEW_MARGIN.bottom;
   const view = {
     x: frame.x + VIEW_MARGIN.left,
     y: frame.y + VIEW_MARGIN.top,
     width: Math.max(0, frame.width - VIEW_MARGIN.left - VIEW_MARGIN.right),
     height: Math.max(0, frame.height - VIEW_MARGIN.top - bottom),
   };
+  if (cropped && must.width * k > view.width && must.width * k <= safe.width) {
+    view.x = safe.x;
+    view.width = safe.width;
+  }
+  if (cropped && must.height * k > view.height && must.height * k <= safe.height) {
+    view.y = safe.y;
+    view.height = safe.height;
+  }
   const target = want.width * k <= view.width && want.height * k <= view.height ? want : must;
   const onScreen = (v: Viewport): Rect => ({
     x: target.x * k + v.x,
