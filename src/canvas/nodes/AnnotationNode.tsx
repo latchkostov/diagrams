@@ -154,7 +154,10 @@ function AnnotationNodeImpl({
     if (!el || !body || (kind !== "text" && kind !== "note")) return;
     const pad = getComputedStyle(body);
     const needed = Math.ceil(el.offsetHeight + parseFloat(pad.paddingTop) + parseFloat(pad.paddingBottom));
-    if (needed > h + 1) updateNode(id, { height: annotationSize(needed) });
+    // NodeProps can still carry the previous measured height after a text/size edit.
+    // Judge growth against the current node so that a late measurement never shrinks it.
+    if (needed > h + 1)
+      updateNode(id, (node) => (needed > (node.height ?? 0) + 1 ? { height: annotationSize(needed) } : {}));
   }, [data.text, data.textSize, kind, h, id, updateNode]);
 
   const supportsMarkdown = kind === "note" || kind === "text";

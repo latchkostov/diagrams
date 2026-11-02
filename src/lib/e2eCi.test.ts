@@ -139,6 +139,33 @@ it("refreshes timings from a download directory, averaging first passes while ig
   expect(() => updateTimings([], root)).toThrow("at least one");
 });
 
+it("ignores interrupted timing reports so incomplete files retain their previous measured cost", () => {
+  const root = fixture();
+  for (const file of ["a.spec.ts", "b.spec.ts"]) writeFileSync(join(root, "tests/e2e", file), "");
+  const timingFile = join(root, "tests/e2e-timings.json");
+  writeFileSync(timingFile, JSON.stringify({ seconds: { "a.spec.ts": 5, "b.spec.ts": 7 } }));
+  const spec = (file: string) => ({
+    file,
+    title: file,
+    line: 1,
+    tests: [{ projectName: "chromium", results: [{ status: "passed", duration: 1000 }] }],
+  });
+  const complete = join(root, "complete.json");
+  writeFileSync(
+    complete,
+    JSON.stringify({ suites: [{ title: "a.spec.ts", suites: [{ title: "group", specs: [spec("a.spec.ts")] }] }] }),
+  );
+  const partial = join(root, "partial.json");
+  // Checkpoints flatten suite titles and may contain only the cheapest tests of a file.
+  writeFileSync(
+    partial,
+    JSON.stringify({ interrupted: true, suites: [{ specs: [spec("a.spec.ts"), spec("b.spec.ts")] }] }),
+  );
+  updateTimings([complete, partial], root);
+  expect(JSON.parse(readFileSync(timingFile, "utf8")).seconds).toEqual({ "a.spec.ts": 1, "b.spec.ts": 7 });
+  expect(() => updateTimings([partial], root)).toThrow("No successful first attempts");
+});
+
 it("wires six unchanged check names to one artifact producer and skips browser installs in the image", () => {
   const { jobs } = parse(readFileSync(".github/workflows/ci.yml", "utf8"));
   const action = parse(readFileSync(".github/actions/e2e/action.yml", "utf8"));

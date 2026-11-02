@@ -74,6 +74,28 @@ async function open(page: Page, viewport = 1920, live = false, simulation?: stri
   await settled(page);
 }
 
+test("a naming frame retry cannot take the resizer's focus before its next key", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await gotoCanvas(page, "kafka-order-pipeline");
+  const node = page.getByTestId("node-order-events");
+  const label = page.getByTestId("inspector-field-label");
+  await node.dblclick();
+  await expect(label).toBeFocused();
+  await waitForCameraIdle(page);
+  await waitForStableViewport(page);
+  await page.clock.install();
+  await pauseClock(page);
+  // The name field is mounted: hold its one-frame retry at the real handoff boundary.
+  await node.dblclick();
+  await expect(label).toBeFocused();
+  const handle = page.getByTestId("inspector-resize");
+  await handle.focus();
+  await page.clock.runFor(32);
+  await expect(handle).toBeFocused();
+  await page.keyboard.press("End");
+  await expect.poll(() => width(page)).toBe(Number(await handle.getAttribute("aria-valuemax")));
+});
+
 test("drag uses the extra table space, captures the pointer and saves only at release", async ({ page }) => {
   await open(page, 1440);
   await expect.poll(() => width(page)).toBe(372);
