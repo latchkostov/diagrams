@@ -162,7 +162,15 @@ function canvasChunks() {
       for (const id of liveOwn)
         // File dialogs need their formatters even while a Live download is held.
         if (!/[/\\]src[/\\]i18n[/\\]/.test(id) && (/[/\\]src[/\\].*\.tsx?$/.test(id) || id.endsWith("?url")))
-          groups.set(id, shared.has(id) ? "live-shared" : "LiveSession");
+          // Edit's inspector also needs these formatters without the Live implementation.
+          groups.set(
+            id,
+            /[/\\]src[/\\]live[/\\]format\.ts$/.test(id)
+              ? "live-helpers"
+              : shared.has(id)
+                ? "live-shared"
+                : "LiveSession",
+          );
     },
   };
   return {

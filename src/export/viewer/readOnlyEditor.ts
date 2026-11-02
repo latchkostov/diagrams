@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState } from "react";
 import { fromFlow } from "../../canvas/convert";
-import { GROUP_PREFIX, isGroupNode } from "../../canvas/types";
+import { isGroupNode } from "../../canvas/types";
+import { expandSelection } from "../../editor/expandSelection";
 import type { EditorDeps } from "../../editor/useEditor";
 import type { ReactFlowInstance } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
@@ -61,7 +62,7 @@ export function createReadOnlyEditor(initial: ReadOnlyDeps) {
     zoomTo100: () => deps.zoom100?.(),
     zoomToSelection: () => {
       const selection = api.getSelection();
-      const nodes = new Set([...selection.nodeIds, ...selection.groupIds.map((id) => GROUP_PREFIX + id)]);
+      const nodes = expandSelection(selection, deps.getNodes()).flowIds;
       const edges = new Set(selection.edgeIds);
       const hovered = deps.hovered?.();
       if (!nodes.size && !edges.size && hovered) nodes.add(hovered);

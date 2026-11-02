@@ -294,6 +294,7 @@ describe("production bundle split", () => {
         "LiveSession",
         "format",
         "list",
+        "live-helpers",
         "live-shared",
       ]);
       expect(
@@ -305,6 +306,19 @@ describe("production bundle split", () => {
       expect(sharedNames).not.toContain("LiveSession");
       const dialogs = build.chunks.find((chunk) => chunk.name === "dialogs")!;
       expect([...closure([dialogs], build)].map((chunk) => chunk.name)).not.toContain("live-shared");
+    }
+  });
+  it("opens Edit settings without downloading the LiveSession implementation", () => {
+    for (const build of [plain(), rooms]) {
+      for (const name of ["Disclosure", "NodeSettings"]) {
+        const panel = build.chunks.find((chunk) =>
+          Object.entries(chunk.modules).some(
+            ([id, module]) => id.replaceAll("\\", "/").endsWith(`/${name}.tsx`) && module.renderedLength > 0,
+          ),
+        );
+        expect(panel, name).toBeDefined();
+        expect(closure([panel!], build).has(liveChunk(build)), name).toBe(false);
+      }
     }
   });
   it("keeps every emitted locale catalog within its gzip budget", () => {
