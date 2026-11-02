@@ -1,8 +1,9 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
 import { TRACE_CARD_TOP, TRACE_CARD_FOOTPRINT } from "../../live/traceCardLayout";
+import { FRAME_CARD_SPACE, innerFrame } from "./frameBounds";
 import { selectRoutes } from "../edges/useEdgeRoute";
 import {
   fitNodesViewport,
@@ -12,8 +13,124 @@ import {
   overlayFitViewport,
   goToViewport,
   hasVisibleContent,
+  revealPan,
 } from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
+afterEach(() => vi.unstubAllGlobals());
+
+for (const dock of ["bottom", "left", "bottom with Focus clipping"] as const)
+  it(`reveals a selected card inside the exposed canvas with a ${dock} dock`, () => {
+    const bounds = { left: 0, top: 0, right: 800, bottom: 700, width: 800, height: 700 };
+    const sheet =
+      dock === "left" ? { left: 0, top: 0, right: 300, bottom: 700 } : { left: 0, top: 350, right: 800, bottom: 700 };
+    const root = {
+      clientWidth: 800,
+      clientHeight: 700,
+      getBoundingClientRect: () => bounds,
+      querySelectorAll: () => [],
+      dataset: { detailView: dock === "bottom with Focus clipping" ? "focus" : "custom" },
+      ownerDocument: {
+        querySelector: (selector: string) =>
+          selector.includes('"inspector"') ? { getBoundingClientRect: () => sheet } : null,
+      },
+    } as unknown as HTMLElement;
+    const card = { x: 100, y: dock === "bottom with Focus clipping" ? 250 : 450, width: 220, height: 72 };
+    const view = revealPan(root, { x: 0, y: 0, zoom: 1 }, card);
+    expect(view).not.toBeNull();
+    expect(view!.zoom).toBe(1);
+    const painted = { x: card.x + view!.x, y: card.y + view!.y, width: card.width, height: card.height };
+    expect(
+      intersects(painted, {
+        x: sheet.left,
+        y: sheet.top,
+        width: sheet.right - sheet.left,
+        height: sheet.bottom - sheet.top,
+      }),
+    ).toBe(false);
+    expect(painted.x).toBeGreaterThanOrEqual(0);
+    expect(painted.y).toBeGreaterThanOrEqual(0);
+    expect(painted.x + painted.width).toBeLessThanOrEqual(bounds.width);
+    expect(painted.y + painted.height).toBeLessThanOrEqual(bounds.height);
+    if (dock === "bottom with Focus clipping") {
+      const frame = innerFrame(bounds.width, sheet.top, "focus", false);
+      expect(painted.y + painted.height + FRAME_CARD_SPACE.bottom).toBeLessThanOrEqual(frame.y + frame.height);
+    }
+    expect(revealPan(root, view!, card)).toBeNull();
+  });
+
+for (const avoidOverlay of [false, true])
+  it(
+    avoidOverlay
+      ? "avoids floating controls without crossing the exposed frame"
+      : "reveals a fitting card when preferred margins cannot fit",
+    () => {
+      const bounds = { left: 0, top: 0, right: 800, bottom: 700, width: 800, height: 700 };
+      const sheet = { left: 0, top: 200, right: 800, bottom: 700 };
+      const overlay = { x: 80, y: 110, width: 300, height: 30 };
+      vi.stubGlobal("getComputedStyle", () => ({ visibility: "visible" }));
+      const control = {
+        dataset: {},
+        getBoundingClientRect: () => ({
+          left: overlay.x,
+          top: overlay.y,
+          width: overlay.width,
+          height: overlay.height,
+        }),
+      };
+      let controlsVisible = false;
+      const root = {
+        clientWidth: bounds.width,
+        clientHeight: bounds.height,
+        getBoundingClientRect: () => bounds,
+        querySelectorAll: () => (controlsVisible ? [control] : []),
+        dataset: { detailView: "focus" },
+        ownerDocument: {
+          querySelector: (selector: string) =>
+            selector.includes('"inspector"') ? { getBoundingClientRect: () => sheet } : null,
+        },
+      } as unknown as HTMLElement;
+      const card = { x: 100, y: 450, width: 220, height: 72 };
+      const viewport = { x: 0, y: 0, zoom: 1 };
+      const withoutControls = revealPan(root, viewport, card)!;
+      controlsVisible = avoidOverlay;
+      const view = revealPan(root, viewport, card)!;
+      expect(view).not.toBeNull();
+      expect(view.zoom).toBe(viewport.zoom);
+      const painted = { ...card, x: card.x + view.x, y: card.y + view.y };
+      if (avoidOverlay) {
+        const beforeAvoidance = { ...card, x: card.x + withoutControls.x, y: card.y + withoutControls.y };
+        expect(intersects(beforeAvoidance, overlay)).toBe(true);
+        expect(Math.hypot(view.x - withoutControls.x, view.y - withoutControls.y)).toBeGreaterThan(0);
+        expect(intersects(painted, overlay)).toBe(false);
+      }
+      const frame = innerFrame(bounds.width, sheet.top, "focus", false);
+      expect(painted.x).toBeGreaterThanOrEqual(frame.x);
+      expect(painted.x + painted.width).toBeLessThanOrEqual(frame.x + frame.width);
+      expect(painted.y - FRAME_CARD_SPACE.top).toBeGreaterThanOrEqual(frame.y);
+      expect(painted.y + painted.height + FRAME_CARD_SPACE.bottom).toBeLessThanOrEqual(frame.y + frame.height);
+      expect(revealPan(root, view, card)).toBeNull();
+    },
+  );
+
+it("keeps the established centre fallback for an oversized selection", () => {
+  const root = {
+    clientWidth: 800,
+    clientHeight: 700,
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 800, bottom: 700, width: 800, height: 700 }),
+    querySelectorAll: () => [],
+    dataset: { detailView: "focus" },
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes('"inspector"')
+          ? { getBoundingClientRect: () => ({ left: 0, top: 350, right: 800, bottom: 700 }) }
+          : null,
+    },
+  } as unknown as HTMLElement;
+  const selected = { x: 100, y: 450, width: 220, height: 800 };
+  // The selection cannot fit above the sheet. Centre it in the existing reveal
+  // area (72 px above, 56 px below), without changing the chosen zoom.
+  expect(revealPan(root, { x: 0, y: 0, zoom: 1 }, selected)).toEqual({ x: 0, y: -667, zoom: 1 });
+});
 
 it("only reserves transport space when the bar overlaps the canvas", () => {
   let transportTop = 600;
