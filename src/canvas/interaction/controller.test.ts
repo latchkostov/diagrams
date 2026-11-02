@@ -528,6 +528,19 @@ describe("interaction controller: Inspector fields", () => {
     expect(h.focused).toEqual(["field:label"]);
   });
 
+  it("a control taking focus outside the canvas ends the name field's frame retry before the next key", () => {
+    const h = harness();
+    h.env.inspector.fields.set("label", "a");
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a" });
+    const resizer = h.el("input:inspector-resize");
+    h.env.active = resizer;
+    h.controller.focusArrived(resizer);
+    h.frame();
+    expect(h.env.active).toBe(resizer);
+    expect(h.focused).toEqual(["field:label"]);
+    expect(h.controller.state.pending).toBeNull();
+  });
+
   it("a request taken elsewhere (claim) never takes focus; each request runs once", () => {
     const h = harness();
     h.env.inspector.fields.set("label", undefined);
