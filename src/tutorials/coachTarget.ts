@@ -115,16 +115,27 @@ export function locate({ targets, subjects, edges, selected }: TargetProps): Loc
 /** Coalesce camera/simulation updates to a frame. Paused-clock UI still lays out when chrome changes. */
 export function observeCoach(card: HTMLElement | null, measure: () => void) {
   let frame = 0;
+  let connected = true;
+  let pending = false;
   const run = () => {
     frame = 0;
     measure();
   };
   const schedule = () => {
-    if (!frame) frame = requestAnimationFrame(run);
+    if (!pending && !frame) frame = requestAnimationFrame(run);
   };
   const immediate = () => {
     if (frame) cancelAnimationFrame(frame);
-    run();
+    frame = 0;
+    if (pending) return;
+    pending = true;
+    // Protected roots also reach the chrome/size observers. Share one measurement before paint,
+    // even when animation frames are paused, instead of measuring once per subscription.
+    queueMicrotask(() => {
+      if (!connected || !pending) return;
+      pending = false;
+      measure();
+    });
   };
   const chrome =
     '[role="menu"], [role="listbox"], [data-testid="live-note"], [data-testid="inspector"], [data-testid="palette"], [data-testid="toast"]';
@@ -158,8 +169,12 @@ export function observeCoach(card: HTMLElement | null, measure: () => void) {
   window.visualViewport?.addEventListener("resize", schedule);
   window.visualViewport?.addEventListener("scroll", schedule);
   const offProtected = observeProtectedControls(document.body, immediate);
-  immediate();
+  // Initial placement is synchronous; it also consumes protected-root discovery's notification.
+  pending = false;
+  run();
   return () => {
+    connected = false;
+    pending = false;
     offProtected();
     if (frame) cancelAnimationFrame(frame);
     mutations.disconnect();
