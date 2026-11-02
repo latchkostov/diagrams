@@ -11,3 +11,7 @@ Still open. The initiating canvas identity is retained for pending-work cancella
 Keep cancellation ownership separate from membership observation ownership. Add an explicit room-editor binding at mount, and cover leave after remount and navigation away while a join is pending. Reading whichever canvas happens to be current at leave would misattribute an old room's event.
 
 The existing real-room browser test observes producer events after exiting the tutorial. A proper admitted-join regression must host the connected runner across the real room-editor mount, exercise rejected/cancelled consent and admission, and assert actual step completion. That fixture belongs with the binding change; fake publications do not resolve this gap. The AI half now keeps its runner connected and verifies a refused reply before a successful real applied turn.
+
+## Tutorials-only audit — 2026-11-02
+
+Both entries remain open after checking master d0ac286b3. Stable note identity needs a persisted model/editor/save/import contract; room observation binding needs changes to the producer in `src/collab/room/lifecycle.ts`, which retains the initiating source. Neither has a safe tutorials-only fix. R-8ecc02383f's connected-runner room coverage stays deferred with the binding change, as requested for the P2 batch. See `docs/release-notes/2026-11-02-tutorials-p2-audit.md` for the complete resolved-item audit.
