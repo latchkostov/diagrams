@@ -261,7 +261,7 @@ export function useCanvasNavigation({
           );
         // Focus follows on the next frame, and the Tab stop moves now (K1).
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id } });
-        revealSelection(undefined, 0, "navigation", undefined, extend ? { kind: "node", id } : undefined);
+        revealSelection(undefined, 0, "navigation", undefined, extend ? { kind: "node", id, frame: [id] } : undefined);
         const at = `${order.indexOf(id) + 1} of ${order.length}`;
         if (isDiagramNode(n)) {
           const outs = es.filter((e) => e.source === id).length;
@@ -292,7 +292,13 @@ export function useCanvasNavigation({
         if (extend) applyPick(extendPick(currentPick(), { kind: "edge", id }));
         else editor.select({ edgeIds: [e.id] });
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
-        revealSelection(undefined, 0, "edge-navigation", undefined, extend ? { kind: "edge", id } : undefined);
+        revealSelection(
+          undefined,
+          0,
+          "edge-navigation",
+          undefined,
+          extend ? { kind: "edge", id, frame: [e.source, e.target] } : undefined,
+        );
         const said = edgeAriaLabel(
           labelOf(e.source),
           labelOf(e.target),

@@ -42,32 +42,37 @@ for (const step of ["next", "prev"] as const)
     await expect(page.getByTestId("canvas-announce")).toContainText("Worker added. 1 selected.");
   });
 
-test("extension reveals the destination at 100% when the combined selection exceeds the pane", async ({ page }) => {
-  const diagram = structuredClone(keyboardSelectionFixture);
-  diagram.nodes.push({ id: "far", label: "Far service", stencil: "service.node", x: 3200, y: 200 });
-  diagram.edges.push({ id: "worker-far", from: "worker", to: "far" });
-  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
-    key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
-    diagram,
+// At 100% the view pans to the destination; below 60% automatic Focus frames the destination itself.
+for (const zoom of [1, 0.55]) {
+  test(`extension reveals the destination at ${zoom * 100}% when the combined selection exceeds the pane`, async ({
+    page,
+  }) => {
+    const diagram = structuredClone(keyboardSelectionFixture);
+    diagram.nodes.push({ id: "far", label: "Far service", stencil: "service.node", x: 3200, y: 200 });
+    diagram.edges.push({ id: "worker-far", from: "worker", to: "far" });
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
+      diagram,
+    });
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await node(page, "orders");
+    await zoomIdentity(page, zoom);
+    await command(page, "action:extend:node:far", "Extend selection Far service");
+    await expect(selected(page, "far")).toBeFocused();
+    await waitForCameraIdle(page);
+    for (const id of ["orders", "far"]) await expect(selected(page, id)).toHaveClass(/\bselected\b/);
+    const pane = await page.getByTestId("canvas-wrap").boundingBox();
+    const origin = await selected(page, "orders").boundingBox();
+    const destination = await selected(page, "far").boundingBox();
+    if (!pane || !origin || !destination) throw new Error("Missing selection bounds");
+    expect(destination.x + destination.width - origin.x).toBeGreaterThan(pane.width);
+    expect(destination.x).toBeGreaterThanOrEqual(pane.x);
+    expect(destination.x + destination.width).toBeLessThanOrEqual(pane.x + pane.width);
+    expect(destination.y).toBeGreaterThanOrEqual(pane.y);
+    expect(destination.y + destination.height).toBeLessThanOrEqual(pane.y + pane.height);
+    if (zoom === 1) await expect(page.getByTestId("zoom-100")).toHaveText("100%");
   });
-  await gotoCanvas(page, "kafka-order-pipeline");
-  await node(page, "orders");
-  await zoomIdentity(page, 1);
-  await command(page, "action:extend:node:far", "Extend selection Far service");
-  await expect(selected(page, "far")).toBeFocused();
-  await waitForCameraIdle(page);
-  for (const id of ["orders", "far"]) await expect(selected(page, id)).toHaveClass(/\bselected\b/);
-  const pane = await page.getByTestId("canvas-wrap").boundingBox();
-  const origin = await selected(page, "orders").boundingBox();
-  const destination = await selected(page, "far").boundingBox();
-  if (!pane || !origin || !destination) throw new Error("Missing selection bounds");
-  expect(destination.x + destination.width - origin.x).toBeGreaterThan(pane.width);
-  expect(destination.x).toBeGreaterThanOrEqual(pane.x);
-  expect(destination.x + destination.width).toBeLessThanOrEqual(pane.x + pane.width);
-  expect(destination.y).toBeGreaterThanOrEqual(pane.y);
-  expect(destination.y + destination.height).toBeLessThanOrEqual(pane.y + pane.height);
-  await expect(page.getByTestId("zoom-100")).toHaveText("100%");
-});
+}
 
 test("Shift extends node and edge navigation; unshifted navigation still replaces the selection", async ({ page }) => {
   await fixture(page);
