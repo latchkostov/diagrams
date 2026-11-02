@@ -2821,8 +2821,6 @@
   "menu.selectionAddBoundary": "Προσθήκη σε όριο…",
   "menu.selectionRemoveBoundary": "Αφαίρεση από όριο",
   "menu.selectionSearchBoundaries": "Αναζήτηση ορίων",
-  "selection.addedBoundary": "Προστέθηκαν στο {name}: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}.",
-  "selection.removedBoundary": "Αφαιρέθηκαν από τα όρια: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}.",
   "selection.extend": "Επέκταση επιλογής…",
   "selection.remove": "Αφαίρεση από την επιλογή…",
   "selection.area": "Μέσα σε αυτή την περιοχή…",
@@ -2838,5 +2836,7 @@
   "selection.add": "Προσθήκη στην επιλογή",
   "selection.preview": "Προεπισκόπηση",
   "selection.fallback": "Χρησιμοποιήστε το μενού επιλογής αν το σύστημα ή ο αναγνώστης οθόνης δεσμεύει αυτά τα πλήκτρα.",
-  "selection.extendKeys": "Επέκταση επιλογής"
+  "selection.extendKeys": "Επέκταση επιλογής",
+  "menu.selectionAddedBoundary": "Προστέθηκαν στο {name}: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Αφαιρέθηκαν από τα όρια: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}."
 }

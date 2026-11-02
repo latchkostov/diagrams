@@ -2821,8 +2821,6 @@
   "menu.selectionAddBoundary": "Thêm vào ranh giới…",
   "menu.selectionRemoveBoundary": "Xóa khỏi ranh giới",
   "menu.selectionSearchBoundaries": "Tìm ranh giới",
-  "selection.addedBoundary": "Đã thêm vào {name}: {count, plural, other {# nút}}. {selection}.",
-  "selection.removedBoundary": "Đã xóa khỏi ranh giới: {count, plural, other {# nút}}. {selection}.",
   "selection.extend": "Mở rộng vùng chọn…",
   "selection.remove": "Bỏ khỏi vùng chọn…",
   "selection.area": "Bên trong vùng này…",
@@ -2838,5 +2836,7 @@
   "selection.add": "Thêm vào vùng chọn",
   "selection.preview": "Xem trước",
   "selection.fallback": "Dùng menu chọn nếu hệ thống hoặc trình đọc màn hình sử dụng các phím này.",
-  "selection.extendKeys": "Mở rộng vùng chọn"
+  "selection.extendKeys": "Mở rộng vùng chọn",
+  "menu.selectionAddedBoundary": "Đã thêm vào {name}: {count, plural, other {# nút}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Đã xóa khỏi ranh giới: {count, plural, other {# nút}}. {selection}."
 }

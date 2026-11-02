@@ -2815,8 +2815,6 @@
   "menu.selectionAddBoundary": "Přidat do hranice…",
   "menu.selectionRemoveBoundary": "Odebrat z hranice",
   "menu.selectionSearchBoundaries": "Hledat hranice",
-  "selection.addedBoundary": "Přidáno do {name}: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}.",
-  "selection.removedBoundary": "Odebráno z hranic: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}.",
   "selection.extend": "Rozšířit výběr…",
   "selection.remove": "Odebrat z výběru…",
   "selection.area": "Uvnitř této oblasti…",
@@ -2832,5 +2830,7 @@
   "selection.add": "Přidat k výběru",
   "selection.preview": "Náhled",
   "selection.fallback": "Pokud tyto klávesy zachytí systém nebo čtečka obrazovky, použijte nabídku výběru.",
-  "selection.extendKeys": "Rozšířit výběr"
+  "selection.extendKeys": "Rozšířit výběr",
+  "menu.selectionAddedBoundary": "Přidáno do {name}: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Odebráno z hranic: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}."
 }

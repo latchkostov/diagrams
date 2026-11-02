@@ -2810,8 +2810,6 @@
   "menu.selectionAddBoundary": "Añadir a un límite…",
   "menu.selectionRemoveBoundary": "Quitar del límite",
   "menu.selectionSearchBoundaries": "Buscar límites",
-  "selection.addedBoundary": "Añadidos a {name}: {count, plural, other {# nodos} one {# nodo}}. {selection}.",
-  "selection.removedBoundary": "Quitados de los límites: {count, plural, other {# nodos} one {# nodo}}. {selection}.",
   "selection.extend": "Ampliar selección…",
   "selection.remove": "Quitar de la selección…",
   "selection.area": "Dentro de esta área…",
@@ -2827,5 +2825,7 @@
   "selection.add": "Añadir a la selección",
   "selection.preview": "Vista previa",
   "selection.fallback": "Usa el menú de selección si el sistema o el lector de pantalla captura estas teclas.",
-  "selection.extendKeys": "Ampliar selección"
+  "selection.extendKeys": "Ampliar selección",
+  "menu.selectionAddedBoundary": "Añadidos a {name}: {count, plural, other {# nodos} one {# nodo}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Quitados de los límites: {count, plural, other {# nodos} one {# nodo}}. {selection}."
 }

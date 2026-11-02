@@ -2825,8 +2825,6 @@
   "menu.selectionAddBoundary": "Додати до межі…",
   "menu.selectionRemoveBoundary": "Вилучити з межі",
   "menu.selectionSearchBoundaries": "Пошук меж",
-  "selection.addedBoundary": "Додано до {name}: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}.",
-  "selection.removedBoundary": "Вилучено з меж: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}.",
   "selection.extend": "Розширити виділення…",
   "selection.remove": "Прибрати з виділення…",
   "selection.area": "Усередині цієї області…",
@@ -2842,5 +2840,7 @@
   "selection.add": "Додати до виділення",
   "selection.preview": "Попередній перегляд",
   "selection.fallback": "Скористайтеся меню виділення, якщо система або читач екрана перехоплює ці клавіші.",
-  "selection.extendKeys": "Розширити виділення"
+  "selection.extendKeys": "Розширити виділення",
+  "menu.selectionAddedBoundary": "Додано до {name}: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Вилучено з меж: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}."
 }

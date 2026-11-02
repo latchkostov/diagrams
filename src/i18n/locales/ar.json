@@ -2959,8 +2959,6 @@
   "menu.selectionAddBoundary": "إضافة إلى حدود…",
   "menu.selectionRemoveBoundary": "إزالة من الحدود",
   "menu.selectionSearchBoundaries": "البحث في الحدود",
-  "selection.addedBoundary": "أضيفت إلى {name}: {count, plural, zero {# عقد} one {# عقدة} two {# عقد} few {# عقد} many {# عقد} other {# عقد}}. {selection}.",
-  "selection.removedBoundary": "أزيلت من الحدود: {count, plural, zero {# عقد} one {# عقدة} two {# عقد} few {# عقد} many {# عقد} other {# عقد}}. {selection}.",
   "selection.extend": "توسيع التحديد…",
   "selection.remove": "إزالة من التحديد…",
   "selection.area": "داخل هذه المنطقة…",
@@ -2976,5 +2974,7 @@
   "selection.add": "إضافة إلى التحديد",
   "selection.preview": "معاينة",
   "selection.fallback": "استخدم قائمة التحديد إذا استحوذ النظام أو قارئ الشاشة على هذه المفاتيح.",
-  "selection.extendKeys": "توسيع التحديد"
+  "selection.extendKeys": "توسيع التحديد",
+  "menu.selectionAddedBoundary": "أضيفت إلى {name}: {count, plural, zero {# عقد} one {# عقدة} two {# عقد} few {# عقد} many {# عقد} other {# عقد}}. {selection}.",
+  "menu.selectionRemovedBoundary": "أزيلت من الحدود: {count, plural, zero {# عقد} one {# عقدة} two {# عقد} few {# عقد} many {# عقد} other {# عقد}}. {selection}."
 }

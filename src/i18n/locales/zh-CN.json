@@ -2821,8 +2821,6 @@
   "menu.selectionAddBoundary": "添加到边界…",
   "menu.selectionRemoveBoundary": "从边界移除",
   "menu.selectionSearchBoundaries": "搜索边界",
-  "selection.addedBoundary": "已添加到 {name}: {count, plural, other {# 节点}}. {selection}.",
-  "selection.removedBoundary": "已从边界移除: {count, plural, other {# 节点}}. {selection}.",
   "selection.extend": "扩展选择…",
   "selection.remove": "从选择中移除…",
   "selection.area": "在此区域内…",
@@ -2838,5 +2836,7 @@
   "selection.add": "添加到选择",
   "selection.preview": "预览",
   "selection.fallback": "如果系统或屏幕阅读器占用了这些按键，请使用选择菜单。",
-  "selection.extendKeys": "扩展选择"
+  "selection.extendKeys": "扩展选择",
+  "menu.selectionAddedBoundary": "已添加到 {name}: {count, plural, other {# 节点}}. {selection}.",
+  "menu.selectionRemovedBoundary": "已从边界移除: {count, plural, other {# 节点}}. {selection}."
 }

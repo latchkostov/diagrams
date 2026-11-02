@@ -2814,8 +2814,6 @@
   "menu.selectionAddBoundary": "Adicionar ao limite…",
   "menu.selectionRemoveBoundary": "Remover do limite",
   "menu.selectionSearchBoundaries": "Buscar limites",
-  "selection.addedBoundary": "Adicionados a {name}: {count, plural, one {# nó} other {# nós}}. {selection}.",
-  "selection.removedBoundary": "Removidos dos limites: {count, plural, one {# nó} other {# nós}}. {selection}.",
   "selection.extend": "Estender seleção…",
   "selection.remove": "Remover da seleção…",
   "selection.area": "Dentro desta área…",
@@ -2831,5 +2829,7 @@
   "selection.add": "Adicionar à seleção",
   "selection.preview": "Prévia",
   "selection.fallback": "Use o menu de seleção se o sistema ou o leitor de tela capturar essas teclas.",
-  "selection.extendKeys": "Estender seleção"
+  "selection.extendKeys": "Estender seleção",
+  "menu.selectionAddedBoundary": "Adicionados a {name}: {count, plural, one {# nó} other {# nós}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Removidos dos limites: {count, plural, one {# nó} other {# nós}}. {selection}."
 }

@@ -2822,8 +2822,6 @@
   "menu.selectionAddBoundary": "Ajouter à une périmètre…",
   "menu.selectionRemoveBoundary": "Retirer de la périmètre",
   "menu.selectionSearchBoundaries": "Rechercher des périmètres",
-  "selection.addedBoundary": "Ajoutés à {name}: {count, plural, one {# nœud} other {# nœuds}}. {selection}.",
-  "selection.removedBoundary": "Retirés des périmètres: {count, plural, one {# nœud} other {# nœuds}}. {selection}.",
   "selection.extend": "Étendre la sélection…",
   "selection.remove": "Retirer de la sélection…",
   "selection.area": "Dans cette zone…",
@@ -2839,5 +2837,7 @@
   "selection.add": "Ajouter à la sélection",
   "selection.preview": "Aperçu",
   "selection.fallback": "Utilisez le menu de sélection si le système ou le lecteur d’écran intercepte ces touches.",
-  "selection.extendKeys": "Étendre la sélection"
+  "selection.extendKeys": "Étendre la sélection",
+  "menu.selectionAddedBoundary": "Ajoutés à {name}: {count, plural, one {# nœud} other {# nœuds}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Retirés des périmètres: {count, plural, one {# nœud} other {# nœuds}}. {selection}."
 }

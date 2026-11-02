@@ -2814,8 +2814,6 @@
   "menu.selectionAddBoundary": "बाउंड्री में जोड़ें…",
   "menu.selectionRemoveBoundary": "बाउंड्री से हटाएँ",
   "menu.selectionSearchBoundaries": "बाउंड्री खोजें",
-  "selection.addedBoundary": "{name} में जोड़े गए: {count, plural, one {# नोड} other {# नोड}}. {selection}.",
-  "selection.removedBoundary": "बाउंड्री से हटाए गए: {count, plural, one {# नोड} other {# नोड}}. {selection}.",
   "selection.extend": "चयन बढ़ाएँ…",
   "selection.remove": "चयन से हटाएँ…",
   "selection.area": "इस क्षेत्र के अंदर…",
@@ -2831,5 +2829,7 @@
   "selection.add": "चयन में जोड़ें",
   "selection.preview": "पूर्वावलोकन",
   "selection.fallback": "अगर सिस्टम या स्क्रीन रीडर इन कुंजियों का उपयोग करता है, तो चयन मेनू का उपयोग करें।",
-  "selection.extendKeys": "चयन बढ़ाएँ"
+  "selection.extendKeys": "चयन बढ़ाएँ",
+  "menu.selectionAddedBoundary": "{name} में जोड़े गए: {count, plural, one {# नोड} other {# नोड}}. {selection}.",
+  "menu.selectionRemovedBoundary": "बाउंड्री से हटाए गए: {count, plural, one {# नोड} other {# नोड}}. {selection}."
 }

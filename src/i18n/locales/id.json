@@ -2816,8 +2816,6 @@
   "menu.selectionAddBoundary": "Tambahkan ke batas…",
   "menu.selectionRemoveBoundary": "Hapus dari batas",
   "menu.selectionSearchBoundaries": "Cari batas",
-  "selection.addedBoundary": "Ditambahkan ke {name}: {count, plural, other {# node}}. {selection}.",
-  "selection.removedBoundary": "Dihapus dari batas: {count, plural, other {# node}}. {selection}.",
   "selection.extend": "Perluas pilihan…",
   "selection.remove": "Hapus dari pilihan…",
   "selection.area": "Di dalam area ini…",
@@ -2833,5 +2831,7 @@
   "selection.add": "Tambahkan ke pilihan",
   "selection.preview": "Pratinjau",
   "selection.fallback": "Gunakan menu pilihan jika sistem atau pembaca layar mengambil alih tombol ini.",
-  "selection.extendKeys": "Perluas pilihan"
+  "selection.extendKeys": "Perluas pilihan",
+  "menu.selectionAddedBoundary": "Ditambahkan ke {name}: {count, plural, other {# node}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Dihapus dari batas: {count, plural, other {# node}}. {selection}."
 }

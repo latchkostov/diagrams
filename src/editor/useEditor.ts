@@ -4,7 +4,6 @@ import { revisionAtLeast } from "../model/revisions";
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
 import { changeNodeStencil } from "../model/changeNodeStencil";
 import { t } from "../i18n";
-import { surfaceCatalogs } from "../i18n/surfaces";
 import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
@@ -1602,7 +1601,6 @@ export function createEditor(
     openSelectionArea: () => deps().openSelectionArea?.(),
     transferBoundary: async (ids, groupId) => {
       const focused = deps().focusedNode?.();
-      await surfaceCatalogs(["selection"]);
       const { planBoundaryTransfer } = await import("./boundaryTransfer");
       const ns = currentNodes();
       const eligible = ns
@@ -1650,12 +1648,12 @@ export function createEditor(
       const selection = api.getSelection();
       const selected = selection.nodeIds.length + selection.edgeIds.length + selection.groupIds.length;
       const text = groupId
-        ? t("selection.addedBoundary", {
+        ? t("menu.selectionAddedBoundary", {
             count: plan.positions.size,
             name: api.getGroup(groupId)?.label || t("chrome.untitledBoundary"),
             selection: t("ai.selected", { count: selected }),
           })
-        : t("selection.removedBoundary", {
+        : t("menu.selectionRemovedBoundary", {
             count: plan.positions.size,
             selection: t("ai.selected", { count: selected }),
           });

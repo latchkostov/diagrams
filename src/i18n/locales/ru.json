@@ -2797,8 +2797,6 @@
   "menu.selectionAddBoundary": "Добавить в границу…",
   "menu.selectionRemoveBoundary": "Убрать из границы",
   "menu.selectionSearchBoundaries": "Поиск границ",
-  "selection.addedBoundary": "Добавлено в {name}: {count, plural, many {# узлов} one {# узел} few {# узлов} other {# узлов}}. {selection}.",
-  "selection.removedBoundary": "Убрано из границ: {count, plural, many {# узлов} one {# узел} few {# узлов} other {# узлов}}. {selection}.",
   "selection.extend": "Расширить выделение…",
   "selection.remove": "Убрать из выделения…",
   "selection.area": "Внутри этой области…",
@@ -2814,5 +2812,7 @@
   "selection.add": "Добавить к выделению",
   "selection.preview": "Предпросмотр",
   "selection.fallback": "Используйте меню выделения, если система или программа чтения с экрана перехватывает эти клавиши.",
-  "selection.extendKeys": "Расширить выделение"
+  "selection.extendKeys": "Расширить выделение",
+  "menu.selectionAddedBoundary": "Добавлено в {name}: {count, plural, many {# узлов} one {# узел} few {# узлов} other {# узлов}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Убрано из границ: {count, plural, many {# узлов} one {# узел} few {# узлов} other {# узлов}}. {selection}."
 }

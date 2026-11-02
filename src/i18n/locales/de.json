@@ -2833,8 +2833,6 @@
   "menu.selectionAddBoundary": "Zu Begrenzung hinzufügen…",
   "menu.selectionRemoveBoundary": "Aus Begrenzung entfernen",
   "menu.selectionSearchBoundaries": "Begrenzungen suchen",
-  "selection.addedBoundary": "Zu {name} hinzugefügt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}.",
-  "selection.removedBoundary": "Aus Begrenzungen entfernt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}.",
   "selection.extend": "Auswahl erweitern…",
   "selection.remove": "Aus Auswahl entfernen…",
   "selection.area": "Innerhalb dieses Bereichs…",
@@ -2850,5 +2848,7 @@
   "selection.add": "Zur Auswahl hinzufügen",
   "selection.preview": "Vorschau",
   "selection.fallback": "Verwende das Auswahlmenü, wenn das Betriebssystem oder der Screenreader diese Tasten abfängt.",
-  "selection.extendKeys": "Auswahl erweitern"
+  "selection.extendKeys": "Auswahl erweitern",
+  "menu.selectionAddedBoundary": "Zu {name} hinzugefügt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Aus Begrenzungen entfernt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}."
 }

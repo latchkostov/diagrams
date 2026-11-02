@@ -2805,8 +2805,6 @@
   "menu.selectionAddBoundary": "Pievienot robežai…",
   "menu.selectionRemoveBoundary": "Noņemt no robežas",
   "menu.selectionSearchBoundaries": "Meklēt robežas",
-  "selection.addedBoundary": "Pievienoti pie {name}: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}.",
-  "selection.removedBoundary": "Noņemti no robežām: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}.",
   "selection.extend": "Paplašināt atlasi…",
   "selection.remove": "Noņemt no atlases…",
   "selection.area": "Šī apgabala iekšpusē…",
@@ -2822,5 +2820,7 @@
   "selection.add": "Pievienot atlasei",
   "selection.preview": "Priekšskatījums",
   "selection.fallback": "Izmantojiet atlases izvēlni, ja sistēma vai ekrāna lasītājs pārņem šos taustiņus.",
-  "selection.extendKeys": "Paplašināt atlasi"
+  "selection.extendKeys": "Paplašināt atlasi",
+  "menu.selectionAddedBoundary": "Pievienoti pie {name}: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Noņemti no robežām: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}."
 }

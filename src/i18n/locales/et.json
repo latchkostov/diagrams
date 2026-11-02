@@ -2816,8 +2816,6 @@
   "menu.selectionAddBoundary": "Lisa piiridesse…",
   "menu.selectionRemoveBoundary": "Eemalda piiridest",
   "menu.selectionSearchBoundaries": "Otsi piire",
-  "selection.addedBoundary": "Lisatud piiridesse {name}: {count, plural, other {# sõlme} one {# sõlm}}. {selection}.",
-  "selection.removedBoundary": "Piiridest eemaldatud: {count, plural, other {# sõlme} one {# sõlm}}. {selection}.",
   "selection.extend": "Laienda valikut…",
   "selection.remove": "Eemalda valikust…",
   "selection.area": "Selle ala sees…",
@@ -2833,5 +2831,7 @@
   "selection.add": "Lisa valikule",
   "selection.preview": "Eelvaade",
   "selection.fallback": "Kasuta valikumenüüd, kui süsteem või ekraanilugeja kasutab neid klahve.",
-  "selection.extendKeys": "Laienda valikut"
+  "selection.extendKeys": "Laienda valikut",
+  "menu.selectionAddedBoundary": "Lisatud piiridesse {name}: {count, plural, other {# sõlme} one {# sõlm}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Piiridest eemaldatud: {count, plural, other {# sõlme} one {# sõlm}}. {selection}."
 }

@@ -2820,8 +2820,6 @@
   "menu.selectionAddBoundary": "Добавяне към рамка…",
   "menu.selectionRemoveBoundary": "Премахване от рамка",
   "menu.selectionSearchBoundaries": "Търсене на рамки",
-  "selection.addedBoundary": "Добавени към {name}: {count, plural, other {# възела} one {# възел}}. {selection}.",
-  "selection.removedBoundary": "Премахнати от рамките: {count, plural, other {# възела} one {# възел}}. {selection}.",
   "selection.extend": "Разширяване на избора…",
   "selection.remove": "Премахване от избора…",
   "selection.area": "В тази област…",
@@ -2837,5 +2835,7 @@
   "selection.add": "Добавяне към избора",
   "selection.preview": "Преглед",
   "selection.fallback": "Използвайте менюто за избор, ако системата или екранният четец прихваща тези клавиши.",
-  "selection.extendKeys": "Разширяване на избора"
+  "selection.extendKeys": "Разширяване на избора",
+  "menu.selectionAddedBoundary": "Добавени към {name}: {count, plural, other {# възела} one {# възел}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Премахнати от рамките: {count, plural, other {# възела} one {# възел}}. {selection}."
 }

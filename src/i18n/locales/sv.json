@@ -2829,8 +2829,6 @@
   "menu.selectionAddBoundary": "Lägg till i avgränsning…",
   "menu.selectionRemoveBoundary": "Ta bort från avgränsning",
   "menu.selectionSearchBoundaries": "Sök avgränsningar",
-  "selection.addedBoundary": "Tillagda i {name}: {count, plural, other {# noder} one {# nod}}. {selection}.",
-  "selection.removedBoundary": "Borttagna från avgränsningar: {count, plural, other {# noder} one {# nod}}. {selection}.",
   "selection.extend": "Utöka markering…",
   "selection.remove": "Ta bort från markering…",
   "selection.area": "Inom det här området…",
@@ -2846,5 +2844,7 @@
   "selection.add": "Lägg till i markering",
   "selection.preview": "Förhandsvisning",
   "selection.fallback": "Använd markeringsmenyn om systemet eller skärmläsaren fångar dessa tangenter.",
-  "selection.extendKeys": "Utöka markering"
+  "selection.extendKeys": "Utöka markering",
+  "menu.selectionAddedBoundary": "Tillagda i {name}: {count, plural, other {# noder} one {# nod}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Borttagna från avgränsningar: {count, plural, other {# noder} one {# nod}}. {selection}."
 }

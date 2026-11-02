@@ -2836,8 +2836,6 @@
   "menu.selectionAddBoundary": "Hozzáadás határhoz…",
   "menu.selectionRemoveBoundary": "Eltávolítás a határból",
   "menu.selectionSearchBoundaries": "Határok keresése",
-  "selection.addedBoundary": "Hozzáadva ehhez: {name}: {count, plural, other {# csomópont} one {# csomópont}}. {selection}.",
-  "selection.removedBoundary": "Eltávolítva a határokból: {count, plural, other {# csomópont} one {# csomópont}}. {selection}.",
   "selection.extend": "Kijelölés bővítése…",
   "selection.remove": "Eltávolítás a kijelölésből…",
   "selection.area": "Ezen a területen belül…",
@@ -2853,5 +2851,7 @@
   "selection.add": "Hozzáadás a kijelöléshez",
   "selection.preview": "Előnézet",
   "selection.fallback": "Használja a kijelölési menüt, ha a rendszer vagy a képernyőolvasó lefoglalja ezeket a billentyűket.",
-  "selection.extendKeys": "Kijelölés bővítése"
+  "selection.extendKeys": "Kijelölés bővítése",
+  "menu.selectionAddedBoundary": "Hozzáadva ehhez: {name}: {count, plural, other {# csomópont} one {# csomópont}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Eltávolítva a határokból: {count, plural, other {# csomópont} one {# csomópont}}. {selection}."
 }

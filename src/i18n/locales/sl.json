@@ -2828,8 +2828,6 @@
   "menu.selectionAddBoundary": "Dodaj v mejo…",
   "menu.selectionRemoveBoundary": "Odstrani iz meje",
   "menu.selectionSearchBoundaries": "Poišči meje",
-  "selection.addedBoundary": "Dodano v {name}: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}.",
-  "selection.removedBoundary": "Odstranjeno iz meja: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}.",
   "selection.extend": "Razširi izbor…",
   "selection.remove": "Odstrani iz izbora…",
   "selection.area": "Znotraj tega območja…",
@@ -2845,5 +2843,7 @@
   "selection.add": "Dodaj v izbor",
   "selection.preview": "Predogled",
   "selection.fallback": "Uporabite meni za izbor, če sistem ali bralnik zaslona prestreže te tipke.",
-  "selection.extendKeys": "Razširi izbor"
+  "selection.extendKeys": "Razširi izbor",
+  "menu.selectionAddedBoundary": "Dodano v {name}: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Odstranjeno iz meja: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}."
 }
