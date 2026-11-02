@@ -87,18 +87,34 @@ export function planBoundaryTransfer(
     // from overlapping/nested ancestors; each local collision search retains its fixed budget.
     const surrounding = currentGroups.filter((g) => overlaps(bounds, g));
     const faces = [...surrounding, ...(surrounding.length ? [boundsOf(surrounding)!] : [])];
+    // Seeds sit beyond each face and corner. Clear seeds come first, nearest first; an obstructed
+    // seed is kept after them, because the bounded local search around it can still reach nearby
+    // free space (a corner between neighbouring boundaries).
+    const seeds = faces.flatMap((g) => {
+      const left = g.x - bounds.x - bounds.width - COPY_MARGIN;
+      const right = g.x + g.width - bounds.x + COPY_MARGIN;
+      const above = g.y - bounds.y - bounds.height - COPY_MARGIN;
+      const below = g.y + g.height - bounds.y + COPY_MARGIN;
+      return [
+        { x: left, y: 0 },
+        { x: right, y: 0 },
+        { x: 0, y: above },
+        { x: 0, y: below },
+        { x: left, y: above },
+        { x: right, y: above },
+        { x: left, y: below },
+        { x: right, y: below },
+      ];
+    });
+    const blocked = (d: XY) =>
+      currentGroups.some((g) => overlaps({ ...bounds, x: bounds.x + d.x, y: bounds.y + d.y }, g)) ? 1 : 0;
     const starts =
       destination === undefined && faces.length
-        ? faces
-            .flatMap((g) => [
-              { x: g.x - bounds.x - bounds.width - COPY_MARGIN, y: 0 },
-              { x: g.x + g.width - bounds.x + COPY_MARGIN, y: 0 },
-              { x: 0, y: g.y - bounds.y - bounds.height - COPY_MARGIN },
-              { x: 0, y: g.y + g.height - bounds.y + COPY_MARGIN },
-            ])
-            .filter((d) => !currentGroups.some((g) => overlaps({ ...bounds, x: bounds.x + d.x, y: bounds.y + d.y }, g)))
-            .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
+        ? [...new Map(seeds.map((d) => [`${d.x},${d.y}`, d])).values()]
+            .map((d) => ({ d, blocked: blocked(d), distance: Math.hypot(d.x, d.y) }))
+            .sort((a, b) => a.blocked - b.blocked || a.distance - b.distance)
             .slice(0, 24)
+            .map(({ d }) => d)
         : [{ x: 0, y: 0 }];
     let delta: XY | null = null;
     for (const start of starts) {

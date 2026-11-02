@@ -246,3 +246,33 @@ it.each(["b", "gone", undefined])(
     expect(h.deps.reveal).toHaveBeenCalledWith(focused === "b" ? "b" : "a");
   },
 );
+it("removes past neighbouring boundaries that block every face", () => {
+  const gs = [
+    { id: "source", x: 0, y: 0, width: 400, height: 400 },
+    { id: "west", x: -450, y: 0, width: 400, height: 400 },
+    { id: "east", x: 450, y: 0, width: 400, height: 400 },
+    { id: "north", x: 0, y: -450, width: 400, height: 400 },
+    { id: "south", x: 0, y: 450, width: 400, height: 400 },
+  ];
+  const ns = [{ id: "a", group: "source", x: 150, y: 170, width: 100, height: 60 }];
+  const p = planBoundaryTransfer(ns, gs, ["a"], undefined);
+  expect(p).not.toBeNull();
+  const placed = { ...ns[0], ...p!.positions.get("a")! };
+  for (const g of gs) expect(overlaps(placed, g)).toBe(false);
+  expect(groupOf(gs, placed)).toBeUndefined();
+});
+it("searches around blocked face seeds to reach clear diagonal space", () => {
+  const gs = [
+    { id: "source", x: 0, y: 0, width: 400, height: 400 },
+    { id: "west", x: -280, y: 100, width: 260, height: 200 },
+    { id: "east", x: 420, y: 100, width: 260, height: 200 },
+    { id: "north", x: 80, y: -220, width: 240, height: 200 },
+    { id: "south", x: 80, y: 420, width: 240, height: 200 },
+  ];
+  const ns = [{ id: "a", group: "source", x: 90, y: 150, width: 220, height: 72 }];
+  const p = planBoundaryTransfer(ns, gs, ["a"], undefined);
+  expect(p).not.toBeNull();
+  const placed = { ...ns[0], ...p!.positions.get("a")! };
+  for (const g of gs) expect(overlaps(placed, g)).toBe(false);
+  expect(groupOf(gs, placed)).toBeUndefined();
+});
