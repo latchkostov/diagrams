@@ -863,8 +863,11 @@ export function createInteractionController<P = unknown>(
       if (kind === "press") abandonRename("press");
       if (focus.pending?.retry) decide({ type: "input" });
     },
-    /** Focus arrived on `el` (focusin): Tab or a script taking it out of the canvas ends a pending rename. */
+    /** Focus arrived on `el` (focusin): leaving the canvas ends a pending rename or its frame retry. */
     focusArrived(el: ElementHandle) {
+      // Once the field has handed off its buffer, its frame retry still belongs to that
+      // handoff. Another control taking focus ends it before the next key is delivered.
+      if (!running && focus.pending?.retry && port.elsewhere?.(el)) decide({ type: "input" });
       if (mode.value === "released" && !running && port.elsewhere?.(el) && mode.target)
         toMode({ type: "naming.cancelled", target: mode.target });
       if (rename && !running && port.elsewhere?.(el)) abandonRename("focus");
