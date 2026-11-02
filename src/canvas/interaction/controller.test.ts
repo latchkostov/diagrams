@@ -1786,3 +1786,79 @@ it("route observation survives control remounts, allows only the expected nudge 
   c.selectionCommitted('["a-b"]', false);
   expect(c.observeSegmentRoute("a-b", "fresh-selection")).toBe(false);
 });
+
+it("queues selection keys in order during catalog loading and publishes readiness until the batch drains", async () => {
+  const h = harness();
+  let release!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const counts: string[] = [];
+  const failed = vi.fn();
+  h.controller.selectionWhenReady(
+    ready,
+    () => {
+      counts.push("first");
+      return true;
+    },
+    failed,
+  );
+  h.controller.input("selection-key");
+  h.controller.selectionWhenReady(
+    ready,
+    () => {
+      counts.push("second");
+      return true;
+    },
+    failed,
+  );
+  expect(counts).toEqual([]);
+  expect(h.controller.phase).toBe("focus-pending");
+  release();
+  await ready;
+  expect(counts).toEqual(["first", "second"]);
+  expect(h.controller.phase).toBe("idle");
+  expect(failed).not.toHaveBeenCalled();
+});
+
+it.each(["key", "press", "elsewhere", "blur"] as const)(
+  "%s cancels held selection commands before a late catalog completion",
+  async (kind) => {
+    const h = harness();
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const run = vi.fn(() => true);
+    h.controller.selectionWhenReady(ready, run, vi.fn());
+    if (kind === "elsewhere") h.controller.focusArrived({ name: "input:outside" });
+    else if (kind === "blur") h.controller.cancelSelection();
+    else h.controller.input(kind);
+    release();
+    await ready;
+    expect(run).not.toHaveBeenCalled();
+    expect(h.controller.phase).toBe("idle");
+  },
+);
+
+it("a failed selection catalog reports once, drops its batch and lets the next request retry", async () => {
+  const h = harness();
+  const failed = vi.fn(),
+    run = vi.fn(() => true);
+  const ready = Promise.reject(new Error("offline"));
+  h.controller.selectionWhenReady(ready, run, failed);
+  const second = Promise.reject(new Error("offline again"));
+  const caught = vi.spyOn(second, "catch");
+  try {
+    h.controller.selectionWhenReady(second, run, failed);
+    expect(caught).toHaveBeenCalledOnce();
+  } finally {
+    await second.catch(() => {});
+  }
+  await ready.catch(() => {});
+  expect(failed).toHaveBeenCalledOnce();
+  expect(run).not.toHaveBeenCalled();
+  expect(h.controller.phase).toBe("idle");
+  expect(h.controller.selectionWhenReady(undefined, run, failed)).toBe(true);
+  expect(run).toHaveBeenCalledOnce();
+});

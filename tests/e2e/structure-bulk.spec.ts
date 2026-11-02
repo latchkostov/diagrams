@@ -311,6 +311,7 @@ test.describe("bulk edit and Select similar (D11)", () => {
   test("Select similar picks every node of the stencil, from the right-click and from Ctrl+K", async ({ page }) => {
     await seed(page);
     await page.getByTestId("node-api").click({ button: "right" });
+    await menuItem(page, "selection.select").click();
     await menuItem(page, "item.select-similar").click();
     // Orders API and Carrier API are both Node.js services.
     await expect.poll(() => selectedIds(page)).toEqual(["node-api", "node-carrier"]);
@@ -327,6 +328,7 @@ test.describe("bulk edit and Select similar (D11)", () => {
     await seed(page);
     const selectMessages = async () => {
       await page.getByTestId("edge-label-a-w").click({ button: "right" });
+      await menuItem(page, "selection.select").click();
       await menuItem(page, "item.select-similar").click();
     };
     await selectMessages();
@@ -390,6 +392,7 @@ test.describe("bulk edit and Select similar (D11)", () => {
       () => page.getByTestId("edge-label-a-w").click({ button: "right" }),
     ]) {
       await open();
+      await menuItem(page, "selection.select").click();
       await expect(menuItem(page, "item.select-similar")).toBeVisible();
       for (const n of await menuCounts(page)) expect(n).toBeLessThanOrEqual(12);
       await page.keyboard.press("Escape");

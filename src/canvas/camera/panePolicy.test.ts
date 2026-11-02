@@ -1001,3 +1001,27 @@ it.each([0.4, 0.499, 0.5, 0.55, 0.599, 0.6])("Live edge navigation retains its b
   expect(d.state.view).toBe(zoom < 0.6 ? "focus" : "custom");
   expect(d.commands.map((c) => c.type)).toEqual([zoom < 0.6 ? "focusSelection" : "reveal"]);
 });
+
+it("automatic Focus for an extend destination frames the destination, not the whole selection", () => {
+  const extendTo = (
+    target: { kind: "node" | "edge"; id: string; frame?: readonly string[] },
+    cause: "navigation" | "edge-navigation",
+  ) =>
+    decide(state({ owner: "manual", view: "custom" }), {
+      type: "reveal.requested",
+      cause,
+      keyboard: true,
+      zoom: 0.4,
+      scope: { kind: "selection", withEdges: false, roomBelow: 0, target },
+    }).commands;
+  expect(extendTo({ kind: "node", id: "far", frame: ["far"] }, "navigation")).toEqual([
+    { type: "focusSelection", nodes: new Set(["far"]), automatic: true },
+  ]);
+  expect(extendTo({ kind: "edge", id: "e1", frame: ["a", "b"] }, "edge-navigation")).toEqual([
+    { type: "focusSelection", nodes: new Set(["a", "b"]), automatic: true },
+  ]);
+  // Without a destination (ordinary navigation replaces the selection), Focus frames the selection.
+  expect(extendTo({ kind: "node", id: "far" }, "navigation")).toEqual([
+    { type: "focusSelection", nodes: undefined, automatic: true },
+  ]);
+});

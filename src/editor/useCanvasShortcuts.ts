@@ -184,6 +184,17 @@ export function useCanvasShortcuts(
           grow(from, TOWARD[e.key], id === "clone-next");
           break;
         }
+        case "extend-toward":
+        case "extend-edge-out":
+        case "extend-edge-in": {
+          if (optsRef.current.live || !inCanvas(e.target)) return;
+          handled();
+          editor.selectionTool({
+            type: "navigate",
+            step: id === "extend-toward" ? TOWARD[e.key] : id === "extend-edge-out" ? "edge-out" : "edge-in",
+          });
+          break;
+        }
         case "select-toward":
         case "select-edge-out":
         case "select-edge-in": {

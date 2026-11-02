@@ -14,6 +14,7 @@ import {
   goToViewport,
   hasVisibleContent,
   revealPan,
+  selectionBoxes,
 } from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
 afterEach(() => vi.unstubAllGlobals());
@@ -312,6 +313,43 @@ const workbenchRoot = {
   closest: () => null,
   querySelectorAll: () => [],
 } as unknown as HTMLElement;
+
+for (const kind of ["node", "edge"] as const)
+  it(`reveals only the extended ${kind} destination without changing selected flags`, () => {
+    const state = workbenchState(6000);
+    for (const node of state.nodeLookup.values()) node.selected = true;
+    state.edges[0].selected = true;
+    vi.mocked(selectRoutes).mockReturnValue(
+      new Map([
+        [
+          "ab",
+          {
+            points: [
+              { x: 100, y: 20 },
+              { x: 6100, y: 20 },
+            ],
+            label: { x: 3000, y: 0, width: 100, height: 30 },
+          },
+        ],
+      ]) as never,
+    );
+    const target = kind === "node" ? { kind, id: "b" } : { kind, id: "ab" };
+    const boxes = selectionBoxes(
+      state,
+      { style: "straight", direction: "LR" },
+      {
+        withEdges: false,
+        roomBelow: 0,
+        zoom: 1,
+        target,
+      },
+    );
+    expect(boxes?.core).toEqual(
+      kind === "node" ? { x: 6000, y: 0, width: 180, height: 80 } : { x: 98, y: -15, width: 6004, height: 37 },
+    );
+    expect([...state.nodeLookup.values()].every((node) => node.selected)).toBe(true);
+    expect(state.edges[0].selected).toBe(true);
+  });
 it("fits an editable grow chip without changing a viewer's frame", () => {
   vi.mocked(selectRoutes).mockReturnValue(new Map());
   const s = workbenchState(6000);

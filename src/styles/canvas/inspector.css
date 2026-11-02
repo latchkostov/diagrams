@@ -852,6 +852,9 @@ button.message-type-chip {
   background: var(--panel);
   border: 1px solid var(--line);
 }
+.inspector.is-collapsed > .icon-btn + .icon-btn {
+  inset-inline-end: 44px;
+}
 .dock-tabs {
   display: flex;
   align-self: stretch;

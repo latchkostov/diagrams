@@ -498,6 +498,6 @@ const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, 
 
 // eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
 export async function paletteDialogWhenReady() {
-  await surfaceCatalogs(["tutorialTitles", "stencils"]);
+  await surfaceCatalogs(["tutorialTitles", "stencils", "selection"]);
   return PaletteDialog;
 }

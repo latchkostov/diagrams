@@ -155,6 +155,9 @@ import type { ViewerAttribution } from "../export/viewer/options";
 /** A room's cursor is sent at most this often (src/collab/limits.ts, cursorIntervalMs; the canvas doesn't import it). */
 const COLLAB_CURSOR_MS = 67;
 import { t as tr, useLocale } from "../i18n";
+import { surfaceCatalogs } from "../i18n/surfaces";
+import { useSurfaceCatalogs } from "../i18n/useSurfaceCatalogs";
+import type { SelectionCommand, SelectionTarget } from "../editor/selectionCommands";
 import { lazyComponent } from "../lib/lazyLoad";
 import { ShortcutsShell } from "../components/ShortcutsShell";
 import { CopyNotice } from "./CopyNotice";
@@ -178,9 +181,21 @@ import { targetRemoved } from "./menus/menuTargets";
  * arrives (or if its download fails) a dialog of the same name stands in: Esc and Close dismiss it, Retry tries again.
  */
 const ShortcutsDialog = lazyComponent(
-  () => import("../components/ShortcutsDialog").then((m) => m.ShortcutsDialog),
+  () => import("../components/ShortcutsDialog").then((m) => m.shortcutsWhenReady()),
   ({ onClose }, status) => <ShortcutsShell onClose={onClose} status={status} />,
 );
+const SelectionAreaDialog = defineLazySurface({
+  id: "canvas.selection-area",
+  load: () => import("./selection/SelectionAreaDialog").then((m) => m.selectionAreaWhenReady()),
+  placeholder: {
+    render: ({ onClose }, status) => (
+      <ShortcutsShell selection title={tr("rail.select")} onClose={onClose} status={status} />
+    ),
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -421,10 +436,13 @@ function CanvasInner({
     setOrder,
   } = useInteractionCore<CanvasSurface>(wrapper, store, nodes, edges);
   const surface = interactionState.menu;
-  const menu = surface && surface.kind !== "dialog" ? surface.payload : null;
+  const menu =
+    surface && surface.kind !== "dialog" && surface.payload && "items" in surface.payload ? surface.payload : null;
   const menuSeq = surface?.seq;
-  const menuItems = useCanvasMenuItems(menu, locale);
-  const shortcutsOpen = surface?.kind === "dialog";
+  const selectionCatalog = useSurfaceCatalogs(["selection"], !!menu?.selectionTools);
+  const menuItems = useCanvasMenuItems(menu, locale, selectionCatalog);
+  const selectionAreaOpen = surface?.kind === "dialog" && !!surface.payload && "area" in surface.payload;
+  const shortcutsOpen = surface?.kind === "dialog" && !selectionAreaOpen;
   const showShortcuts = useCallback(() => void interaction.openMenu("dialog", null), [interaction]);
   const closeShortcuts = useCallback(() => interaction.closeMenu("escape"), [interaction]);
   const closeMenu = useCallback(
@@ -435,6 +453,7 @@ function CanvasInner({
   const closeMenuOnPan = useCallback(() => interaction.closeMenu("scroll"), [interaction]);
   const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
+  const selectionTool = useRef<(command: SelectionCommand) => boolean>(() => false);
   const libraryPrivacy = usePrivacyFlags(slug);
   const [roomPrivate, setRoomPrivate] = useState(false);
   const privacyFlags = useMemo(
@@ -483,7 +502,10 @@ function CanvasInner({
         onRemote.current();
         // A context menu on something a peer deleted closes (M7): its commands would act on nothing.
         const open = interaction.getSnapshot().menu;
-        if (open?.kind === "context" && targetRemoved(open.payload?.targets, s)) {
+        if (
+          open?.kind === "context" &&
+          targetRemoved(open.payload && "targets" in open.payload ? open.payload.targets : undefined, s)
+        ) {
           // The menu is portalled outside the canvas, so R1's announcement above can't have said why.
           const focusedMenu = !!document.activeElement?.closest(".cm");
           interaction.closeMenu("remote", open.seq);
@@ -625,6 +647,18 @@ function CanvasInner({
           )
         : revealSelection(),
     announceSelection: (text) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })),
+    selectionTool: (command) => {
+      if (!editGestures) return false;
+      const identity = editor.getDocumentVersion().identity;
+      return interaction.selectionWhenReady(
+        surfaceCatalogs(["selection"]),
+        () => editor.getDocumentVersion().identity === identity && selectionTool.current(command),
+        () => notify(tr("ai.loadFailed")),
+      );
+    },
+    openSelectionArea: () => {
+      if (editGestures) interaction.openMenu("dialog", { area: true });
+    },
     nameNew: (make, fallback) => nameNew.current(make, fallback),
     flushSave: (diagram) => {
       const mod = flushSave(diagram);
@@ -635,7 +669,9 @@ function CanvasInner({
   /** Alt+arrow and Alt+Shift+arrow (set below, once the flows they open are defined). */
   const grow = useRef<(from: string, toward: Toward, clone: boolean) => void>(() => {});
   /** Tab, Shift+Tab, Ctrl+Alt+arrows and Ctrl+Alt+] / [ (set below). */
-  const navigate = useRef<(step: NavStep, from: EventTarget | null) => boolean>(() => false);
+  const navigate = useRef<
+    (step: NavStep, from: EventTarget | null, extend?: boolean, target?: SelectionTarget) => boolean
+  >(() => false);
   /** Stops Run simulations, if it's playing (set once the checks are, below): true if it was. */
   const stopSimulations = useRef<() => boolean>(() => false);
   useCanvasShortcuts(editor, {
@@ -799,6 +835,10 @@ function CanvasInner({
   // Editing gestures (D4, D5): a drag on empty canvas draws the selection box, the wheel pans, and
   // Space+drag or the middle button pan. Live view, presentation and embeds keep drag-to-pan.
   const editGestures = !readOnly && !live && !presenting;
+  useLayoutEffect(() => {
+    if (!editGestures && selectionAreaOpen) interaction.closeMenu("unmount", surface?.seq);
+  }, [editGestures, selectionAreaOpen, interaction, surface?.seq]);
+
   // Live's property sheet remains editable; its other gesture gates stay separate.
 
   const isValidConnection: IsValidConnection<DiagramFlowEdge> = useCallback((c) => c.source !== c.target, []);
@@ -1232,6 +1272,8 @@ function CanvasInner({
     interaction,
     roving: interactionState.roving,
     setOrder,
+    selectionTool,
+    editing: editGestures,
   });
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
@@ -1251,6 +1293,7 @@ function CanvasInner({
           x: bounds.left,
           y: bounds.bottom,
           label: tr("menu.selectionActions"),
+          selectionTools: true,
           items: () => actionRegistry.build({ target: "selection", surface: "inspector", selection, editor }),
         },
         { via: "keyboard", platform: platform() },
@@ -1745,6 +1788,13 @@ function CanvasInner({
               />
             ))}
           {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} onTutorials={onTutorials} />}
+          {selectionAreaOpen && editGestures && (
+            <SelectionAreaDialog
+              editor={editor}
+              direction={direction}
+              onClose={(reason = "escape") => interaction.closeMenu(reason, menuSeq)}
+            />
+          )}
           {!readOnly && (
             <div
               className="sr-only"

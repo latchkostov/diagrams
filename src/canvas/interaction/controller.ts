@@ -170,6 +170,13 @@ export function createInteractionController<P = unknown>(
   /** A move running inside port.focus (the focusin it causes reads it). */
   let running: FocusMove | null = null;
   let disposed = false;
+  /** Selection keys received while their optional language catalog downloads, in input order. */
+  let selectionQueue: { commands: (() => boolean)[] } | null = null;
+  function cancelSelectionQueue() {
+    if (!selectionQueue) return;
+    selectionQueue = null;
+    changed();
+  }
   let lastPhase: InteractionPhase | null = null;
   /** The cause declared for the selection change the next commit brings (a cause lasts one commit). */
   let cause: SelectionCause | null = null;
@@ -247,7 +254,7 @@ export function createInteractionController<P = unknown>(
   function phase(): InteractionPhase {
     if (menuState.open) return "menu-open";
     if (gestureState.active) return "gesture";
-    if (recovery || (pendingMove(focus) && !parked)) return "focus-pending";
+    if (selectionQueue || recovery || (pendingMove(focus) && !parked)) return "focus-pending";
     return "idle";
   }
 
@@ -782,6 +789,7 @@ export function createInteractionController<P = unknown>(
       for (const command of result.commands) if (command.type === "node.properties") open(command.field);
     },
     dispatch(event: FocusEvent, then?: Done) {
+      if (event.type === "document.replaced" || event.type === "presenting") cancelSelectionQueue();
       if (event.type === "naming.done") toMode({ type: "naming.done" });
       if (event.type === "selection.changed") {
         cause = event.cause;
@@ -857,7 +865,35 @@ export function createInteractionController<P = unknown>(
      * rename (the person went elsewhere): its buffer is committed when supported, later keys go where they point,
      * and its field won't take focus.
      */
-    input(kind: "key" | "press" = "key") {
+    selectionWhenReady(ready: Promise<void> | undefined, run: () => boolean, failed: () => void): boolean {
+      if (!ready) return run();
+      if (selectionQueue) {
+        void ready.catch(() => {});
+        selectionQueue.commands.push(run);
+        return true;
+      }
+      const queue = { commands: [run] };
+      selectionQueue = queue;
+      changed();
+      void ready.then(
+        () => {
+          if (disposed || selectionQueue !== queue) return;
+          selectionQueue = null;
+          for (const command of queue.commands) command();
+          changed();
+        },
+        () => {
+          if (disposed || selectionQueue !== queue) return;
+          selectionQueue = null;
+          failed();
+          changed();
+        },
+      );
+      return true;
+    },
+    cancelSelection: cancelSelectionQueue,
+    input(kind: "key" | "press" | "selection-key" = "key") {
+      if (kind !== "selection-key") cancelSelectionQueue();
       if (kind === "press" && mode.value === "released" && mode.target)
         toMode({ type: "naming.cancelled", target: mode.target });
       if (kind === "press") abandonRename("press");
@@ -865,6 +901,7 @@ export function createInteractionController<P = unknown>(
     },
     /** Focus arrived on `el` (focusin): leaving the canvas ends a pending rename or its frame retry. */
     focusArrived(el: ElementHandle) {
+      if (selectionQueue && !running && port.elsewhere?.(el)) cancelSelectionQueue();
       // Once the field has handed off its buffer, its frame retry still belongs to that
       // handoff. Another control taking focus ends it before the next key is delivered.
       if (!running && focus.pending?.retry && port.elsewhere?.(el)) decide({ type: "input" });
@@ -884,6 +921,7 @@ export function createInteractionController<P = unknown>(
     },
     /** Live's session: off, playing or paused (useLiveSessionState.ts tells it). */
     live(state: EditorModeState["live"]) {
+      cancelSelectionQueue();
       toMode({ type: "live", state });
     },
     /** The editor's mode (mode.ts). */
@@ -916,6 +954,7 @@ export function createInteractionController<P = unknown>(
       disposed = false;
       changed();
       return () => {
+        cancelSelectionQueue();
         if (gestureState.active) endGesture(gestureState.active.seq, "unmount");
         disposed = true;
         cancelFrame?.();

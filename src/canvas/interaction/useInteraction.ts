@@ -14,6 +14,7 @@ import { createDomPort, domScheduler, type DomCanvas } from "./domPort";
 import { interactionJournal } from "./journal";
 import { dependencyVisibility } from "../dependencyVisibility";
 import { useInteraction } from "./context";
+import { shortcutFor } from "../../editor/shortcuts";
 import { canvasInteraction } from "./canvasInteraction";
 export { InteractionContext, useInteraction } from "./context";
 import { isDependency } from "../../model/relations";
@@ -117,7 +118,9 @@ export function useInteractionLifecycle<P>(controller: InteractionController<P> 
     // Capture input before anything handles it: a move's second attempt stands down (a press also ends a held rename).
     const press = () => controller.input("press");
     const key = (event: KeyboardEvent) => {
-      controller.input("key");
+      const selectionKey =
+        !event.isComposing && ["extend-toward", "extend-edge-out", "extend-edge-in"].includes(shortcutFor(event) ?? "");
+      controller.input(selectionKey || ["Control", "Alt", "Shift"].includes(event.key) ? "selection-key" : "key");
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
       const overlay = document.querySelector('[role="dialog"]')
         ? "dialog"
@@ -129,6 +132,7 @@ export function useInteractionLifecycle<P>(controller: InteractionController<P> 
       event.stopImmediatePropagation();
     };
     const blur = () => {
+      controller.cancelSelection();
       if (controller.gesture) controller.endGesture(controller.gesture.seq, "blur");
     };
     const focusin = (event: FocusEvent) => {

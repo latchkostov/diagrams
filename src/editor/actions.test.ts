@@ -96,6 +96,7 @@ describe("action registry", () => {
       ...ctx("annotation"),
       nodeId: "note",
       editor: {
+        ...ctx("annotation").editor,
         getAnnotation: (id): DiagramAnnotation | undefined =>
           id === "note" ? { id, kind: "note", text: "Reminder", x: 0, y: 0, width: 240, height: 110 } : undefined,
       } as EditorApi,
@@ -360,6 +361,8 @@ it("folds boundary commands within the menu budget while keeping palette and Ins
     expect.arrayContaining(["selection.add-to-boundary", "selection.remove-from-boundary", "selection.group"]),
   );
   expect(ids(registry.build({ ...context, surface: "inspector" }))).toEqual([
+    "selection.select",
+    "---",
     "selection.add-to-boundary",
     "selection.remove-from-boundary",
   ]);

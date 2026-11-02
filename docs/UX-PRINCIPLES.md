@@ -149,7 +149,14 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   nodes' **Stencil**, **Boundary** and the **Simulation** settings their roles share; edges' **Relationship** and
   **Label**; annotations' and boundaries' **Colour**. Where the values differ the field says **Mixed** and is
   empty; setting it sets all of them, as one undo step. A mixed selection fits one screen at 1280×800.
-- **Select similar** (a node's or an edge's right-click, Ctrl+K): every node of the same stencil, or every edge of
+- **Select** (canvas/item menus, Ctrl+K and the Inspector's **Selection actions**) offers **Extend selection…**
+  by direction or searchable node label, **Remove from selection…** with only the selected items, and
+  **Inside this area…**. Removing an item focuses the next remaining selection in reading order, wrapping;
+  removing the last focuses the canvas. Counts are announced, and selection changes never create Undo steps.
+  The area dialog uses the full rendered bounds of searchable **From node / To node** anchors, defaulting to
+  the current selection's extremes. Its outline and count are a preview until **Select**; **Wholly inside**
+  starts on and **Add to selection** starts off. Escape cancels and returns focus. These tools are Edit-only.
+- **Select similar** (a node's or an edge's **Select** submenu, Ctrl+K): every node of the same stencil, or every edge of
   the same relationship (Message, Request, or that one dependency). Then bulk edit them.
 - **Tidy up** (the selection's right-click, the inspector's Arrange, Ctrl+K; three or more nodes): the layered
   layout on just those nodes and the edges between them, inside their box where it fits, its top-left kept.
@@ -174,7 +181,10 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   through nodes in reading order (rows from the top, each left to right; in a top-to-bottom diagram, columns),
   meeting each boundary just before its first member; past the last one Tab leaves the canvas. **Ctrl+Alt+arrows**
   (⌃⌥ on a Mac) go to the nearest node that way, and **Ctrl+Alt+]** and **[** to the node's outgoing and incoming
-  edges (again: the next one). In Edit below 50% zoom, edge navigation enters readable **Focus**,
+  edges (again: the next one). Adding **Shift** to these Ctrl+Alt moves extends the selection, with focus still
+  following the added item; selecting an existing member preserves the set. **Select ▸ Extend selection…**
+  is the guaranteed route when the OS or a screen reader takes a chord. Unshifted moves still replace the set.
+  In Edit below 50% zoom, edge navigation enters readable **Focus**,
   framing both endpoints and their one-hop neighbours, as a pointer edge selection does. At exactly
   50%, edge navigation keeps the manual zoom. Selection and focus move together, the view follows, and a screen reader hears
   the node, its boundary, its place in the order and its edges ("Payments service, Go Service, processor, in AKS.
