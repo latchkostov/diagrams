@@ -264,8 +264,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (
         event.keyboard &&
         event.zoom !== undefined &&
-        event.zoom < 0.6 &&
-        (event.cause === "focus" || event.cause === "navigation")
+        (event.cause === "edge-navigation"
+          ? state.mode === "edit" && event.zoom < 0.5
+          : event.zoom < 0.6 && (event.cause === "focus" || event.cause === "navigation"))
       )
         return next(
           { view: "focus", owner: "manual", keyboardFocus: true, pending: null },

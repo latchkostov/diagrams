@@ -505,3 +505,23 @@ it("Overview excludes the reserved legend from its fitted canvas", () => {
   expect(view.y + 680 * view.zoom).toBeLessThanOrEqual(720 - 32);
   expect(view.y).toBeGreaterThanOrEqual(32);
 });
+
+it("edge-only Focus frames its endpoints rather than an unrelated first node", () => {
+  vi.mocked(selectRoutes).mockReturnValue(new Map());
+  const s = workbenchState(600);
+  for (const n of s.nodeLookup.values()) n.selected = false;
+  const node = s.nodeLookup.get("b")!;
+  s.nodeLookup.set("c", { ...node, id: "c", internals: { ...node.internals, positionAbsolute: { x: 1200, y: 0 } } });
+  s.edges = [{ id: "bc", source: "b", target: "c", selected: true }] as DiagramFlowEdge[];
+  const actual = focusSelectionViewport(workbenchRoot, s, { style: "straight", direction: "LR" });
+  const expected = focusSelectionViewport(
+    workbenchRoot,
+    s,
+    { style: "straight", direction: "LR" },
+    new Set(["b", "c"]),
+  );
+  expect(actual).toEqual(expected);
+  expect(actual).not.toEqual(
+    focusSelectionViewport(workbenchRoot, s, { style: "straight", direction: "LR" }, new Set(["a"])),
+  );
+});

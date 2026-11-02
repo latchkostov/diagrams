@@ -2804,5 +2804,11 @@
   "workbench.sheetPeek": "Náhľad",
   "workbench.sheetHalf": "Polovičná výška",
   "workbench.sheetFull": "Plná výška",
-  "workbench.speed": "Rýchlosť"
+  "workbench.speed": "Rýchlosť",
+  "menu.selectionActions": "Akcie výberu",
+  "menu.selectionAddBoundary": "Pridať do hranice…",
+  "menu.selectionRemoveBoundary": "Odobrať z hranice",
+  "menu.selectionSearchBoundaries": "Hľadať hranice",
+  "menu.selectionAddedBoundary": "Pridané do {name}: {count, plural, other {# uzlov} one {# uzol} few {# uzlov}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Odobraté z hranice: {count, plural, other {# uzlov} one {# uzol} few {# uzlov}}. {selection}."
 }

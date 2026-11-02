@@ -2816,5 +2816,11 @@
   "workbench.sheetPeek": "Esikatselu",
   "workbench.sheetHalf": "Puolikorkeus",
   "workbench.sheetFull": "Täysi korkeus",
-  "workbench.speed": "Nopeus"
+  "workbench.speed": "Nopeus",
+  "menu.selectionActions": "Valinnan toiminnot",
+  "menu.selectionAddBoundary": "Lisää rajaukseen…",
+  "menu.selectionRemoveBoundary": "Poista rajauksesta",
+  "menu.selectionSearchBoundaries": "Hae rajauksia",
+  "menu.selectionAddedBoundary": "Lisätty rajaukseen {name}: {count, plural, other {# solmua} one {# solmu}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Poistettu rajauksista: {count, plural, other {# solmua} one {# solmu}}. {selection}."
 }

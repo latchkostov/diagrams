@@ -2811,5 +2811,11 @@
   "workbench.sheetPeek": "Pratinjau",
   "workbench.sheetHalf": "Setengah tinggi",
   "workbench.sheetFull": "Tinggi penuh",
-  "workbench.speed": "Kecepatan"
+  "workbench.speed": "Kecepatan",
+  "menu.selectionActions": "Tindakan pilihan",
+  "menu.selectionAddBoundary": "Tambahkan ke batas…",
+  "menu.selectionRemoveBoundary": "Hapus dari batas",
+  "menu.selectionSearchBoundaries": "Cari batas",
+  "menu.selectionAddedBoundary": "Ditambahkan ke {name}: {count, plural, other {# node}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Dihapus dari batas: {count, plural, other {# node}}. {selection}."
 }

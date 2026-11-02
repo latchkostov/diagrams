@@ -2810,5 +2810,11 @@
   "workbench.sheetPeek": "Náhled",
   "workbench.sheetHalf": "Poloviční výška",
   "workbench.sheetFull": "Plná výška",
-  "workbench.speed": "Rychlost"
+  "workbench.speed": "Rychlost",
+  "menu.selectionActions": "Akce výběru",
+  "menu.selectionAddBoundary": "Přidat do hranice…",
+  "menu.selectionRemoveBoundary": "Odebrat z hranice",
+  "menu.selectionSearchBoundaries": "Hledat hranice",
+  "menu.selectionAddedBoundary": "Přidáno do {name}: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Odebráno z hranic: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}."
 }

@@ -104,6 +104,8 @@ export interface MenuItem {
 export interface Action {
   /** Unique, stable id, e.g. "node.rename" or "sim.inject-10". */
   id: string;
+  /** Search aliases shared by the menu and Ctrl+K. */
+  keywords?: string;
   /** Section id; see `builtinSections`. Unknown sections sort last. */
   section: string;
   targets: readonly MenuTarget[];
@@ -252,6 +254,7 @@ function toItem(a: Action, ctx: ActionContext): MenuItem | null {
     type: "item",
     id: a.id,
     label: typeof a.label === "function" ? a.label(ctx) : a.label,
+    keywords: a.keywords,
     paletteLabel: typeof a.paletteLabel === "function" ? a.paletteLabel(ctx) : a.paletteLabel,
     icon: a.icon,
     shortcut: a.shortcut,

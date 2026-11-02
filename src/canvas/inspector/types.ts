@@ -5,6 +5,7 @@ import type { DiagramMeta } from "../convert";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode } from "../types";
 
 export interface InspectorProps {
+  onSelectionActions?: (button: HTMLElement) => void;
   privacy?: "private" | "local-only" | null;
   diagramReset?: ReactNode;
   checksStore?: import("../checks/useChecks").ChecksStore;

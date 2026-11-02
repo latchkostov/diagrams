@@ -208,6 +208,8 @@ export interface EditorApi {
   adoptAfterResize(groupId: string): { adopted: string[]; released: string[] };
   /** Wraps nodes, annotations, and boundaries in a new boundary and starts renaming it. Returns the group id. */
   groupNodes(ids: string[], tone?: GroupTone): string | null;
+  /** Physically transfer explicit nodes as rigid sets; one atomic, undoable edit. */
+  transferBoundary(nodeIds: readonly string[], groupId?: string): Promise<boolean>;
   /** Place missing members in free space in a boundary, preserving existing members; one undo step. */
   moveIntoBoundary(nodeIds: readonly string[], groupId: string, options?: { signal?: AbortSignal }): Promise<boolean>;
   ungroup(groupId: string): void;

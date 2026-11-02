@@ -1,4 +1,5 @@
 import { revisionAtLeast } from "../model/revisions";
+import { boundaryActions } from "./boundaryActions";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingTopology";
@@ -1162,6 +1163,7 @@ export function builtinActions(): Action[] {
       when: (ctx) => tidyCount(ctx) >= 3,
       run: (ctx) => ctx.editor.tidy(ctx.selection.nodeIds),
     },
+    ...boundaryActions(),
     {
       id: "selection.group",
       section: "arrange",

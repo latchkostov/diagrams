@@ -2813,5 +2813,11 @@
   "workbench.sheetPeek": "Podgląd",
   "workbench.sheetHalf": "Połowa wysokości",
   "workbench.sheetFull": "Pełna wysokość",
-  "workbench.speed": "Prędkość"
+  "workbench.speed": "Prędkość",
+  "menu.selectionActions": "Działania na zaznaczeniu",
+  "menu.selectionAddBoundary": "Dodaj do granicy…",
+  "menu.selectionRemoveBoundary": "Usuń z granicy",
+  "menu.selectionSearchBoundaries": "Szukaj granic",
+  "menu.selectionAddedBoundary": "Dodano do {name}: {count, plural, many {# węzłów} one {# węzeł} few {# węzłów} other {# węzłów}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Usunięto z granic: {count, plural, many {# węzłów} one {# węzeł} few {# węzłów} other {# węzłów}}. {selection}."
 }

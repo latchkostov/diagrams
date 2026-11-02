@@ -1,4 +1,13 @@
-import { test, expect, gotoCanvas, gotoLive, pauseClock } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  pauseClock,
+  waitForCameraIdle,
+  waitForInteractionIdle,
+  viewportTransform,
+} from "./fixtures";
 import { zoomIdentity } from "./node-identity";
 
 for (const activation of ["pointer", "keyboard"] as const)
@@ -40,6 +49,7 @@ for (const activation of ["pointer", "keyboard"] as const)
     await page.getByTestId("node-appcfg").click();
     await expect(card).toHaveCount(0);
     await expect(edge).not.toHaveClass(/is-selected/);
+    await zoomIdentity(page, 0.5);
     if (activation === "pointer") await edge.dispatchEvent("click");
     else {
       // Reach the same incoming connection again using canvas keyboard navigation.
@@ -49,7 +59,44 @@ for (const activation of ["pointer", "keyboard"] as const)
     }
     await expect(edge).toHaveClass(/is-selected/);
     await expect(card).toBeVisible();
+    await waitForInteractionIdle(page);
+    await waitForCameraIdle(page);
+    expect(Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1])).toBeCloseTo(0.5, 8);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "custom");
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-low-zoom", "mid");
+  });
+
+for (const direction of ["out", "in"] as const)
+  test(`keyboard ${direction} connection below 50% matches settled pointer Focus`, async ({ page }) => {
+    await gotoCanvas(page, "aks-app-config-key-vault");
+    const edgeId = direction === "out" ? "appcfg-to-kv" : "api-to-appcfg";
+    const edge = page.getByTestId(`edge-${edgeId}`);
+    const root = page.getByTestId("canvas-wrap");
+    const zoom = async () => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
+    await page.getByTestId("node-appcfg").click();
+    await zoomIdentity(page, 0.4);
+    await edge.dispatchEvent("click");
+    await waitForCameraIdle(page);
+    const pointerZoom = await zoom();
+    const pointerTransform = await viewportTransform(page);
+    expect(pointerZoom).toBeGreaterThanOrEqual(0.9);
+    expect(pointerZoom).toBeLessThanOrEqual(1.25);
+    await page.getByTestId("node-appcfg").click();
+    await page.keyboard.press("Shift");
+    await page.getByTestId("rf__node-appcfg").focus();
+    await zoomIdentity(page, 0.4);
+    // eslint-disable-next-line no-restricted-syntax -- Existing navigation uses literal Control on all platforms.
+    await page.keyboard.press(direction === "out" ? "Control+Alt+]" : "Control+Alt+[");
+    await expect(page.getByTestId(`relationship-wrapper-${edgeId}`)).toBeFocused();
+    await expect(edge).toHaveClass(/is-selected/);
+    await expect(page.getByTestId(`edge-settings-${edgeId}`)).toBeVisible();
+    await waitForCameraIdle(page);
+    expect(await zoom()).toBeCloseTo(pointerZoom, 4);
+    expect(await viewportTransform(page)).toBe(pointerTransform);
+    await expect(root).not.toHaveAttribute("data-low-zoom");
+    await expect(root).toHaveAttribute("data-detail-view", "focus");
+    for (const id of direction === "out" ? ["appcfg", "kv"] : ["api", "appcfg"])
+      await expect(page.getByTestId(`node-${id}`)).toBeInViewport();
   });
 
 test("changing language preserves fitted chip widths and merged paths", async ({ page }) => {

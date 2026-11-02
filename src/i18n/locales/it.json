@@ -2830,5 +2830,11 @@
   "workbench.sheetPeek": "Anteprima",
   "workbench.sheetHalf": "Metà altezza",
   "workbench.sheetFull": "Altezza intera",
-  "workbench.speed": "Velocità"
+  "workbench.speed": "Velocità",
+  "menu.selectionActions": "Azioni di selezione",
+  "menu.selectionAddBoundary": "Aggiungi a un confine…",
+  "menu.selectionRemoveBoundary": "Rimuovi dal confine",
+  "menu.selectionSearchBoundaries": "Cerca confini",
+  "menu.selectionAddedBoundary": "Aggiunti a {name}: {count, plural, other {# nodi} one {# nodo}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Rimossi dai confini: {count, plural, other {# nodi} one {# nodo}}. {selection}."
 }

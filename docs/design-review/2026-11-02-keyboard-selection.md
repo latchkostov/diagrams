@@ -1,14 +1,12 @@
 ## Proposal and review boundary
 
-Phase 1 proposal, 2026-11-02. Await owner/orchestrator review before implementation. This commit
-changes only this note. The approved product goals are keyboard equivalents for subset selection,
-box selection and boundary adoption, plus readable Focus for keyboard edge navigation below 50%.
-The particular commands below are proposed, not yet approved or shipped.
+Phase 2 design, approved with orchestrator changes on 2026-11-02. The product goals are keyboard
+equivalents for subset selection, box selection and boundary adoption, plus readable Focus for
+keyboard edge navigation below 50%. Simple by default: focus and selection always move together.
 
-Recommend **commands without new chords**. Adding Shift to Ctrl+Alt navigation is attractive but
-inherits serious desktop, international-layout and screen-reader conflicts. Every operation must be
-available through ordinary menus and searchable commands without disabling assistive technology.
-Do not add a selection mode that silently changes what Tab or the existing navigation keys do.
+Menus and searchable commands provide every operation. Shift extends the existing Ctrl+Alt
+navigation family as an accelerator; menus remain available when the OS or screen reader takes it.
+Do not add a selection mode that silently changes Tab or existing navigation keys.
 
 ## Current implementation and constraints
 
@@ -27,81 +25,59 @@ Do not add a selection mode that silently changes what Tab or the existing navig
 - The single/bulk Inspector Boundary fields already assign membership through `updateNode` and
   `updateNodes`; these are not a physical drop equivalent. `useEditor.ts` also has membership
   settlement, safe boundary growth, placement and atomic history paths to build upon.
-- The keyboard context-menu handler currently selects an unselected focused item before opening.
-  An explicit focus-only command therefore also needs a keyboard menu path that preserves its
-  selection. Pointer right-click behavior stays unchanged.
 
-## Extend, move focus, and toggle
+## Extend and remove from selection
 
-Use a **Select** submenu on the canvas/item/selection context menus. Its rows are **Extend
-selection…**, **Move focus…**, **Toggle focused item**, **Inside this area…**, and the existing
-**Select similar** where applicable. Keep existing action IDs and palette names working when
-folding Select similar into this submenu. Count menu rows during implementation: every level stays
-at twelve or fewer, no toolbar addition, no new permanent canvas controls.
+Use a **Select** submenu on canvas/item/selection context menus: **Extend selection…**,
+**Remove from selection…**, **Inside this area…**, and existing **Select similar** where applicable.
+Preserve existing action IDs and palette names. Every menu level stays at twelve rows or fewer.
 
-**Extend selection…** opens a searchable destination picker. Its navigation choices are Next node,
-Previous node, Left, Right, Above, Below, Outgoing connection and Incoming connection; searching
-also finds a node directly by label, subtitle or ID. Reading order, nearest-direction rules and
-edge cycling are the existing navigation rules. A missing destination changes nothing and says
-why. Picking a destination closes the picker, adds that item to the existing set and focuses it.
-Existing selections are retained exactly; selecting an already selected destination is idempotent.
-Extending to a node does not automatically select its incident edges. Outgoing/incoming extends to
-the connection itself, not its other endpoint, matching existing edge navigation.
+**Extend selection…** opens a searchable destination picker: Next node, Previous node, Left,
+Right, Above, Below, Outgoing connection and Incoming connection, plus nodes by label, subtitle or
+ID. Reuse reading order, nearest-direction and edge cycling rules. Picking adds and focuses the
+destination, preserving existing selections; an already selected destination is idempotent. Nodes
+do not add incident edges. Outgoing/incoming adds the connection itself. A missing destination
+changes nothing and explains why.
 
-**Move focus…** uses the same picker and navigation choices, but leaves every selection flag alone.
-This gives the keyboard a way to reach an unselected item before toggling it. The focused item has
-the existing visible keyboard focus ring; selected items retain their selection outline. The
-Inspector continues to represent the selection, not the unselected focus target. Reveal the focus
-target, rather than framing the entire retained selection. The destination is the canvas's roving
-stop even when it is not selected.
+**Ctrl+Alt+Shift+arrows** and **Ctrl+Alt+Shift+]/[** (⌃⌥⇧ on Mac) extend in that direction.
+Show these accelerators in menu rows and shortcut help, with the menu fallback note. Exact modifier
+matching must prevent unshifted navigation, nudging, quick-add or clone from also firing.
 
-**Toggle focused item** adds or removes only the item that had canvas focus before the menu or
-palette opened. The wording covers nodes, connections, annotations and boundaries; a boundary's
-toggle selects its box, not its descendants. Focus stays on that item, including after removal
-and after removing the last selected item. With no surviving focused item, disable the action
-with an explanation rather than guessing from the first selected node.
+**Remove from selection…** lists only currently selected items in a searchable picker. Picking
+removes that item; focus moves to the next remaining selected item in reading order, wrapping if
+needed, or the canvas when none remains. Announce **Orders API removed. 2 selected.** Selection
+changes create no history step. There is no unselected focus target, Move focus or Toggle command.
 
-Capture the canvas target before opening a menu/palette and retain it through the controller;
-never use the menu row or palette input as the toggle operand. Preserve the set when a keyboard
-context menu opens on an explicitly focused, unselected item. Its edit commands act on the
-selection unless explicitly labelled as acting on that focused item. This is necessary for the new
-focus-only route; ordinary navigation still replaces selection, and pointer context selection is
-unchanged. Cancelling a picker restores its invoker without selecting it. Deleted/hidden targets
-are revalidated; fall back through the controller, never onto a detached element.
-
-Example: navigate normally to A; Extend selection → Right adds B and focuses B; Extend selection
-→ Right adds C and focuses C. Move focus → Previous node focuses B without changing A/B/C.
-Toggle focused item removes B, leaving A/C selected and B focused. No extra Undo step is created.
+Use the interaction controller for focus and invoker return. Revalidate deleted/hidden targets.
+Cancelling restores the invoker without changing selection. Pointer context selection is unchanged.
 
 ## A keyboard rectangle
 
-**Select ▸ Inside this area…** opens one small dialog, not a canvas mode. It starts with the
-selected items' enclosing rectangle, or the focused item's rectangle when nothing is selected.
-Without either, use the visible canvas rectangle in diagram coordinates. Show **Left**, **Top**,
-**Right** and **Bottom** as labelled numeric fields. A **From node / To node** pair of searchable
-pickers can seed the enclosing rectangle of two nodes; use their full rendered bounds, not their
-centres. Editing the four bounds afterwards reaches rectangles that no two node boxes describe.
-This matters for the arrange lesson: its horizontal extremes are not also its vertical extremes.
+**Select ▸ Inside this area…** opens a small dialog, not a canvas mode. Its **From node / To
+node** searchable pickers define the enclosing rectangle of two nodes using full rendered bounds.
+Default them from the current selection's extremes when there is a selection. There are no numeric
+coordinate fields: diagram coordinates have no useful meaning for this task. If the arrange
+lesson's exact target set cannot be reached with these two pickers, its keyboard solution uses
+Extend selection instead, leaving completion checks unchanged.
 
 Default **Wholly inside** on, matching the command name; off selects **Touching this area**, using
 the pointer box's touching rule. **Add to selection**, off by default, is the explicit equivalent
-of starting a Shift-drag. Normalize reversed bounds, permit negative diagram coordinates, reject
-non-finite inputs, and require positive area. Use measured absolute bounds and filter hidden or
+of starting a Shift-drag. Require two surviving nodes and a positive enclosing area. Use measured absolute bounds and filter hidden or
 unselectable items as the pointer selector does. Boundaries/zones require containment in both
 settings; include visible connections only when both endpoints are selected, with the same union
 behavior as a Shift-box. A selected boundary does not implicitly add its members to the pick.
 
-Draw a temporary labelled outline and show the prospective selection count while fields change.
+Draw a temporary labelled outline and show the prospective selection count while picks change.
 Preview changes neither selection nor document. **Select** is the single primary action; Escape
 cancels without changing selection. On apply, select the computed set, focus the first selected
 node in reading order (otherwise the first connection, otherwise the canvas), and announce the
 count. Nothing moves and there is no history step. Keep the outline out of exports and read-only
-surfaces. Arrow keys inside numeric fields edit those fields; they never nudge canvas items.
+surfaces. Keys inside the pickers never nudge canvas items.
 
 ## Add to boundary and remove from boundary
 
 Expose **Add to boundary…** and **Remove from boundary** in the node/selection right-click menu,
-Ctrl+K and the Inspector's existing Boundary section overflow. Group with existing boundary
+Ctrl+K and the Inspector's labelled **Selection actions** overflow. Group with existing boundary
 actions if needed to meet the menu budget. Keep **Add boundary** (Ctrl/Command+G) and **Remove
 boundary** meaning create/delete the box; neither becomes membership transfer. Keep the existing
 membership field's behavior; the new commands explicitly describe physical movement.
@@ -145,12 +121,12 @@ bindings and extensions are customizable; a missing default conflict cannot prov
 
 | Key or route                                                                   | Browser and platform audit                                                                                                                                                                                                                                                                                                                                           | Screen reader and app audit                                                                                                                                                                                                                | Decision                                                                                                                                                  |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ctrl+Alt+Shift+arrows; Ctrl+Alt+Shift+]/[                                      | Chrome/Firefox/Safari publish no universal guarantee for these combinations. Windows/Linux Ctrl+Alt can mean AltGr; shifted brackets are layout-dependent. Intel software can intercept the existing arrow family. GNOME uses Ctrl+Alt navigation for workspaces; desktop bindings may extend it with Shift. On macOS Control+Option is also the VoiceOver modifier. | NVDA/JAWS already use Ctrl+Alt+arrows for table navigation; VoiceOver uses Control+Option+arrows and Shift variants for navigation/interacting. No exact existing app Shift extension, but adding modifiers does not make the family safe. | Do not add. Extend/move commands provide the whole function. Keep existing unshifted bindings.                                                            |
-| Space, Ctrl+Space, Command+Space for toggle                                    | Space scrolls a browser page; Ctrl+Space switches macOS input sources, Command+Space opens Spotlight. Input methods on Windows/Linux can also reserve space combinations.                                                                                                                                                                                            | Space already pans with drag and drives Live playback; screen readers use Space/Enter to activate controls.                                                                                                                                | No new toggle chord. Use the named command.                                                                                                               |
+| Ctrl+Alt+Shift+arrows; Ctrl+Alt+Shift+]/[                                      | Chrome/Firefox/Safari publish no universal guarantee for these combinations. Windows/Linux Ctrl+Alt can mean AltGr; shifted brackets are layout-dependent. Intel software can intercept the existing arrow family. GNOME uses Ctrl+Alt navigation for workspaces; desktop bindings may extend it with Shift. On macOS Control+Option is also the VoiceOver modifier. | NVDA/JAWS already use Ctrl+Alt+arrows for table navigation; VoiceOver uses Control+Option+arrows and Shift variants for navigation/interacting. No exact existing app Shift extension, but adding modifiers does not make the family safe. | Add Shift-means-extend accelerators; menu route remains guaranteed. Preserve unshifted bindings.                                                          |
+| Space, Ctrl+Space, Command+Space for toggle                                    | Space scrolls a browser page; Ctrl+Space switches macOS input sources, Command+Space opens Spotlight. Input methods on Windows/Linux can also reserve space combinations.                                                                                                                                                                                            | Space already pans with drag and drives Live playback; screen readers use Space/Enter to activate controls.                                                                                                                                | No toggle concept or new Space chord.                                                                                                                     |
 | Shift+arrows or Shift+Tab for extension                                        | Browsers and native fields use Shift+arrows for text selection, Shift+Tab for reverse traversal.                                                                                                                                                                                                                                                                     | The app already uses Shift+arrows for larger nudges and Shift+Tab for reverse reading order. Browse/Quick Nav may own arrows.                                                                                                              | Preserve both meanings.                                                                                                                                   |
 | Ctrl+K / Command+K                                                             | Chrome/Firefox use Ctrl+K for search/address focus; browser/system/extension behavior varies, including Safari's Command shortcuts. The app already provides its palette override.                                                                                                                                                                                   | Existing app route only; not guaranteed when a reader captures keys. All commands also have menus reachable by ordinary focus/activation.                                                                                                  | Reuse existing palette scope. Add searchable names and synonyms, no global expansion.                                                                     |
 | Shift+F10 / Context Menu key                                                   | Existing app context route; Windows and Firefox document it, Chrome uses Shift+F10 for context menus. Mac keyboards may require Fn for F10 or lack a Context Menu key; OS assignments may intercept it.                                                                                                                                                              | JAWS documents this route; NVDA supports ordinary context navigation. VoiceOver users can use focused app controls through their normal interaction commands.                                                                              | Reuse, with a labelled **Selection actions** overflow in the existing Inspector selection section as a Tab-reachable alternative. No new toolbar control. |
-| Tab, Shift+Tab, arrows, Home/End, Enter, Space, Escape inside the new surfaces | Ordinary browser controls/menu/dialog behavior; these keys are not global commands. Fields retain text and numeric editing behavior.                                                                                                                                                                                                                                 | Browse-mode single letters and VoiceOver Quick Nav remain reader-owned. Native/ARIA controls expose accessible names, roles, state and focus. Enter/Space activates a focused command; Escape cancels only the top surface.                | Use existing menu, picker and dialog primitives and controller focus return.                                                                              |
+| Tab, Shift+Tab, arrows, Home/End, Enter, Space, Escape inside the new surfaces | Ordinary browser controls/menu/dialog behavior; these keys are not global commands. Search fields retain text editing behavior.                                                                                                                                                                                                                                      | Browse-mode single letters and VoiceOver Quick Nav remain reader-owned. Native/ARIA controls expose accessible names, roles, state and focus. Enter/Space activates a focused command; Escape cancels only the top surface.                | Use existing menu, picker and dialog primitives and controller focus return.                                                                              |
 | Ctrl+Alt+]/[ (retained edge navigation)                                        | International brackets/AltGr remain a known limitation. Never substitute Command+Option: Chrome/Safari/macOS also use Command combinations for tab/history navigation.                                                                                                                                                                                               | Retain existing matching and scope. Named Outgoing/Incoming connection choices are the alternative when a reader/OS captures the chord.                                                                                                    | Meaning stays navigate to connection; only the approved below-50% camera result changes.                                                                  |
 
 Sources checked 2026-11-02: [Chrome shortcuts](https://support.google.com/chrome/answer/157179),
@@ -170,16 +146,16 @@ Sources checked 2026-11-02: [Chrome shortcuts](https://support.google.com/chrome
 ## Announcements, discovery and preservation
 
 Announce committed changes through the existing polite live region: **Orders API added. 3 selected.**,
-**Orders API removed. 2 selected.**, **Orders API focused, not selected. 2 selected.**, **3 selected.**,
+**Orders API removed. 2 selected.**, **3 selected.**,
 or **Nothing selected.** Include the existing node/boundary/edge description on navigation, with the
 selection count appended. Repeated identical counts must still be announced. Preview counts are
 visibly labelled; announce their settled changes without reading every numeric keystroke. Selection
 outlines and a separate focus ring convey state without colour alone.
 
-Ctrl+K finds every command using selection, extend, toggle, area, box, inside, boundary, add and
+Ctrl+K finds every command using selection, extend, area, box, inside, boundary, add and
 remove as appropriate. Menu labels, Inspector actions and shortcut help use the same names.
-The help sheet explains **Selection actions → Extend selection / Toggle focused item / Inside this
-area** and the existing menu/palette shortcuts; it must not advertise a nonexistent new chord.
+The help sheet explains **Selection actions → Extend selection / Remove from selection / Inside this
+area**, the Shift accelerators and the menu fallback when an OS or screen reader takes a chord.
 The Inspector's Selection actions overflow exposes the same Select commands even for an empty
 selection, so losing the last selection does not remove the Tab-reachable route back.
 
@@ -231,14 +207,15 @@ Give every new interactive element a `data-testid`.
 
 Add genuine keyboard solution variants to `boundaries` and `arrange`, exercising subset/area
 selection and adoption; leave completion checks untouched and never use Skip. Resolve their dated
-dependency backlog only after both work. Add an invented public showcase for the stencil/editor
-feature, with applicable feature metadata, example tests and reviewed parity coverage. Update
+dependency backlog only after both work. Owner-approved showcase exception: add no new example. The boundaries and arrange lessons
+provide the working keyboard demonstrations instead. Update
 UX-PRINCIPLES, shortcut help, the release fragment and every locale; regenerate authored-source
 outputs as required. A Phase 1 note is not itself a shipped feature or a reason to change goldens.
 
-Mutation-check selection preservation, toggle removal, region containment/edges, boundary movement,
+Mutation-check selection preservation, removal and focus fallback, region containment/edges, boundary movement,
 single-step Undo, announcements, tutorial routes and the low-zoom rule by temporarily removing
 each behavior. Run the brief's units, parity, size/reserve heavy tests, Linux affected/tutorial/
 selection/boundary/keyboard/lowzoom specs twice, plus timing-sensitive neighbors under the required
 load. Finish with lint, typecheck and repository-wide Prettier. Record every intended golden change
-and finish the implementation with a UX review. Phase 1 stops after pushing this note for review.
+and finish the implementation with a UX review. Ship two ready stacked PRs: A contains this note, edge Focus and boundary commands; B contains
+selection extension/removal, Shift accelerators, area selection and remaining lesson solutions.

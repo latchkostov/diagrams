@@ -618,6 +618,7 @@ function CanvasInner({
     zoomTo: zoomToSelection,
     hovered: () => hovered.current,
     reveal: () => revealSelection(),
+    announceSelection: (text) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })),
     nameNew: (make, fallback) => nameNew.current(make, fallback),
     flushSave: (diagram) => {
       const mod = flushSave(diagram);
@@ -1654,6 +1655,31 @@ function CanvasInner({
             </div>
             {!hideChrome && (
               <Inspector
+                onSelectionActions={
+                  editGestures
+                    ? (button) => {
+                        const bounds = button.getBoundingClientRect();
+                        const selection = editor.getSelection();
+                        interaction.openMenu(
+                          "context",
+                          {
+                            x: bounds.left,
+                            y: bounds.bottom,
+                            label: tr("menu.selectionActions"),
+                            items: () =>
+                              actionRegistry
+                                .build({ target: "selection", selection, editor })
+                                .filter(
+                                  (item) =>
+                                    item.type === "item" &&
+                                    ["selection.add-to-boundary", "selection.remove-from-boundary"].includes(item.id),
+                                ),
+                          },
+                          { via: "keyboard", platform: platform() },
+                        );
+                      }
+                    : undefined
+                }
                 privacy={privacy}
                 diagramReset={
                   modified &&

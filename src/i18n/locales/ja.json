@@ -2833,5 +2833,11 @@
   "workbench.sheetPeek": "プレビュー",
   "workbench.sheetHalf": "半分の高さ",
   "workbench.sheetFull": "全高",
-  "workbench.speed": "速度"
+  "workbench.speed": "速度",
+  "menu.selectionActions": "選択の操作",
+  "menu.selectionAddBoundary": "境界に追加…",
+  "menu.selectionRemoveBoundary": "境界から削除",
+  "menu.selectionSearchBoundaries": "境界を検索",
+  "menu.selectionAddedBoundary": "{name} に追加: {count, plural, other {# ノード}}. {selection}.",
+  "menu.selectionRemovedBoundary": "境界から削除: {count, plural, other {# ノード}}. {selection}."
 }

@@ -2792,5 +2792,11 @@
   "workbench.sheetPeek": "Предпросмотр",
   "workbench.sheetHalf": "Половина высоты",
   "workbench.sheetFull": "Полная высота",
-  "workbench.speed": "Скорость"
+  "workbench.speed": "Скорость",
+  "menu.selectionActions": "Действия с выделением",
+  "menu.selectionAddBoundary": "Добавить в границу…",
+  "menu.selectionRemoveBoundary": "Убрать из границы",
+  "menu.selectionSearchBoundaries": "Поиск границ",
+  "menu.selectionAddedBoundary": "Добавлено в {name}: {count, plural, many {# узлов} one {# узел} few {# узлов} other {# узлов}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Убрано из границ: {count, plural, many {# узлов} one {# узел} few {# узлов} other {# узлов}}. {selection}."
 }

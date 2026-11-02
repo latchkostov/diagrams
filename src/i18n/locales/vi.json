@@ -2816,5 +2816,11 @@
   "workbench.sheetPeek": "Xem trước",
   "workbench.sheetHalf": "Nửa chiều cao",
   "workbench.sheetFull": "Toàn bộ chiều cao",
-  "workbench.speed": "Tốc độ"
+  "workbench.speed": "Tốc độ",
+  "menu.selectionActions": "Thao tác lựa chọn",
+  "menu.selectionAddBoundary": "Thêm vào ranh giới…",
+  "menu.selectionRemoveBoundary": "Xóa khỏi ranh giới",
+  "menu.selectionSearchBoundaries": "Tìm ranh giới",
+  "menu.selectionAddedBoundary": "Đã thêm vào {name}: {count, plural, other {# nút}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Đã xóa khỏi ranh giới: {count, plural, other {# nút}}. {selection}."
 }

@@ -2834,5 +2834,11 @@
   "workbench.sheetPeek": "Previzualizare",
   "workbench.sheetHalf": "Jumătate de înălțime",
   "workbench.sheetFull": "Înălțime completă",
-  "workbench.speed": "Viteză"
+  "workbench.speed": "Viteză",
+  "menu.selectionActions": "Acțiuni de selecție",
+  "menu.selectionAddBoundary": "Adaugă la limită…",
+  "menu.selectionRemoveBoundary": "Elimină din limită",
+  "menu.selectionSearchBoundaries": "Caută limite",
+  "menu.selectionAddedBoundary": "Adăugate la {name}: {count, plural, few {# noduri} one {# nod} other {# noduri}}. {selection}.",
+  "menu.selectionRemovedBoundary": "Eliminate din limite: {count, plural, few {# noduri} one {# nod} other {# noduri}}. {selection}."
 }

@@ -1,3 +1,4 @@
+import { keyboardSelectionFixture } from "./keyboardSelectionFixture";
 import { backlogScalingPractice, breakerPractice, deadLetterPractice } from "./waitingPractice";
 import { resourcePractice, experimentPractice } from "./simulationPractice";
 import { addressPractice, policyPractice, checksPractice } from "./buildingBlockSeeds";
@@ -431,6 +432,14 @@ const diagramPresets: Preset[] = [
     description: "A ring of services and topics; the last edge loops back.",
     controls: [{ type: "number", key: "size", label: "Nodes", default: 8, min: 2, max: 40 }],
     diagram: (v) => cycleDiagram(Number(v.size)),
+  },
+  {
+    kind: "diagram",
+    id: "keyboard-selection",
+    title: "Keyboard selection",
+    group: "Diagrams",
+    description: "Select a subset, transfer it into a boundary, and undo the complete move.",
+    diagram: () => structuredClone(keyboardSelectionFixture),
   },
   {
     kind: "diagram",

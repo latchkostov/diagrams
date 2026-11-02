@@ -2816,5 +2816,11 @@
   "workbench.sheetPeek": "预览",
   "workbench.sheetHalf": "半高",
   "workbench.sheetFull": "全高",
-  "workbench.speed": "速度"
+  "workbench.speed": "速度",
+  "menu.selectionActions": "选择操作",
+  "menu.selectionAddBoundary": "添加到边界…",
+  "menu.selectionRemoveBoundary": "从边界移除",
+  "menu.selectionSearchBoundaries": "搜索边界",
+  "menu.selectionAddedBoundary": "已添加到 {name}: {count, plural, other {# 节点}}. {selection}.",
+  "menu.selectionRemovedBoundary": "已从边界移除: {count, plural, other {# 节点}}. {selection}."
 }

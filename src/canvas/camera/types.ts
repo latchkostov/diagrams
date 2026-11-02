@@ -12,7 +12,7 @@ export type { CameraOwner };
  */
 export type PaneCause = "panel" | "selection" | "placement";
 /** What a reveal brings into view for: a pane change's cause, or a command that moves to something. */
-export type RevealCause = PaneCause | "navigation" | "checks" | "focus" | "palette";
+export type RevealCause = PaneCause | "edge-navigation" | "navigation" | "checks" | "focus" | "palette";
 export type CameraMode = "edit" | "live" | "present";
 export type MenuKind = "context" | "quickAdd";
 /** The whole-diagram fits: Shift+1 and Fit view, a mode change, full screen, Reset, the Checks card, a pane change. */

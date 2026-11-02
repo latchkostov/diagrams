@@ -979,3 +979,14 @@ it("a dock opened by a readable selection reveals coverage without refitting or 
   ]);
   expect(decide(opening, settled({ zoom: 1, selection: true, covered: false })).commands).toEqual([]);
 });
+
+it.each([0.4, 0.499, 0.5, 0.55])("edge navigation enters Focus strictly below 50% (%s)", (zoom) => {
+  const d = decide(state({ owner: "manual", view: "custom" }), {
+    type: "reveal.requested",
+    cause: "edge-navigation",
+    keyboard: true,
+    zoom,
+  });
+  expect(d.state.view).toBe(zoom < 0.5 ? "focus" : "custom");
+  expect(d.commands.map((c) => c.type)).toEqual([zoom < 0.5 ? "focusSelection" : "reveal"]);
+});
