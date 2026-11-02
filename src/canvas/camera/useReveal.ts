@@ -5,7 +5,7 @@ import { connectedMenuPlacement, type ConnectedMenuAnchor } from "../geometry/co
 import { type Viewport } from "../geometry/fit";
 import type { Rect } from "../geometry/rect";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import type { CameraController } from "./controller";
+import type { RevealScope, CameraController } from "./controller";
 import type { RevealCause } from "./types";
 
 /**
@@ -17,14 +17,20 @@ import type { RevealCause } from "./types";
  */
 export function useRevealSelection(controller: CameraController) {
   const revealSelection = useCallback(
-    (then?: () => void, roomBelow = 0, cause: RevealCause = "placement", cancelled?: () => void) =>
+    (
+      then?: () => void,
+      roomBelow = 0,
+      cause: RevealCause = "placement",
+      cancelled?: () => void,
+      target?: Extract<RevealScope, { kind: "selection" }>["target"],
+    ) =>
       void controller.whenSelectionMeasured(() => {
         // The editor opens at once (keys typed next belong to it); the view follows meanwhile.
         then?.();
         controller.dispatch({
           type: "reveal.requested",
           cause,
-          scope: { kind: "selection", withEdges: false, roomBelow },
+          scope: { kind: "selection", withEdges: false, roomBelow, ...(target ? { target } : {}) },
         });
       }, cancelled),
     [controller],

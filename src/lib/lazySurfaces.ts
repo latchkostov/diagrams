@@ -5,6 +5,12 @@ declare const __LAZY_SURFACE_METADATA__: boolean | undefined;
 const names = typeof __LAZY_SURFACE_METADATA__ === "undefined" || __LAZY_SURFACE_METADATA__;
 export const lazySurfaces = [
   ["canvas.stencils", names ? "Palette" : "", names ? "canvas/Palette" : "", "skip"],
+  [
+    "canvas.selection-area",
+    names ? "SelectionAreaDialog" : "",
+    names ? "canvas/selection/SelectionAreaDialog" : "",
+    "skip",
+  ],
   ["examples.discovery", names ? "ExampleDetails" : "", names ? "examples/ExampleDetails" : "", "skip"],
   ["canvas.frame-detail", names ? "FrameDetail" : "", names ? "canvas/FrameDetail" : "", "skip"],
   ["canvas.presence", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],

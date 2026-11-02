@@ -17,7 +17,7 @@ it("uses the registered Fit view command instead of traversing the chrome", () =
 });
 
 it("every eligible lesson has a keyboard variant beside every pointer solution", () => {
-  expect(Object.keys(keyboardExceptions)).toEqual(["boundaries", "arrange"]);
+  expect(Object.keys(keyboardExceptions)).toEqual([]);
   for (const lesson of allTutorials) {
     for (const step of lesson.steps) {
       if (keyboardExceptions[lesson.id]) {
@@ -55,6 +55,15 @@ it("resolves keyboard subjects and connection identities without executing a dem
   ]);
   expect(() => keyboardSolutionNow(lesson, { ...snapshot, subjects: {} })).toThrow("Missing keyboard solution subject");
   expect(keyboardSolutionNow(lesson, { ...snapshot, state: { ...snapshot.state, value: "finished" } })).toEqual([]);
+  expect(
+    keyboardSolutionNow(
+      {
+        ...lesson,
+        steps: [{ ...lesson.steps[0], keyboardSolution: [{ choose: "selection-area-to", value: "{b}" }] }],
+      },
+      { ...snapshot, state: { ...snapshot.state, index: 0 } },
+    ),
+  ).toEqual([{ choose: "selection-area-to", value: "other" }]);
 });
 
 it("lets the final slow-motion replay finish without navigating away from it", () => {

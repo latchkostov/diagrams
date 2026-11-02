@@ -7,6 +7,11 @@ seconds. Checks' 1,500-node typing stress case is running at interruption. Relay
 both dev StrictMode Checks mount cases have not started. This is a shard deadline, not evidence
 that those three unstarted cases hang.
 
+The earlier round-9 dispatch, 41406762649, records this same long-run typing case passing in
+macOS shard 12 (16.561 seconds). That is a completed native observation, not a claim that an
+intermittent hang is impossible. Together with the later step-deadline log and cumulative work,
+it supports balancing the interrupted shard rather than changing the stress case or its limit.
+
 ## Native measurements without changing Linux
 
 `E2E_TIMINGS=tests/e2e-timings-macos.json` selects a separate measured profile in the existing

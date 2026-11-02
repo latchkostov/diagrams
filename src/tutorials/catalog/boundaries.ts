@@ -40,6 +40,7 @@ export const boundaries: Tutorial = {
       ],
       demo: [{ kind: "select", subjects: ["a", "b"] }],
       solution: [{ click: "node-{a}" }, { modClick: "node-{b}", modifiers: ["Shift"] }],
+      keyboardSolution: [{ focus: "node-{a}" }, { press: "Control+Alt+Shift+ArrowRight" }],
       sticky: true,
     },
     {
@@ -74,6 +75,12 @@ export const boundaries: Tutorial = {
         { fill: "inspector-field-label", text: msg("tutorials.boundaries.boundaryName") },
         { press: "Enter" },
       ],
+      keyboardSolution: [
+        { focus: "rf__node-group:{boundary}" },
+        { press: "F2" },
+        { write: "inspector-field-label", text: msg("tutorials.boundaries.boundaryName") },
+        { press: "Enter" },
+      ],
       settle: "naming",
     },
     {
@@ -85,6 +92,10 @@ export const boundaries: Tutorial = {
       targets: [{ testId: "node-{c}", tip: msg("tutorials.boundaries.dragInTip") }],
       demo: [{ kind: "member", subject: "c", boundary: "boundary" }],
       solution: [{ drag: "node-{c}", to: "group-{boundary}" }],
+      keyboardSolution: [
+        { focus: "node-{c}" },
+        { command: "action:add-to-boundary:{boundary}", query: msg("menu.selectionAddBoundary") },
+      ],
     },
     {
       id: "fit",
@@ -100,6 +111,11 @@ export const boundaries: Tutorial = {
         { click: "tutorial-skip" },
       ],
       sticky: true,
+      keyboardSolution: [
+        { focus: "rf__node-group:{boundary}" },
+        { command: "action:group.fit", query: msg("menu.fitToContents") },
+        { activate: "tutorial-skip" },
+      ],
     },
   ],
   finish: { text: msg("tutorials.boundaries.finish") },

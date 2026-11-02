@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } fr
 import type { ReactFlowState, useStoreApi } from "@xyflow/react";
 import { isDependency } from "../../model/relations";
 import { dependencyVisibility } from "../dependencyVisibility";
-import { edgesBetween, pickInBox, type BoxItem } from "../gestures";
-import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode } from "../types";
+import { edgesBetween, pickInBox } from "../gestures";
+import type { DiagramFlowEdge, FlowNode } from "../types";
+
+import { selectionBoxes } from "./selectionBoxes";
 
 /** Ids whose selected flag inside React Flow disagrees with the box's pick. */
 function staleBoxFlags(
@@ -79,15 +81,7 @@ export function useBoxSelection({
       const r = s.userSelectionRect;
       const [tx, ty, k] = s.transform;
       const box = { x: (r.x - tx) / k, y: (r.y - ty) / k, width: r.width / k, height: r.height / k };
-      const items: BoxItem[] = [];
-      for (const n of s.nodeLookup.values()) {
-        const w = n.measured?.width ?? n.width ?? 0;
-        const h = n.measured?.height ?? n.height ?? 0;
-        if (n.hidden || n.selectable === false || !w || !h) continue;
-        const backdrop =
-          n.type === "boundary" || (n.type === "annotation" && (n as AnnotationFlowNode).data.kind === "zone");
-        items.push({ id: n.id, ...n.internals.positionAbsolute, width: w, height: h, backdrop });
-      }
+      const items = selectionBoxes(s);
       const base = boxBase.current;
       const picked = pickInBox(items, box, contain.current);
       const key = picked.join(" ");

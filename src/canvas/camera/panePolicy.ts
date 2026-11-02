@@ -272,7 +272,14 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
           { view: "focus", owner: "manual", keyboardFocus: true, pending: null },
           {
             type: "focusSelection",
-            nodes: event.scope?.kind === "focus" ? new Set([event.scope.id]) : undefined,
+            // An extend destination is framed on its own: the selected set stays, but the readable view
+            // follows where the keyboard went, not the whole (possibly far wider) selection.
+            nodes:
+              event.scope?.kind === "focus"
+                ? new Set([event.scope.id])
+                : event.scope?.kind === "selection" && event.scope.target?.frame?.length
+                  ? new Set(event.scope.target.frame)
+                  : undefined,
             automatic: true,
           },
         );

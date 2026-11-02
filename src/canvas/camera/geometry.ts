@@ -320,8 +320,10 @@ export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, mus
 export function selectionBoxes(
   s: State,
   routing: RouteOptions,
-  o: { withEdges: boolean; roomBelow: number; zoom: number },
+  o: { withEdges: boolean; roomBelow: number; zoom: number; target?: { kind: "node" | "edge"; id: string } },
 ): { core: Rect; want: Rect } | null {
+  const selected = (kind: "node" | "edge", id: string, flag: boolean | undefined) =>
+    o.target ? o.target.kind === kind && o.target.id === id : !!flag;
   const k = o.zoom;
   // What hangs below, in flow px: screen px up to 100% zoom, growing with the zoom above it.
   const below = (o.roomBelow * Math.max(1, k)) / k;
@@ -329,7 +331,7 @@ export function selectionBoxes(
   const around: Rect[] = [];
   const selectedNodes = new Set<string>();
   for (const n of s.nodeLookup.values()) {
-    if (!n.selected || n.hidden) continue;
+    if (!selected("node", n.id, n.selected) || n.hidden) continue;
     // A just-added annotation isn't measured yet, but it has its size (a node waits for the measure).
     const w = n.measured?.width ?? n.width ?? 0;
     const h = n.measured?.height ?? n.height ?? 0;
@@ -338,15 +340,18 @@ export function selectionBoxes(
     must.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h + below });
   }
   const hasEdges = s.edges.some(
-    (e) => e.selected || (o.withEdges && (selectedNodes.has(e.source) || selectedNodes.has(e.target))),
+    (e) =>
+      selected("edge", e.id, e.selected) ||
+      (o.withEdges && (selectedNodes.has(e.source) || selectedNodes.has(e.target))),
   );
   if (hasEdges) {
     const routes = selectRoutes(s, routing);
     for (const e of s.edges) {
       const attached = o.withEdges && (selectedNodes.has(e.source) || selectedNodes.has(e.target));
-      if (!e.selected && !attached) continue;
+      const picked = selected("edge", e.id, e.selected);
+      if (!picked && !attached) continue;
       const r = routes.get(e.id);
-      if (r) pushRoute(e.selected ? must : around, r);
+      if (r) pushRoute(picked ? must : around, r);
     }
   }
   const core = union(must);

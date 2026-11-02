@@ -391,6 +391,6 @@ function LessonRow({
 
 // eslint-disable-next-line react-refresh/only-export-components -- optional strings share the component download lifecycle
 export async function tutorialsWhenReady() {
-  await surfaceCatalogs(["tutorialTitles", "tutorials"]);
+  await surfaceCatalogs(["tutorialTitles", "tutorials", "selection"]);
   return TutorialsView;
 }

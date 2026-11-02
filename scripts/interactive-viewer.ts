@@ -322,6 +322,17 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/components/ShortcutsDialog.tsx",
     stub: () => "export const ShortcutsDialog = () => null;",
   },
+  {
+    name: "the editing-only selection area dialog",
+    path: "/src/canvas/selection/SelectionAreaDialog.tsx",
+    stub: () => "export const selectionAreaWhenReady = async () => () => null;",
+  },
+  {
+    name: "editing-only subset and area selection",
+    path: "/src/editor/selectionCommands.ts",
+    stub: () =>
+      "export const extendPick = (pick) => pick; export const removePick = () => null; export const pickArea = () => null; export const pickCount = () => 0;",
+  },
   { name: "the simulation editor", path: "/src/live/SimPanel.tsx", stub: () => "export const SimPanel = () => null;" },
   {
     name: "the simulation editor loader",

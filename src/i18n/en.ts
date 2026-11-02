@@ -10,6 +10,23 @@
 // stays.
 
 const en = {
+  "selection.extend": "Extend selection…",
+  "selection.remove": "Remove from selection…",
+  "selection.area": "Inside this area…",
+  "selection.searchSelected": "Search selected items",
+  "selection.above": "Above",
+  "selection.below": "Below",
+  "selection.added": "{name} added. {selection}.",
+  "selection.removed": "{name} removed. {selection}.",
+  "selection.unavailable": "That item is no longer available.",
+  "selection.from": "From node",
+  "selection.to": "To node",
+  "selection.wholly": "Wholly inside",
+  "selection.add": "Add to selection",
+  "selection.preview": "Preview",
+  "selection.fallback": "Use the Select menu when your OS or screen reader takes these keys.",
+  "selection.extendKeys": "Extend selection",
+
   "menu.selectionActions": "Selection actions",
   "menu.selectionAddBoundary": "Add to boundary…",
   "menu.selectionRemoveBoundary": "Remove from boundary",

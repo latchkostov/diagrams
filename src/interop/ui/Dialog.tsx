@@ -16,6 +16,7 @@ export function Dialog({
   width = 560,
   closable = true,
   restoreFocus,
+  backdropClassName,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -29,6 +30,8 @@ export function Dialog({
   closable?: boolean;
   /** Focus goes back through this (an interaction controller's dialog.closed) instead of to the opener directly. */
   restoreFocus?: (opener: HTMLElement | null) => void;
+  /** A preview dialog may keep the canvas legible behind its modal layer. */
+  backdropClassName?: string;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -37,7 +40,11 @@ export function Dialog({
   useDialogInteraction(panel, backdrop, closable ? onClose : () => {}, restoreFocus, feedback);
 
   return createPortal(
-    <div ref={backdrop} className="ix-backdrop" data-editor-overlay>
+    <div
+      ref={backdrop}
+      className={backdropClassName ? `ix-backdrop ${backdropClassName}` : "ix-backdrop"}
+      data-editor-overlay
+    >
       <div
         ref={panel}
         className="ix-dialog"

@@ -5,10 +5,7 @@ import { inStep } from "./machine";
 import { msg } from "../i18n";
 
 /** Missing product equivalents stay explicit; Skip never certifies keyboard completion. */
-export const keyboardExceptions: Readonly<Record<string, string>> = {
-  boundaries: "Subset selection and membership adoption need product keyboard routes.",
-  arrange: "Spatial box selection needs a product keyboard route.",
-};
+export const keyboardExceptions: Readonly<Record<string, string>> = {};
 
 export type KeyboardUiStep =
   | { history: "undo" | "redo" }
@@ -126,7 +123,7 @@ export function keyboardSolutionNow(tutorial: Tutorial, snap: RunnerSnapshot): R
     if ("menu" in step) return { menu: at(step.menu) };
     if ("open" in step) return { open: at(step.open) };
     if ("write" in step) return { write: at(step.write), text: words(step.text) };
-    if ("choose" in step) return { choose: at(step.choose), value: step.value };
+    if ("choose" in step) return { choose: at(step.choose), value: at(step.value) };
     if ("connect" in step)
       return { connect: at(step.connect), to: at(step.to), side: step.side, fromSide: step.fromSide };
     if ("reconnect" in step) return { reconnect: at(step.reconnect), to: at(step.to) };

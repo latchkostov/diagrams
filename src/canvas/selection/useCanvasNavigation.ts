@@ -28,6 +28,16 @@ import { GROUP_PREFIX, type DiagramFlowEdge, type FlowNode, type GroupFlowNode }
 import { useRevealFocused, type useRevealSelection, type CameraController } from "../camera";
 import type { FocusApi } from "../interaction";
 import type { InteractionController } from "../interaction/controller";
+import {
+  extendPick,
+  removePick,
+  pickArea,
+  pickCount,
+  type SelectionCommand,
+  type SelectionPick,
+  type SelectionTarget,
+} from "../../editor/selectionCommands";
+import { selectionBoxes } from "./selectionBoxes";
 
 /** Memoize a filtered projection by its members, rather than by the whole graph's identity. */
 function sharedFilter<T, U extends T>(predicate: (value: T) => value is U) {
@@ -89,6 +99,8 @@ export function useCanvasNavigation({
   interaction,
   roving,
   setOrder,
+  selectionTool: selectionToolRef,
+  editing,
 }: {
   nodes: FlowNode[];
   edges: DiagramFlowEdge[];
@@ -103,7 +115,9 @@ export function useCanvasNavigation({
   wrapper: RefObject<HTMLDivElement | null>;
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"];
   setEdges: Dispatch<SetStateAction<DiagramFlowEdge[]>>;
-  navigate: RefObject<(step: NavStep, from: EventTarget | null) => boolean>;
+  navigate: RefObject<(step: NavStep, from: EventTarget | null, extend?: boolean, target?: SelectionTarget) => boolean>;
+  selectionTool: RefObject<(command: SelectionCommand) => boolean>;
+  editing: boolean;
   onHistoryStep: RefObject<(direction: "undo" | "redo", selection: FlowSelection) => void>;
   setAnnouncement: Dispatch<SetStateAction<{ text: string; seq: number }>>;
   /** The focus controller: it moves focus, and holds the canvas's Tab stop (`roving`). */
@@ -177,6 +191,17 @@ export function useCanvasNavigation({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- setAnnouncement is CanvasView's stable state setter; preserve the original dependencies
   const announce = useCallback((text: string) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })), []);
+  const currentPick = (): SelectionPick => {
+    const sel = editor.getSelection();
+    return { nodes: [...sel.nodeIds, ...sel.groupIds.map((id) => GROUP_PREFIX + id)], edges: sel.edgeIds };
+  };
+  const applyPick = (pick: SelectionPick) =>
+    editor.select({
+      nodeIds: pick.nodes.filter((id) => !id.startsWith(GROUP_PREFIX)),
+      groupIds: pick.nodes.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
+      edgeIds: [...pick.edges],
+    });
+  const selectionPhrase = () => tr("ai.selected", { count: pickCount(currentPick()) });
   useLayoutEffect(() =>
     // Undo's target: the first selected node in Tab's order.
     setOrder((ids) => {
@@ -185,25 +210,32 @@ export function useCanvasNavigation({
     }),
   );
   useLayoutEffect(() => {
-    navigateRef.current = (step, from) => {
+    navigateRef.current = (step, from, extend = false, explicit) => {
       const ns = getNodes().filter((n) => !n.hidden);
       const es = store.getState().edges.filter((e) => !e.hidden);
       const el = from instanceof Element ? from : null;
       // A step's destination until focus lands there, a node's or an edge's: a second Tab or Ctrl+Alt+] in the same
       // frame (two presses queued behind a busy moment) goes on from there, not from what the key event still targets.
       const pending = interaction.pendingTarget();
-      const focusedNode = pending
+      let focusedNode = pending
         ? pending.kind === "node"
           ? pending.id
           : undefined
         : (el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined);
-      const focusedEdge = pending
+      let focusedEdge = pending
         ? pending.kind === "edge"
           ? pending.id
           : undefined
         : (el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined);
       const sel = editor.getSelection();
       const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
+      if (extend && !focusedNode && !focusedEdge) {
+        const anchor = interaction.state.selectionAnchor;
+        if (anchor?.kind === "node" && selectedFlowIds.includes(anchor.id)) focusedNode = anchor.id;
+        else if (anchor?.kind === "edge" && sel.edgeIds.includes(anchor.id)) focusedEdge = anchor.id;
+        else if (selectedFlowIds.length) focusedNode = selectedFlowIds[0];
+        else focusedEdge = sel.edgeIds[0];
+      }
       const current = focusedNode ?? (!focusedEdge && selectedFlowIds.length === 1 ? selectedFlowIds[0] : undefined);
       const labelOf = (id: string) => {
         const n = ns.find((x) => x.id === id);
@@ -217,11 +249,19 @@ export function useCanvasNavigation({
       const goNode = (id: string) => {
         const n = ns.find((x) => x.id === id);
         if (!n) return false;
-        if (isGroupNode(n)) editor.select({ groupIds: [n.data.groupId] });
+        const added = extend && !currentPick().nodes.includes(id);
+        if (extend) applyPick(extendPick(currentPick(), { kind: "node", id }));
+        else if (isGroupNode(n)) editor.select({ groupIds: [n.data.groupId] });
         else editor.select({ nodeIds: [id] });
+        const say = (text: string) =>
+          announce(
+            extend
+              ? `${text} ${added ? tr("selection.added", { name: labelOf(id), selection: selectionPhrase() }) : selectionPhrase()}`
+              : text,
+          );
         // Focus follows on the next frame, and the Tab stop moves now (K1).
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id } });
-        revealSelection(undefined, 0, "navigation");
+        revealSelection(undefined, 0, "navigation", undefined, extend ? { kind: "node", id, frame: [id] } : undefined);
         const at = `${order.indexOf(id) + 1} of ${order.length}`;
         if (isDiagramNode(n)) {
           const outs = es.filter((e) => e.source === id).length;
@@ -233,13 +273,13 @@ export function useCanvasNavigation({
           const deps = pips.length
             ? ` Dependencies: ${pips.map((r) => `${RELATION_META[r.relation].label} · ${labelOf(r.target)}`).join(", ")}.`
             : "";
-          announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
-        } else if (isAnnotationNode(n)) announce(`${annotationAriaLabel(n.data)}. ${at}.`);
+          say(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
+        } else if (isAnnotationNode(n)) say(`${annotationAriaLabel(n.data)}. ${at}.`);
         else {
           const members = ns.filter(
             (m) => (isDiagramNode(m) || isAnnotationNode(m)) && m.data.group === (n as GroupFlowNode).data.groupId,
           );
-          announce(`${labelOf(id)}, boundary, ${members.length === 1 ? "1 node" : `${members.length} nodes`}. ${at}.`);
+          say(`${labelOf(id)}, boundary, ${members.length === 1 ? "1 node" : `${members.length} nodes`}. ${at}.`);
         }
         return true;
       };
@@ -248,9 +288,17 @@ export function useCanvasNavigation({
       const goEdge = (id: string, where = "") => {
         const e = es.find((x) => x.id === id);
         if (!e) return false;
-        editor.select({ edgeIds: [e.id] });
+        const added = extend && !currentPick().edges.includes(id);
+        if (extend) applyPick(extendPick(currentPick(), { kind: "edge", id }));
+        else editor.select({ edgeIds: [e.id] });
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
-        revealSelection(undefined, 0, "edge-navigation");
+        revealSelection(
+          undefined,
+          0,
+          "edge-navigation",
+          undefined,
+          extend ? { kind: "edge", id, frame: [e.source, e.target] } : undefined,
+        );
         const said = edgeAriaLabel(
           labelOf(e.source),
           labelOf(e.target),
@@ -260,9 +308,19 @@ export function useCanvasNavigation({
           isDenyRule(e.data?.props),
         );
         const settings = settingsSummary(edgeSettings(e.data));
-        announce(`${said}.${settings ? ` ${settings}.` : ""}${where}`);
+        const extension = !extend
+          ? ""
+          : added
+            ? tr("selection.added", {
+                name: e.data?.label || `${labelOf(e.source)} → ${labelOf(e.target)}`,
+                selection: selectionPhrase(),
+              })
+            : selectionPhrase();
+        announce(`${said}.${settings ? ` ${settings}.` : ""}${where}${extension ? ` ${extension}` : ""}`);
         return true;
       };
+
+      if (explicit) return explicit.kind === "node" ? goNode(explicit.id) : goEdge(explicit.id);
 
       if (step === "next" || step === "prev") {
         const back = step === "prev";
@@ -294,7 +352,7 @@ export function useCanvasNavigation({
         if (!back && !pending && item && readouts?.enter(item)) return true;
         // From an edge, the order goes on from its source.
         const start = current ?? (focusedEdge ? es.find((e) => e.id === focusedEdge)?.source : undefined);
-        if (!start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
+        if (!extend && !start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
         const next = start ? stepInOrder(order, start, back) : (rovingId ?? order[0]);
         if (!next || !goNode(next)) return false;
         // Shift+Tab retraces Tab: in Live, back through the previous node's readout before the node itself.
@@ -352,6 +410,87 @@ export function useCanvasNavigation({
         return false;
       }
       return goNode(to);
+    };
+  });
+  useLayoutEffect(() => {
+    selectionToolRef.current = (command) => {
+      if (!editing) return false;
+      if (command.type === "navigate") return navigateRef.current(command.step, document.activeElement, true);
+      if (command.type === "extend") return navigateRef.current("next", document.activeElement, true, command.target);
+      const s = store.getState();
+      const ns = getNodes().filter((n) => !n.hidden && n.selectable !== false);
+      const es = s.edges.filter((e) => !e.hidden && (dependencyVisibility.get() || !isDependency(e.data)));
+      const order: SelectionTarget[] = readingOrder(
+        [
+          ...ns.map((n) => ({ ...navBox(n), kind: "node" as const })),
+          ...es.flatMap((e) => {
+            const a = ns.find((n) => n.id === e.source),
+              b = ns.find((n) => n.id === e.target);
+            return a && b
+              ? [
+                  {
+                    id: e.id,
+                    kind: "edge" as const,
+                    x: (a.position.x + b.position.x) / 2,
+                    y: (a.position.y + b.position.y) / 2,
+                    width: 0,
+                    height: 0,
+                  },
+                ]
+              : [];
+          }),
+        ],
+        direction,
+      ).map(({ kind, id }) => ({ kind, id }));
+      let pick: SelectionPick;
+      let target: SelectionTarget | undefined;
+      let name = "";
+      if (command.type === "remove") {
+        const result = removePick(currentPick(), command.target, order);
+        if (!result) {
+          announce(tr("selection.unavailable"));
+          return false;
+        }
+        pick = result.pick;
+        target = result.target;
+        const n = ns.find((n) => command.target.kind === "node" && n.id === command.target.id);
+        const e = es.find((e) => command.target.kind === "edge" && e.id === command.target.id);
+        name = n
+          ? isAnnotationNode(n)
+            ? annotationTitle(n.data)
+            : String(n.data.label || n.id)
+          : e?.data?.label || command.target.id;
+      } else {
+        if (![command.from, command.to].every((id) => ns.some((n) => n.id === id && isDiagramNode(n)))) return false;
+        const result = pickArea(
+          selectionBoxes(s),
+          es,
+          command.from,
+          command.to,
+          command.contain,
+          command.add ? currentPick() : undefined,
+        );
+        if (!result) return false;
+        pick = result.pick;
+        const first = navOrder(ns).find((id) => pick.nodes.includes(id));
+        target = first ? { kind: "node", id: first } : pick.edges[0] ? { kind: "edge", id: pick.edges[0] } : undefined;
+      }
+      applyPick(pick);
+      interaction.dispatch({
+        type: "selection.changed",
+        cause: "keyboard",
+        ...(target ? { target } : { selection: { nodes: [], edges: [] } }),
+      });
+      if (pickCount(pick)) revealSelection(undefined, 0, target?.kind === "edge" ? "edge-navigation" : "navigation");
+      const selection =
+        command.type === "remove" || pickCount(pick)
+          ? tr("ai.selected", { count: pickCount(pick) })
+          : tr("chrome.nothingSelected");
+      announce(command.type === "remove" ? tr("selection.removed", { name, selection }) : selection);
+      return true;
+    };
+    return () => {
+      selectionToolRef.current = () => false;
     };
   });
   // Undo and Redo select what the step changed (historySelection.ts). From the canvas (focus on a node, an
