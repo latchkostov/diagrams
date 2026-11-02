@@ -28,9 +28,11 @@ Do not add a selection mode that silently changes Tab or existing navigation key
 
 ## Extend and remove from selection
 
-Use a **Select** submenu on canvas/item/selection context menus: **Extend selection…**,
+Use a **Select** submenu on item and selection context menus: **Extend selection…**,
 **Remove from selection…**, **Inside this area…**, and existing **Select similar** where applicable.
-Preserve existing action IDs and palette names. Every menu level stays at twelve rows or fewer.
+Preserve existing action IDs and palette names. Every menu level stays at twelve rows or fewer. The empty
+canvas right-click keeps Select all and its row budget, so there the Select tools are in Ctrl+K and the
+Inspector's Selection actions instead.
 
 **Extend selection…** opens a searchable destination picker: Next node, Previous node, Left,
 Right, Above, Below, Outgoing connection and Incoming connection, plus nodes by label, subtitle or

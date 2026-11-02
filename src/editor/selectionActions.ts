@@ -19,6 +19,9 @@ export function selectionActions(): Action[] {
       },
       icon: "select-all",
       keywords: "selection extend remove area inside box subset",
+      // The empty canvas's right-click keeps Select all and its row budget; there the Select tools are in
+      // Ctrl+K (the canvas context) and the Inspector's Selection actions.
+      when: (ctx) => ctx.target !== "canvas" || ctx.surface === "palette",
       children: (ctx) => selectionItems(ctx),
     },
   ];

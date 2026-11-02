@@ -43,7 +43,13 @@ it("indexes endpoint labels with linear reads and labels only selected removal t
   vi.spyOn(editor, "getDiagram").mockReturnValue(diagram);
   const registry = new ActionRegistry(builtinSections);
   registry.register(selectionActions());
-  const context: ActionContext = { target: "canvas", editor, selection: { nodeIds: [], edgeIds: [], groupIds: [] } };
+  // Ctrl+K on the canvas: the empty canvas right-click leaves the Select tools to the palette and Inspector.
+  const context: ActionContext = {
+    target: "canvas",
+    surface: "palette",
+    editor,
+    selection: { nodeIds: [], edgeIds: [], groupIds: [] },
+  };
   reads = 0;
   for (const label of labels) label.mockClear();
   row(registry.build(context), "selection.select");
@@ -91,4 +97,16 @@ it("Select similar shares the registered node/edge eligibility and execution, ex
       expect(run).toHaveBeenLastCalledWith({ nodeId, edgeId });
     }
   }
+});
+
+it("the empty canvas right-click keeps its row budget: Select is in Ctrl+K and the Inspector instead", () => {
+  const editor = editorHarness({ format: "diagrams/v1", title: "Menus", nodes: [], edges: [] }).api;
+  const registry = new ActionRegistry(builtinSections);
+  registry.register(selectionActions());
+  const selection = { nodeIds: [], edgeIds: [], groupIds: [] };
+  const ids = (ctx: ActionContext) => registry.build(ctx).flatMap((n) => (n.type === "item" ? [n.id] : []));
+  expect(ids({ target: "canvas", surface: "menu", editor, selection })).not.toContain("selection.select");
+  expect(ids({ target: "canvas", editor, selection })).not.toContain("selection.select");
+  expect(ids({ target: "canvas", surface: "palette", editor, selection })).toContain("selection.select");
+  expect(ids({ target: "selection", surface: "inspector", editor, selection })).toContain("selection.select");
 });
