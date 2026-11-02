@@ -1,8 +1,44 @@
 import { t } from "../i18n";
-import type { Action, ActionContext } from "./actions";
+import type { Action, ActionContext, MenuItem } from "./actions";
 
 const eligible = (ctx: ActionContext) =>
   ctx.editor.getDiagram().nodes.filter((n) => ctx.selection.nodeIds.includes(n.id));
+
+/** Keep the three boundary operations under one row; palette identities remain exactly as before. */
+export function foldBoundaryActions(actions: Action[]): Action[] {
+  const ids = new Set(["selection.group", "selection.add-to-boundary", "selection.remove-from-boundary"]);
+  const members = [...ids].flatMap((id) => actions.filter((a) => a.id === id));
+  return [
+    ...actions.map((a) => (ids.has(a.id) ? { ...a, paletteOnly: true } : a)),
+    {
+      id: "selection.boundary",
+      section: "arrange",
+      order: 28,
+      targets: ["node", "selection"],
+      get label() {
+        return t("inspector.boundary");
+      },
+      icon: "boundary",
+      when: (ctx) => ctx.surface !== "palette",
+      children: (ctx) =>
+        members
+          .filter((a) => !a.when || a.when(ctx))
+          .map((a): MenuItem => ({
+            type: "item",
+            id: a.id,
+            label: typeof a.label === "function" ? a.label(ctx) : a.label,
+            icon: a.icon,
+            shortcut: a.shortcut,
+            keywords: a.keywords,
+            searchable: a.searchable,
+            hint: typeof a.hint === "function" ? a.hint(ctx) : a.hint,
+            disabled: a.enabled ? !a.enabled(ctx) : false,
+            children: a.children?.(ctx),
+            run: a.children ? undefined : () => a.run?.(ctx),
+          })),
+    },
+  ];
+}
 
 export function boundaryActions(): Action[] {
   return [

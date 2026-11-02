@@ -29,6 +29,8 @@ test("boundary commands move a rigid subset, announce and undo in one step", asy
   const before = await positions(page);
   await page.getByTestId("rf__node-worker").focus();
   await page.keyboard.press("Shift+F10");
+  await focus(page, "context-menu-item-selection.boundary");
+  await page.keyboard.press("ArrowRight");
   await focus(page, "context-menu-item-selection.add-to-boundary");
   await page.keyboard.press("ArrowRight");
   await focus(page, "context-menu-item-add-to-boundary:region");
@@ -47,6 +49,8 @@ test("boundary commands move a rigid subset, announce and undo in one step", asy
   await page.keyboard.press("ControlOrMeta+Shift+z");
   await expect.poll(() => positions(page)).toEqual(inside);
   await page.getByTestId("inspector-selection-actions").click();
+  await focus(page, "context-menu-item-selection.boundary");
+  await page.keyboard.press("ArrowRight");
   await focus(page, "context-menu-item-selection.remove-from-boundary");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("canvas-announce")).toHaveText("Removed 2 nodes from boundaries. 2 selected.");

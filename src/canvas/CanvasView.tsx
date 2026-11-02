@@ -1235,6 +1235,26 @@ function CanvasInner({
     () => ({ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }),
     [nodeCount, edges.length, groupNodes.length],
   );
+  const openSelectionActions = useCallback(
+    (button: HTMLElement) => {
+      const bounds = button.getBoundingClientRect();
+      const selection = editor.getSelection();
+      interaction.openMenu(
+        "context",
+        {
+          x: bounds.left,
+          y: bounds.bottom,
+          label: tr("menu.selectionActions"),
+          items: () =>
+            actionRegistry
+              .build({ target: "selection", selection, editor })
+              .filter((item) => item.type === "item" && item.id === "selection.boundary"),
+        },
+        { via: "keyboard", platform: platform() },
+      );
+    },
+    [editor, interaction],
+  );
   const inspectorResize = useCallback(() => setSheetResize((revision) => revision + 1), []);
   const inspectorToggle = useCallback(() => {
     interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
@@ -1655,31 +1675,7 @@ function CanvasInner({
             </div>
             {!hideChrome && (
               <Inspector
-                onSelectionActions={
-                  editGestures
-                    ? (button) => {
-                        const bounds = button.getBoundingClientRect();
-                        const selection = editor.getSelection();
-                        interaction.openMenu(
-                          "context",
-                          {
-                            x: bounds.left,
-                            y: bounds.bottom,
-                            label: tr("menu.selectionActions"),
-                            items: () =>
-                              actionRegistry
-                                .build({ target: "selection", selection, editor })
-                                .filter(
-                                  (item) =>
-                                    item.type === "item" &&
-                                    ["selection.add-to-boundary", "selection.remove-from-boundary"].includes(item.id),
-                                ),
-                          },
-                          { via: "keyboard", platform: platform() },
-                        );
-                      }
-                    : undefined
-                }
+                onSelectionActions={editGestures ? openSelectionActions : undefined}
                 privacy={privacy}
                 diagramReset={
                   modified &&
