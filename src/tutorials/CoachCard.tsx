@@ -77,9 +77,9 @@ export function CoachCard({
     const measure = () => {
       const host = complete ? find("tutorial-completion-mount") : null;
       setCompletionHost(host);
-      if (host) return;
+      if (host) return false;
       const el = card.current;
-      if (!el) return;
+      if (!el) return false;
       const words = el.querySelector<HTMLElement>(".tutorial-words");
       const actions = el.querySelector<HTMLElement>(".tutorial-actions");
       const margin = words ? parseFloat(getComputedStyle(words).marginBlockStart) || 0 : 0;

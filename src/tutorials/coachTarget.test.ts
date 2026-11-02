@@ -97,16 +97,22 @@ it("measures a resized instruction card before paint even while animation frames
     },
   );
   const card = document.createElement("section");
+  let width = 200;
+  card.getBoundingClientRect = () => new DOMRect(0, 0, width, 100);
   const measure = vi.fn();
   const close = observeCoach(card, measure);
-  resized([{ target: card } as unknown as ResizeObserverEntry], {} as ResizeObserver);
+  width += 20;
+  resized(
+    [{ target: card, contentRect: card.getBoundingClientRect() } as unknown as ResizeObserverEntry],
+    {} as ResizeObserver,
+  );
   await Promise.resolve();
   expect(measure).toHaveBeenCalledTimes(2);
   expect(frame).not.toHaveBeenCalled();
   close();
 });
 
-it("shares one before-paint measurement across protected roots, chrome and card observers", async () => {
+it("coalesces an overlay mutation followed by separate resize deliveries before paint", async () => {
   const mutations: { callback: MutationCallback; target: Node; options?: MutationObserverInit }[] = [];
   const sizes: { callback: ResizeObserverCallback; target: Element }[] = [];
   const disconnect = vi.fn();
@@ -137,6 +143,9 @@ it("shares one before-paint measurement across protected roots, chrome and card 
   overlay.dataset.canvasOverlay = "";
   overlay.dataset.testid = "inspector";
   const card = document.createElement("section");
+  let width = 200;
+  overlay.getBoundingClientRect = () => new DOMRect(0, 0, width, 100);
+  card.getBoundingClientRect = () => new DOMRect(300, 0, width, 100);
   document.body.append(overlay, card);
   const measure = vi.fn();
   const close = observeCoach(card, measure);
@@ -153,29 +162,57 @@ it("shares one before-paint measurement across protected roots, chrome and card 
     expect(protectedSize).toBeDefined();
     expect(cardSize).toBeDefined();
     const changed = [{ target: overlay, addedNodes: [], removedNodes: [] } as unknown as MutationRecord];
-    const notify = () => {
+    const mutate = () => {
       chrome.callback(changed, {} as MutationObserver);
       visibility.callback(changed, {} as MutationObserver);
-      protectedSize.callback([{ target: overlay } as unknown as ResizeObserverEntry], {} as ResizeObserver);
-      cardSize.callback([{ target: card } as unknown as ResizeObserverEntry], {} as ResizeObserver);
       // Camera churn in the same delivery must not leave a second measurement on the animation clock.
       chrome.callback(
         [{ target: card, addedNodes: [], removedNodes: [] } as unknown as MutationRecord],
         {} as MutationObserver,
       );
     };
-    notify();
+    const resize = async () => {
+      // Layout delivers independent observers separately; callback cleanup drains microtasks.
+      for (const subscription of [protectedSize, cardSize]) {
+        subscription.callback(
+          [
+            {
+              target: subscription.target,
+              contentRect: subscription.target.getBoundingClientRect(),
+            } as ResizeObserverEntry,
+          ],
+          {} as ResizeObserver,
+        );
+        await Promise.resolve();
+      }
+    };
+    width += 20;
+    mutate();
     await Promise.resolve();
+    await resize();
     expect(measure).toHaveBeenCalledTimes(2);
     expect(frame).not.toHaveBeenCalled();
-    notify();
+    width += 20;
+    mutate();
     await Promise.resolve();
+    await resize();
     expect(measure).toHaveBeenCalledTimes(3); // A later change still measures.
+    width += 20;
+    await resize();
+    expect(measure).toHaveBeenCalledTimes(4); // Resize-only changes still measure without a frame.
+    // A new mutation must measure even when the observed roots keep the same geometry.
+    mutate();
+    await Promise.resolve();
+    await resize();
+    expect(measure).toHaveBeenCalledTimes(5);
+    expect(frame).not.toHaveBeenCalled();
     disconnect.mockClear();
-    notify();
+    width += 20;
+    mutate();
     close();
     await Promise.resolve();
-    expect(measure).toHaveBeenCalledTimes(3); // Cleanup suppresses the queued delivery.
+    await resize();
+    expect(measure).toHaveBeenCalledTimes(5); // Cleanup suppresses queued and late deliveries.
     expect(disconnect).toHaveBeenCalledTimes(5);
   } finally {
     close();

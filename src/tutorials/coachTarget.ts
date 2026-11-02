@@ -112,29 +112,57 @@ export function locate({ targets, subjects, edges, selected }: TargetProps): Loc
   return null;
 }
 
-/** Coalesce camera/simulation updates to a frame. Paused-clock UI still lays out when chrome changes. */
-export function observeCoach(card: HTMLElement | null, measure: () => void) {
+/** Coalesce camera updates to a frame; chrome still lays out on a paused clock. measure returns false when inactive. */
+export function observeCoach(card: HTMLElement | null, measure: () => false | undefined) {
   let frame = 0;
   let connected = true;
   let pending = false;
+  const measuredRects = new Map<Element, Box>();
+  const measureNow = () => {
+    measuredRects.clear();
+    // A completion-hosted card skips placement and must not read layout for this cache either.
+    if (measure() === false) return;
+    for (const el of [document.documentElement, card, ...document.querySelectorAll(protectedControls)]) {
+      if (el) measuredRects.set(el, box(el));
+    }
+  };
   const run = () => {
     frame = 0;
-    measure();
+    if (connected) measureNow();
   };
   const schedule = () => {
-    if (!pending && !frame) frame = requestAnimationFrame(run);
+    if (connected && !pending && !frame) frame = requestAnimationFrame(run);
   };
-  const immediate = () => {
+  const immediate = (changes?: readonly (MutationRecord | ResizeObserverEntry)[]) => {
+    if (!connected) return;
+    // Mutation measurements already read layout. Native resize callbacks run later, with
+    // microtask checkpoints between observers: skip only sizes that measurement consumed.
+    // Mutations always invalidate, since targets can change without resizing these roots.
+    if (
+      changes?.length &&
+      changes.every((change) => {
+        if (!("contentRect" in change)) return false;
+        const previous = measuredRects.get(change.target);
+        if (!previous) return false;
+        const current = box(change.target);
+        return (
+          previous.x === current.x &&
+          previous.y === current.y &&
+          previous.width === current.width &&
+          previous.height === current.height
+        );
+      })
+    )
+      return;
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
     if (pending) return;
     pending = true;
-    // Protected roots also reach the chrome/size observers. Share one measurement before paint,
-    // even when animation frames are paused, instead of measuring once per subscription.
+    // Share mutation notifications within their delivery without relying on animation frames.
     queueMicrotask(() => {
       if (!connected || !pending) return;
       pending = false;
-      measure();
+      measureNow();
     });
   };
   const chrome =
@@ -159,7 +187,7 @@ export function observeCoach(card: HTMLElement | null, measure: () => void) {
     attributeFilter: ["style", "class", "hidden", "data-testid", "aria-expanded", "dir"],
   });
   const sizes = new ResizeObserver((entries) => {
-    if (card && entries.some((entry) => entry.target === card)) immediate();
+    if (card && entries.some((entry) => entry.target === card)) immediate(entries);
     else schedule();
   });
   sizes.observe(document.documentElement);
