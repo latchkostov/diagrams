@@ -469,7 +469,9 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
   } else if ("command" in action) await command(page, action.command, action.query);
   else if ("type" in action) {
     if (action.into) await expect(page.getByTestId(action.into)).toBeFocused();
-    await page.keyboard.insertText(action.type);
+    // A placement can still own buffered naming before its field is measured.
+    // insertText emits nothing on the focused canvas; real character keys reach that buffer.
+    await page.keyboard.type(action.type);
   } else {
     // An open menu intentionally defers pane work. Its Enter/Escape must run before
     // the camera can become idle; canvas keys still wait for their settled frame.
