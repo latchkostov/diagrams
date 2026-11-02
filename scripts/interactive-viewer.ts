@@ -77,6 +77,12 @@ const FORBIDDEN: [string, RegExp][] = [
  * ("missing export"), and the module itself coming back fails it too (FORBIDDEN, below).
  */
 export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
+  {
+    name: "document editing commands",
+    path: "/src/editor/useEditor.ts",
+    stub: (root) =>
+      `export { useEditor } from ${JSON.stringify(normalizePath(resolve(root, "src/export/viewer/readOnlyEditor.ts")))};`,
+  },
   // The shared planning barrel also exports authoring controls. A file can inspect
   // capacity, but cannot edit admission policies or upgrade the saved model.
   {
