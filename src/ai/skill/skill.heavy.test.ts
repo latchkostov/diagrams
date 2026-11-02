@@ -761,6 +761,11 @@ describe("share-link.mjs", () => {
 });
 
 describe("the downloadable skill", () => {
+  it("replaces document authoring commands with the viewer's read-only port", async () => {
+    const { modules } = await buildViewer(root);
+    expect(modules.some((id) => id.endsWith("/src/export/viewer/readOnlyEditor.ts"))).toBe(true);
+    expect(modules.filter((id) => /\/src\/editor\/(?:useEditor|arrange|layout)\.ts$/.test(id))).toEqual([]);
+  }, 30_000);
   it("excludes planning authoring and connection affordances from the read-only viewer", async () => {
     const { modules } = await buildViewer(root);
     expect(

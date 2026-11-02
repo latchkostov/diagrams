@@ -75,6 +75,7 @@ import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
 import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
 import { arrangementSelection } from "./arrangementSelection";
+import { expandSelection } from "./expandSelection";
 import { makePayload, mergeRoutes, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
 import { hasEdgeRouting, hasNodeRouting } from "../model/requestRouting";
 import { stencilIdBase, uniqueId } from "./ids";
@@ -95,7 +96,6 @@ import { choiceOf } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import {
   planBoundaryAdoption,
-  expandGroupIds,
   selectionSubtreeIds,
   planBoundaryDrop,
   parentBoundary,
@@ -307,26 +307,6 @@ export function createEditor(
   });
   const diagram = () => fromFlow(latest.meta, committed.getNodes(), committed.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
-  const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
-    const groupIds = expandGroupIds(
-      sel.groupIds ?? [],
-      allNodes.filter(isGroup).map((n) => ({ id: n.data.groupId, group: n.data.group })),
-    );
-    const nodeIds = new Set(sel.nodeIds ?? []);
-    for (const n of allNodes) {
-      if (!isGroup(n) && n.data.group && groupIds.has(n.data.group)) {
-        nodeIds.add(n.id);
-      }
-    }
-    const flowIds = new Set<string>();
-    for (const id of nodeIds) flowIds.add(id);
-    for (const g of groupIds) flowIds.add(GROUP_PREFIX + g);
-    return {
-      groupIds: [...groupIds],
-      nodeIds: [...nodeIds],
-      flowIds,
-    };
-  };
 
   const validateResources = createResourceValidator();
   const validateRouting = createRoutingValidator();
