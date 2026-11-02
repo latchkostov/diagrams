@@ -158,6 +158,11 @@ export async function focus(page: Page, id: string) {
     );
     const destination = stops.findIndex((stop) => stop === el || stop.contains(el) || el.contains(stop));
     let active = document.activeElement;
+    const inspector = el.closest('[data-testid="inspector"]');
+    // Wrapping through the canvas changes selection and replaces these fields.
+    // Within one Inspector, take the direct DOM-order route to the requested control.
+    if (active && inspector?.contains(active))
+      return !!(el.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING);
     for (let parent = active; parent; parent = parent.parentElement) {
       if (!parent.hasAttribute("data-live-readout")) continue;
       active = stops.find((stop) => stop.getAttribute("data-id") === parent.getAttribute("data-item")) ?? active;
@@ -469,7 +474,9 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
   } else if ("command" in action) await command(page, action.command, action.query);
   else if ("type" in action) {
     if (action.into) await expect(page.getByTestId(action.into)).toBeFocused();
-    await page.keyboard.insertText(action.type);
+    // A placement can still own buffered naming before its field is measured.
+    // insertText emits nothing on the focused canvas; real character keys reach that buffer.
+    await page.keyboard.type(action.type);
   } else {
     // An open menu intentionally defers pane work. Its Enter/Escape must run before
     // the camera can become idle; canvas keys still wait for their settled frame.

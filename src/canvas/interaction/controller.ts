@@ -792,6 +792,9 @@ export function createInteractionController<P = unknown>(
       if (event.type === "document.replaced" || event.type === "presenting") cancelSelectionQueue();
       if (event.type === "naming.done") toMode({ type: "naming.done" });
       if (event.type === "selection.changed") {
+        // A palette destination replaces the old choice, including when it selects
+        // the same node. Leaving quick-add open would keep its camera hold alive.
+        if (event.cause === "palette") closeMenu("command");
         cause = event.cause;
         decided = true;
       }

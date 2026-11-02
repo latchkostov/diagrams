@@ -221,6 +221,8 @@ jobs:
       - uses: ./.github/actions/chromium-cache
       - name: Native production E2E shard, auto workers, no retries
         timeout-minutes: 25
+        env:
+          E2E_TIMINGS: ${{ runner.os == 'macOS' && 'tests/e2e-timings-macos.json' || 'tests/e2e-timings.json' }}
         run: pnpm gate full --no-docker --only e2e --shard ${{ matrix.shard }}/${{ matrix.total }}
       - name: Compare native host candidates on the same runner
         if: always() && matrix.shard == 1

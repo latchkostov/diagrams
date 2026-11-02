@@ -12,6 +12,7 @@
 //   node scripts/e2e-shard.mjs <current> <total>       the shard's spec files, for `playwright test <files>`
 //   node scripts/e2e-shard.mjs --plan <total>          every shard's files and projected test time
 //   node scripts/e2e-shard.mjs --update <report.json>  rewrite the timings from Playwright JSON reports
+// E2E_TIMINGS selects a different measured profile for planning and updates (the default stays Linux's).
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -20,6 +21,8 @@ import { fileURLToPath } from "node:url";
 
 const TEST_DIR = "tests/e2e";
 const TIMINGS = "tests/e2e-timings.json";
+// Native hosts can measure a different relative file cost without changing Linux's plan.
+const timingFile = (root) => path.join(root, process.env.E2E_TIMINGS || TIMINGS);
 // Playwright's default testMatch.
 const SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 
@@ -37,10 +40,14 @@ function specFiles(root = process.cwd()) {
     .sort();
 }
 
-function readTimings(root = process.cwd()) {
-  if (!fs.existsSync(path.join(root, TIMINGS))) return {};
+function readTimings(root = process.cwd(), allowMissing = false) {
+  const file = timingFile(root);
+  if (!fs.existsSync(file)) {
+    if (process.env.E2E_TIMINGS && !allowMissing) throw new Error(`Missing E2E timing profile: ${file}`);
+    return {};
+  }
   try {
-    const seconds = JSON.parse(fs.readFileSync(path.join(root, TIMINGS), "utf8"))?.seconds;
+    const seconds = JSON.parse(fs.readFileSync(file, "utf8"))?.seconds;
     return seconds && typeof seconds === "object" && !Array.isArray(seconds) ? seconds : {};
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
@@ -88,7 +95,7 @@ export function updateTimings(reports, root = process.cwd()) {
     return fs
       .readdirSync(file, { recursive: true })
       .map((name) => path.join(file, name))
-      .filter((name) => path.basename(name) === "results.json")
+      .filter((name) => ["results.json", "native-results.json"].includes(path.basename(name)))
       .sort();
   });
   if (!reports.length) throw new Error("No Playwright results.json reports found");
@@ -108,26 +115,28 @@ export function updateTimings(reports, root = process.cwd()) {
   };
   let completeReports = 0;
   for (const file of reports) {
-    const report = JSON.parse(fs.readFileSync(file, "utf8"));
-    // A checkpoint may omit tests and suite titles: it cannot establish a file's
-    // full cost, and its flattened titles can count the same samples twice.
-    if (report.interrupted) continue;
-    completeReports++;
-    for (const s of report.suites ?? []) walk(s, []);
+    const input = JSON.parse(fs.readFileSync(file, "utf8"));
+    for (const report of input.native ? input.native.map(({ report }) => report) : [input]) {
+      // A checkpoint may omit tests and suite titles: it cannot establish a file's
+      // full cost, and its flattened titles can count the same samples twice.
+      if (report.interrupted) continue;
+      completeReports++;
+      for (const s of report.suites ?? []) walk(s, []);
+    }
   }
   if (!runs.size) throw new Error("No successful first attempts in the timing reports");
   const measured = {};
   for (const { file, ms } of runs.values())
     measured[file] = (measured[file] ?? 0) + ms.reduce((a, b) => a + b, 0) / ms.length / 1000;
   // Spec files the reports didn't cover keep their old timing; deleted ones drop out.
-  const old = readTimings(root);
+  const old = readTimings(root, true);
   const seconds = {};
   for (const f of specFiles(root)) {
     const s = measured[f] ?? old[f];
     if (Number.isFinite(s) && s >= 0) seconds[f] = Math.max(0.1, Math.round(s * 10) / 10);
   }
   const about = "Seconds of test time per e2e spec file on CI, for scripts/e2e-shard.mjs. Regenerate, don't hand-edit.";
-  fs.writeFileSync(path.join(root, TIMINGS), JSON.stringify({ about, seconds }, null, 2) + "\n");
+  fs.writeFileSync(timingFile(root), JSON.stringify({ about, seconds }, null, 2) + "\n");
   console.log(
     `e2e-shard: wrote ${Object.keys(seconds).length} spec timings from ${completeReports} complete report(s).`,
   );

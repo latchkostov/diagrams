@@ -17,6 +17,7 @@ function fixture() {
 }
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
@@ -58,6 +59,62 @@ it("uses whole-file greedy duration bins with disjoint and complete coverage", (
   expect(shards.map((s) => s.seconds)).toEqual([14, 13]);
   expect(shards.flatMap((s) => s.files).sort()).toEqual(Object.keys(seconds));
   expect(planShards(2, root)).toEqual(shards);
+});
+
+it("uses native file costs only when their timing profile is explicitly selected", () => {
+  const root = fixture();
+  for (const file of ["a.spec.ts", "b.spec.ts", "c.spec.ts"]) writeFileSync(join(root, "tests/e2e", file), "");
+  writeFileSync(
+    join(root, "tests/e2e-timings.json"),
+    JSON.stringify({ seconds: { "a.spec.ts": 10, "b.spec.ts": 2, "c.spec.ts": 1 } }),
+  );
+  const profile = "tests/e2e-timings-macos.json";
+  writeFileSync(join(root, profile), JSON.stringify({ seconds: { "a.spec.ts": 1, "b.spec.ts": 2, "c.spec.ts": 10 } }));
+  const linux = planShards(2, root);
+  vi.stubEnv("E2E_TIMINGS", profile);
+  expect(planShards(2, root).map((shard) => shard.files)).toEqual([["c.spec.ts"], ["a.spec.ts", "b.spec.ts"]]);
+  vi.stubEnv("E2E_TIMINGS", "tests/missing.json");
+  expect(() => planShards(2, root)).toThrow("Missing E2E timing profile");
+  vi.stubEnv("E2E_TIMINGS", "");
+  expect(planShards(2, root)).toEqual(linux);
+});
+
+it("refreshes a new native timing profile from complete children, excluding interrupted checkpoints", () => {
+  const root = fixture();
+  writeFileSync(join(root, "tests/e2e/a.spec.ts"), "");
+  const linux = JSON.stringify({ seconds: { "a.spec.ts": 20 } });
+  writeFileSync(join(root, "tests/e2e-timings.json"), linux);
+  const reports = join(root, "download");
+  mkdirSync(reports);
+  const report = (duration: number) => ({
+    suites: [
+      {
+        specs: [
+          {
+            file: "a.spec.ts",
+            title: "a test",
+            line: 1,
+            tests: [{ projectName: "chromium", results: [{ status: "passed", duration }] }],
+          },
+        ],
+      },
+    ],
+  });
+  writeFileSync(
+    join(reports, "native-results.json"),
+    JSON.stringify({
+      native: [
+        { source: "e1", report: report(3000) },
+        { source: "e2", report: { ...report(1000), interrupted: true } },
+      ],
+    }),
+  );
+  vi.stubEnv("E2E_TIMINGS", "tests/e2e-timings-macos.json");
+  updateTimings([reports], root);
+  expect(JSON.parse(readFileSync(join(root, "tests/e2e-timings-macos.json"), "utf8")).seconds).toEqual({
+    "a.spec.ts": 3,
+  });
+  expect(readFileSync(join(root, "tests/e2e-timings.json"), "utf8")).toBe(linux);
 });
 
 it.each([undefined, "{", "{}", "null", '{"seconds":null}', '{"seconds":{"a.spec.ts":"100"}}'])(

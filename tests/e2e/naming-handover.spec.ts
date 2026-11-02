@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { play } from "./keyboard-tutorial-driver";
 import {
   test,
   expect,
@@ -114,6 +115,30 @@ async function holdMeasurement(page: Page) {
 
 const releaseMeasurement = (page: Page) =>
   page.evaluate(() => (window as unknown as { releaseMeasurement(): void }).releaseMeasurement());
+
+test("keyboard recipe names a new node while its measurement is held", async ({ page, consoleErrors }) => {
+  await holdMeasurement(page);
+  await seed(page);
+  await page.evaluate(() => (window as unknown as { holdMeasurement(): void }).holdMeasurement());
+  try {
+    await pick(page, "clone");
+    await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(2);
+    const added = (await savedDiagram(page)).nodes.find((node) => node.id !== "origin");
+    if (!added) throw new Error("Expected the newly placed node");
+    await expect(page.getByTestId(`rf__node-${added.id}`)).toBeHidden();
+    await play(page, { type: NAME });
+    await page.keyboard.press("Enter");
+    await expect.poll(async () => (await savedDiagram(page)).nodes.some((node) => node.label === NAME)).toBe(true);
+  } finally {
+    await releaseMeasurement(page);
+  }
+  await expect(page.getByTestId("inspector-field-label")).not.toBeFocused();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(1);
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  await expect.poll(async () => (await savedDiagram(page)).nodes.some((node) => node.label === NAME)).toBe(true);
+  expectNoErrors(consoleErrors);
+});
 
 async function pick(page: Page, kind: "clone" | "quick-add") {
   if (kind === "clone") await page.keyboard.press("Alt+Shift+ArrowRight");

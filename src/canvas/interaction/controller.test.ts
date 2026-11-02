@@ -242,6 +242,25 @@ it("a palette destination takes focus after the camera reveals its card", () => 
   expect(h.env.active).toBe(h.nodeEl("destination"));
 });
 
+it.each(["context", "quickAdd", "connected"] as const)(
+  "palette navigation supersedes the %s menu before moving focus",
+  (kind) => {
+    const h = harness();
+    h.env.nodes.set("destination", { drawn: true });
+    h.controller.openMenu(kind, "previous choice");
+    h.camera.length = 0;
+    h.controller.dispatch({
+      type: "selection.changed",
+      cause: "palette",
+      target: { kind: "node", id: "destination" },
+    });
+    expect(h.controller.menu).toBeNull();
+    expect(h.camera).toContainEqual({ type: "menu.closed" });
+    h.drain();
+    expect(h.env.active).toBe(h.nodeEl("destination"));
+  },
+);
+
 it("segment keys yield to selection changes, menus, panning and touch gesture ownership", () => {
   const { controller: c } = harness();
   expect(c.stepSegment("a-b", 2)).toBe(-1);
