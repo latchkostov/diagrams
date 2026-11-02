@@ -1,6 +1,7 @@
 import { test, expect, gotoCanvas, STORAGE_KEYS, waitForCameraIdle, waitForInteractionIdle } from "./fixtures";
 import { command, focus, node, activate } from "./keyboard-tutorial-driver";
 import { chooseNativeSelect } from "./native-select";
+import { zoomIdentity } from "./node-identity";
 import { keyboardSelectionFixture } from "../../src/lab/keyboardSelectionFixture";
 import type { Page } from "@playwright/test";
 
@@ -17,6 +18,56 @@ async function pick(page: Page, end: "from" | "to", value: string) {
   await expect(page.getByTestId(`selection-area-${end}`)).toHaveValue(value);
 }
 const selected = (page: Page, id: string) => page.getByTestId(`rf__node-${id}`);
+
+for (const step of ["next", "prev"] as const)
+  test(`empty selection ${step} starts at the roving destination from the collapsed Inspector menu`, async ({
+    page,
+  }) => {
+    await fixture(page);
+    await node(page, "worker");
+    await command(page, "action:remove-selection:node:worker", "Remove selection Worker");
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await expect(selected(page, "worker")).not.toHaveClass(/\bselected\b/);
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+    await page.getByTestId("inspector-selection-actions").click();
+    await focus(page, "context-menu-item-selection.select");
+    await page.keyboard.press("ArrowRight");
+    await focus(page, "context-menu-item-selection.extend");
+    await page.keyboard.press("ArrowRight");
+    await focus(page, `context-menu-item-extend:${step}`);
+    await page.keyboard.press("Enter");
+    await expect(selected(page, "worker")).toBeFocused();
+    await expect(selected(page, "worker")).toHaveClass(/\bselected\b/);
+    await expect(selected(page, "orders")).not.toHaveClass(/\bselected\b/);
+    await expect(page.getByTestId("canvas-announce")).toContainText("Worker added. 1 selected.");
+  });
+
+test("extension reveals the destination at 100% when the combined selection exceeds the pane", async ({ page }) => {
+  const diagram = structuredClone(keyboardSelectionFixture);
+  diagram.nodes.push({ id: "far", label: "Far service", stencil: "service.node", x: 3200, y: 200 });
+  diagram.edges.push({ id: "worker-far", from: "worker", to: "far" });
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
+    diagram,
+  });
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await node(page, "orders");
+  await zoomIdentity(page, 1);
+  await command(page, "action:extend:node:far", "Extend selection Far service");
+  await expect(selected(page, "far")).toBeFocused();
+  await waitForCameraIdle(page);
+  for (const id of ["orders", "far"]) await expect(selected(page, id)).toHaveClass(/\bselected\b/);
+  const pane = await page.getByTestId("canvas-wrap").boundingBox();
+  const origin = await selected(page, "orders").boundingBox();
+  const destination = await selected(page, "far").boundingBox();
+  if (!pane || !origin || !destination) throw new Error("Missing selection bounds");
+  expect(destination.x + destination.width - origin.x).toBeGreaterThan(pane.width);
+  expect(destination.x).toBeGreaterThanOrEqual(pane.x);
+  expect(destination.x + destination.width).toBeLessThanOrEqual(pane.x + pane.width);
+  expect(destination.y).toBeGreaterThanOrEqual(pane.y);
+  expect(destination.y + destination.height).toBeLessThanOrEqual(pane.y + pane.height);
+  await expect(page.getByTestId("zoom-100")).toHaveText("100%");
+});
 
 test("Shift extends node and edge navigation; unshifted navigation still replaces the selection", async ({ page }) => {
   await fixture(page);

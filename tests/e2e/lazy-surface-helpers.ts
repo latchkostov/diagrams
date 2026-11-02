@@ -52,6 +52,14 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
     },
   );
 
+  if (id === "canvas.selection-area") {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.getByTestId("command-input").fill("Inside this area");
+    await page.getByTestId("command-item-action:selection.area").click();
+    return;
+  }
   if (id === "canvas.stencils") {
     await gotoCanvas(page, SLUG);
     await page.getByTestId("rail-add").click();

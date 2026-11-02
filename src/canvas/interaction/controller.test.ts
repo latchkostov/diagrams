@@ -1780,12 +1780,12 @@ it("queues selection keys in order during catalog loading and publishes readines
   const ready = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const counts: number[] = [];
+  const counts: string[] = [];
   const failed = vi.fn();
   h.controller.selectionWhenReady(
     ready,
     () => {
-      counts.push(counts.length + 1);
+      counts.push("first");
       return true;
     },
     failed,
@@ -1794,7 +1794,7 @@ it("queues selection keys in order during catalog loading and publishes readines
   h.controller.selectionWhenReady(
     ready,
     () => {
-      counts.push(counts.length + 1);
+      counts.push("second");
       return true;
     },
     failed,
@@ -1803,7 +1803,7 @@ it("queues selection keys in order during catalog loading and publishes readines
   expect(h.controller.phase).toBe("focus-pending");
   release();
   await ready;
-  expect(counts).toEqual([1, 2]);
+  expect(counts).toEqual(["first", "second"]);
   expect(h.controller.phase).toBe("idle");
   expect(failed).not.toHaveBeenCalled();
 });

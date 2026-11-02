@@ -1,6 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
 import { boundaryActions, boundaryMenu } from "./boundaryActions";
-import { selectionActions } from "./selectionActions";
+import { selectionActions, selectSimilarAction } from "./selectionActions";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingTopology";
@@ -758,20 +758,7 @@ export function builtinActions(): Action[] {
         ctx.editor.openInspector();
       },
     },
-    {
-      // "Select all like this": every node of this stencil, every edge of this relationship (D11).
-      id: "item.select-similar",
-      paletteOnly: true,
-      section: "edit",
-      targets: ["node", "edge"],
-      get label() {
-        return t("menu.selectSimilar");
-      },
-      icon: "select-all",
-      order: 150,
-      when: (ctx) => (ctx.nodeId ? !!ctx.editor.getNode(ctx.nodeId) : !!ctx.edgeId),
-      run: (ctx) => void ctx.editor.selectSimilar({ nodeId: ctx.nodeId, edgeId: ctx.edgeId }),
-    },
+    selectSimilarAction(),
     {
       id: "item.duplicate",
       paletteLabel: (ctx) =>

@@ -29,7 +29,7 @@ export interface FitRequest {
 /** What a reveal brings into view. */
 export type RevealScope =
   /** The selection (`withEdges`: with its connections); `roomBelow` keeps screen px under it (a label editor). */
-  | { kind: "selection"; withEdges: boolean; roomBelow: number }
+  | { kind: "selection"; withEdges: boolean; roomBelow: number; target?: { kind: "node" | "edge"; id: string } }
   /** These nodes (a check's finding names them). */
   | { kind: "nodes"; ids: readonly string[] }
   /** A node keyboard focus landed on, keeping `target`'s boundary name in view when the whole can't fit. */

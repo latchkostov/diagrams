@@ -2,8 +2,8 @@ import type { ReactFlowState } from "@xyflow/react";
 import type { BoxItem } from "../gestures";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 
-/** The same measured, absolute boxes and backdrop rule as pointer box selection. */
-export function areaItems(state: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">): BoxItem[] {
+/** Measured, absolute boxes shared by pointer and keyboard area selection. */
+export function selectionBoxes(state: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">): BoxItem[] {
   return [...state.nodeLookup.values()].flatMap((n) => {
     const width = n.measured?.width ?? n.width ?? 0,
       height = n.measured?.height ?? n.height ?? 0;

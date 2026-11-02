@@ -37,25 +37,34 @@ function selectionItems(ctx: ActionContext): MenuNode[] {
     ...sel.groupIds.map((id) => `node:${GROUP_PREFIX}${id}`),
     ...sel.edgeIds.map((id) => `edge:${id}`),
   ]);
-  const nodeLabel = (id: string) => d.nodes.find((n) => n.id === id)?.label || id;
+  const nodeLabels = new Map(d.nodes.map((n) => [n.id, n.label || n.id]));
+  const nodeLabel = (id: string) => nodeLabels.get(id) ?? id;
   const targets: { target: SelectionTarget; label: string; keywords?: string }[] = [
-    ...d.nodes.map((n) => ({
-      target: { kind: "node" as const, id: n.id },
-      label: n.label || n.id,
-      keywords: `${n.sublabel ?? ""} ${n.id}`,
-    })),
-    ...(d.annotations ?? []).map((n) => ({
-      target: { kind: "node" as const, id: n.id },
-      label: n.text.split("\n")[0] || n.id,
-    })),
-    ...(d.groups ?? []).map((g) => ({
-      target: { kind: "node" as const, id: GROUP_PREFIX + g.id },
-      label: g.label || g.id,
-    })),
-    ...d.edges.map((e) => ({
-      target: { kind: "edge" as const, id: e.id },
-      label: e.label || `${nodeLabel(e.from)} → ${nodeLabel(e.to)}`,
-    })),
+    ...d.nodes
+      .filter((n) => selected.has(`node:${n.id}`))
+      .map((n) => ({
+        target: { kind: "node" as const, id: n.id },
+        label: n.label || n.id,
+        keywords: `${n.sublabel ?? ""} ${n.id}`,
+      })),
+    ...(d.annotations ?? [])
+      .filter((n) => selected.has(`node:${n.id}`))
+      .map((n) => ({
+        target: { kind: "node" as const, id: n.id },
+        label: n.text.split("\n")[0] || n.id,
+      })),
+    ...(d.groups ?? [])
+      .filter((g) => selected.has(`node:${GROUP_PREFIX}${g.id}`))
+      .map((g) => ({
+        target: { kind: "node" as const, id: GROUP_PREFIX + g.id },
+        label: g.label || g.id,
+      })),
+    ...d.edges
+      .filter((e) => selected.has(`edge:${e.id}`))
+      .map((e) => ({
+        target: { kind: "edge" as const, id: e.id },
+        label: e.label || `${nodeLabel(e.from)} → ${nodeLabel(e.to)}`,
+      })),
   ];
   const navigation: [NavStep, string, string][] = [
     ["next", t("shortcuts.selectNext"), ""],
@@ -107,19 +116,17 @@ function selectionItems(ctx: ActionContext): MenuNode[] {
       searchable: t("selection.searchSelected"),
       keywords: "remove deselect selection subset",
       disabled: !selected.size,
-      children: targets
-        .filter((item) => selected.has(`${item.target.kind}:${item.target.id}`))
-        .map((item) => ({
-          type: "item",
-          id: `remove-selection:${item.target.kind}:${item.target.id}`,
-          label: item.label,
-          paletteLabel: t("chrome.valueValue", { parent: t("selection.remove"), leaf: item.label }),
-          keywords: `remove selection deselect ${item.keywords ?? ""}`,
-          documentScoped: true,
-          run: () => {
-            ctx.editor.selectionTool({ type: "remove", target: item.target });
-          },
-        })),
+      children: targets.map((item) => ({
+        type: "item",
+        id: `remove-selection:${item.target.kind}:${item.target.id}`,
+        label: item.label,
+        paletteLabel: t("chrome.valueValue", { parent: t("selection.remove"), leaf: item.label }),
+        keywords: `remove selection deselect ${item.keywords ?? ""}`,
+        documentScoped: true,
+        run: () => {
+          ctx.editor.selectionTool({ type: "remove", target: item.target });
+        },
+      })),
     },
     {
       type: "item",
@@ -130,13 +137,31 @@ function selectionItems(ctx: ActionContext): MenuNode[] {
       run: () => ctx.editor.openSelectionArea(),
     },
   ];
-  if (ctx.nodeId || ctx.edgeId)
+  const similar = selectSimilarAction();
+  if (similar.targets.includes(ctx.target) && similar.when?.(ctx))
     items.push({
       type: "item",
-      id: "item.select-similar",
-      label: t("menu.selectSimilar"),
+      id: similar.id,
+      label: typeof similar.label === "function" ? similar.label(ctx) : similar.label,
       paletteLabel: t("menu.selectSimilar"),
-      run: () => ctx.editor.selectSimilar({ nodeId: ctx.nodeId, edgeId: ctx.edgeId }),
+      run: () => similar.run?.(ctx),
     });
   return items;
+}
+
+/** Canonical eligibility and execution for both the palette and the Select submenu. */
+export function selectSimilarAction(): Action {
+  return {
+    id: "item.select-similar",
+    paletteOnly: true,
+    section: "edit",
+    targets: ["node", "edge"],
+    get label() {
+      return t("menu.selectSimilar");
+    },
+    icon: "select-all",
+    order: 150,
+    when: (ctx) => (ctx.nodeId ? !!ctx.editor.getNode(ctx.nodeId) : !!ctx.edgeId),
+    run: (ctx) => void ctx.editor.selectSimilar({ nodeId: ctx.nodeId, edgeId: ctx.edgeId }),
+  };
 }

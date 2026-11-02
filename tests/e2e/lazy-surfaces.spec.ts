@@ -93,12 +93,15 @@ test("live.note: exported SVG excludes awaited narration", async ({ page }) => {
 });
 
 async function retrySurface(page: Page, id: LazySurfaceId) {
-  await page.getByTestId(id === "live.sequence" ? "lazy-dialog-retry" : "lazy-load-retry").focus();
+  await page
+    .getByTestId(id === "live.sequence" || id === "canvas.selection-area" ? "lazy-dialog-retry" : "lazy-load-retry")
+    .focus();
   await page.keyboard.press("Enter");
   await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("loaded");
   // Presence has no focus field of its own. Other surfaces keep the generated contract's
   // non-body keyboard stop. Wait for the actual keyboard target as well as the chunk.
   if (id === "canvas.presence") await expect(page.getByTestId("example-picker")).toBeFocused();
+  else if (id === "canvas.selection-area") await expect(page.getByTestId("selection-area-from-search")).toBeFocused();
   else await expect.poll(() => page.evaluate(() => document.activeElement !== document.body)).toBe(true);
 }
 
@@ -178,7 +181,7 @@ for (const [id, , , policy] of lazySurfaces) {
       const focus = page.getByTestId(
         id === "examples.discovery"
           ? "examples-search"
-          : id === "live.sequence"
+          : id === "live.sequence" || id === "canvas.selection-area"
             ? "lazy-dialog-close"
             : id === "live.inject"
               ? "inject-loading-close"
@@ -192,6 +195,10 @@ for (const [id, , , policy] of lazySurfaces) {
       );
       await focus.focus();
       await expect(focus).toBeFocused();
+      if (id === "canvas.selection-area") {
+        await expect(page.getByTestId("lazy-dialog-loading")).toBeVisible();
+        await expect(page.getByTestId("selection-area-from-search")).toHaveCount(0);
+      }
       const before = id.startsWith("tutorial.") ? undefined : await savedDiagram(page);
       if (!tutorial) {
         await page.keyboard.press("Tab");
@@ -221,7 +228,10 @@ for (const [id, , , policy] of lazySurfaces) {
       mode = "fail";
       release();
       await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("failed");
-      await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+      await expect(
+        page.getByTestId(id === "canvas.selection-area" ? "lazy-dialog-retry" : "lazy-load-retry"),
+      ).toBeVisible();
+      if (id === "canvas.selection-area") await expect(page.getByTestId("lazy-dialog-error")).toBeVisible();
       if (id === "live.simulations") await expect(page.getByTestId("sim-panel-load-retry")).toBeFocused();
       else await expect(focus).toBeFocused();
       mode = "pass";

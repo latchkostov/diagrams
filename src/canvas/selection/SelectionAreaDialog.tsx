@@ -11,7 +11,7 @@ import { useInteraction } from "../interaction/context";
 import { dependencyVisibility } from "../dependencyVisibility";
 import { isDependency } from "../../model/relations";
 import { readingOrder } from "../keyboardNav";
-import { areaItems } from "./area";
+import { selectionBoxes } from "./selectionBoxes";
 import { areaDialogMachine } from "./areaDialogMachine";
 import "./selectionArea.css";
 
@@ -78,7 +78,7 @@ export function SelectionAreaDialog({ editor, direction, onClose }: SelectionAre
   const interaction = useInteraction();
   const [session] = useState(() => createMachine(areaDialogMachine));
   const state = store.getState();
-  const items = areaItems(state);
+  const items = selectionBoxes(state);
   const order = readingOrder(
     items.filter((n) => state.nodeLookup.get(n.id)?.type === "diagram"),
     direction,

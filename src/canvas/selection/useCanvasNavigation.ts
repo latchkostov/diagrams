@@ -37,7 +37,7 @@ import {
   type SelectionPick,
   type SelectionTarget,
 } from "../../editor/selectionCommands";
-import { areaItems } from "./area";
+import { selectionBoxes } from "./selectionBoxes";
 
 /** Memoize a filtered projection by its members, rather than by the whole graph's identity. */
 function sharedFilter<T, U extends T>(predicate: (value: T) => value is U) {
@@ -261,7 +261,7 @@ export function useCanvasNavigation({
           );
         // Focus follows on the next frame, and the Tab stop moves now (K1).
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id } });
-        revealSelection(undefined, 0, "navigation");
+        revealSelection(undefined, 0, "navigation", undefined, extend ? { kind: "node", id } : undefined);
         const at = `${order.indexOf(id) + 1} of ${order.length}`;
         if (isDiagramNode(n)) {
           const outs = es.filter((e) => e.source === id).length;
@@ -292,7 +292,7 @@ export function useCanvasNavigation({
         if (extend) applyPick(extendPick(currentPick(), { kind: "edge", id }));
         else editor.select({ edgeIds: [e.id] });
         interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
-        revealSelection(undefined, 0, "edge-navigation");
+        revealSelection(undefined, 0, "edge-navigation", undefined, extend ? { kind: "edge", id } : undefined);
         const said = edgeAriaLabel(
           labelOf(e.source),
           labelOf(e.target),
@@ -346,7 +346,7 @@ export function useCanvasNavigation({
         if (!back && !pending && item && readouts?.enter(item)) return true;
         // From an edge, the order goes on from its source.
         const start = current ?? (focusedEdge ? es.find((e) => e.id === focusedEdge)?.source : undefined);
-        if (!start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
+        if (!extend && !start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
         const next = start ? stepInOrder(order, start, back) : (rovingId ?? order[0]);
         if (!next || !goNode(next)) return false;
         // Shift+Tab retraces Tab: in Live, back through the previous node's readout before the node itself.
@@ -457,7 +457,7 @@ export function useCanvasNavigation({
       } else {
         if (![command.from, command.to].every((id) => ns.some((n) => n.id === id && isDiagramNode(n)))) return false;
         const result = pickArea(
-          areaItems(s),
+          selectionBoxes(s),
           es,
           command.from,
           command.to,

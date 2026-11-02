@@ -12,6 +12,6 @@ They demonstrate this feature instead of a new showcase example, as approved in 
 
 ## Output parity
 
-Only node/i18n/catalogs.json changes: sixteen new selection messages in all 37 locales and two boundary
-announcement messages move from the core menu catalog into the optional selection catalog. Counts and
-catalog fingerprints change accordingly. Diagram, export, simulation, planning and browser outputs are unchanged.
+Only node/i18n/catalogs.json changes: sixteen new selection messages update counts and optional selection
+catalog fingerprints across the locales. Boundary announcements keep master's core menu catalog keys after
+the phase A squash merge. Diagram, export, simulation, planning and browser outputs are unchanged.
