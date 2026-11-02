@@ -134,8 +134,9 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       if (cause === "keyboard" && target)
         return move(
           { target: { kind: target.kind, id: target.id }, when: "measured", revealed: true },
-          target.kind === "node" ? { roving: target.id } : {},
+          { selectionAnchor: target, ...(target.kind === "node" ? { roving: target.id } : {}) },
         );
+      if (cause === "keyboard" && event.selection) return move({ target: canvas, when: "measured", revealed: true });
       if ((cause === "undo" || cause === "redo") && event.selection) {
         const selection: FocusTarget = { kind: "selection", ...event.selection };
         if (event.origin === "canvas")
@@ -182,6 +183,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         when: event.type === "inspector.rule" ? "commit" : "now",
       });
     case "dialog.closed": {
+      if (event.dialog === "selection" && event.reason === "pick") return keep();
       const back: FocusTarget =
         event.dialog === "livePanel"
           ? { kind: "panelOpener" }
@@ -251,7 +253,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return move({ target: canvas, when: "frame", onlyIfLost: true, ifGone: event.active });
     case "focus.entered":
     case "focus.resolved":
-      return keep({ roving: event.id });
+      return keep({ roving: event.id, selectionAnchor: { kind: "node", id: event.id } });
     case "focus.ran": {
       const ran = state.pending;
       if (!ran?.again) return keep({ pending: null });

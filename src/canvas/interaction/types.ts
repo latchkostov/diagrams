@@ -288,7 +288,7 @@ export type FocusEvent =
    */
   | {
       type: "dialog.closed";
-      dialog: "checks" | "livePanel" | "inject" | "room";
+      dialog: "checks" | "livePanel" | "inject" | "room" | "selection";
       opener: ElementHandle | null;
       /** inject: the node it was opened on. */
       node?: string;
@@ -334,6 +334,8 @@ export type FocusEvent =
   | { type: "input" };
 
 export interface FocusState {
+  /** Last selected keyboard destination; commands validate it against the current selection. */
+  selectionAnchor?: { kind: "node" | "edge"; id: string };
   /** Surfaces currently owning focus, including independent Live popovers. */
   openMenus?: readonly MenuFocusKind[];
   /** The canvas's one Tab stop (a node's flow id), when one has been chosen. */

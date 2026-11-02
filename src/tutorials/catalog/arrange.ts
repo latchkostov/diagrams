@@ -37,6 +37,15 @@ export const arrange: Tutorial = {
       targets: [{ testId: "canvas-pane", tip: msg("tutorials.arrange.boxTip") }],
       demo: [{ kind: "select", subjects: ["a", "b", "c", "d", "e"] }],
       solution: [{ boxSelect: "canvas-pane", around: ["node-{a}", "node-{b}", "node-{c}", "node-{d}", "node-{e}"] }],
+      keyboardSolution: [
+        { command: "action:selection.area", query: msg("selection.area") },
+        { focus: "selection-area-from" },
+        { choose: "selection-area-from", value: "{a}" },
+        { focus: "selection-area-to" },
+        { choose: "selection-area-to", value: "{d}" },
+        { activate: "selection-area-wholly" },
+        { activate: "selection-area-select" },
+      ],
       sticky: true,
     },
     {
@@ -52,6 +61,7 @@ export const arrange: Tutorial = {
         { hover: "context-menu-item-selection.align" },
         { click: "context-menu-item-align:middle" },
       ],
+      keyboardSolution: [{ command: "action:align:middle", query: msg("menu.verticalMiddles") }],
       sticky: true,
     },
     {
@@ -63,6 +73,10 @@ export const arrange: Tutorial = {
       targets: [{ testId: "node-{a}", tip: msg("tutorials.arrange.tidyTip") }],
       demo: [],
       solution: [{ rightclick: "node-{a}" }, { click: "context-menu-item-selection.tidy" }, { click: "tutorial-skip" }],
+      keyboardSolution: [
+        { command: "action:selection.tidy", query: msg("menu.tidyUp") },
+        { activate: "tutorial-skip" },
+      ],
       sticky: true,
     },
   ],

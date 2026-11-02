@@ -1,5 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
 import { boundaryActions, boundaryMenu } from "./boundaryActions";
+import { selectionActions } from "./selectionActions";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingTopology";
@@ -760,6 +761,7 @@ export function builtinActions(): Action[] {
     {
       // "Select all like this": every node of this stencil, every edge of this relationship (D11).
       id: "item.select-similar",
+      paletteOnly: true,
       section: "edit",
       targets: ["node", "edge"],
       get label() {
@@ -1164,6 +1166,7 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.tidy(ctx.selection.nodeIds),
     },
     ...boundaryActions(),
+    ...selectionActions(),
     {
       id: "selection.group",
       menuGroup: boundaryMenu,

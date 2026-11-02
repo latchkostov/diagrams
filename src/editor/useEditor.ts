@@ -4,6 +4,7 @@ import { revisionAtLeast } from "../model/revisions";
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
 import { changeNodeStencil } from "../model/changeNodeStencil";
 import { t } from "../i18n";
+import { surfaceCatalogs } from "../i18n/surfaces";
 import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
@@ -190,6 +191,8 @@ export interface EditorDeps {
   /** Reveals a node, or the selection when omitted, once measured; leaves DOM focus with its invoker. */
   reveal?: (id?: string) => void;
   announceSelection?: (text: string) => void;
+  selectionTool?: (command: import("./selectionCommands").SelectionCommand) => boolean;
+  openSelectionArea?: () => void;
   /** Makes a node, brings it into view and opens its name, keeping keys typed meanwhile (the canvas). */
   nameNew?: (make: () => NewNode | null, fallback: string) => void;
   /** This diagram is private (local-only or the Private switch): copies from it say so. */
@@ -981,12 +984,11 @@ export function createEditor(
     getGroup: (id) => diagram().groups?.find((g) => g.id === id),
     getAnnotation: (id) => diagram().annotations?.find((a) => a.id === id),
     getSelection: () => {
-      const ns = rf.getNodes();
+      const ns = currentNodes();
       return {
         nodeIds: ns.filter((n) => isPlaced(n) && n.selected).map((n) => n.id),
         groupIds: ns.filter((n): n is GroupFlowNode => isGroup(n) && !!n.selected).map((n) => n.data.groupId),
-        edgeIds: rf
-          .getEdges()
+        edgeIds: currentEdges()
           .filter((e) => e.selected)
           .map((e) => e.id),
       };
@@ -1616,8 +1618,11 @@ export function createEditor(
       deps().setNodes((cur) => cur.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n)));
       return { adopted: r.adopted, released: r.released };
     },
+    selectionTool: (command) => deps().selectionTool?.(command) ?? false,
+    openSelectionArea: () => deps().openSelectionArea?.(),
     transferBoundary: async (ids, groupId) => {
       const focused = deps().focusedNode?.();
+      await surfaceCatalogs(["selection"]);
       const { planBoundaryTransfer } = await import("./boundaryTransfer");
       const ns = currentNodes();
       const eligible = ns
@@ -1665,12 +1670,12 @@ export function createEditor(
       const selection = api.getSelection();
       const selected = selection.nodeIds.length + selection.edgeIds.length + selection.groupIds.length;
       const text = groupId
-        ? t("menu.selectionAddedBoundary", {
+        ? t("selection.addedBoundary", {
             count: plan.positions.size,
             name: api.getGroup(groupId)?.label || t("chrome.untitledBoundary"),
             selection: t("ai.selected", { count: selected }),
           })
-        : t("menu.selectionRemovedBoundary", {
+        : t("selection.removedBoundary", {
             count: plan.positions.size,
             selection: t("ai.selected", { count: selected }),
           });

@@ -1,0 +1,50 @@
+.selection-area-pickers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.selection-area-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.selection-area-picker select {
+  width: 100%;
+  max-width: 100%;
+}
+.selection-area-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-start: 16px;
+}
+.selection-area-outline {
+  pointer-events: none;
+}
+.selection-area-outline span {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 0;
+  padding: 4px;
+  white-space: nowrap;
+  color: var(--text);
+  background: var(--panel);
+  font-size: calc(12px / var(--rf-zoom-exact));
+}
+@media (max-width: 480px) {
+  .selection-area-backdrop {
+    padding: 16px;
+  }
+  .selection-area-pickers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.selection-area-backdrop {
+  display: flex;
+  backdrop-filter: none;
+  background: transparent;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 72px 24px 24px;
+}

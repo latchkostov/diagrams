@@ -10,7 +10,17 @@ import type { LoadStatus } from "../lib/lazyLoad";
  * download failed: the same modal, so the canvas behind stays as it is. Esc and Close dismiss it, focus goes back to
  * what opened it, and Retry (after a failure) tries the download again.
  */
-export function ShortcutsShell({ onClose, status }: { onClose: () => void; status: LoadStatus }) {
+export function ShortcutsShell({
+  onClose,
+  status,
+  title,
+  selection,
+}: {
+  onClose: () => void;
+  status: LoadStatus;
+  title?: string;
+  selection?: boolean;
+}) {
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   // As every dialog: Esc closes, Tab wraps inside, the page behind is inert, focus goes back to what opened it.
@@ -27,8 +37,8 @@ export function ShortcutsShell({ onClose, status }: { onClose: () => void; statu
         data-testid="lazy-dialog"
       >
         <header className="dlg-head">
-          <Icon name="keyboard" />
-          <h2 id="shortcuts-shell-title">{t("shortcuts.title")}</h2>
+          <Icon name={selection ? "select-all" : "keyboard"} />
+          <h2 id="shortcuts-shell-title">{title ?? t("shortcuts.title")}</h2>
           <button className="icon-btn" onClick={onClose} aria-label={t("common.close")} data-testid="lazy-dialog-close">
             <Icon name="close" size={14} />
           </button>

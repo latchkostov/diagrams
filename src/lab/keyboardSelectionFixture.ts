@@ -8,6 +8,7 @@ export const keyboardSelectionFixture: DiagramFile = {
     { id: "worker", label: "Worker", stencil: "service.node", x: 300, y: 200 },
     { id: "audit", label: "Audit", stencil: "service.node", x: 0, y: 400 },
   ],
+  annotations: [{ id: "partial-note", kind: "note", text: "Context", x: 500, y: 50, width: 160, height: 120 }],
   edges: [{ id: "orders-worker", from: "orders", to: "worker" }],
   groups: [{ id: "region", label: "Region A", x: 650, y: 0, width: 650, height: 500 }],
 };

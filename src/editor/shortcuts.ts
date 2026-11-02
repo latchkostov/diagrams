@@ -29,6 +29,9 @@ export type ShortcutId =
   | "select-toward"
   | "select-edge-out"
   | "select-edge-in"
+  | "extend-toward"
+  | "extend-edge-out"
+  | "extend-edge-in"
   | "command-palette"
   | "shortcuts";
 
@@ -85,6 +88,18 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "select-edge-out", keys: ["Ctrl+Alt+]"], group: "Selection" },
   { id: "select-edge-in", keys: ["Ctrl+Alt+["], group: "Selection" },
+  {
+    id: "extend-toward",
+    keys: [
+      "Ctrl+Alt+Shift+ArrowRight",
+      "Ctrl+Alt+Shift+ArrowDown",
+      "Ctrl+Alt+Shift+ArrowLeft",
+      "Ctrl+Alt+Shift+ArrowUp",
+    ],
+    group: "Selection",
+  },
+  { id: "extend-edge-out", keys: ["Ctrl+Alt+Shift+]"], group: "Selection" },
+  { id: "extend-edge-in", keys: ["Ctrl+Alt+Shift+["], group: "Selection" },
   {
     id: "escape",
     keys: ["Escape"],

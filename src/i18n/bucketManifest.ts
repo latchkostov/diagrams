@@ -7,6 +7,7 @@ export const catalogBuckets = {
   stencils: ["stencil"],
   simulation: ["autoscaling", "admission", "threads", "broker", "planning"],
   exports: ["htmlExport", "imageDialog", "storageDialog", "share"],
+  selection: ["selection"],
   ai: ["ai"],
   standalone: ["staticAuth", "staticSkill"],
 } as const;

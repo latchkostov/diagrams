@@ -17,10 +17,12 @@ import type { ConnectedMenuAnchor } from "../geometry/connectedMenuPlacement";
 import type { InlineEdit } from "../DiagramContext";
 import { menuTargets } from "./menuTargets";
 import { isAnnotationNode, isGroupNode, type DiagramFlowEdge, type FlowNode } from "../types";
+import type { CatalogStatus } from "../../i18n/useSurfaceCatalogs";
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
 export type MenuState = {
+  selectionTools?: boolean;
   menuId?: string;
   triggerRef?: RefObject<HTMLElement | null>;
   connected?: ConnectedMenuAnchor;
@@ -71,14 +73,34 @@ export function toolbarViewMenu(editor: EditorApi): Omit<MenuState, "x" | "y"> {
 }
 
 /** What opens over the canvas: a menu (its anchor and items), or a dialog (no payload). */
-export type CanvasSurface = MenuState | null;
+export type CanvasSurface = MenuState | { area: true } | null;
 /** The canvas's menus: they open and close through the interaction controller, with a reason. */
 export type CanvasMenus = InteractionController<CanvasSurface>;
 
 /** The open menu's items, built again when the language changes. */
-export function useCanvasMenuItems(menu: MenuState | null, locale: ReturnType<typeof useLocale>) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- factories resolve translated metadata from the locale store
-  return useMemo(() => menu?.items() ?? [], [menu, locale]);
+export function useCanvasMenuItems(
+  menu: MenuState | null,
+  locale: ReturnType<typeof useLocale>,
+  catalog?: CatalogStatus,
+) {
+  return useMemo(
+    () =>
+      !menu
+        ? []
+        : !menu.selectionTools || catalog?.ready
+          ? menu.items()
+          : [
+              {
+                type: "item" as const,
+                id: "selection.loading",
+                label: catalog?.failed ? tr("common.retry") : tr("common.loading"),
+                disabled: !catalog?.failed,
+                run: catalog?.retry,
+              },
+            ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- factories resolve translated metadata from the locale store
+    [menu, locale, catalog?.ready, catalog?.failed, catalog?.retry],
+  );
 }
 
 /** The platform, as menus are told it (macOS opens a context menu on Control-click too). */
@@ -121,6 +143,7 @@ export function useCanvasContextMenus(
         {
           x: e.clientX,
           y: e.clientY,
+          selectionTools: !live,
           items: () => actionRegistry.build(full),
           targets: menuTargets(ctx),
           get label() {

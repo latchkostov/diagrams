@@ -194,7 +194,7 @@ export const Inspector = memo(function Inspector(p: InspectorProps) {
           <span className="sr-only" id={id + "-title"} data-testid="inspector-title">
             {title}
           </span>
-          {n > 0 && p.onSelectionActions && (
+          {p.onSelectionActions && (
             <button
               className="icon-btn"
               data-testid="inspector-selection-actions"
@@ -238,6 +238,18 @@ export const Inspector = memo(function Inspector(p: InspectorProps) {
         >
           <Icon name="panel-right" />
         </button>
+        {p.onSelectionActions && (
+          <button
+            className="icon-btn"
+            data-testid="inspector-selection-actions"
+            aria-haspopup="menu"
+            aria-label={t("menu.selectionActions")}
+            title={t("menu.selectionActions")}
+            onClick={(event) => p.onSelectionActions?.(event.currentTarget)}
+          >
+            <Icon name="chevron-down" />
+          </button>
+        )}
       </aside>,
     );
   }

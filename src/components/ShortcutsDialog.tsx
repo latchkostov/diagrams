@@ -6,6 +6,7 @@ import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
 import { msg, t, useLocale } from "../i18n";
 import { legacyKeyHint } from "../editor/keyHints";
 import { openModalLayer } from "../lib/modalLayers";
+import { surfaceCatalogs } from "../i18n/surfaces";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
@@ -42,6 +43,9 @@ const LABELS: Record<ShortcutId, () => string> = {
   "select-toward": msg("shortcuts.selectToward"),
   "select-edge-out": msg("shortcuts.selectEdgeOut"),
   "select-edge-in": msg("shortcuts.selectEdgeIn"),
+  "extend-toward": msg("selection.extendKeys"),
+  "extend-edge-out": msg("selection.extendKeys"),
+  "extend-edge-in": msg("selection.extendKeys"),
   escape: msg("shortcuts.escape"),
   "fit-view": msg("shortcuts.fitView"),
   "zoom-selection": msg("shortcuts.zoomSelection"),
@@ -240,6 +244,7 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
                   </div>
                 </>
               )}
+              {g === "Selection" && <p data-testid="selection-shortcuts-fallback">{t("selection.fallback")}</p>}
               {g === "Edit" && (
                 <>
                   {LINE.map(([k, v]) => (
@@ -334,4 +339,11 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
     </div>,
     document.body,
   );
+}
+
+// Optional selection messages share this sheet’s recoverable loading lifecycle.
+// eslint-disable-next-line react-refresh/only-export-components -- Optional copy shares the sheet’s recoverable loader.
+export async function shortcutsWhenReady() {
+  await surfaceCatalogs(["selection"]);
+  return ShortcutsDialog;
 }
