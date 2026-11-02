@@ -26,7 +26,7 @@ The updater finds `native-results.json`, unwraps each child and ignores interrup
 It records 204 measured files from 23 complete reports; new/unmeasured files use the existing
 mean estimate. No partial measurement is treated as a complete file cost.
 
-Using the same native costs and fallback on both current plans, the largest old twelve-shard
+Using the same native costs and fallback on both plans at the profile commit, the largest old twelve-shard
 assignment is estimated at 1,341.9 seconds; the largest native-weighted assignment at 1,121.1
 (ratio 0.835). Every spec remains assigned exactly once. These estimates require a dispatched
 Nightly to establish whether all four formerly interrupted cases now finish.
@@ -44,3 +44,16 @@ SUMMARY: 1cacd30fb0461d7dbf3e68f4475bd13f176d339e | unit={"passed":45,"failed":0
 ```
 
 The quick gate runs working edits on its starting HEAD, not a committed-head stamp.
+
+## Hosted outcome
+
+Branch Nightly [41450369467](https://github.com/latchkostov/diagrams/actions/runs/41450369467)
+tests integration `8d4ec6548`, including #424 and #425. All twelve macOS steps finish within
+their unchanged 25-minute limit; the longest takes 22 minutes. All four formerly unfinished
+cases pass: Checks typing 17.207 seconds, relay sharing 2.633 seconds, and the two Dev StrictMode
+mount cases 3.964/2.320 seconds. macOS has zero unfinished cases or interrupted reports.
+
+This resolves the observed cumulative shard interruption. Seven native test failures remain
+enabled and distinct from that interruption; the [results fragment](2026-11-02-native-nightly-round-ten-results.md)
+records every remaining group and the complete per-OS table. No hang is inferred for the three
+previously unstarted cases, and no blanket claim about future intermittent hangs is made.

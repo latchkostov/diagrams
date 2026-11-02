@@ -119,6 +119,17 @@ while excluding an interrupted child. The restored harness passes all 40 focused
 Linux harness/fragment cohort passes 45. Its same-run browser subset above completes all four
 formerly unfinished cases twice, without changing their source or limits.
 
-The hosted macOS outcome still needs the dispatched Nightly; a local Linux pass is not recorded
-as proof that the native deadline is repaired. The complete measurement provenance and refresh
+At this implementation stage the hosted macOS outcome still needed the dispatched Nightly;
+a local Linux pass was not recorded as proof that the native deadline was repaired.
+The complete measurement provenance and refresh
 command are in [the native shard fragment](2026-11-02-native-nightly-macos-shards.md).
+
+## Completed branch dispatch
+
+Nightly [41450369467](https://github.com/latchkostov/diagrams/actions/runs/41450369467), integration
+`8d4ec6548`, completes all reports. Windows records 3,345 passed/19 failed; macOS 3,361/7;
+Linux Dev 3,327/0 and Linux Build x3 10,104/0. Every suite has zero unfinished cases and flakes.
+All five new browser regressions pass on both native OSes, and the four formerly unfinished
+macOS cases all pass. Every macOS step finishes within the existing limit (maximum 22 minutes).
+The green Linux Dev/Build streak holds. Native failures remain enabled; this is not a claim
+that the native suite is green. See [the results and remaining groups](2026-11-02-native-nightly-round-ten-results.md).
