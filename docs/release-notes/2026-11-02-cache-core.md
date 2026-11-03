@@ -22,4 +22,6 @@ No existing diagram's simulation, planning, checks, trace, exports, layout or br
 
 At 1,000 requests/s over 1,000 Typical items with a five-second TTL, analysis predicts 84.431% hits. Across seeds 1, 7, 17, 42 and 99, steady-state Live records 83.775–84.600% at scale one (maximum difference 0.657 percentage points; fetch-rate error at most 4.215%). At scale ten the maximum difference is 1.532 points, within its three-point bound.
 
-The cache runtime measures 1,938 B gzip. Live's static closure beyond the canvas measures 123,819 B gzip: 11,181 B below its unchanged limit and 5,037 B below its unchanged reserve. The W3 cache benchmark passes the existing 8× input / 24× growth gate.
+The cache runtime measures 1,917 B gzip. Live's static closure beyond the canvas measures 123,845 B gzip: 11,155 B below its unchanged limit and 5,011 B below its unchanged reserve. The W3 cache benchmark passes the existing 8× input / 24× growth gate.
+
+Cache schema constants share the existing native model initialization group. A production-build regression prevents a lazy authoring chunk from seeing an uninitialized cache schema.

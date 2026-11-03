@@ -399,6 +399,15 @@ describe("production bundle split", () => {
     expect(closure([liveChunk(b)!], b).has(cache!)).toBe(false);
     expect(gzipSync(cache!.code, { level: 9 }).length).toBeLessThanOrEqual(5 * 1024);
   });
+  it("initializes cache schema constants in the same native chunk as node properties", () => {
+    const owner = (name: string) =>
+      plain().chunks.find((chunk) =>
+        Object.keys(chunk.modules).some((id) => id.replaceAll("\\", "/").endsWith(`/src/model/${name}.ts`)),
+      );
+    expect(owner("caching")).toBeDefined();
+    expect(owner("caching")).toBe(owner("simProps"));
+    expect(owner("cacheValidation")).toBe(owner("simProps"));
+  });
   it("emits the generated self-host header policy as runtime data", () => {
     const manifest = assets.find((asset) => asset.fileName === "headers.json");
     expect(JSON.parse(String(manifest?.source))).toEqual(selfHostHeaderManifest());

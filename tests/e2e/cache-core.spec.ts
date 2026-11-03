@@ -20,7 +20,9 @@ test("a cache run waits for its runtime before creating a controller", async ({ 
     await pauseClock(page);
     await page.getByTestId("live-play").click();
     await page.clock.runFor(2000);
-    await expect(page.getByTestId("live-clock")).not.toHaveAttribute("data-ms", "0");
+    await expect
+      .poll(async () => Number(await page.getByTestId("node-badge-source").getAttribute("data-processed")))
+      .toBeGreaterThan(0);
   } finally {
     held.release();
   }
