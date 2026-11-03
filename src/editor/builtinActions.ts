@@ -3,6 +3,8 @@ import { boundaryActions, boundaryMenu } from "./boundaryActions";
 import { selectionActions, selectSimilarAction } from "./selectionActions";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
+import { cacheCapable } from "../model/caching";
+import { withCacheRules } from "../model/cacheEdits";
 import { withRouteTable } from "../model/routingTopology";
 import { routingIntent } from "./routingIntent";
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
@@ -756,6 +758,31 @@ export function builtinActions(): Action[] {
         routingIntent.set(ctx.nodeId!, "new-route");
         ctx.editor.select({ nodeIds: [ctx.nodeId!] });
         ctx.editor.openInspector();
+      },
+    },
+    {
+      id: "node.add-cache-rules",
+      section: "edit",
+      targets: ["node"],
+      modes: ["edit"],
+      get label() {
+        return t("cache.addRules");
+      },
+      icon: "sliders",
+      order: 211,
+      when: (ctx) => {
+        const n = ctx.nodeId ? ctx.editor.getNode(ctx.nodeId) : undefined;
+        return (
+          !!n &&
+          n.props?.cache === undefined &&
+          revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w2") &&
+          cacheCapable(n.stencil, getStencil(n.stencil).simRole)
+        );
+      },
+      run: (ctx) => {
+        ctx.editor.applyDiagram(withCacheRules(ctx.editor.getDiagram(), ctx.nodeId!));
+        ctx.editor.select({ nodeIds: [ctx.nodeId!] });
+        ctx.editor.openInspector("cache-add-rule");
       },
     },
     selectSimilarAction(),

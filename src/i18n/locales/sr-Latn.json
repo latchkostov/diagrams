@@ -2832,5 +2832,6 @@
   "selection.fallback": "Koristite meni za izbor ako sistem ili čitač ekrana preuzima ove tastere.",
   "selection.extendKeys": "Proširi izbor",
   "menu.selectionAddedBoundary": "Dodato u {name}: {count, plural, other {# čvorova} one {# čvor} few {# čvorova}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Uklonjeno iz granica: {count, plural, other {# čvorova} one {# čvor} few {# čvorova}}. {selection}."
+  "menu.selectionRemovedBoundary": "Uklonjeno iz granica: {count, plural, other {# čvorova} one {# čvor} few {# čvorova}}. {selection}.",
+  "cache.addRules": "Dodaj pravila keširanja…"
 }

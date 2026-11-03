@@ -15,6 +15,8 @@ import { PropsEditor } from "./lazyPropsEditor";
 import { customCount } from "./propertyValues";
 import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simKeys";
 import { loadNodeSimulation } from "./simulationLoaders";
+import { CacheFields } from "./lazyCacheFields";
+import { cacheCapable } from "../../model/caching";
 
 const EMPTY_PROPS: Record<string, unknown> = {};
 const NodeSimulation = defineLazySurface({
@@ -67,7 +69,9 @@ export function NodeSettings({
       props.api === undefined &&
       props.endpoints === undefined
         ? new Set([...baseHidden, "queue"])
-        : baseHidden,
+        : cacheCapable(stencilId, role) && props.cache !== undefined
+          ? new Set([...baseHidden, "cache"])
+          : baseHidden,
     [role, meta.planning, props, stencilId, baseHidden],
   );
   // Request routing: a router's table and a source's mix get their own section once added (simple by default:
@@ -158,6 +162,16 @@ export function NodeSettings({
         </Section>
       )}
 
+      {props.cache !== undefined && cacheCapable(stencilId, role) && (
+        <CacheFields
+          editor={editor}
+          nodeId={nodeId}
+          props={props}
+          counts={counts}
+          readDiagram={readDiagram}
+          planning={meta.planning}
+        />
+      )}
       {planning}
       {simulation}
 

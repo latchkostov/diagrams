@@ -1268,6 +1268,19 @@ is reported, and the next call tries again. Run simulations needs only the no-re
 Expectation metrics `threadsBusy` and `threadsWaiting` measure real threads, just like the meter;
 `timedOut` measures outgoing calls that exceeded a deadline. For example:
 `{ "node": "caller", "field": "threadsWaiting" }`, `op: "<"`, `value: 32`, `when: "always"`.
+
+The node expectation metric `p95` measures latency in milliseconds in the current latency window
+(since restart, or the latest effective Fault when the run resets latency on faults). At an awaited
+node, it measures successful completed requests' service time at that node, from arrival until the
+node replies: local admission/queue time, local work, downstream waits (including downstream network
+delays, retries and backoff), and reply continuation work. It excludes the incoming connection's
+network delay and the reply's travel back to the caller. Unfinished requests contribute no sample;
+no completed samples reads as zero. Samples are weighted by represented dots and use the existing
+fixed 128-bucket approximate percentile recorder. Non-caching nodes keep this recorder private to
+the expectation metric; their hover/dock latency and async root-to-node readouts stay as before.
+Caching nodes retain their existing completed-response aggregate, including hits, misses and
+not-cached replies. At a source, `p95` retains its existing call response-time semantics; async-only
+nodes retain their existing root-to-node latency semantics.
 Public lessons: A blocking call caps throughput, Scale on busy threads, and the merged A slow payment provider.
 
 ## Retries, breakers and shedding

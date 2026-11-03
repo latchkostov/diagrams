@@ -2828,5 +2828,6 @@
   "selection.fallback": "Sistem veya ekran okuyucu bu tuşları kullanıyorsa seçim menüsünü kullanın.",
   "selection.extendKeys": "Seçimi genişlet",
   "menu.selectionAddedBoundary": "{name} içine eklendi: {count, plural, other {# düğüm} one {# düğüm}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Sınırlardan çıkarıldı: {count, plural, other {# düğüm} one {# düğüm}}. {selection}."
+  "menu.selectionRemovedBoundary": "Sınırlardan çıkarıldı: {count, plural, other {# düğüm} one {# düğüm}}. {selection}.",
+  "cache.addRules": "Önbellek kuralları ekle…"
 }

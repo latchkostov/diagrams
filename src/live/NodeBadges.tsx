@@ -1,5 +1,6 @@
 import { BROKERS, sameBadge, sameParts } from "./badgeMemo";
 import { badgeAttributes } from "./badgeAttributes";
+import { cacheReadout } from "./cacheReadout";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useWorkbenchDock } from "../canvas/inspector/dockState";
 import { inHoverBridge } from "./hoverBridge";
@@ -324,6 +325,7 @@ const NodeBadge = memo(function NodeBadge(
   const w = node.measured?.width ?? node.width ?? 220;
   const h = node.measured?.height ?? node.height ?? 72;
   const recent = currentHealth(s);
+  const cache = cacheReadout(s);
   const problems = recent.dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
@@ -436,6 +438,15 @@ const NodeBadge = memo(function NodeBadge(
           {s.status !== "down" && latencyBadge && s.latency && (
             <span className="lv-metric mono" data-testid={`node-latency-${node.id}`} title={latencySampling(s.latency)}>
               {latencyLabel(s.latency)}
+            </span>
+          )}
+          {s.status !== "down" && cache && (
+            <span
+              className={`lv-metric mono${cache.warming ? " is-failover" : ""}`}
+              data-testid={`node-cache-${node.id}`}
+              aria-label={cache.label}
+            >
+              <span aria-hidden>▣</span> {cache.text}
             </span>
           )}
           {/* Capacity describes the current outage and waiting traffic, unlike stale throughput/latency. */}

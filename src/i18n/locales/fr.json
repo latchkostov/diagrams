@@ -2839,5 +2839,6 @@
   "selection.fallback": "Utilisez le menu de sélection si le système ou le lecteur d’écran intercepte ces touches.",
   "selection.extendKeys": "Étendre la sélection",
   "menu.selectionAddedBoundary": "Ajoutés à {name}: {count, plural, one {# nœud} other {# nœuds}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Retirés des périmètres: {count, plural, one {# nœud} other {# nœuds}}. {selection}."
+  "menu.selectionRemovedBoundary": "Retirés des périmètres: {count, plural, one {# nœud} other {# nœuds}}. {selection}.",
+  "cache.addRules": "Ajouter des règles de cache…"
 }

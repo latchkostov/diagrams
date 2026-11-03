@@ -18,6 +18,7 @@ import { stencilRole } from "../stencils/roles";
 import type { LiveTrace } from "./controller";
 import { LiveIcon } from "./icons";
 import { TRACE_CARD_FOOTPRINT } from "./traceCardLayout";
+import { cacheTraceWords } from "../trace/cacheWords";
 
 export interface TraceCardProps {
   trace: LiveTrace;
@@ -257,6 +258,13 @@ export function TraceCard({
           <span>{journey.done ? "end to end" : "so far"}</span>
         </div>
         <div className="tr-chips">
+          {current?.steps
+            .filter((s) => s.cache)
+            .map((s, i) => (
+              <span className="tr-chip" data-testid="trace-cache" key={i}>
+                {cacheTraceWords(s.cache!, s.node!, diagram)}
+              </span>
+            ))}
           <span className="tr-chip" data-testid="trace-hops" data-count={hopCount(journey)}>
             {hopCount(journey)} {hopCount(journey) === 1 ? "hop" : "hops"}
           </span>

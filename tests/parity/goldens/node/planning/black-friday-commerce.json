@@ -1,5 +1,5 @@
 {
-  "autoScale": { "freePlay": 10, "doors-open": 50, "poison-deploy": 10, "partner-quota": 50 },
+  "autoScale": { "freePlay": 1, "doors-open": 1, "poison-deploy": 1, "partner-quota": 1 },
   "brokerAssignments": {
     "brokers": {
       "orders": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
@@ -46,8 +46,8 @@
     "configured": false,
     "simulation": "free-play",
     "analysis": {
-      "bottleneck": "fulfilment",
-      "suggestion": "Fulfilment workers: 80% utilized",
+      "bottleneck": "catalog-bff",
+      "suggestion": "Catalog BFF: 33% utilized",
       "converged": true,
       "iterations": 13,
       "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -55,22 +55,22 @@
         "app": ["Infinity", 200, 0, 1, 1, 0],
         "carriers": ["Infinity", 20, 0, 1, 1, 0],
         "cdn": ["Infinity", 520, 0, 20, 20, 0],
-        "gateway": [1612.5, 430, 0.26666666666666666, 6, 6, 0],
-        "catalog-bff": [3200, 192, 0.06, 4, 4, 0],
-        "search-api": [3200, 100, 0.03125, 3, 3, 0],
+        "gateway": [1132.170392214875, 251.5934204921944, 0.2222222222222222, 6, 6, 0],
+        "catalog-bff": [200, 65.87680608492788, 0.3293840304246394, 1, 1, 0],
+        "search-api": [300, 47.71661440726653, 0.15905538135755512, 1, 1, 0],
         "cart-api": [1200, 50, 0.041666666666666664, 3, 3, 0],
-        "checkout-api": [160, 40, 0.25, 2, 2, 0],
+        "checkout-api": [125, 40, 0.32, 2, 2, 0],
         "order-status": [4266.666666666667, 28, 0.0065625, 2, 2, 0],
         "tracking": [1066.6666666666667, 20, 0.01875, 2, 2, 0],
-        "reco": [800, 96, 0.12, 3, 3, 0],
+        "reco": [800, 32.93840304246394, 0.04117300380307992, 3, 3, 0],
         "pricing": [4800, 90, 0.01875, 3, 3, 0],
         "inventory": [1200, 40, 0.03333333333333333, 3, 3, 0],
         "risk": ["Infinity", 40, 0, 2, 2, 0],
         "payments": [800, 40, 0.05, 3, 3, 0],
-        "features": ["Infinity", 226, 0, 1, 1, 0],
-        "product-cache": ["Infinity", 192, 0, 1, 1, 0],
-        "catalog-db": ["Infinity", 19.2, 0, 1, 1, 0],
-        "search-index": ["Infinity", 140, 0, 1, 1, 0],
+        "features": ["Infinity", 162.93840304246393, 0, 1, 1, 0],
+        "product-cache": ["Infinity", 65.87680608492788, 0, 1, 1, 0],
+        "catalog-db": ["Infinity", 6.5876806084927875, 0, 1, 1, 0],
+        "search-index": ["Infinity", 87.71661440726653, 0, 1, 1, 0],
         "carts": ["Infinity", 50, 0, 1, 1, 0],
         "promotions": ["Infinity", 90, 0, 1, 1, 0],
         "inventory-db": ["Infinity", 40, 0, 1, 1, 0],
@@ -78,7 +78,7 @@
         "status-cache": ["Infinity", 128, 0, 1, 1, 0],
         "outbox-relay": [3200, 40, 0.0125, 2, 2, 0],
         "inventory-events": [1066.6666666666667, 40, 0.0375, 1, 1, 0],
-        "orders": [50, 40, 0.8, 1, 1, 0],
+        "orders": [160, 40, 0.25, 1, 1, 0],
         "orders-dlq": [40, 0, 0, 1, 1, 0],
         "shipments": [3200, 60, 0.01875, 1, 1, 0],
         "search-indexer": [
@@ -93,9 +93,9 @@
           }
         ],
         "fulfilment": [
-          50,
+          160,
           40,
-          0.8,
+          0.25,
           2,
           2,
           0,
@@ -187,20 +187,20 @@
         "app--cdn": 200,
         "carriers--cdn": 20,
         "airflow--dbt": 0.1,
-        "cdn--gateway": 430,
+        "cdn--gateway": 251.5934204921944,
         "cdn--collector": 90,
         "dbt--snowflake": 0.1,
-        "gateway--catalog-bff": 192,
-        "gateway--search-api": 100,
+        "gateway--catalog-bff": 65.87680608492788,
+        "gateway--search-api": 47.71661440726653,
         "gateway--cart-api": 50,
         "gateway--checkout-api": 40,
         "gateway--order-status": 28,
         "gateway--tracking": 20,
         "collector--clickstream": 90,
-        "catalog-bff--product-cache": 192,
-        "catalog-bff--catalog-db": 19.2,
-        "catalog-bff--reco": 96,
-        "search-api--search-index": 100,
+        "catalog-bff--product-cache": 65.87680608492788,
+        "catalog-bff--catalog-db": 6.5876806084927875,
+        "catalog-bff--reco": 32.93840304246394,
+        "search-api--search-index": 47.71661440726653,
         "cart-api--carts": 50,
         "cart-api--pricing": 50,
         "checkout-api--pricing": 40,
@@ -212,7 +212,7 @@
         "order-status--status-cache": 28,
         "tracking--shipments": 20,
         "clickstream--sessionizer": 90,
-        "reco--features": 96,
+        "reco--features": 32.93840304246394,
         "pricing--promotions": 90,
         "inventory--inventory-db": 40,
         "risk--features": 40,
@@ -306,8 +306,8 @@
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 1612.5,
-        "offered": 430,
+        "capacity": 1132.170392214875,
+        "offered": 251.5934204921944,
         "replicas": 6,
         "baseReplicas": 6,
         "omittedContributors": 0,
@@ -315,82 +315,85 @@
         "assignments": [],
         "slots": "Infinity",
         "seconds": 0,
-        "utilization": 0.26666666666666666,
+        "utilization": 0.2222222222222222,
         "growth": 0,
         "contributors": [
-          { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 430, "via": "Edge CDN" }
+          { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 251.5934204921944, "via": "Edge CDN" }
         ],
         "target": 0.5,
         "changes": null,
         "converged": true,
         "routes": [
-          { "route": "browse", "address": "GET /products/8812", "offered": 192, "rejected": 0, "throttled": 0 },
-          { "route": "search", "address": "GET /search/parka", "offered": 100, "rejected": 0, "throttled": 0 },
+          { "route": "browse", "address": "GET /products/8812", "offered": 65.87680608492788, "rejected": 0, "throttled": 0 },
           { "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 },
+          { "route": "search", "address": "GET /search/parka", "offered": 47.71661440726653, "rejected": 0, "throttled": 0 },
           { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 },
           { "route": "order-status", "address": "GET /orders/5531", "offered": 28, "rejected": 0, "throttled": 0 },
           { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 20, "rejected": 0, "throttled": 0 }
         ]
       },
       "catalog-bff": {
+        "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 100, "replyMs": 0, "replies": 3, "slots": 8, "ceiling": 200 },
         "id": "catalog-bff",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 3200,
-        "offered": 192,
-        "replicas": 4,
-        "baseReplicas": 4,
+        "capacity": 200,
+        "offered": 65.87680608492788,
+        "replicas": 1,
+        "baseReplicas": 1,
         "omittedContributors": 0,
-        "activeReplicas": 4,
+        "activeReplicas": 1,
         "assignments": [],
-        "slots": 32,
+        "slots": 8,
         "seconds": 0.04,
-        "utilization": 0.06,
+        "utilization": 0.3293840304246394,
         "growth": 0,
         "contributors": [
-          { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 192, "via": "API gateway" }
+          { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 65.87680608492788, "via": "API gateway" }
         ],
         "target": 0.5,
-        "minimumReplicas": 4,
+        "minimumReplicas": 1,
         "changes": null,
         "converged": true,
         "routes": [
-          { "route": "browse", "address": "GET /products/8812", "offered": 192, "rejected": 0, "throttled": 0 }
+          { "route": "browse", "address": "GET /products/8812", "offered": 65.87680608492788, "rejected": 0, "throttled": 0 }
         ]
       },
       "search-api": {
+        "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 9, "ceiling": 300 },
         "id": "search-api",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 3200,
-        "offered": 100,
-        "replicas": 3,
-        "baseReplicas": 3,
+        "capacity": 300,
+        "offered": 47.71661440726653,
+        "replicas": 1,
+        "baseReplicas": 1,
         "omittedContributors": 0,
-        "activeReplicas": 3,
+        "activeReplicas": 1,
         "assignments": [],
-        "slots": 32,
+        "slots": 9,
         "seconds": 0.03,
-        "utilization": 0.03125,
+        "utilization": 0.15905538135755512,
         "growth": 0,
         "contributors": [
-          { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 100, "via": "API gateway" }
+          { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 47.71661440726653, "via": "API gateway" }
         ],
         "target": 0.5,
-        "minimumReplicas": 3,
+        "minimumReplicas": 1,
         "changes": null,
         "converged": true,
         "routes": [
-          { "route": "search", "address": "GET /search/parka", "offered": 100, "rejected": 0, "throttled": 0 }
+          { "route": "search", "address": "GET /search/parka", "offered": 47.71661440726653, "rejected": 0, "throttled": 0 }
         ]
       },
       "cart-api": {
+        "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 60, "replyMs": 0, "replies": 2, "slots": 48, "ceiling": 1200 },
         "id": "cart-api",
         "role": "processor",
         "status": "up",
@@ -418,14 +421,15 @@
         "routes": [{ "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 }]
       },
       "checkout-api": {
-        "resources": { "perReplica": 80, "initial": 2, "min": 2, "max": 10, "initialCapacity": 160, "maxCapacity": 800, "targetReplicas": 2, "cpuRequestPct": 40, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+        "resources": { "perReplica": 62.5, "initial": 2, "min": 2, "max": 10, "initialCapacity": 125, "maxCapacity": 625, "targetReplicas": 2, "cpuRequestPct": 64, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+        "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 340, "replyMs": 0, "replies": 6, "slots": 16, "ceiling": 160 },
         "id": "checkout-api",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 160,
+        "capacity": 125,
         "offered": 40,
         "replicas": 2,
         "baseReplicas": 2,
@@ -434,7 +438,7 @@
         "assignments": [],
         "slots": 8,
         "seconds": 0.1,
-        "utilization": 0.25,
+        "utilization": 0.32,
         "growth": 0,
         "contributors": [
           { "edge": "gateway--checkout-api", "node": "gateway", "label": "Edge CDN", "rate": 40, "via": "API gateway" }
@@ -445,6 +449,7 @@
         "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }]
       },
       "order-status": {
+        "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 4266.666666666667 },
         "id": "order-status",
         "role": "processor",
         "status": "up",
@@ -503,6 +508,7 @@
         ]
       },
       "reco": {
+        "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 60, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
         "id": "reco",
         "role": "processor",
         "status": "up",
@@ -510,7 +516,7 @@
         "evidence": "configured",
         "unit": "req/s",
         "capacity": 800,
-        "offered": 96,
+        "offered": 32.93840304246394,
         "replicas": 3,
         "baseReplicas": 3,
         "omittedContributors": 0,
@@ -518,18 +524,21 @@
         "assignments": [],
         "slots": 16,
         "seconds": 0.06,
-        "utilization": 0.12,
+        "utilization": 0.04117300380307992,
         "growth": 0,
-        "contributors": [{ "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 96 }],
+        "contributors": [
+          { "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 32.93840304246394 }
+        ],
         "target": 0.5,
         "minimumReplicas": 3,
         "changes": null,
         "converged": true,
         "routes": [
-          { "route": "browse", "address": "GET /products/8812", "offered": 96, "rejected": 0, "throttled": 0 }
+          { "route": "browse", "address": "GET /products/8812", "offered": 32.93840304246394, "rejected": 0, "throttled": 0 }
         ]
       },
       "pricing": {
+        "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 96, "ceiling": 4800 },
         "id": "pricing",
         "role": "processor",
         "status": "up",
@@ -561,6 +570,7 @@
         ]
       },
       "inventory": {
+        "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 1200 },
         "id": "inventory",
         "role": "processor",
         "status": "up",
@@ -589,6 +599,7 @@
       },
       "risk": {
         "managed": "api",
+        "waits": { "workMs": 25, "callMs": 0, "threadHoldMs": 25, "memoryResidenceMs": 25, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 2560 },
         "id": "risk",
         "role": "processor",
         "status": "up",
@@ -613,6 +624,7 @@
         "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }]
       },
       "payments": {
+        "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 240, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
         "id": "payments",
         "role": "processor",
         "status": "up",
@@ -665,6 +677,7 @@
         "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }]
       },
       "search-indexer": {
+        "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 1066.6666666666667 },
         "id": "search-indexer",
         "role": "processor",
         "status": "up",
@@ -700,27 +713,28 @@
       "fulfilment": {
         "resources": {
           "keda": { "pollingMs": 1000, "cooldownMs": 5000, "lagBeforePoll": 0, "offered": 40 },
-          "perReplica": 25,
+          "perReplica": 80,
           "initial": 2,
           "min": 2,
           "max": 12,
-          "initialCapacity": 50,
-          "maxCapacity": 300,
-          "cpuRequestPct": 160,
-          "memoryPeakMiB": 196,
+          "initialCapacity": 160,
+          "maxCapacity": 960,
+          "cpuRequestPct": 176,
+          "memoryPeakMiB": 200,
           "memoryRisk": false,
           "baselineAboveTarget": false,
           "partitionLimited": false,
           "startupMs": 1000,
           "cpuUnbounded": false
         },
+        "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 220, "replyMs": 0, "replies": 1, "slots": 16, "ceiling": 160 },
         "id": "fulfilment",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "msg/s",
-        "capacity": 50,
+        "capacity": 160,
         "offered": 40,
         "replicas": 2,
         "baseReplicas": 2,
@@ -733,9 +747,9 @@
             "count": 24
           }
         ],
-        "slots": 4,
+        "slots": 8,
         "seconds": 0.1,
-        "utilization": 0.8,
+        "utilization": 0.25,
         "growth": 0,
         "contributors": [{ "edge": "orders--fulfilment", "node": "orders", "label": "Order events", "rate": 40 }],
         "target": 0.5,
@@ -744,6 +758,7 @@
         "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }]
       },
       "loyalty": {
+        "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 800 },
         "id": "loyalty",
         "role": "processor",
         "status": "up",
@@ -775,6 +790,7 @@
         "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }]
       },
       "status-projector": {
+        "waits": { "workMs": 10, "callMs": 0, "threadHoldMs": 10, "memoryResidenceMs": 10, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 6400 },
         "id": "status-projector",
         "role": "processor",
         "status": "up",
@@ -859,6 +875,7 @@
         ]
       },
       "dlq-triage": {
+        "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 140, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 40 },
         "id": "dlq-triage",
         "role": "processor",
         "status": "up",
@@ -890,6 +907,7 @@
       },
       "email": {
         "managed": "serverless",
+        "waits": { "workMs": 80, "callMs": 0, "threadHoldMs": 80, "memoryResidenceMs": 330, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 50 },
         "id": "email",
         "role": "processor",
         "status": "up",
@@ -920,6 +938,7 @@
       },
       "push": {
         "managed": "serverless",
+        "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 290, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 100 },
         "id": "push",
         "role": "processor",
         "status": "up",
@@ -976,6 +995,7 @@
         "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 90, "rejected": 0, "throttled": 0 }]
       },
       "sessionizer": {
+        "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 2, "slots": 256, "ceiling": 17066.666666666668 },
         "id": "sessionizer",
         "role": "processor",
         "status": "up",
@@ -1009,6 +1029,7 @@
         "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 90, "rejected": 0, "throttled": 0 }]
       },
       "lake-sink": {
+        "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 128, "ceiling": 6400 },
         "id": "lake-sink",
         "role": "processor",
         "status": "up",
@@ -1040,6 +1061,7 @@
         "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }]
       },
       "dbt": {
+        "waits": { "workMs": 2000, "callMs": 0, "threadHoldMs": 2000, "memoryResidenceMs": 2000, "replyMs": 0, "replies": 1, "slots": 2, "ceiling": 1 },
         "id": "dbt",
         "role": "processor",
         "status": "up",
@@ -1384,7 +1406,7 @@
     "redundancy": {},
     "resolved": {
       "web": {
-        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 300,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1399,7 +1421,7 @@
         "healthChecks": false
       },
       "app": {
-        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 200,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1414,7 +1436,7 @@
         "healthChecks": false
       },
       "carriers": {
-        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 20,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1429,7 +1451,7 @@
         "healthChecks": false
       },
       "cdn": {
-        "profile": { "family": "edge", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "edge", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1445,7 +1467,7 @@
       },
       "gateway": {
         "admission": { "api": {}, "endpoints": [] },
-        "profile": { "family": "api-gateway", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "api-gateway", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1460,11 +1482,11 @@
         "healthChecks": false
       },
       "catalog-bff": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
-        "concurrency": 32,
-        "replicas": 4,
+        "concurrency": 8,
+        "replicas": 1,
         "jitter": 0.1,
         "retry": "requeue",
         "retryBackoffMs": 0,
@@ -1475,11 +1497,11 @@
         "healthChecks": false
       },
       "search-api": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 30,
-        "concurrency": 32,
-        "replicas": 3,
+        "concurrency": 9,
+        "replicas": 1,
         "jitter": 0.1,
         "retry": "requeue",
         "retryBackoffMs": 0,
@@ -1490,7 +1512,7 @@
         "healthChecks": false
       },
       "cart-api": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 16,
@@ -1508,7 +1530,7 @@
         "resources": {
           "preset": "io-service",
           "presetRevision": "1",
-          "cpuMsPerMessage": 10,
+          "cpuMsPerMessage": 16,
           "baselineMemoryMiB": 192,
           "memoryMiBPerMessage": 1,
           "cpuRequestMilli": 500,
@@ -1557,7 +1579,7 @@
             }
           }
         },
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 8,
@@ -1572,7 +1594,7 @@
         "healthChecks": false
       },
       "order-status": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 15,
         "concurrency": 32,
@@ -1587,7 +1609,7 @@
         "healthChecks": false
       },
       "tracking": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 30,
         "concurrency": 16,
@@ -1602,7 +1624,7 @@
         "healthChecks": false
       },
       "reco": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 60,
         "concurrency": 16,
@@ -1617,7 +1639,7 @@
         "healthChecks": false
       },
       "pricing": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 20,
         "concurrency": 32,
@@ -1632,7 +1654,7 @@
         "healthChecks": false
       },
       "inventory": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 16,
@@ -1648,7 +1670,7 @@
       },
       "risk": {
         "admission": { "api": {}, "endpoints": [] },
-        "profile": { "family": "model-api", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "model-api", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 25,
         "concurrency": 32,
@@ -1663,7 +1685,7 @@
         "healthChecks": false
       },
       "payments": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 60,
         "concurrency": 16,
@@ -1678,7 +1700,7 @@
         "healthChecks": false
       },
       "features": {
-        "profile": { "family": "cache", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "cache", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1693,7 +1715,7 @@
         "healthChecks": false
       },
       "product-cache": {
-        "profile": { "family": "cache", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "cache", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1708,7 +1730,7 @@
         "healthChecks": false
       },
       "catalog-db": {
-        "profile": { "family": "sql", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1723,7 +1745,7 @@
         "healthChecks": false
       },
       "search-index": {
-        "profile": { "family": "search", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "search", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1738,7 +1760,7 @@
         "healthChecks": false
       },
       "carts": {
-        "profile": { "family": "nosql", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1753,7 +1775,7 @@
         "healthChecks": false
       },
       "promotions": {
-        "profile": { "family": "nosql", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1768,7 +1790,7 @@
         "healthChecks": false
       },
       "inventory-db": {
-        "profile": { "family": "sql", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1783,7 +1805,7 @@
         "healthChecks": false
       },
       "orders-db": {
-        "profile": { "family": "sql", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1798,7 +1820,7 @@
         "healthChecks": false
       },
       "status-cache": {
-        "profile": { "family": "cache", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "cache", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1813,7 +1835,7 @@
         "healthChecks": false
       },
       "outbox-relay": {
-        "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 20,
         "concurrency": 32,
@@ -1829,7 +1851,7 @@
       },
       "inventory-events": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1845,7 +1867,7 @@
       },
       "orders": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1861,7 +1883,7 @@
       },
       "orders-dlq": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1877,7 +1899,7 @@
       },
       "shipments": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1892,7 +1914,7 @@
         "healthChecks": false
       },
       "search-indexer": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 30,
         "concurrency": 16,
@@ -1910,11 +1932,11 @@
         "resources": {
           "preset": "io-service",
           "presetRevision": "1",
-          "cpuMsPerMessage": 20,
+          "cpuMsPerMessage": 22,
           "baselineMemoryMiB": 192,
           "memoryMiBPerMessage": 1,
           "cpuRequestMilli": 250,
-          "cpuLimitMilli": 500,
+          "cpuLimitMilli": 2000,
           "memoryRequestMiB": 256,
           "memoryLimitMiB": 512,
           "startup": { "delayMs": 1000, "jitterFraction": 0 },
@@ -1965,10 +1987,10 @@
             }
           }
         },
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
-        "concurrency": 4,
+        "concurrency": 8,
         "replicas": 2,
         "jitter": 0.1,
         "retry": "requeue",
@@ -1980,7 +2002,7 @@
         "healthChecks": false
       },
       "loyalty": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 16,
@@ -1995,7 +2017,7 @@
         "healthChecks": false
       },
       "status-projector": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 10,
         "concurrency": 32,
@@ -2010,7 +2032,7 @@
         "healthChecks": false
       },
       "notifier": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 20,
         "concurrency": 32,
@@ -2025,7 +2047,7 @@
         "healthChecks": false
       },
       "dlq-triage": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 4,
@@ -2040,7 +2062,7 @@
         "healthChecks": false
       },
       "loyalty-db": {
-        "profile": { "family": "nosql", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2055,7 +2077,7 @@
         "healthChecks": false
       },
       "notify-q": {
-        "profile": { "family": "queue", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2070,7 +2092,7 @@
         "healthChecks": false
       },
       "notify-dlq": {
-        "profile": { "family": "queue", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2086,7 +2108,7 @@
       },
       "email": {
         "admission": { "api": {}, "endpoints": [], "slots": 100 },
-        "profile": { "family": "serverless", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "profile": { "family": "serverless", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 80,
         "concurrency": 4,
@@ -2102,7 +2124,7 @@
       },
       "push": {
         "admission": { "api": {}, "endpoints": [], "slots": 100 },
-        "profile": { "family": "serverless", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "profile": { "family": "serverless", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 4,
@@ -2117,7 +2139,7 @@
         "healthChecks": false
       },
       "collector": {
-        "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 10,
         "concurrency": 64,
@@ -2133,7 +2155,7 @@
       },
       "clickstream": {
         "broker": { "partitioned": true, "assignment": "shards", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2148,7 +2170,7 @@
         "healthChecks": false
       },
       "sessionizer": {
-        "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 15,
         "concurrency": 64,
@@ -2163,7 +2185,7 @@
         "healthChecks": false
       },
       "lake-sink": {
-        "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 20,
         "concurrency": 64,
@@ -2178,7 +2200,7 @@
         "healthChecks": false
       },
       "lake": {
-        "profile": { "family": "object", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2193,7 +2215,7 @@
         "healthChecks": false
       },
       "airflow": {
-        "profile": { "family": "scheduler", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "scheduler", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 0.1,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2208,7 +2230,7 @@
         "healthChecks": false
       },
       "dbt": {
-        "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 2000,
         "concurrency": 2,
@@ -2223,7 +2245,7 @@
         "healthChecks": false
       },
       "argocd": {
-        "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2238,7 +2260,7 @@
         "healthChecks": false
       },
       "flags": {
-        "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2253,7 +2275,7 @@
         "healthChecks": false
       },
       "secrets": {
-        "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2268,7 +2290,7 @@
         "healthChecks": false
       },
       "roles": {
-        "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2283,7 +2305,7 @@
         "healthChecks": false
       },
       "datadog": {
-        "profile": { "family": "telemetry", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2299,7 +2321,7 @@
       },
       "tax": {
         "admission": { "api": {}, "endpoints": [] },
-        "profile": { "family": "external-api", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "external-api", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 60,
         "concurrency": "Infinity",
@@ -2323,7 +2345,7 @@
           },
           "endpoints": []
         },
-        "profile": { "family": "external-api", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "profile": { "family": "external-api", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 180,
         "concurrency": "Infinity",
@@ -2347,7 +2369,7 @@
           },
           "endpoints": []
         },
-        "profile": { "family": "external-api", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "profile": { "family": "external-api", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 120,
         "concurrency": "Infinity",
@@ -2363,7 +2385,7 @@
       },
       "sendgrid": {
         "admission": { "api": {}, "endpoints": [] },
-        "profile": { "family": "external-api", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "external-api", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 250,
         "concurrency": "Infinity",
@@ -2379,7 +2401,7 @@
       },
       "apns": {
         "admission": { "api": {}, "endpoints": [] },
-        "profile": { "family": "external-api", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "external-api", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 250,
         "concurrency": "Infinity",
@@ -2394,7 +2416,7 @@
         "healthChecks": false
       },
       "snowflake": {
-        "profile": { "family": "warehouse", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2409,7 +2431,7 @@
         "healthChecks": false
       },
       "tableau": {
-        "profile": { "family": "telemetry", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -2430,8 +2452,8 @@
       "configured": "(same as edit)",
       "simulation": "doors-open",
       "analysis": {
-        "bottleneck": "fulfilment",
-        "suggestion": "Fulfilment workers: raise replicas from 2 to 8.",
+        "bottleneck": "checkout-api",
+        "suggestion": "Checkout API: raise replicas from 2 to 4.",
         "converged": true,
         "iterations": 13,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -2439,22 +2461,22 @@
           "app": ["Infinity", 1000, 0, 1, 1, 0],
           "carriers": ["Infinity", 20, 0, 1, 1, 0],
           "cdn": ["Infinity", 2520, 0, 20, 20, 0],
-          "gateway": [1552.5, 2070, 1.3333333333333333, 6, 6, 0],
-          "catalog-bff": [3200, 960, 0.3, 4, 4, 0],
-          "search-api": [3200, 500, 0.15625, 3, 3, 0],
+          "gateway": [819.9938082986278, 911.1042314429196, 1.111111111111111, 6, 6, 0],
+          "catalog-bff": [200, 124.60148497105169, 0.6230074248552584, 1, 1, 0],
+          "search-api": [300, 176.50274647186777, 0.5883424882395593, 1, 1, 0],
           "cart-api": [1200, 250, 0.20833333333333334, 3, 3, 0],
-          "checkout-api": [160, 200, 1.25, 2, 2, 0],
+          "checkout-api": [125, 200, 1.6, 2, 2, 0],
           "order-status": [4266.666666666667, 140, 0.032812499999999994, 2, 2, 0],
           "tracking": [1066.6666666666667, 20, 0.01875, 2, 2, 0],
-          "reco": [800, 480, 0.6, 3, 3, 0],
+          "reco": [800, 62.300742485525845, 0.0778759281069073, 3, 3, 0],
           "pricing": [4800, 450, 0.09375, 3, 3, 0],
           "inventory": [1200, 200, 0.16666666666666666, 3, 3, 0],
           "risk": ["Infinity", 200, 0, 2, 2, 0],
           "payments": [800, 200, 0.25, 3, 3, 0],
-          "features": ["Infinity", 1130, 0, 1, 1, 0],
-          "product-cache": ["Infinity", 960, 0, 1, 1, 0],
-          "catalog-db": ["Infinity", 96, 0, 1, 1, 0],
-          "search-index": ["Infinity", 700, 0, 1, 1, 0],
+          "features": ["Infinity", 712.3007424855259, 0, 1, 1, 0],
+          "product-cache": ["Infinity", 124.60148497105169, 0, 1, 1, 0],
+          "catalog-db": ["Infinity", 12.46014849710517, 0, 1, 1, 0],
+          "search-index": ["Infinity", 376.5027464718678, 0, 1, 1, 0],
           "carts": ["Infinity", 250, 0, 1, 1, 0],
           "promotions": ["Infinity", 450, 0, 1, 1, 0],
           "inventory-db": ["Infinity", 200, 0, 1, 1, 0],
@@ -2462,7 +2484,7 @@
           "status-cache": ["Infinity", 560, 0, 1, 1, 0],
           "outbox-relay": [3200, 200, 0.0625, 2, 2, 0],
           "inventory-events": [1066.6666666666667, 200, 0.1875, 1, 1, 0],
-          "orders": [50, 200, 4, 1, 1, 0],
+          "orders": [160, 200, 1.25, 1, 1, 0],
           "orders-dlq": [40, 0, 0, 1, 1, 0],
           "shipments": [3200, 220, 0.06875, 1, 1, 0],
           "search-indexer": [
@@ -2477,9 +2499,9 @@
             }
           ],
           "fulfilment": [
-            50,
+            160,
             200,
-            4,
+            1.25,
             2,
             2,
             0,
@@ -2570,19 +2592,19 @@
           "web--cdn": 1500,
           "app--cdn": 1000,
           "carriers--cdn": 20,
-          "cdn--gateway": 2070,
+          "cdn--gateway": 911.1042314429196,
           "cdn--collector": 450,
-          "gateway--catalog-bff": 960,
-          "gateway--search-api": 500,
+          "gateway--catalog-bff": 124.60148497105169,
+          "gateway--search-api": 176.50274647186777,
           "gateway--cart-api": 250,
           "gateway--checkout-api": 200,
           "gateway--order-status": 140,
           "gateway--tracking": 20,
           "collector--clickstream": 450,
-          "catalog-bff--product-cache": 960,
-          "catalog-bff--catalog-db": 96,
-          "catalog-bff--reco": 480,
-          "search-api--search-index": 500,
+          "catalog-bff--product-cache": 124.60148497105169,
+          "catalog-bff--catalog-db": 12.46014849710517,
+          "catalog-bff--reco": 62.300742485525845,
+          "search-api--search-index": 176.50274647186777,
           "cart-api--carts": 250,
           "cart-api--pricing": 250,
           "checkout-api--pricing": 200,
@@ -2594,7 +2616,7 @@
           "order-status--status-cache": 140,
           "tracking--shipments": 20,
           "clickstream--sessionizer": 450,
-          "reco--features": 480,
+          "reco--features": 62.300742485525845,
           "pricing--promotions": 450,
           "inventory--inventory-db": 200,
           "risk--features": 200,
@@ -2684,8 +2706,8 @@
           "reason": "capacity",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 1552.5,
-          "offered": 2070,
+          "capacity": 819.9938082986278,
+          "offered": 911.1042314429196,
           "replicas": 6,
           "baseReplicas": 6,
           "omittedContributors": 0,
@@ -2693,82 +2715,85 @@
           "assignments": [],
           "slots": "Infinity",
           "seconds": 0,
-          "utilization": 1.3333333333333333,
-          "growth": 517.5,
+          "utilization": 1.111111111111111,
+          "growth": 91.11042314429187,
           "contributors": [
-            { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 2070, "via": "Edge CDN" }
+            { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 911.1042314429196, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 960, "rejected": 0, "throttled": 0 },
-            { "route": "search", "address": "GET /search/parka", "offered": 500, "rejected": 0, "throttled": 0 },
             { "route": "cart", "address": "POST /cart/items", "offered": 250, "rejected": 0, "throttled": 0 },
-            { "route": "checkout", "address": "POST /checkout", "offered": 200, "rejected": 0, "throttled": 50 },
+            { "route": "checkout", "address": "POST /checkout", "offered": 200, "rejected": 0, "throttled": 19.999999999999996 },
+            { "route": "search", "address": "GET /search/parka", "offered": 176.50274647186777, "rejected": 0, "throttled": 0 },
             { "route": "order-status", "address": "GET /orders/5531", "offered": 140, "rejected": 0, "throttled": 0 },
+            { "route": "browse", "address": "GET /products/8812", "offered": 124.60148497105169, "rejected": 0, "throttled": 0 },
             { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 20, "rejected": 0, "throttled": 0 }
           ]
         },
         "catalog-bff": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 100, "replyMs": 0, "replies": 3, "slots": 8, "ceiling": 200 },
           "id": "catalog-bff",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 3200,
-          "offered": 960,
-          "replicas": 4,
-          "baseReplicas": 4,
+          "capacity": 200,
+          "offered": 124.60148497105169,
+          "replicas": 1,
+          "baseReplicas": 1,
           "omittedContributors": 0,
-          "activeReplicas": 4,
+          "activeReplicas": 1,
           "assignments": [],
-          "slots": 32,
+          "slots": 8,
           "seconds": 0.04,
-          "utilization": 0.3,
+          "utilization": 0.6230074248552584,
           "growth": 0,
           "contributors": [
-            { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 960, "via": "API gateway" }
+            { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 124.60148497105169, "via": "API gateway" }
           ],
           "target": 0.5,
-          "minimumReplicas": 4,
+          "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 960, "rejected": 0, "throttled": 0 }
+            { "route": "browse", "address": "GET /products/8812", "offered": 124.60148497105169, "rejected": 0, "throttled": 0 }
           ]
         },
         "search-api": {
+          "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 9, "ceiling": 300 },
           "id": "search-api",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 3200,
-          "offered": 500,
-          "replicas": 3,
-          "baseReplicas": 3,
+          "capacity": 300,
+          "offered": 176.50274647186777,
+          "replicas": 1,
+          "baseReplicas": 1,
           "omittedContributors": 0,
-          "activeReplicas": 3,
+          "activeReplicas": 1,
           "assignments": [],
-          "slots": 32,
+          "slots": 9,
           "seconds": 0.03,
-          "utilization": 0.15625,
+          "utilization": 0.5883424882395593,
           "growth": 0,
           "contributors": [
-            { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 500, "via": "API gateway" }
+            { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 176.50274647186777, "via": "API gateway" }
           ],
           "target": 0.5,
-          "minimumReplicas": 3,
+          "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "search", "address": "GET /search/parka", "offered": 500, "rejected": 0, "throttled": 0 }
+            { "route": "search", "address": "GET /search/parka", "offered": 176.50274647186777, "rejected": 0, "throttled": 0 }
           ]
         },
         "cart-api": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 60, "replyMs": 0, "replies": 2, "slots": 48, "ceiling": 1200 },
           "id": "cart-api",
           "role": "processor",
           "status": "up",
@@ -2796,14 +2821,15 @@
           "routes": [{ "route": "cart", "address": "POST /cart/items", "offered": 250, "rejected": 0, "throttled": 0 }]
         },
         "checkout-api": {
-          "resources": { "perReplica": 80, "initial": 2, "min": 2, "max": 10, "initialCapacity": 160, "maxCapacity": 800, "targetReplicas": 6, "cpuRequestPct": 200, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "resources": { "perReplica": 62.5, "initial": 2, "min": 2, "max": 10, "initialCapacity": 125, "maxCapacity": 625, "targetReplicas": 10, "cpuRequestPct": 320, "memoryPeakMiB": 213.25, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 340, "replyMs": 0, "replies": 6, "slots": 16, "ceiling": 160 },
           "id": "checkout-api",
           "role": "processor",
           "status": "up",
           "reason": "capacity",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 160,
+          "capacity": 125,
           "offered": 200,
           "replicas": 2,
           "baseReplicas": 2,
@@ -2812,8 +2838,8 @@
           "assignments": [],
           "slots": 8,
           "seconds": 0.1,
-          "utilization": 1.25,
-          "growth": 40,
+          "utilization": 1.6,
+          "growth": 75,
           "contributors": [
             { "edge": "gateway--checkout-api", "node": "gateway", "label": "Edge CDN", "rate": 200, "via": "API gateway" }
           ],
@@ -2825,6 +2851,7 @@
           ]
         },
         "order-status": {
+          "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 4266.666666666667 },
           "id": "order-status",
           "role": "processor",
           "status": "up",
@@ -2883,6 +2910,7 @@
           ]
         },
         "reco": {
+          "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 60, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
           "id": "reco",
           "role": "processor",
           "status": "up",
@@ -2890,7 +2918,7 @@
           "evidence": "configured",
           "unit": "req/s",
           "capacity": 800,
-          "offered": 480,
+          "offered": 62.300742485525845,
           "replicas": 3,
           "baseReplicas": 3,
           "omittedContributors": 0,
@@ -2898,18 +2926,21 @@
           "assignments": [],
           "slots": 16,
           "seconds": 0.06,
-          "utilization": 0.6,
+          "utilization": 0.0778759281069073,
           "growth": 0,
-          "contributors": [{ "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 480 }],
+          "contributors": [
+            { "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 62.300742485525845 }
+          ],
           "target": 0.5,
           "minimumReplicas": 3,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 480, "rejected": 0, "throttled": 0 }
+            { "route": "browse", "address": "GET /products/8812", "offered": 62.300742485525845, "rejected": 0, "throttled": 0 }
           ]
         },
         "pricing": {
+          "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 96, "ceiling": 4800 },
           "id": "pricing",
           "role": "processor",
           "status": "up",
@@ -2941,6 +2972,7 @@
           ]
         },
         "inventory": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 1200 },
           "id": "inventory",
           "role": "processor",
           "status": "up",
@@ -2971,6 +3003,7 @@
         },
         "risk": {
           "managed": "api",
+          "waits": { "workMs": 25, "callMs": 0, "threadHoldMs": 25, "memoryResidenceMs": 25, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 2560 },
           "id": "risk",
           "role": "processor",
           "status": "up",
@@ -2999,6 +3032,7 @@
           ]
         },
         "payments": {
+          "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 240, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
           "id": "payments",
           "role": "processor",
           "status": "up",
@@ -3057,6 +3091,7 @@
           ]
         },
         "search-indexer": {
+          "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 1066.6666666666667 },
           "id": "search-indexer",
           "role": "processor",
           "status": "up",
@@ -3094,27 +3129,28 @@
         "fulfilment": {
           "resources": {
             "keda": { "pollingMs": 1000, "cooldownMs": 5000, "lagBeforePoll": 0, "offered": 200 },
-            "perReplica": 25,
+            "perReplica": 80,
             "initial": 2,
             "min": 2,
             "max": 12,
-            "initialCapacity": 50,
-            "maxCapacity": 300,
-            "cpuRequestPct": 800,
-            "memoryPeakMiB": 196,
+            "initialCapacity": 160,
+            "maxCapacity": 960,
+            "cpuRequestPct": 880.0000000000001,
+            "memoryPeakMiB": 209.6,
             "memoryRisk": false,
             "baselineAboveTarget": false,
             "partitionLimited": false,
             "startupMs": 1000,
             "cpuUnbounded": false
           },
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 220, "replyMs": 0, "replies": 1, "slots": 16, "ceiling": 160 },
           "id": "fulfilment",
           "role": "processor",
           "status": "up",
           "reason": "capacity",
           "evidence": "configured",
           "unit": "msg/s",
-          "capacity": 50,
+          "capacity": 160,
           "offered": 200,
           "replicas": 2,
           "baseReplicas": 2,
@@ -3127,10 +3163,10 @@
               "count": 24
             }
           ],
-          "slots": 4,
+          "slots": 8,
           "seconds": 0.1,
-          "utilization": 4,
-          "growth": 150,
+          "utilization": 1.25,
+          "growth": 40,
           "contributors": [{ "edge": "orders--fulfilment", "node": "orders", "label": "Order events", "rate": 200 }],
           "target": 0.5,
           "changes": null,
@@ -3140,6 +3176,7 @@
           ]
         },
         "loyalty": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 800 },
           "id": "loyalty",
           "role": "processor",
           "status": "up",
@@ -3173,6 +3210,7 @@
           ]
         },
         "status-projector": {
+          "waits": { "workMs": 10, "callMs": 0, "threadHoldMs": 10, "memoryResidenceMs": 10, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 6400 },
           "id": "status-projector",
           "role": "processor",
           "status": "up",
@@ -3257,6 +3295,7 @@
           ]
         },
         "dlq-triage": {
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 140, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 40 },
           "id": "dlq-triage",
           "role": "processor",
           "status": "up",
@@ -3288,6 +3327,7 @@
         },
         "email": {
           "managed": "serverless",
+          "waits": { "workMs": 80, "callMs": 0, "threadHoldMs": 80, "memoryResidenceMs": 330, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 50 },
           "id": "email",
           "role": "processor",
           "status": "up",
@@ -3316,6 +3356,7 @@
         },
         "push": {
           "managed": "serverless",
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 290, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 100 },
           "id": "push",
           "role": "processor",
           "status": "up",
@@ -3370,6 +3411,7 @@
           "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 450, "rejected": 0, "throttled": 0 }]
         },
         "sessionizer": {
+          "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 2, "slots": 256, "ceiling": 17066.666666666668 },
           "id": "sessionizer",
           "role": "processor",
           "status": "up",
@@ -3403,6 +3445,7 @@
           "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 450, "rejected": 0, "throttled": 0 }]
         },
         "lake-sink": {
+          "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 128, "ceiling": 6400 },
           "id": "lake-sink",
           "role": "processor",
           "status": "up",
@@ -3435,7 +3478,31 @@
             { "route": "checkout", "address": "POST /checkout", "offered": 200, "rejected": 0, "throttled": 0 }
           ]
         },
-        "dbt": { "id": "dbt", "role": "processor", "status": "up", "reason": "throughput", "evidence": "configured", "unit": "msg/s", "capacity": 1, "offered": 0, "replicas": 1, "baseReplicas": 1, "omittedContributors": 0, "activeReplicas": 1, "assignments": [], "slots": 2, "seconds": 2, "utilization": 0, "growth": 0, "contributors": [], "target": 0.5, "minimumReplicas": 1, "changes": null, "converged": true },
+        "dbt": {
+          "waits": { "workMs": 2000, "callMs": 0, "threadHoldMs": 2000, "memoryResidenceMs": 2000, "replyMs": 0, "replies": 1, "slots": 2, "ceiling": 1 },
+          "id": "dbt",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 1,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 2,
+          "seconds": 2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
         "tax": {
           "managed": "api",
           "id": "tax",
@@ -3593,8 +3660,8 @@
       "configured": "(same as edit)",
       "simulation": "poison-deploy",
       "analysis": {
-        "bottleneck": "fulfilment",
-        "suggestion": "Fulfilment workers: 80% utilized",
+        "bottleneck": "catalog-bff",
+        "suggestion": "Catalog BFF: 33% utilized",
         "converged": true,
         "iterations": 13,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -3602,22 +3669,22 @@
           "app": ["Infinity", 200, 0, 1, 1, 0],
           "carriers": ["Infinity", 0, 0, 1, 1, 0],
           "cdn": ["Infinity", 500, 0, 20, 20, 0],
-          "gateway": [1537.5, 410, 0.26666666666666666, 6, 6, 0],
-          "catalog-bff": [3200, 192, 0.06, 4, 4, 0],
-          "search-api": [3200, 100, 0.03125, 3, 3, 0],
+          "gateway": [1042.170392214875, 231.5934204921944, 0.2222222222222222, 6, 6, 0],
+          "catalog-bff": [200, 65.87680608492788, 0.3293840304246394, 1, 1, 0],
+          "search-api": [300, 47.71661440726653, 0.15905538135755512, 1, 1, 0],
           "cart-api": [1200, 50, 0.041666666666666664, 3, 3, 0],
-          "checkout-api": [160, 40, 0.25, 2, 2, 0],
+          "checkout-api": [125, 40, 0.32, 2, 2, 0],
           "order-status": [4266.666666666667, 28, 0.0065625, 2, 2, 0],
           "tracking": [1066.6666666666667, 0, 0, 2, 2, 0],
-          "reco": [800, 96, 0.12, 3, 3, 0],
+          "reco": [800, 32.93840304246394, 0.04117300380307992, 3, 3, 0],
           "pricing": [4800, 90, 0.01875, 3, 3, 0],
           "inventory": [1200, 40, 0.03333333333333333, 3, 3, 0],
           "risk": ["Infinity", 40, 0, 2, 2, 0],
           "payments": [800, 40, 0.05, 3, 3, 0],
-          "features": ["Infinity", 226, 0, 1, 1, 0],
-          "product-cache": ["Infinity", 192, 0, 1, 1, 0],
-          "catalog-db": ["Infinity", 19.2, 0, 1, 1, 0],
-          "search-index": ["Infinity", 140, 0, 1, 1, 0],
+          "features": ["Infinity", 162.93840304246393, 0, 1, 1, 0],
+          "product-cache": ["Infinity", 65.87680608492788, 0, 1, 1, 0],
+          "catalog-db": ["Infinity", 6.5876806084927875, 0, 1, 1, 0],
+          "search-index": ["Infinity", 87.71661440726653, 0, 1, 1, 0],
           "carts": ["Infinity", 50, 0, 1, 1, 0],
           "promotions": ["Infinity", 90, 0, 1, 1, 0],
           "inventory-db": ["Infinity", 40, 0, 1, 1, 0],
@@ -3625,7 +3692,7 @@
           "status-cache": ["Infinity", 108, 0, 1, 1, 0],
           "outbox-relay": [3200, 40, 0.0125, 2, 2, 0],
           "inventory-events": [1066.6666666666667, 40, 0.0375, 1, 1, 0],
-          "orders": [50, 40, 0.8, 1, 1, 0],
+          "orders": [160, 40, 0.25, 1, 1, 0],
           "orders-dlq": [0, 0, 0, 1, 1, 0],
           "shipments": [3200, 40, 0.0125, 1, 1, 0],
           "search-indexer": [
@@ -3640,9 +3707,9 @@
             }
           ],
           "fulfilment": [
-            50,
+            160,
             40,
-            0.8,
+            0.25,
             2,
             2,
             0,
@@ -3732,18 +3799,18 @@
         "connections": {
           "web--cdn": 300,
           "app--cdn": 200,
-          "cdn--gateway": 410,
+          "cdn--gateway": 231.5934204921944,
           "cdn--collector": 90,
-          "gateway--catalog-bff": 192,
-          "gateway--search-api": 100,
+          "gateway--catalog-bff": 65.87680608492788,
+          "gateway--search-api": 47.71661440726653,
           "gateway--cart-api": 50,
           "gateway--checkout-api": 40,
           "gateway--order-status": 28,
           "collector--clickstream": 90,
-          "catalog-bff--product-cache": 192,
-          "catalog-bff--catalog-db": 19.2,
-          "catalog-bff--reco": 96,
-          "search-api--search-index": 100,
+          "catalog-bff--product-cache": 65.87680608492788,
+          "catalog-bff--catalog-db": 6.5876806084927875,
+          "catalog-bff--reco": 32.93840304246394,
+          "search-api--search-index": 47.71661440726653,
           "cart-api--carts": 50,
           "cart-api--pricing": 50,
           "checkout-api--pricing": 40,
@@ -3754,7 +3821,7 @@
           "checkout-api--orders-db": 40,
           "order-status--status-cache": 28,
           "clickstream--sessionizer": 90,
-          "reco--features": 96,
+          "reco--features": 32.93840304246394,
           "pricing--promotions": 90,
           "inventory--inventory-db": 40,
           "risk--features": 40,
@@ -3842,8 +3909,8 @@
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 1537.5,
-          "offered": 410,
+          "capacity": 1042.170392214875,
+          "offered": 231.5934204921944,
           "replicas": 6,
           "baseReplicas": 6,
           "omittedContributors": 0,
@@ -3851,81 +3918,84 @@
           "assignments": [],
           "slots": "Infinity",
           "seconds": 0,
-          "utilization": 0.26666666666666666,
+          "utilization": 0.2222222222222222,
           "growth": 0,
           "contributors": [
-            { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 410, "via": "Edge CDN" }
+            { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 231.5934204921944, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 192, "rejected": 0, "throttled": 0 },
-            { "route": "search", "address": "GET /search/parka", "offered": 100, "rejected": 0, "throttled": 0 },
+            { "route": "browse", "address": "GET /products/8812", "offered": 65.87680608492788, "rejected": 0, "throttled": 0 },
             { "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 },
+            { "route": "search", "address": "GET /search/parka", "offered": 47.71661440726653, "rejected": 0, "throttled": 0 },
             { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 },
             { "route": "order-status", "address": "GET /orders/5531", "offered": 28, "rejected": 0, "throttled": 0 }
           ]
         },
         "catalog-bff": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 100, "replyMs": 0, "replies": 3, "slots": 8, "ceiling": 200 },
           "id": "catalog-bff",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 3200,
-          "offered": 192,
-          "replicas": 4,
-          "baseReplicas": 4,
+          "capacity": 200,
+          "offered": 65.87680608492788,
+          "replicas": 1,
+          "baseReplicas": 1,
           "omittedContributors": 0,
-          "activeReplicas": 4,
+          "activeReplicas": 1,
           "assignments": [],
-          "slots": 32,
+          "slots": 8,
           "seconds": 0.04,
-          "utilization": 0.06,
+          "utilization": 0.3293840304246394,
           "growth": 0,
           "contributors": [
-            { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 192, "via": "API gateway" }
+            { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 65.87680608492788, "via": "API gateway" }
           ],
           "target": 0.5,
-          "minimumReplicas": 4,
+          "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 192, "rejected": 0, "throttled": 0 }
+            { "route": "browse", "address": "GET /products/8812", "offered": 65.87680608492788, "rejected": 0, "throttled": 0 }
           ]
         },
         "search-api": {
+          "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 9, "ceiling": 300 },
           "id": "search-api",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 3200,
-          "offered": 100,
-          "replicas": 3,
-          "baseReplicas": 3,
+          "capacity": 300,
+          "offered": 47.71661440726653,
+          "replicas": 1,
+          "baseReplicas": 1,
           "omittedContributors": 0,
-          "activeReplicas": 3,
+          "activeReplicas": 1,
           "assignments": [],
-          "slots": 32,
+          "slots": 9,
           "seconds": 0.03,
-          "utilization": 0.03125,
+          "utilization": 0.15905538135755512,
           "growth": 0,
           "contributors": [
-            { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 100, "via": "API gateway" }
+            { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 47.71661440726653, "via": "API gateway" }
           ],
           "target": 0.5,
-          "minimumReplicas": 3,
+          "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "search", "address": "GET /search/parka", "offered": 100, "rejected": 0, "throttled": 0 }
+            { "route": "search", "address": "GET /search/parka", "offered": 47.71661440726653, "rejected": 0, "throttled": 0 }
           ]
         },
         "cart-api": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 60, "replyMs": 0, "replies": 2, "slots": 48, "ceiling": 1200 },
           "id": "cart-api",
           "role": "processor",
           "status": "up",
@@ -3953,14 +4023,15 @@
           "routes": [{ "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 }]
         },
         "checkout-api": {
-          "resources": { "perReplica": 80, "initial": 2, "min": 2, "max": 10, "initialCapacity": 160, "maxCapacity": 800, "targetReplicas": 2, "cpuRequestPct": 40, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "resources": { "perReplica": 62.5, "initial": 2, "min": 2, "max": 10, "initialCapacity": 125, "maxCapacity": 625, "targetReplicas": 2, "cpuRequestPct": 64, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 340, "replyMs": 0, "replies": 6, "slots": 16, "ceiling": 160 },
           "id": "checkout-api",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 160,
+          "capacity": 125,
           "offered": 40,
           "replicas": 2,
           "baseReplicas": 2,
@@ -3969,7 +4040,7 @@
           "assignments": [],
           "slots": 8,
           "seconds": 0.1,
-          "utilization": 0.25,
+          "utilization": 0.32,
           "growth": 0,
           "contributors": [
             { "edge": "gateway--checkout-api", "node": "gateway", "label": "Edge CDN", "rate": 40, "via": "API gateway" }
@@ -3982,6 +4053,7 @@
           ]
         },
         "order-status": {
+          "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 4266.666666666667 },
           "id": "order-status",
           "role": "processor",
           "status": "up",
@@ -4035,6 +4107,7 @@
           "converged": true
         },
         "reco": {
+          "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 60, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
           "id": "reco",
           "role": "processor",
           "status": "up",
@@ -4042,7 +4115,7 @@
           "evidence": "configured",
           "unit": "req/s",
           "capacity": 800,
-          "offered": 96,
+          "offered": 32.93840304246394,
           "replicas": 3,
           "baseReplicas": 3,
           "omittedContributors": 0,
@@ -4050,18 +4123,21 @@
           "assignments": [],
           "slots": 16,
           "seconds": 0.06,
-          "utilization": 0.12,
+          "utilization": 0.04117300380307992,
           "growth": 0,
-          "contributors": [{ "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 96 }],
+          "contributors": [
+            { "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 32.93840304246394 }
+          ],
           "target": 0.5,
           "minimumReplicas": 3,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 96, "rejected": 0, "throttled": 0 }
+            { "route": "browse", "address": "GET /products/8812", "offered": 32.93840304246394, "rejected": 0, "throttled": 0 }
           ]
         },
         "pricing": {
+          "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 96, "ceiling": 4800 },
           "id": "pricing",
           "role": "processor",
           "status": "up",
@@ -4093,6 +4169,7 @@
           ]
         },
         "inventory": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 1200 },
           "id": "inventory",
           "role": "processor",
           "status": "up",
@@ -4123,6 +4200,7 @@
         },
         "risk": {
           "managed": "api",
+          "waits": { "workMs": 25, "callMs": 0, "threadHoldMs": 25, "memoryResidenceMs": 25, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 2560 },
           "id": "risk",
           "role": "processor",
           "status": "up",
@@ -4151,6 +4229,7 @@
           ]
         },
         "payments": {
+          "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 240, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
           "id": "payments",
           "role": "processor",
           "status": "up",
@@ -4209,6 +4288,7 @@
           ]
         },
         "search-indexer": {
+          "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 1066.6666666666667 },
           "id": "search-indexer",
           "role": "processor",
           "status": "up",
@@ -4246,27 +4326,28 @@
         "fulfilment": {
           "resources": {
             "keda": { "pollingMs": 1000, "cooldownMs": 5000, "lagBeforePoll": 0, "offered": 40 },
-            "perReplica": 25,
+            "perReplica": 80,
             "initial": 2,
             "min": 2,
             "max": 12,
-            "initialCapacity": 50,
-            "maxCapacity": 300,
-            "cpuRequestPct": 160,
-            "memoryPeakMiB": 196,
+            "initialCapacity": 160,
+            "maxCapacity": 960,
+            "cpuRequestPct": 176,
+            "memoryPeakMiB": 200,
             "memoryRisk": false,
             "baselineAboveTarget": false,
             "partitionLimited": false,
             "startupMs": 1000,
             "cpuUnbounded": false
           },
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 220, "replyMs": 0, "replies": 1, "slots": 16, "ceiling": 160 },
           "id": "fulfilment",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "msg/s",
-          "capacity": 50,
+          "capacity": 160,
           "offered": 40,
           "replicas": 2,
           "baseReplicas": 2,
@@ -4279,9 +4360,9 @@
               "count": 24
             }
           ],
-          "slots": 4,
+          "slots": 8,
           "seconds": 0.1,
-          "utilization": 0.8,
+          "utilization": 0.25,
           "growth": 0,
           "contributors": [{ "edge": "orders--fulfilment", "node": "orders", "label": "Order events", "rate": 40 }],
           "target": 0.5,
@@ -4292,6 +4373,7 @@
           ]
         },
         "loyalty": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 800 },
           "id": "loyalty",
           "role": "processor",
           "status": "up",
@@ -4325,6 +4407,7 @@
           ]
         },
         "status-projector": {
+          "waits": { "workMs": 10, "callMs": 0, "threadHoldMs": 10, "memoryResidenceMs": 10, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 6400 },
           "id": "status-projector",
           "role": "processor",
           "status": "up",
@@ -4407,6 +4490,7 @@
           ]
         },
         "dlq-triage": {
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 140, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 40 },
           "id": "dlq-triage",
           "role": "processor",
           "status": "paused",
@@ -4437,6 +4521,7 @@
         },
         "email": {
           "managed": "serverless",
+          "waits": { "workMs": 80, "callMs": 0, "threadHoldMs": 80, "memoryResidenceMs": 330, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 50 },
           "id": "email",
           "role": "processor",
           "status": "up",
@@ -4466,6 +4551,7 @@
         },
         "push": {
           "managed": "serverless",
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 290, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 100 },
           "id": "push",
           "role": "processor",
           "status": "up",
@@ -4521,6 +4607,7 @@
           "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 90, "rejected": 0, "throttled": 0 }]
         },
         "sessionizer": {
+          "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 2, "slots": 256, "ceiling": 17066.666666666668 },
           "id": "sessionizer",
           "role": "processor",
           "status": "up",
@@ -4554,6 +4641,7 @@
           "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 90, "rejected": 0, "throttled": 0 }]
         },
         "lake-sink": {
+          "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 128, "ceiling": 6400 },
           "id": "lake-sink",
           "role": "processor",
           "status": "up",
@@ -4586,7 +4674,31 @@
             { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
           ]
         },
-        "dbt": { "id": "dbt", "role": "processor", "status": "up", "reason": "throughput", "evidence": "configured", "unit": "msg/s", "capacity": 1, "offered": 0, "replicas": 1, "baseReplicas": 1, "omittedContributors": 0, "activeReplicas": 1, "assignments": [], "slots": 2, "seconds": 2, "utilization": 0, "growth": 0, "contributors": [], "target": 0.5, "minimumReplicas": 1, "changes": null, "converged": true },
+        "dbt": {
+          "waits": { "workMs": 2000, "callMs": 0, "threadHoldMs": 2000, "memoryResidenceMs": 2000, "replyMs": 0, "replies": 1, "slots": 2, "ceiling": 1 },
+          "id": "dbt",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 1,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 2,
+          "seconds": 2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
         "tax": {
           "managed": "api",
           "id": "tax",
@@ -4738,8 +4850,8 @@
       "configured": "(same as edit)",
       "simulation": "partner-quota",
       "analysis": {
-        "bottleneck": "fulfilment",
-        "suggestion": "Fulfilment workers: raise replicas from 2 to 6.",
+        "bottleneck": "wms",
+        "suggestion": "3PL warehouse API: Increase allocation or Reduce calls.",
         "converged": true,
         "iterations": 13,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -4747,22 +4859,22 @@
           "app": ["Infinity", 700, 0, 1, 1, 0],
           "carriers": ["Infinity", 0, 0, 1, 1, 0],
           "cdn": ["Infinity", 1700, 0, 20, 20, 0],
-          "gateway": [1537.5, 1394, 0.9066666666666666, 6, 6, 0],
-          "catalog-bff": [3200, 652, 0.20375, 4, 4, 0],
-          "search-api": [3200, 340, 0.10625, 3, 3, 0],
+          "gateway": [851.9321292872912, 643.6820532392867, 0.7555555555555555, 6, 6, 0],
+          "catalog-bff": [200, 111.58054328201331, 0.5579027164100665, 1, 1, 0],
+          "search-api": [300, 130.10150995727344, 0.43367169985757814, 1, 1, 0],
           "cart-api": [1200, 170, 0.14166666666666666, 3, 3, 0],
-          "checkout-api": [160, 136, 0.85, 2, 2, 0],
+          "checkout-api": [125, 136, 1.088, 2, 2, 0],
           "order-status": [4266.666666666667, 96, 0.0225, 2, 2, 0],
           "tracking": [1066.6666666666667, 0, 0, 2, 2, 0],
-          "reco": [800, 326, 0.4075, 3, 3, 0],
+          "reco": [800, 55.790271641006655, 0.06973783955125831, 3, 3, 0],
           "pricing": [4800, 306, 0.06375, 3, 3, 0],
           "inventory": [1200, 136, 0.11333333333333333, 3, 3, 0],
           "risk": ["Infinity", 136, 0, 2, 2, 0],
           "payments": [800, 136, 0.17, 3, 3, 0],
-          "features": ["Infinity", 768, 0, 1, 1, 0],
-          "product-cache": ["Infinity", 652, 0, 1, 1, 0],
-          "catalog-db": ["Infinity", 65.2, 0, 1, 1, 0],
-          "search-index": ["Infinity", 476, 0, 1, 1, 0],
+          "features": ["Infinity", 497.79027164100665, 0, 1, 1, 0],
+          "product-cache": ["Infinity", 111.58054328201331, 0, 1, 1, 0],
+          "catalog-db": ["Infinity", 11.158054328201331, 0, 1, 1, 0],
+          "search-index": ["Infinity", 266.10150995727344, 0, 1, 1, 0],
           "carts": ["Infinity", 170, 0, 1, 1, 0],
           "promotions": ["Infinity", 306, 0, 1, 1, 0],
           "inventory-db": ["Infinity", 136, 0, 1, 1, 0],
@@ -4770,7 +4882,7 @@
           "status-cache": ["Infinity", 368, 0, 1, 1, 0],
           "outbox-relay": [3200, 136, 0.0425, 2, 2, 0],
           "inventory-events": [1066.6666666666667, 136, 0.1275, 1, 1, 0],
-          "orders": [50, 136, 2.72, 1, 1, 0],
+          "orders": [160, 136, 0.85, 1, 1, 0],
           "orders-dlq": [40, 0, 0, 1, 1, 0],
           "shipments": [3200, 136, 0.0425, 1, 1, 0],
           "search-indexer": [
@@ -4785,9 +4897,9 @@
             }
           ],
           "fulfilment": [
-            50,
+            160,
             136,
-            2.72,
+            0.85,
             2,
             2,
             0,
@@ -4877,18 +4989,18 @@
         "connections": {
           "web--cdn": 1000,
           "app--cdn": 700,
-          "cdn--gateway": 1394,
+          "cdn--gateway": 643.6820532392867,
           "cdn--collector": 306,
-          "gateway--catalog-bff": 652,
-          "gateway--search-api": 340,
+          "gateway--catalog-bff": 111.58054328201331,
+          "gateway--search-api": 130.10150995727344,
           "gateway--cart-api": 170,
           "gateway--checkout-api": 136,
           "gateway--order-status": 96,
           "collector--clickstream": 306,
-          "catalog-bff--product-cache": 652,
-          "catalog-bff--catalog-db": 65.2,
-          "catalog-bff--reco": 326,
-          "search-api--search-index": 340,
+          "catalog-bff--product-cache": 111.58054328201331,
+          "catalog-bff--catalog-db": 11.158054328201331,
+          "catalog-bff--reco": 55.790271641006655,
+          "search-api--search-index": 130.10150995727344,
           "cart-api--carts": 170,
           "cart-api--pricing": 170,
           "checkout-api--pricing": 136,
@@ -4899,7 +5011,7 @@
           "checkout-api--orders-db": 136,
           "order-status--status-cache": 96,
           "clickstream--sessionizer": 306,
-          "reco--features": 326,
+          "reco--features": 55.790271641006655,
           "pricing--promotions": 306,
           "inventory--inventory-db": 136,
           "risk--features": 136,
@@ -4987,8 +5099,8 @@
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 1537.5,
-          "offered": 1394,
+          "capacity": 851.9321292872912,
+          "offered": 643.6820532392867,
           "replicas": 6,
           "baseReplicas": 6,
           "omittedContributors": 0,
@@ -4996,81 +5108,84 @@
           "assignments": [],
           "slots": "Infinity",
           "seconds": 0,
-          "utilization": 0.9066666666666666,
+          "utilization": 0.7555555555555555,
           "growth": 0,
           "contributors": [
-            { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 1394, "via": "Edge CDN" }
+            { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 643.6820532392867, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 652, "rejected": 0, "throttled": 0 },
-            { "route": "search", "address": "GET /search/parka", "offered": 340, "rejected": 0, "throttled": 0 },
             { "route": "cart", "address": "POST /cart/items", "offered": 170, "rejected": 0, "throttled": 0 },
             { "route": "checkout", "address": "POST /checkout", "offered": 136, "rejected": 0, "throttled": 0 },
+            { "route": "search", "address": "GET /search/parka", "offered": 130.10150995727344, "rejected": 0, "throttled": 0 },
+            { "route": "browse", "address": "GET /products/8812", "offered": 111.58054328201331, "rejected": 0, "throttled": 0 },
             { "route": "order-status", "address": "GET /orders/5531", "offered": 96, "rejected": 0, "throttled": 0 }
           ]
         },
         "catalog-bff": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 100, "replyMs": 0, "replies": 3, "slots": 8, "ceiling": 200 },
           "id": "catalog-bff",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 3200,
-          "offered": 652,
-          "replicas": 4,
-          "baseReplicas": 4,
+          "capacity": 200,
+          "offered": 111.58054328201331,
+          "replicas": 1,
+          "baseReplicas": 1,
           "omittedContributors": 0,
-          "activeReplicas": 4,
+          "activeReplicas": 1,
           "assignments": [],
-          "slots": 32,
+          "slots": 8,
           "seconds": 0.04,
-          "utilization": 0.20375,
+          "utilization": 0.5579027164100665,
           "growth": 0,
           "contributors": [
-            { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 652, "via": "API gateway" }
+            { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 111.58054328201331, "via": "API gateway" }
           ],
           "target": 0.5,
-          "minimumReplicas": 4,
+          "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 652, "rejected": 0, "throttled": 0 }
+            { "route": "browse", "address": "GET /products/8812", "offered": 111.58054328201331, "rejected": 0, "throttled": 0 }
           ]
         },
         "search-api": {
+          "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 9, "ceiling": 300 },
           "id": "search-api",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 3200,
-          "offered": 340,
-          "replicas": 3,
-          "baseReplicas": 3,
+          "capacity": 300,
+          "offered": 130.10150995727344,
+          "replicas": 1,
+          "baseReplicas": 1,
           "omittedContributors": 0,
-          "activeReplicas": 3,
+          "activeReplicas": 1,
           "assignments": [],
-          "slots": 32,
+          "slots": 9,
           "seconds": 0.03,
-          "utilization": 0.10625,
+          "utilization": 0.43367169985757814,
           "growth": 0,
           "contributors": [
-            { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 340, "via": "API gateway" }
+            { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 130.10150995727344, "via": "API gateway" }
           ],
           "target": 0.5,
-          "minimumReplicas": 3,
+          "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "search", "address": "GET /search/parka", "offered": 340, "rejected": 0, "throttled": 0 }
+            { "route": "search", "address": "GET /search/parka", "offered": 130.10150995727344, "rejected": 0, "throttled": 0 }
           ]
         },
         "cart-api": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 60, "replyMs": 0, "replies": 2, "slots": 48, "ceiling": 1200 },
           "id": "cart-api",
           "role": "processor",
           "status": "up",
@@ -5098,14 +5213,15 @@
           "routes": [{ "route": "cart", "address": "POST /cart/items", "offered": 170, "rejected": 0, "throttled": 0 }]
         },
         "checkout-api": {
-          "resources": { "perReplica": 80, "initial": 2, "min": 2, "max": 10, "initialCapacity": 160, "maxCapacity": 800, "targetReplicas": 4, "cpuRequestPct": 136, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "resources": { "perReplica": 62.5, "initial": 2, "min": 2, "max": 10, "initialCapacity": 125, "maxCapacity": 625, "targetReplicas": 7, "cpuRequestPct": 217.60000000000002, "memoryPeakMiB": 213.25, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 340, "replyMs": 0, "replies": 6, "slots": 16, "ceiling": 160 },
           "id": "checkout-api",
           "role": "processor",
           "status": "up",
-          "reason": "throughput",
+          "reason": "capacity",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 160,
+          "capacity": 125,
           "offered": 136,
           "replicas": 2,
           "baseReplicas": 2,
@@ -5114,8 +5230,8 @@
           "assignments": [],
           "slots": 8,
           "seconds": 0.1,
-          "utilization": 0.85,
-          "growth": 0,
+          "utilization": 1.088,
+          "growth": 11,
           "contributors": [
             { "edge": "gateway--checkout-api", "node": "gateway", "label": "Edge CDN", "rate": 136, "via": "API gateway" }
           ],
@@ -5127,6 +5243,7 @@
           ]
         },
         "order-status": {
+          "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 4266.666666666667 },
           "id": "order-status",
           "role": "processor",
           "status": "up",
@@ -5180,6 +5297,7 @@
           "converged": true
         },
         "reco": {
+          "waits": { "workMs": 59.99999999999999, "callMs": 0, "threadHoldMs": 59.99999999999999, "memoryResidenceMs": 60, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800.0000000000001 },
           "id": "reco",
           "role": "processor",
           "status": "up",
@@ -5187,26 +5305,29 @@
           "evidence": "configured",
           "unit": "req/s",
           "capacity": 800,
-          "offered": 326,
+          "offered": 55.790271641006655,
           "replicas": 3,
           "baseReplicas": 3,
           "omittedContributors": 0,
           "activeReplicas": 3,
           "assignments": [],
           "slots": 16,
-          "seconds": 0.06,
-          "utilization": 0.4075,
+          "seconds": 0.05999999999999999,
+          "utilization": 0.06973783955125831,
           "growth": 0,
-          "contributors": [{ "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 326 }],
+          "contributors": [
+            { "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 55.790271641006655 }
+          ],
           "target": 0.5,
           "minimumReplicas": 3,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "browse", "address": "GET /products/8812", "offered": 326, "rejected": 0, "throttled": 0 }
+            { "route": "browse", "address": "GET /products/8812", "offered": 55.790271641006655, "rejected": 0, "throttled": 0 }
           ]
         },
         "pricing": {
+          "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 96, "ceiling": 4800 },
           "id": "pricing",
           "role": "processor",
           "status": "up",
@@ -5238,6 +5359,7 @@
           ]
         },
         "inventory": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 1200 },
           "id": "inventory",
           "role": "processor",
           "status": "up",
@@ -5268,6 +5390,7 @@
         },
         "risk": {
           "managed": "api",
+          "waits": { "workMs": 25, "callMs": 0, "threadHoldMs": 25, "memoryResidenceMs": 25, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 2560 },
           "id": "risk",
           "role": "processor",
           "status": "up",
@@ -5296,6 +5419,7 @@
           ]
         },
         "payments": {
+          "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 240, "replyMs": 0, "replies": 1, "slots": 48, "ceiling": 800 },
           "id": "payments",
           "role": "processor",
           "status": "up",
@@ -5354,6 +5478,7 @@
           ]
         },
         "search-indexer": {
+          "waits": { "workMs": 30, "callMs": 0, "threadHoldMs": 30, "memoryResidenceMs": 30, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 1066.6666666666667 },
           "id": "search-indexer",
           "role": "processor",
           "status": "up",
@@ -5391,27 +5516,28 @@
         "fulfilment": {
           "resources": {
             "keda": { "pollingMs": 1000, "cooldownMs": 5000, "lagBeforePoll": 0, "offered": 136 },
-            "perReplica": 25,
+            "perReplica": 80,
             "initial": 2,
             "min": 2,
             "max": 12,
-            "initialCapacity": 50,
-            "maxCapacity": 300,
-            "cpuRequestPct": 544,
-            "memoryPeakMiB": 196,
+            "initialCapacity": 160,
+            "maxCapacity": 960,
+            "cpuRequestPct": 598.4,
+            "memoryPeakMiB": 206.96,
             "memoryRisk": false,
             "baselineAboveTarget": false,
             "partitionLimited": false,
             "startupMs": 1000,
             "cpuUnbounded": false
           },
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 220, "replyMs": 0, "replies": 1, "slots": 16, "ceiling": 160 },
           "id": "fulfilment",
           "role": "processor",
           "status": "up",
-          "reason": "capacity",
+          "reason": "throughput",
           "evidence": "configured",
           "unit": "msg/s",
-          "capacity": 50,
+          "capacity": 160,
           "offered": 136,
           "replicas": 2,
           "baseReplicas": 2,
@@ -5424,10 +5550,10 @@
               "count": 24
             }
           ],
-          "slots": 4,
+          "slots": 8,
           "seconds": 0.1,
-          "utilization": 2.72,
-          "growth": 86,
+          "utilization": 0.85,
+          "growth": 0,
           "contributors": [{ "edge": "orders--fulfilment", "node": "orders", "label": "Order events", "rate": 136 }],
           "target": 0.5,
           "changes": null,
@@ -5437,6 +5563,7 @@
           ]
         },
         "loyalty": {
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 40, "replyMs": 0, "replies": 1, "slots": 32, "ceiling": 800 },
           "id": "loyalty",
           "role": "processor",
           "status": "up",
@@ -5470,6 +5597,7 @@
           ]
         },
         "status-projector": {
+          "waits": { "workMs": 10, "callMs": 0, "threadHoldMs": 10, "memoryResidenceMs": 10, "replyMs": 0, "replies": 1, "slots": 64, "ceiling": 6400 },
           "id": "status-projector",
           "role": "processor",
           "status": "up",
@@ -5552,6 +5680,7 @@
           ]
         },
         "dlq-triage": {
+          "waits": { "workMs": 100, "callMs": 0, "threadHoldMs": 100, "memoryResidenceMs": 140, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 40 },
           "id": "dlq-triage",
           "role": "processor",
           "status": "up",
@@ -5583,6 +5712,7 @@
         },
         "email": {
           "managed": "serverless",
+          "waits": { "workMs": 80, "callMs": 0, "threadHoldMs": 80, "memoryResidenceMs": 330, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 50 },
           "id": "email",
           "role": "processor",
           "status": "up",
@@ -5612,6 +5742,7 @@
         },
         "push": {
           "managed": "serverless",
+          "waits": { "workMs": 40, "callMs": 0, "threadHoldMs": 40, "memoryResidenceMs": 290, "replyMs": 0, "replies": 1, "slots": 4, "ceiling": 100 },
           "id": "push",
           "role": "processor",
           "status": "up",
@@ -5667,6 +5798,7 @@
           "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 306, "rejected": 0, "throttled": 0 }]
         },
         "sessionizer": {
+          "waits": { "workMs": 15, "callMs": 0, "threadHoldMs": 15, "memoryResidenceMs": 15, "replyMs": 0, "replies": 2, "slots": 256, "ceiling": 17066.666666666668 },
           "id": "sessionizer",
           "role": "processor",
           "status": "up",
@@ -5700,6 +5832,7 @@
           "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 306, "rejected": 0, "throttled": 0 }]
         },
         "lake-sink": {
+          "waits": { "workMs": 20, "callMs": 0, "threadHoldMs": 20, "memoryResidenceMs": 20, "replyMs": 0, "replies": 1, "slots": 128, "ceiling": 6400 },
           "id": "lake-sink",
           "role": "processor",
           "status": "up",
@@ -5732,7 +5865,31 @@
             { "route": "checkout", "address": "POST /checkout", "offered": 136, "rejected": 0, "throttled": 0 }
           ]
         },
-        "dbt": { "id": "dbt", "role": "processor", "status": "up", "reason": "throughput", "evidence": "configured", "unit": "msg/s", "capacity": 1, "offered": 0, "replicas": 1, "baseReplicas": 1, "omittedContributors": 0, "activeReplicas": 1, "assignments": [], "slots": 2, "seconds": 2, "utilization": 0, "growth": 0, "contributors": [], "target": 0.5, "minimumReplicas": 1, "changes": null, "converged": true },
+        "dbt": {
+          "waits": { "workMs": 2000, "callMs": 0, "threadHoldMs": 2000, "memoryResidenceMs": 2000, "replyMs": 0, "replies": 1, "slots": 2, "ceiling": 1 },
+          "id": "dbt",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 1,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 2,
+          "seconds": 2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
         "tax": {
           "managed": "api",
           "id": "tax",
@@ -5879,15 +6036,10 @@
       },
       "capabilities": "(same as edit)",
       "sizing": "(same as edit)",
-      "redundancy": {
-        "gateway": { "replicas": 2, "enough": false },
-        "orders": { "replicas": 2, "enough": false },
-        "fulfilment": { "replicas": 2, "enough": false },
-        "wms": { "replicas": 2, "enough": false }
-      },
+      "redundancy": { "checkout-api": { "replicas": 2, "enough": false }, "wms": { "replicas": 2, "enough": false } },
       "resolved": {
         "web": {
-          "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 300,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -5902,7 +6054,7 @@
           "healthChecks": false
         },
         "app": {
-          "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 200,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -5917,7 +6069,7 @@
           "healthChecks": false
         },
         "carriers": {
-          "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 20,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -5932,7 +6084,7 @@
           "healthChecks": false
         },
         "cdn": {
-          "profile": { "family": "edge", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "edge", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -5948,7 +6100,7 @@
         },
         "gateway": {
           "admission": { "api": {}, "endpoints": [] },
-          "profile": { "family": "api-gateway", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "api-gateway", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -5963,11 +6115,11 @@
           "healthChecks": false
         },
         "catalog-bff": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
-          "concurrency": 32,
-          "replicas": 4,
+          "concurrency": 8,
+          "replicas": 1,
           "jitter": 0.1,
           "retry": "requeue",
           "retryBackoffMs": 0,
@@ -5978,11 +6130,11 @@
           "healthChecks": false
         },
         "search-api": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 30,
-          "concurrency": 32,
-          "replicas": 3,
+          "concurrency": 9,
+          "replicas": 1,
           "jitter": 0.1,
           "retry": "requeue",
           "retryBackoffMs": 0,
@@ -5993,7 +6145,7 @@
           "healthChecks": false
         },
         "cart-api": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 16,
@@ -6011,7 +6163,7 @@
           "resources": {
             "preset": "io-service",
             "presetRevision": "1",
-            "cpuMsPerMessage": 10,
+            "cpuMsPerMessage": 16,
             "baselineMemoryMiB": 192,
             "memoryMiBPerMessage": 1,
             "cpuRequestMilli": 500,
@@ -6060,7 +6212,7 @@
               }
             }
           },
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 100,
           "concurrency": 8,
@@ -6075,7 +6227,7 @@
           "healthChecks": false
         },
         "order-status": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 15,
           "concurrency": 32,
@@ -6090,7 +6242,7 @@
           "healthChecks": false
         },
         "tracking": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 30,
           "concurrency": 16,
@@ -6105,7 +6257,7 @@
           "healthChecks": false
         },
         "reco": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 60,
           "concurrency": 16,
@@ -6120,7 +6272,7 @@
           "healthChecks": false
         },
         "pricing": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 20,
           "concurrency": 32,
@@ -6135,7 +6287,7 @@
           "healthChecks": false
         },
         "inventory": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 16,
@@ -6151,7 +6303,7 @@
         },
         "risk": {
           "admission": { "api": {}, "endpoints": [] },
-          "profile": { "family": "model-api", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "model-api", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 25,
           "concurrency": 32,
@@ -6166,7 +6318,7 @@
           "healthChecks": false
         },
         "payments": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 60,
           "concurrency": 16,
@@ -6181,7 +6333,7 @@
           "healthChecks": false
         },
         "features": {
-          "profile": { "family": "cache", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "cache", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6196,7 +6348,7 @@
           "healthChecks": false
         },
         "product-cache": {
-          "profile": { "family": "cache", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "cache", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6211,7 +6363,7 @@
           "healthChecks": false
         },
         "catalog-db": {
-          "profile": { "family": "sql", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6226,7 +6378,7 @@
           "healthChecks": false
         },
         "search-index": {
-          "profile": { "family": "search", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "search", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6241,7 +6393,7 @@
           "healthChecks": false
         },
         "carts": {
-          "profile": { "family": "nosql", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "nosql", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6256,7 +6408,7 @@
           "healthChecks": false
         },
         "promotions": {
-          "profile": { "family": "nosql", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "nosql", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6271,7 +6423,7 @@
           "healthChecks": false
         },
         "inventory-db": {
-          "profile": { "family": "sql", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6286,7 +6438,7 @@
           "healthChecks": false
         },
         "orders-db": {
-          "profile": { "family": "sql", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6301,7 +6453,7 @@
           "healthChecks": false
         },
         "status-cache": {
-          "profile": { "family": "cache", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "cache", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6316,7 +6468,7 @@
           "healthChecks": false
         },
         "outbox-relay": {
-          "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 20,
           "concurrency": 32,
@@ -6332,7 +6484,7 @@
         },
         "inventory-events": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6348,7 +6500,7 @@
         },
         "orders": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6364,7 +6516,7 @@
         },
         "orders-dlq": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6380,7 +6532,7 @@
         },
         "shipments": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6395,7 +6547,7 @@
           "healthChecks": false
         },
         "search-indexer": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 30,
           "concurrency": 16,
@@ -6413,11 +6565,11 @@
           "resources": {
             "preset": "io-service",
             "presetRevision": "1",
-            "cpuMsPerMessage": 20,
+            "cpuMsPerMessage": 22,
             "baselineMemoryMiB": 192,
             "memoryMiBPerMessage": 1,
             "cpuRequestMilli": 250,
-            "cpuLimitMilli": 500,
+            "cpuLimitMilli": 2000,
             "memoryRequestMiB": 256,
             "memoryLimitMiB": 512,
             "startup": { "delayMs": 1000, "jitterFraction": 0 },
@@ -6468,10 +6620,10 @@
               }
             }
           },
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 100,
-          "concurrency": 4,
+          "concurrency": 8,
           "replicas": 2,
           "jitter": 0.1,
           "retry": "requeue",
@@ -6483,7 +6635,7 @@
           "healthChecks": false
         },
         "loyalty": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 16,
@@ -6498,7 +6650,7 @@
           "healthChecks": false
         },
         "status-projector": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 10,
           "concurrency": 32,
@@ -6513,7 +6665,7 @@
           "healthChecks": false
         },
         "notifier": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 20,
           "concurrency": 32,
@@ -6528,7 +6680,7 @@
           "healthChecks": false
         },
         "dlq-triage": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 100,
           "concurrency": 4,
@@ -6543,7 +6695,7 @@
           "healthChecks": false
         },
         "loyalty-db": {
-          "profile": { "family": "nosql", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "nosql", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6558,7 +6710,7 @@
           "healthChecks": false
         },
         "notify-q": {
-          "profile": { "family": "queue", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "queue", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6573,7 +6725,7 @@
           "healthChecks": false
         },
         "notify-dlq": {
-          "profile": { "family": "queue", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "queue", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6589,7 +6741,7 @@
         },
         "email": {
           "admission": { "api": {}, "endpoints": [], "slots": 100 },
-          "profile": { "family": "serverless", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+          "profile": { "family": "serverless", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 80,
           "concurrency": 4,
@@ -6605,7 +6757,7 @@
         },
         "push": {
           "admission": { "api": {}, "endpoints": [], "slots": 100 },
-          "profile": { "family": "serverless", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+          "profile": { "family": "serverless", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 4,
@@ -6620,7 +6772,7 @@
           "healthChecks": false
         },
         "collector": {
-          "profile": { "family": "service", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 10,
           "concurrency": 64,
@@ -6636,7 +6788,7 @@
         },
         "clickstream": {
           "broker": { "partitioned": true, "assignment": "shards", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6651,7 +6803,7 @@
           "healthChecks": false
         },
         "sessionizer": {
-          "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 15,
           "concurrency": 64,
@@ -6666,7 +6818,7 @@
           "healthChecks": false
         },
         "lake-sink": {
-          "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 20,
           "concurrency": 64,
@@ -6681,7 +6833,7 @@
           "healthChecks": false
         },
         "lake": {
-          "profile": { "family": "object", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6696,7 +6848,7 @@
           "healthChecks": false
         },
         "airflow": {
-          "profile": { "family": "scheduler", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "scheduler", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 0.1,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6711,7 +6863,7 @@
           "healthChecks": false
         },
         "dbt": {
-          "profile": { "family": "stream-processor", "revision": "p3-a1", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3-w3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 2000,
           "concurrency": 2,
@@ -6726,7 +6878,7 @@
           "healthChecks": false
         },
         "argocd": {
-          "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6741,7 +6893,7 @@
           "healthChecks": false
         },
         "flags": {
-          "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6756,7 +6908,7 @@
           "healthChecks": false
         },
         "secrets": {
-          "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6771,7 +6923,7 @@
           "healthChecks": false
         },
         "roles": {
-          "profile": { "family": "dependency", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "dependency", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6786,7 +6938,7 @@
           "healthChecks": false
         },
         "datadog": {
-          "profile": { "family": "telemetry", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6802,7 +6954,7 @@
         },
         "tax": {
           "admission": { "api": {}, "endpoints": [] },
-          "profile": { "family": "external-api", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "external-api", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 60,
           "concurrency": "Infinity",
@@ -6826,7 +6978,7 @@
             },
             "endpoints": []
           },
-          "profile": { "family": "external-api", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+          "profile": { "family": "external-api", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 180,
           "concurrency": "Infinity",
@@ -6850,7 +7002,7 @@
             },
             "endpoints": []
           },
-          "profile": { "family": "external-api", "revision": "p3-a1", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+          "profile": { "family": "external-api", "revision": "p3-w3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 120,
           "concurrency": "Infinity",
@@ -6866,7 +7018,7 @@
         },
         "sendgrid": {
           "admission": { "api": {}, "endpoints": [] },
-          "profile": { "family": "external-api", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "external-api", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 250,
           "concurrency": "Infinity",
@@ -6882,7 +7034,7 @@
         },
         "apns": {
           "admission": { "api": {}, "endpoints": [] },
-          "profile": { "family": "external-api", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "external-api", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 250,
           "concurrency": "Infinity",
@@ -6897,7 +7049,7 @@
           "healthChecks": false
         },
         "snowflake": {
-          "profile": { "family": "warehouse", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "warehouse", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6912,7 +7064,7 @@
           "healthChecks": false
         },
         "tableau": {
-          "profile": { "family": "telemetry", "revision": "p3-a1", "evidence": [], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3-w3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -6934,10 +7086,10 @@
       "normal": {
         "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
         "view": {
-          "tone": "warn",
-          "top": "fulfilment",
-          "headline": "Fulfilment workers is busy",
-          "detail": "80% · 40/s of 50/s. Still some headroom.",
+          "tone": "ok",
+          "top": "catalog-bff",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Catalog BFF at 33% · 66/s of 200/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -6946,22 +7098,22 @@
             "app": ["idle", "200/s · no limit", { "modeled": false }],
             "carriers": ["idle", "20/s · no limit", { "modeled": false }],
             "cdn": ["idle", "520/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "27% · 430/s of 1.6k/s"],
-            "catalog-bff": ["ok", "6% · 192/s of 3.2k/s"],
-            "search-api": ["ok", "3% · 100/s of 3.2k/s"],
+            "gateway": ["ok", "22% · 252/s of 1.1k/s"],
+            "catalog-bff": ["ok", "33% · 66/s of 200/s"],
+            "search-api": ["ok", "16% · 48/s of 300/s"],
             "cart-api": ["ok", "4% · 50/s of 1.2k/s"],
-            "checkout-api": ["ok", "25% · 40/s of 160/s"],
+            "checkout-api": ["ok", "32% · 40/s of 125/s"],
             "order-status": ["ok", "1% · 28/s of 4.3k/s"],
             "tracking": ["ok", "2% · 20/s of 1.1k/s"],
-            "reco": ["ok", "12% · 96/s of 800/s"],
+            "reco": ["ok", "4% · 33/s of 800/s"],
             "pricing": ["ok", "2% · 90/s of 4.8k/s"],
             "inventory": ["ok", "3% · 40/s of 1.2k/s"],
             "risk": ["idle", "Limits unknown; enter measured or contracted values."],
             "payments": ["ok", "5% · 40/s of 800/s"],
-            "features": ["idle", "226/s · no limit", { "modeled": false }],
-            "product-cache": ["idle", "192/s · no limit", { "modeled": false }],
-            "catalog-db": ["idle", "19/s · no limit", { "modeled": false }],
-            "search-index": ["idle", "140/s · no limit", { "modeled": false }],
+            "features": ["idle", "163/s · no limit", { "modeled": false }],
+            "product-cache": ["idle", "66/s · no limit", { "modeled": false }],
+            "catalog-db": ["idle", "6.6/s · no limit", { "modeled": false }],
+            "search-index": ["idle", "88/s · no limit", { "modeled": false }],
             "carts": ["idle", "50/s · no limit", { "modeled": false }],
             "promotions": ["idle", "90/s · no limit", { "modeled": false }],
             "inventory-db": ["idle", "40/s · no limit", { "modeled": false }],
@@ -6969,11 +7121,11 @@
             "status-cache": ["idle", "128/s · no limit", { "modeled": false }],
             "outbox-relay": ["ok", "1% · 40/s of 3.2k/s"],
             "inventory-events": ["ok", "4% · 40/s of 1.1k/s"],
-            "orders": ["warn", "80% · 40/s of 50/s"],
+            "orders": ["ok", "25% · 40/s of 160/s"],
             "orders-dlq": ["idle", ""],
             "shipments": ["ok", "2% · 60/s of 3.2k/s"],
             "search-indexer": ["ok", "4% · 40/s of 1.1k/s"],
-            "fulfilment": ["warn", "80% · 40/s of 50/s"],
+            "fulfilment": ["ok", "25% · 40/s of 160/s"],
             "loyalty": ["ok", "5% · 40/s of 800/s"],
             "status-projector": ["ok", "2% · 100/s of 6.4k/s"],
             "notifier": ["ok", "3% · 100/s of 3.2k/s"],
@@ -7010,9 +7162,9 @@
         "inputs": { "props": {}, "rates": {}, "traffic": 5 },
         "view": {
           "tone": "over",
-          "top": "fulfilment",
-          "headline": "Fulfilment workers and 4 more are over capacity",
-          "detail": "400% · 200/s of 50/s",
+          "top": "checkout-api",
+          "headline": "Checkout API and 4 more are over capacity",
+          "detail": "160% · 200/s of 125/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -7021,22 +7173,22 @@
             "app": ["idle", "1k/s · no limit", { "modeled": false }],
             "carriers": ["idle", "100/s · no limit", { "modeled": false }],
             "cdn": ["idle", "2.6k/s · no limit", { "modeled": false }],
-            "gateway": ["over", "133% · 2.1k/s of 1.6k/s"],
-            "catalog-bff": ["ok", "30% · 960/s of 3.2k/s"],
-            "search-api": ["ok", "16% · 500/s of 3.2k/s"],
+            "gateway": ["over", "111% · 991/s of 892/s"],
+            "catalog-bff": ["warn", "62% · 125/s of 200/s"],
+            "search-api": ["ok", "59% · 177/s of 300/s"],
             "cart-api": ["ok", "21% · 250/s of 1.2k/s"],
-            "checkout-api": ["over", "125% · 200/s of 160/s"],
+            "checkout-api": ["over", "160% · 200/s of 125/s"],
             "order-status": ["ok", "3% · 140/s of 4.3k/s"],
             "tracking": ["ok", "9% · 100/s of 1.1k/s"],
-            "reco": ["warn", "60% · 480/s of 800/s"],
+            "reco": ["ok", "8% · 62/s of 800/s"],
             "pricing": ["ok", "9% · 450/s of 4.8k/s"],
             "inventory": ["ok", "17% · 200/s of 1.2k/s"],
             "risk": ["idle", "Limits unknown; enter measured or contracted values."],
             "payments": ["ok", "25% · 200/s of 800/s"],
-            "features": ["idle", "1.1k/s · no limit", { "modeled": false }],
-            "product-cache": ["idle", "960/s · no limit", { "modeled": false }],
-            "catalog-db": ["idle", "96/s · no limit", { "modeled": false }],
-            "search-index": ["idle", "700/s · no limit", { "modeled": false }],
+            "features": ["idle", "712/s · no limit", { "modeled": false }],
+            "product-cache": ["idle", "125/s · no limit", { "modeled": false }],
+            "catalog-db": ["idle", "12/s · no limit", { "modeled": false }],
+            "search-index": ["idle", "377/s · no limit", { "modeled": false }],
             "carts": ["idle", "250/s · no limit", { "modeled": false }],
             "promotions": ["idle", "450/s · no limit", { "modeled": false }],
             "inventory-db": ["idle", "200/s · no limit", { "modeled": false }],
@@ -7044,11 +7196,11 @@
             "status-cache": ["idle", "640/s · no limit", { "modeled": false }],
             "outbox-relay": ["ok", "6% · 200/s of 3.2k/s"],
             "inventory-events": ["ok", "19% · 200/s of 1.1k/s"],
-            "orders": ["over", "400% · 200/s of 50/s"],
+            "orders": ["over", "125% · 200/s of 160/s"],
             "orders-dlq": ["idle", ""],
             "shipments": ["ok", "9% · 300/s of 3.2k/s"],
             "search-indexer": ["ok", "19% · 200/s of 1.1k/s"],
-            "fulfilment": ["over", "400% · 200/s of 50/s"],
+            "fulfilment": ["over", "125% · 200/s of 160/s"],
             "loyalty": ["ok", "25% · 200/s of 800/s"],
             "status-projector": ["ok", "8% · 500/s of 6.4k/s"],
             "notifier": ["ok", "16% · 500/s of 3.2k/s"],
@@ -7084,10 +7236,10 @@
       "half-pods": {
         "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
         "view": {
-          "tone": "over",
-          "top": "fulfilment",
-          "headline": "Fulfilment workers and 1 more are over capacity",
-          "detail": "160% · 40/s of 25/s",
+          "tone": "warn",
+          "top": "checkout-api",
+          "headline": "Checkout API is busy",
+          "detail": "64% · 40/s of 63/s. Still some headroom.",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -7096,22 +7248,22 @@
             "app": ["idle", "200/s · no limit", { "modeled": false }],
             "carriers": ["idle", "20/s · no limit", { "modeled": false }],
             "cdn": ["idle", "520/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "27% · 430/s of 1.6k/s"],
-            "catalog-bff": ["ok", "12% · 192/s of 1.6k/s"],
-            "search-api": ["ok", "5% · 100/s of 2.1k/s"],
+            "gateway": ["ok", "22% · 252/s of 1.1k/s"],
+            "catalog-bff": ["ok", "33% · 66/s of 200/s"],
+            "search-api": ["ok", "16% · 48/s of 300/s"],
             "cart-api": ["ok", "6% · 50/s of 800/s"],
-            "checkout-api": ["ok", "50% · 40/s of 80/s"],
+            "checkout-api": ["warn", "64% · 40/s of 63/s"],
             "order-status": ["ok", "1% · 28/s of 2.1k/s"],
             "tracking": ["ok", "4% · 20/s of 533/s"],
-            "reco": ["ok", "18% · 96/s of 533/s"],
+            "reco": ["ok", "6% · 33/s of 533/s"],
             "pricing": ["ok", "3% · 90/s of 3.2k/s"],
             "inventory": ["ok", "5% · 40/s of 800/s"],
             "risk": ["idle", "Limits unknown; enter measured or contracted values."],
             "payments": ["ok", "8% · 40/s of 533/s"],
-            "features": ["idle", "226/s · no limit", { "modeled": false }],
-            "product-cache": ["idle", "192/s · no limit", { "modeled": false }],
-            "catalog-db": ["idle", "19/s · no limit", { "modeled": false }],
-            "search-index": ["idle", "140/s · no limit", { "modeled": false }],
+            "features": ["idle", "163/s · no limit", { "modeled": false }],
+            "product-cache": ["idle", "66/s · no limit", { "modeled": false }],
+            "catalog-db": ["idle", "6.6/s · no limit", { "modeled": false }],
+            "search-index": ["idle", "88/s · no limit", { "modeled": false }],
             "carts": ["idle", "50/s · no limit", { "modeled": false }],
             "promotions": ["idle", "90/s · no limit", { "modeled": false }],
             "inventory-db": ["idle", "40/s · no limit", { "modeled": false }],
@@ -7119,11 +7271,11 @@
             "status-cache": ["idle", "128/s · no limit", { "modeled": false }],
             "outbox-relay": ["ok", "3% · 40/s of 1.6k/s"],
             "inventory-events": ["ok", "8% · 40/s of 533/s"],
-            "orders": ["over", "160% · 40/s of 25/s"],
+            "orders": ["ok", "50% · 40/s of 80/s"],
             "orders-dlq": ["idle", ""],
             "shipments": ["ok", "4% · 60/s of 1.6k/s"],
             "search-indexer": ["ok", "8% · 40/s of 533/s"],
-            "fulfilment": ["over", "160% · 40/s of 25/s"],
+            "fulfilment": ["ok", "50% · 40/s of 80/s"],
             "loyalty": ["ok", "10% · 40/s of 400/s"],
             "status-projector": ["ok", "3% · 100/s of 3.2k/s"],
             "notifier": ["ok", "6% · 100/s of 1.6k/s"],
@@ -7168,10 +7320,10 @@
           "rates": {}
         },
         "view": {
-          "tone": "warn",
-          "top": "fulfilment",
-          "headline": "Fulfilment workers is busy",
-          "detail": "80% · 40/s of 50/s. Still some headroom.",
+          "tone": "ok",
+          "top": "catalog-bff",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Catalog BFF at 33% · 66/s of 200/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -7180,22 +7332,22 @@
             "app": ["idle", "200/s · no limit", { "modeled": false }],
             "carriers": ["idle", "20/s · no limit", { "modeled": false }],
             "cdn": ["idle", "520/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "27% · 430/s of 1.6k/s"],
-            "catalog-bff": ["ok", "6% · 192/s of 3.2k/s"],
-            "search-api": ["ok", "3% · 100/s of 3.2k/s"],
+            "gateway": ["ok", "22% · 252/s of 1.1k/s"],
+            "catalog-bff": ["ok", "33% · 66/s of 200/s"],
+            "search-api": ["ok", "16% · 48/s of 300/s"],
             "cart-api": ["ok", "4% · 50/s of 1.2k/s"],
-            "checkout-api": ["ok", "25% · 40/s of 160/s"],
+            "checkout-api": ["ok", "32% · 40/s of 125/s"],
             "order-status": ["ok", "1% · 28/s of 4.3k/s"],
             "tracking": ["ok", "2% · 20/s of 1.1k/s"],
-            "reco": ["ok", "12% · 96/s of 800/s"],
+            "reco": ["ok", "4% · 33/s of 800/s"],
             "pricing": ["ok", "2% · 90/s of 4.8k/s"],
             "inventory": ["ok", "3% · 40/s of 1.2k/s"],
             "risk": ["idle", "Limits unknown; enter measured or contracted values."],
             "payments": ["ok", "5% · 40/s of 800/s"],
-            "features": ["idle", "226/s · no limit", { "modeled": false }],
-            "product-cache": ["idle", "192/s · no limit", { "modeled": false }],
-            "catalog-db": ["idle", "19/s · no limit", { "modeled": false }],
-            "search-index": ["idle", "140/s · no limit", { "modeled": false }],
+            "features": ["idle", "163/s · no limit", { "modeled": false }],
+            "product-cache": ["idle", "66/s · no limit", { "modeled": false }],
+            "catalog-db": ["idle", "6.6/s · no limit", { "modeled": false }],
+            "search-index": ["idle", "88/s · no limit", { "modeled": false }],
             "carts": ["idle", "50/s · no limit", { "modeled": false }],
             "promotions": ["idle", "90/s · no limit", { "modeled": false }],
             "inventory-db": ["idle", "40/s · no limit", { "modeled": false }],
@@ -7203,11 +7355,11 @@
             "status-cache": ["idle", "128/s · no limit", { "modeled": false }],
             "outbox-relay": ["ok", "1% · 40/s of 3.2k/s"],
             "inventory-events": ["ok", "4% · 40/s of 1.1k/s"],
-            "orders": ["warn", "80% · 40/s of 50/s"],
+            "orders": ["ok", "25% · 40/s of 160/s"],
             "orders-dlq": ["idle", ""],
             "shipments": ["ok", "2% · 60/s of 3.2k/s"],
             "search-indexer": ["ok", "4% · 40/s of 1.1k/s"],
-            "fulfilment": ["warn", "80% · 40/s of 50/s"],
+            "fulfilment": ["ok", "25% · 40/s of 160/s"],
             "loyalty": ["ok", "5% · 40/s of 800/s"],
             "status-projector": ["ok", "2% · 100/s of 6.4k/s"],
             "notifier": ["ok", "3% · 100/s of 3.2k/s"],
@@ -7243,9 +7395,9 @@
     },
     "doors-open": {
       "tone": "over",
-      "top": "fulfilment",
-      "headline": "Fulfilment workers and 4 more are over capacity",
-      "detail": "400% · 200/s of 50/s",
+      "top": "checkout-api",
+      "headline": "Checkout API and 4 more are over capacity",
+      "detail": "160% · 200/s of 125/s",
       "fix": null,
       "addConsumer": null,
       "converged": true,
@@ -7254,22 +7406,22 @@
         "app": ["idle", "1k/s · no limit", { "modeled": false }],
         "carriers": ["idle", "20/s · no limit", { "modeled": false }],
         "cdn": ["idle", "2.5k/s · no limit", { "modeled": false }],
-        "gateway": ["over", "133% · 2.1k/s of 1.6k/s"],
-        "catalog-bff": ["ok", "30% · 960/s of 3.2k/s"],
-        "search-api": ["ok", "16% · 500/s of 3.2k/s"],
+        "gateway": ["over", "111% · 911/s of 820/s"],
+        "catalog-bff": ["warn", "62% · 125/s of 200/s"],
+        "search-api": ["ok", "59% · 177/s of 300/s"],
         "cart-api": ["ok", "21% · 250/s of 1.2k/s"],
-        "checkout-api": ["over", "125% · 200/s of 160/s"],
+        "checkout-api": ["over", "160% · 200/s of 125/s"],
         "order-status": ["ok", "3% · 140/s of 4.3k/s"],
         "tracking": ["ok", "2% · 20/s of 1.1k/s"],
-        "reco": ["warn", "60% · 480/s of 800/s"],
+        "reco": ["ok", "8% · 62/s of 800/s"],
         "pricing": ["ok", "9% · 450/s of 4.8k/s"],
         "inventory": ["ok", "17% · 200/s of 1.2k/s"],
         "risk": ["idle", "Limits unknown; enter measured or contracted values."],
         "payments": ["ok", "25% · 200/s of 800/s"],
-        "features": ["idle", "1.1k/s · no limit", { "modeled": false }],
-        "product-cache": ["idle", "960/s · no limit", { "modeled": false }],
-        "catalog-db": ["idle", "96/s · no limit", { "modeled": false }],
-        "search-index": ["idle", "700/s · no limit", { "modeled": false }],
+        "features": ["idle", "712/s · no limit", { "modeled": false }],
+        "product-cache": ["idle", "125/s · no limit", { "modeled": false }],
+        "catalog-db": ["idle", "12/s · no limit", { "modeled": false }],
+        "search-index": ["idle", "377/s · no limit", { "modeled": false }],
         "carts": ["idle", "250/s · no limit", { "modeled": false }],
         "promotions": ["idle", "450/s · no limit", { "modeled": false }],
         "inventory-db": ["idle", "200/s · no limit", { "modeled": false }],
@@ -7277,11 +7429,11 @@
         "status-cache": ["idle", "560/s · no limit", { "modeled": false }],
         "outbox-relay": ["ok", "6% · 200/s of 3.2k/s"],
         "inventory-events": ["ok", "19% · 200/s of 1.1k/s"],
-        "orders": ["over", "400% · 200/s of 50/s"],
+        "orders": ["over", "125% · 200/s of 160/s"],
         "orders-dlq": ["idle", ""],
         "shipments": ["ok", "7% · 220/s of 3.2k/s"],
         "search-indexer": ["ok", "19% · 200/s of 1.1k/s"],
-        "fulfilment": ["over", "400% · 200/s of 50/s"],
+        "fulfilment": ["over", "125% · 200/s of 160/s"],
         "loyalty": ["ok", "25% · 200/s of 800/s"],
         "status-projector": ["ok", "7% · 420/s of 6.4k/s"],
         "notifier": ["ok", "13% · 420/s of 3.2k/s"],
@@ -7325,22 +7477,22 @@
         "app": ["idle", "200/s · no limit", { "modeled": false }],
         "carriers": ["idle", "", { "modeled": false }],
         "cdn": ["idle", "500/s · no limit", { "modeled": false }],
-        "gateway": ["ok", "27% · 410/s of 1.5k/s"],
-        "catalog-bff": ["ok", "6% · 192/s of 3.2k/s"],
-        "search-api": ["ok", "3% · 100/s of 3.2k/s"],
+        "gateway": ["ok", "22% · 232/s of 1k/s"],
+        "catalog-bff": ["ok", "33% · 66/s of 200/s"],
+        "search-api": ["ok", "16% · 48/s of 300/s"],
         "cart-api": ["ok", "4% · 50/s of 1.2k/s"],
-        "checkout-api": ["ok", "25% · 40/s of 160/s"],
+        "checkout-api": ["ok", "32% · 40/s of 125/s"],
         "order-status": ["ok", "1% · 28/s of 4.3k/s"],
         "tracking": ["idle", ""],
-        "reco": ["ok", "12% · 96/s of 800/s"],
+        "reco": ["ok", "4% · 33/s of 800/s"],
         "pricing": ["ok", "2% · 90/s of 4.8k/s"],
         "inventory": ["ok", "3% · 40/s of 1.2k/s"],
         "risk": ["idle", "Limits unknown; enter measured or contracted values."],
         "payments": ["ok", "5% · 40/s of 800/s"],
-        "features": ["idle", "226/s · no limit", { "modeled": false }],
-        "product-cache": ["idle", "192/s · no limit", { "modeled": false }],
-        "catalog-db": ["idle", "19/s · no limit", { "modeled": false }],
-        "search-index": ["idle", "140/s · no limit", { "modeled": false }],
+        "features": ["idle", "163/s · no limit", { "modeled": false }],
+        "product-cache": ["idle", "66/s · no limit", { "modeled": false }],
+        "catalog-db": ["idle", "6.6/s · no limit", { "modeled": false }],
+        "search-index": ["idle", "88/s · no limit", { "modeled": false }],
         "carts": ["idle", "50/s · no limit", { "modeled": false }],
         "promotions": ["idle", "90/s · no limit", { "modeled": false }],
         "inventory-db": ["idle", "40/s · no limit", { "modeled": false }],
@@ -7348,11 +7500,11 @@
         "status-cache": ["idle", "108/s · no limit", { "modeled": false }],
         "outbox-relay": ["ok", "1% · 40/s of 3.2k/s"],
         "inventory-events": ["ok", "4% · 40/s of 1.1k/s"],
-        "orders": ["warn", "80% · 40/s of 50/s"],
+        "orders": ["ok", "25% · 40/s of 160/s"],
         "orders-dlq": ["idle", ""],
         "shipments": ["ok", "1% · 40/s of 3.2k/s"],
         "search-indexer": ["ok", "4% · 40/s of 1.1k/s"],
-        "fulfilment": ["warn", "80% · 40/s of 50/s"],
+        "fulfilment": ["ok", "25% · 40/s of 160/s"],
         "loyalty": ["ok", "5% · 40/s of 800/s"],
         "status-projector": ["ok", "1% · 80/s of 6.4k/s"],
         "notifier": ["ok", "3% · 80/s of 3.2k/s"],
@@ -7385,9 +7537,9 @@
     },
     "partner-quota": {
       "tone": "over",
-      "top": "fulfilment",
-      "headline": "Fulfilment workers and 3 more are over capacity",
-      "detail": "272% · 136/s of 50/s",
+      "top": "wms",
+      "headline": "3PL warehouse API and 1 more are over capacity",
+      "detail": "227% · 136/s of 60/s. Reduce calls",
       "fix": null,
       "addConsumer": null,
       "converged": true,
@@ -7396,22 +7548,22 @@
         "app": ["idle", "700/s · no limit", { "modeled": false }],
         "carriers": ["idle", "", { "modeled": false }],
         "cdn": ["idle", "1.7k/s · no limit", { "modeled": false }],
-        "gateway": ["hot", "91% · 1.4k/s of 1.5k/s"],
-        "catalog-bff": ["ok", "20% · 652/s of 3.2k/s"],
-        "search-api": ["ok", "11% · 340/s of 3.2k/s"],
+        "gateway": ["warn", "76% · 644/s of 852/s"],
+        "catalog-bff": ["ok", "56% · 112/s of 200/s"],
+        "search-api": ["ok", "43% · 130/s of 300/s"],
         "cart-api": ["ok", "14% · 170/s of 1.2k/s"],
-        "checkout-api": ["warn", "85% · 136/s of 160/s"],
+        "checkout-api": ["over", "109% · 136/s of 125/s"],
         "order-status": ["ok", "2% · 96/s of 4.3k/s"],
         "tracking": ["idle", ""],
-        "reco": ["ok", "41% · 326/s of 800/s"],
+        "reco": ["ok", "7% · 56/s of 800/s"],
         "pricing": ["ok", "6% · 306/s of 4.8k/s"],
         "inventory": ["ok", "11% · 136/s of 1.2k/s"],
         "risk": ["idle", "Limits unknown; enter measured or contracted values."],
         "payments": ["ok", "17% · 136/s of 800/s"],
-        "features": ["idle", "768/s · no limit", { "modeled": false }],
-        "product-cache": ["idle", "652/s · no limit", { "modeled": false }],
-        "catalog-db": ["idle", "65/s · no limit", { "modeled": false }],
-        "search-index": ["idle", "476/s · no limit", { "modeled": false }],
+        "features": ["idle", "498/s · no limit", { "modeled": false }],
+        "product-cache": ["idle", "112/s · no limit", { "modeled": false }],
+        "catalog-db": ["idle", "11/s · no limit", { "modeled": false }],
+        "search-index": ["idle", "266/s · no limit", { "modeled": false }],
         "carts": ["idle", "170/s · no limit", { "modeled": false }],
         "promotions": ["idle", "306/s · no limit", { "modeled": false }],
         "inventory-db": ["idle", "136/s · no limit", { "modeled": false }],
@@ -7419,11 +7571,11 @@
         "status-cache": ["idle", "368/s · no limit", { "modeled": false }],
         "outbox-relay": ["ok", "4% · 136/s of 3.2k/s"],
         "inventory-events": ["ok", "13% · 136/s of 1.1k/s"],
-        "orders": ["over", "272% · 136/s of 50/s"],
+        "orders": ["warn", "85% · 136/s of 160/s"],
         "orders-dlq": ["idle", ""],
         "shipments": ["ok", "4% · 136/s of 3.2k/s"],
         "search-indexer": ["ok", "13% · 136/s of 1.1k/s"],
-        "fulfilment": ["over", "272% · 136/s of 50/s"],
+        "fulfilment": ["warn", "85% · 136/s of 160/s"],
         "loyalty": ["ok", "17% · 136/s of 800/s"],
         "status-projector": ["ok", "4% · 272/s of 6.4k/s"],
         "notifier": ["ok", "9% · 272/s of 3.2k/s"],

@@ -266,8 +266,7 @@ export function analyzeCapacity(
   }
   const cacheMatchers = new Map(
     diagram.nodes.flatMap((node) => {
-      const input = { ...node, props: { ...node.props, ...simulation?.setup?.props?.[node.id] } };
-      const match = analysisCache(diagram, input);
+      const match = analysisCache(diagram, node, simulation);
       return match && compiledCacheOrigin(node.id) ? [[node.id, match] as const] : [];
     }),
   );

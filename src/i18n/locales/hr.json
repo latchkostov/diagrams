@@ -2848,5 +2848,6 @@
   "selection.fallback": "Upotrijebite izbornik odabira ako sustav ili čitač zaslona preuzima ove tipke.",
   "selection.extendKeys": "Proširi odabir",
   "menu.selectionAddedBoundary": "Dodano u {name}: {count, plural, other {# čvorova} one {# čvor} few {# čvorova}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Uklonjeno iz granica: {count, plural, other {# čvorova} one {# čvor} few {# čvorova}}. {selection}."
+  "menu.selectionRemovedBoundary": "Uklonjeno iz granica: {count, plural, other {# čvorova} one {# čvor} few {# čvorova}}. {selection}.",
+  "cache.addRules": "Dodaj pravila predmemorije…"
 }

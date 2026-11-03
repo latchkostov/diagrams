@@ -1,0 +1,166 @@
+---
+title: Black Friday commerce platform
+---
+flowchart LR
+  subgraph g_edge ["Cloudflare edge"]
+    cdn["Edge CDN<br/>WAF, bot rules, TLS"]
+  end
+  subgraph g_aws ["AWS us-east-1 · production"]
+  end
+  subgraph g_storefront ["EKS · storefront"]
+    gateway["API gateway<br/>Kong · route table"]
+    catalog_bff["Catalog BFF<br/>product pages"]
+    search_api["Search API"]
+    cart_api["Cart API"]
+    checkout_api["Checkout API<br/>HPA on CPU"]
+    order_status["Order status API<br/>read model"]
+    tracking["Shipment tracking"]
+    reco["Recommendations<br/>similar items"]
+    pricing["Pricing<br/>prices and promotions"]
+    inventory["Inventory<br/>stock reservations"]
+    risk["Fraud model<br/>risk score"]
+    payments["Payments<br/>authorize, idempotent"]
+  end
+  subgraph g_stores ["Operational data"]
+    features[("Feature store<br/>online features")]
+    product_cache[("Product cache<br/>ElastiCache")]
+    catalog_db[("Catalog DB<br/>Aurora Postgres")]
+    search_index[("Product index<br/>OpenSearch")]
+    carts[("Carts<br/>DynamoDB")]
+    promotions[("Promotions<br/>DynamoDB")]
+    inventory_db[("Inventory DB<br/>Aurora Postgres")]
+    orders_db[("Orders DB<br/>orders and outbox")]
+    status_cache[("Order status cache<br/>projection")]
+  end
+  subgraph g_backbone ["MSK · event backbone"]
+    outbox_relay["Outbox relay<br/>Debezium, orders.outbox"]
+    inventory_events["Stock changes<br/>inventory.v1 · 12 partitions"]
+    orders["Order events<br/>orders.v1 · 24 partitions"]
+    orders_dlq["Orders DLQ<br/>orders.dlq · 3 partitions"]
+    shipments["Shipment events<br/>shipments.v1 · 12 partitions"]
+  end
+  subgraph g_fulfil ["EKS · fulfilment and messaging"]
+    search_indexer["Search indexer<br/>stock to index"]
+    fulfilment["Fulfilment workers<br/>KEDA on order lag"]
+    loyalty["Loyalty points"]
+    status_projector["Status projector<br/>orders, shipments"]
+    notifier["Notification router<br/>by preference"]
+    dlq_triage["DLQ triage<br/>inspect and replay"]
+    loyalty_db[("Loyalty ledger<br/>DynamoDB")]
+    notify_q["Notifications<br/>SQS"]
+    notify_dlq["Notifications DLQ<br/>SQS"]
+    email["Email sender<br/>Lambda"]
+    push["Push sender<br/>Lambda"]
+  end
+  subgraph g_analytics ["Clickstream and analytics"]
+    collector["Event collector<br/>page and app beacons"]
+    clickstream["Clickstream<br/>Kinesis · 8 shards"]
+    sessionizer["Sessionizer<br/>Managed Flink"]
+    lake_sink["Lake sink<br/>S3 sink connector"]
+    lake[("Event lake<br/>S3 · Parquet")]
+    airflow["Nightly DAGs<br/>MWAA"]
+    dbt["dbt models<br/>orders and margin"]
+  end
+  subgraph g_platform ["Platform"]
+    argocd["Argo CD<br/>GitOps"]
+    flags["Feature flags<br/>Parameter Store"]
+    secrets["Secrets Manager"]
+    roles["Workload roles<br/>IRSA"]
+    datadog["Datadog<br/>APM, logs"]
+  end
+  subgraph g_payment_partners ["Payment and tax partners"]
+    tax(["Tax API<br/>sales tax quotes"])
+    stripe(["Stripe<br/>card payments"])
+  end
+  subgraph g_delivery_partners ["Delivery partners"]
+    wms(["3PL warehouse API<br/>pick and pack"])
+    sendgrid(["SendGrid<br/>order emails"])
+    apns(["APNs and FCM<br/>push delivery"])
+  end
+  subgraph g_saas_data ["Data SaaS"]
+    snowflake[("Snowflake<br/>merch marts")]
+    tableau["Merch dashboards<br/>Tableau"]
+  end
+  web(["Shoppers on the web<br/>Storefront SPA"])
+  app(["Larkspur app<br/>iOS and Android"])
+  carriers(["Carrier scans<br/>tracking webhooks"])
+  web -->|"HTTPS"| cdn
+  app -->|"HTTPS"| cdn
+  carriers -->|"Webhook"| cdn
+  cdn -->|"API calls"| gateway
+  cdn -->|"Beacons"| collector
+  gateway -->|"Products"| catalog_bff
+  gateway -->|"Search"| search_api
+  gateway -->|"Cart"| cart_api
+  gateway -->|"Checkout"| checkout_api
+  gateway -->|"Status"| order_status
+  gateway -->|"Scans"| tracking
+  catalog_bff --> product_cache
+  catalog_bff -->|"Cache miss"| catalog_db
+  catalog_bff -->|"Similar"| reco
+  reco --> features
+  search_api --> search_index
+  cart_api --> carts
+  cart_api -->|"Price"| pricing
+  pricing --> promotions
+  checkout_api -->|"Reprice"| pricing
+  checkout_api -->|"Tax quote"| tax
+  checkout_api -->|"Reserve"| inventory
+  checkout_api -->|"Score"| risk
+  checkout_api -->|"Authorize"| payments
+  checkout_api -->|"Order + outbox"| orders_db
+  risk --> features
+  inventory --> inventory_db
+  payments -->|"PaymentIntent"| stripe
+  order_status --> status_cache
+  orders_db -.->|"CDC"| outbox_relay
+  outbox_relay -.->|"OrderPlaced"| orders
+  inventory_db -.->|"CDC"| inventory_events
+  orders -.-> fulfilment
+  orders -.-> loyalty
+  orders -.-> status_projector
+  orders -.-> notifier
+  orders -.-> lake_sink
+  orders -.->|"After 3 tries"| orders_dlq
+  orders_dlq -.-> dlq_triage
+  notify_dlq -.-> dlq_triage
+  dlq_triage -->|"Replay"| loyalty
+  fulfilment -->|"Pick request"| wms
+  fulfilment -.->|"ShipmentCreated"| shipments
+  loyalty -->|"Points"| loyalty_db
+  status_projector -->|"Upsert"| status_cache
+  inventory_events -.-> search_indexer
+  search_indexer -->|"Reindex"| search_index
+  tracking -.->|"ParcelScanned"| shipments
+  shipments -.-> notifier
+  shipments -.-> status_projector
+  notifier -.->|"Notify"| notify_q
+  notify_q -.-> email
+  notify_q -.-> push
+  notify_q -.->|"After 5 tries"| notify_dlq
+  email -->|"Mail send"| sendgrid
+  push -->|"Send"| apns
+  collector -.->|"PageViewed"| clickstream
+  clickstream -.-> sessionizer
+  sessionizer -->|"Update features"| features
+  sessionizer -->|"Sessions"| lake
+  lake_sink -->|"Parquet"| lake
+  airflow -.->|"Nightly run"| dbt
+  dbt -->|"Build marts"| snowflake
+  snowflake --> tableau
+  payments -.->|"reads secrets: Stripe key"| secrets
+  payments -.->|"gets tokens from"| roles
+  checkout_api -.->|"reads config: Flags"| flags
+  fulfilment -.->|"gets tokens from"| roles
+  checkout_api -.->|"sends telemetry to"| datadog
+  fulfilment -.->|"sends telemetry to"| datadog
+  argocd -.->|"deploys to"| checkout_api
+  argocd -.->|"deploys to"| loyalty
+  dbt -.->|"depends on: Reads"| lake
+  linkStyle 29,30,31,32,33,34,35,36,37,38,39,42,45,47,48,49,50,51,52,53,56,57,61 stroke-dasharray: 6 4
+  linkStyle 64 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 65,67 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 66 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 68,69 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 70,71 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 72 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4

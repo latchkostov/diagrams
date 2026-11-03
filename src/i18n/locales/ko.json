@@ -2878,5 +2878,6 @@
   "selection.fallback": "운영 체제나 화면 읽기 프로그램이 이 키를 사용하면 선택 메뉴를 사용하세요.",
   "selection.extendKeys": "선택 확장",
   "menu.selectionAddedBoundary": "{name}에 추가됨: {count, plural, other {# 노드}}. {selection}.",
-  "menu.selectionRemovedBoundary": "경계에서 제거됨: {count, plural, other {# 노드}}. {selection}."
+  "menu.selectionRemovedBoundary": "경계에서 제거됨: {count, plural, other {# 노드}}. {selection}.",
+  "cache.addRules": "캐시 규칙 추가…"
 }

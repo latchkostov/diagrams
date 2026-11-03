@@ -2831,5 +2831,6 @@
   "selection.fallback": "अगर सिस्टम या स्क्रीन रीडर इन कुंजियों का उपयोग करता है, तो चयन मेनू का उपयोग करें।",
   "selection.extendKeys": "चयन बढ़ाएँ",
   "menu.selectionAddedBoundary": "{name} में जोड़े गए: {count, plural, one {# नोड} other {# नोड}}. {selection}.",
-  "menu.selectionRemovedBoundary": "बाउंड्री से हटाए गए: {count, plural, one {# नोड} other {# नोड}}. {selection}."
+  "menu.selectionRemovedBoundary": "बाउंड्री से हटाए गए: {count, plural, one {# नोड} other {# नोड}}. {selection}.",
+  "cache.addRules": "कैश नियम जोड़ें…"
 }

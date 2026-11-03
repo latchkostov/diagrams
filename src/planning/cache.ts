@@ -3,7 +3,7 @@ import type { LiveState } from "../live/controller";
 import { analyzeCapacity } from "../sim/capacity";
 import { planningSimulation } from "../sim/capacityPlanning";
 import { compileTopology } from "../sim/topology";
-import { explainNode } from "./explanation";
+import { cacheExplanation, explainNode } from "./explanation";
 import { capabilities } from "./capabilities";
 import { planningRun } from "./run";
 import { planningSignature } from "./budget";
@@ -21,6 +21,7 @@ function compute(d: DiagramFile, state?: LiveState | null) {
   const topology = compileTopology(d);
   const rows = new Map<string, ReturnType<typeof capabilities>>();
   const explanations = new Map<string, ReturnType<typeof explainNode>>();
+  const caches = new Map<string, ReturnType<typeof cacheExplanation>>();
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
   return {
     nodes,
@@ -30,6 +31,10 @@ function compute(d: DiagramFile, state?: LiveState | null) {
     statusKey: JSON.stringify(status),
     sim,
     analysis,
+    cacheExplanation(id: string) {
+      if (!caches.has(id)) caches.set(id, cacheExplanation(d, id, analysis, planningSimulation(d, sim), topology));
+      return caches.get(id);
+    },
     rows(id: string) {
       if (!rows.has(id)) {
         const node = nodes.get(id);

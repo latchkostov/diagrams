@@ -38,6 +38,8 @@ import { type DiagramFile } from "../../model/types";
 import { MessageFields } from "./lazyMessageFields";
 import { PairedFields } from "./Layout";
 import { RateLimitFields } from "./RateLimitFields";
+import { cacheCapable } from "../../model/caching";
+import { withCacheRules } from "../../model/cacheEdits";
 
 type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram"> & {
   nodeId: string;
@@ -140,6 +142,23 @@ export function NodeSimulation({
         </span>
       }
     >
+      {props.cache === undefined &&
+        cacheCapable(stencil, role) &&
+        revisionAtLeast(meta.planning?.revision, "p3-w2") && (
+          <button
+            type="button"
+            className="btn"
+            data-testid="cache-add"
+            onClick={() => {
+              const selection = editor.getSelection();
+              editor.applyDiagram(withCacheRules(editor.getDiagram(), nodeId));
+              editor.select(selection);
+              editor.openInspector("cache-add-rule");
+            }}
+          >
+            {t("cache.addRules")}
+          </button>
+        )}
       {(role === "source" || role === "processor") && (
         <MessageFields
           readDiagram={readDiagram}

@@ -2856,5 +2856,6 @@
   "selection.fallback": "Folosește meniul de selecție dacă sistemul sau cititorul de ecran interceptează aceste taste.",
   "selection.extendKeys": "Extinde selecția",
   "menu.selectionAddedBoundary": "Adăugate la {name}: {count, plural, few {# noduri} one {# nod} other {# noduri}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Eliminate din limite: {count, plural, few {# noduri} one {# nod} other {# noduri}}. {selection}."
+  "menu.selectionRemovedBoundary": "Eliminate din limite: {count, plural, few {# noduri} one {# nod} other {# noduri}}. {selection}.",
+  "cache.addRules": "Adaugă reguli de cache…"
 }

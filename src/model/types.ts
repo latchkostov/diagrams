@@ -258,6 +258,10 @@ export type TimelineAction =
   | { do: "trace"; node: string };
 
 export const METRIC_FIELDS = [
+  "hitRatio",
+  "originOffload",
+  "originFetches",
+  "p95",
   "processed",
   "backlog",
   "inFlight",

@@ -7,6 +7,13 @@ const narrations = [
     slug: "black-friday-commerce",
     sim: "doors-open",
     at: 4500,
+    text: "The edge answers 87%",
+    focus: ["cdn", "gateway", "catalog-bff", "search-api"],
+  },
+  {
+    slug: "black-friday-commerce",
+    sim: "doors-open",
+    at: 6500,
     text: "Doors open",
     focus: ["gateway", "checkout-api"],
   },
@@ -122,6 +129,8 @@ for (const viewport of [
         await page.getByTestId("live-restart").click();
         await page.clock.runFor(n.at);
         await expect(page.getByTestId("live-note")).toContainText(n.text);
+        // Hold this narration while inspecting every card; nearby notes may have different subjects.
+        await page.getByTestId("live-play").click();
         // Let the narration camera finish its move.
         await page.clock.runFor(1500);
         await waitForStableViewport(page);

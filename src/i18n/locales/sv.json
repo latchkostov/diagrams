@@ -2846,5 +2846,6 @@
   "selection.fallback": "Använd markeringsmenyn om systemet eller skärmläsaren fångar dessa tangenter.",
   "selection.extendKeys": "Utöka markering",
   "menu.selectionAddedBoundary": "Tillagda i {name}: {count, plural, other {# noder} one {# nod}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Borttagna från avgränsningar: {count, plural, other {# noder} one {# nod}}. {selection}."
+  "menu.selectionRemovedBoundary": "Borttagna från avgränsningar: {count, plural, other {# noder} one {# nod}}. {selection}.",
+  "cache.addRules": "Lägg till cacheregler…"
 }

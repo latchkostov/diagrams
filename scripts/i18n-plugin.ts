@@ -44,6 +44,8 @@ import { catalogBuckets, catalogSuffix, surfaceBuckets, type CatalogBucket } fro
 import { APP_ENTRIES, formatViolations, readSources, surfaceKeyViolations } from "./i18n-surfaces";
 // Shell copy and stencil names are needed before the optional surfaces arrive.
 const coreMessages = new Set<Key>([
+  // The node menu offers cache authoring before the optional Inspector downloads.
+  "cache.addRules",
   "htmlExport.simulations",
   "htmlExport.theme",
   "htmlExport.light",
@@ -172,7 +174,9 @@ export function readCatalog(code: string, dir = LOCALES_DIR): Partial<Record<Key
 export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key> {
   const byEnglish = new Map<string, Key[]>();
   for (const k of keys) if (plain(k)) byEnglish.set(en[k], [...(byEnglish.get(en[k]) ?? []), k]);
-  const out = new Set<Key>();
+  // This action is shared by the core menu and the lazy cache editor. A numeric lookup avoids
+  // repeating its English label in every core locale while both callers keep the same translation.
+  const out = new Set<Key>(["cache.addRules"]);
   for (const key of keys)
     if (
       plain(key) &&

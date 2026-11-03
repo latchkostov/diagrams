@@ -1307,10 +1307,12 @@ export class LiveController {
 
   #patchFree(): void {
     const props = freePlayProps(this.#diagram, this.#inputs);
+    const cacheRates = startingCacheRates(this.#diagram, freePlaySimulation(this.#diagram, this.#inputs));
     this.#mutate({
       kind: "configuration",
       patches: this.#patchProps(this.#freeApplied, props),
       capacity: this.#inputs.capacity ?? 1,
+      ...(cacheRates ? { cacheRates } : {}),
     });
     this.#freeApplied = props;
   }

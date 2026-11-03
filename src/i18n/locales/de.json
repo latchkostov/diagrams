@@ -2850,5 +2850,6 @@
   "selection.fallback": "Verwende das Auswahlmenü, wenn das Betriebssystem oder der Screenreader diese Tasten abfängt.",
   "selection.extendKeys": "Auswahl erweitern",
   "menu.selectionAddedBoundary": "Zu {name} hinzugefügt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Aus Begrenzungen entfernt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}."
+  "menu.selectionRemovedBoundary": "Aus Begrenzungen entfernt: {count, plural, other {# Knoten} one {# Knoten}}. {selection}.",
+  "cache.addRules": "Cache-Regeln hinzufügen…"
 }

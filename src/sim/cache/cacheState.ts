@@ -15,6 +15,15 @@ export interface CacheReadout extends CacheCounts {
   originOffload: number;
   rules: Record<string, CacheCounts>;
 }
+export interface CacheDetails {
+  expected?: number;
+  window?: { requests: number; hits: number; misses: number; fetches: number; seconds: number };
+  latency?: {
+    total?: import("../types").LatencyMetrics;
+    hit?: import("../types").LatencySummary;
+    miss?: import("../types").LatencySummary;
+  };
+}
 export interface CacheRuleState {
   id: string;
   match?: CompiledMatch;
@@ -33,8 +42,11 @@ export interface CacheRuleState {
   warmSince?: number;
 }
 export interface NodeCache {
+  expected: number;
   rules: CacheRuleState[];
   counts: CacheCounts;
+  window?: { second: number; buckets: Float64Array };
+  latency?: import("../latency").LatencyRecorder;
 }
 export interface CacheLookup {
   rule?: CacheRuleState;

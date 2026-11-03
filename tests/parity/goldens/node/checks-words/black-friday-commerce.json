@@ -1,6 +1,14 @@
 {
-  "summary": "Nothing to check. 21 checks ran.",
+  "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms.",
   "findings": {},
-  "agentReport": { "findings": [], "summary": "Nothing to check. 21 checks ran." },
-  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 21 checks ran." }
+  "agentReport": {
+    "notChecked": { "retryStorm": 1 },
+    "findings": [],
+    "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms."
+  },
+  "agentReportWarnings": {
+    "notChecked": { "retryStorm": 1 },
+    "findings": [],
+    "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms."
+  }
 }

@@ -1,14 +1,20 @@
 import { cacheEnabled, checkCache, type CacheTable, type CachePolicy } from "../../model/caching";
-import type { DiagramFile } from "../../model/types";
+import type { DiagramFile, Simulation } from "../../model/types";
 import { stencilRole } from "../../stencils/roles";
 import { compileMatch, matchesRequest, type CompiledRoute } from "../routeMatching";
 import { acceptsType } from "../topology";
 
 /** Match once per traffic class in analysis, or per request in playback. */
-export function analysisCache(d: DiagramFile, node: DiagramFile["nodes"][number]) {
-  if (!cacheEnabled(d.planning, node.stencil, stencilRole(node.stencil), node.props?.cache)) return;
-  checkCache(node.props.cache);
-  const table = node.props.cache as CacheTable;
+export function effectiveCacheTable(d: DiagramFile, node: DiagramFile["nodes"][number], simulation?: Simulation) {
+  const props = { ...node.props, ...simulation?.setup?.props?.[node.id] };
+  if (!cacheEnabled(d.planning, node.stencil, stencilRole(node.stencil), props.cache)) return;
+  checkCache(props.cache);
+  return props.cache as CacheTable;
+}
+
+export function analysisCache(d: DiagramFile, node: DiagramFile["nodes"][number], simulation?: Simulation) {
+  const table = effectiveCacheTable(d, node, simulation);
+  if (!table) return;
   const rules = table.rules.map((r) => {
     const { types, ...address } = r.match;
     return {

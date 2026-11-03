@@ -153,6 +153,20 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
       count: state.snapshot.nodes[broker.id].backlog,
     });
   }
+  for (const node of effective.nodes) {
+    const c = state.snapshot.nodes[node.id]?.cache;
+    const origin = effective.edges.find((e) => e.from === node.id && e.kind === "sync");
+    if (c && c.hits > 0 && origin) {
+      const seconds = Math.max(0.01, state.snapshot.time / 1000);
+      return t("cache.runLesson", {
+        node: node.label,
+        hit: Math.round(100 * c.hitRatio),
+        origin: effective.nodes.find((n) => n.id === origin.to)?.label ?? origin.to,
+        fetch: formatNumber(c.fetches / seconds, { maximumFractionDigits: 0 }),
+        rate: formatNumber(c.requests / seconds, { maximumFractionDigits: 0 }),
+      });
+    }
+  }
   const largest = diagram.nodes.reduce<{ count: number; label: string }>(
     (loss, node) => {
       const sample = state.snapshot.nodes[node.id];

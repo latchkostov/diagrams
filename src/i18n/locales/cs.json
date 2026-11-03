@@ -2832,5 +2832,6 @@
   "selection.fallback": "Pokud tyto klávesy zachytí systém nebo čtečka obrazovky, použijte nabídku výběru.",
   "selection.extendKeys": "Rozšířit výběr",
   "menu.selectionAddedBoundary": "Přidáno do {name}: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Odebráno z hranic: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}."
+  "menu.selectionRemovedBoundary": "Odebráno z hranic: {count, plural, other {# uzlů} one {# uzel} few {# uzlů}}. {selection}.",
+  "cache.addRules": "Přidat pravidla mezipaměti…"
 }

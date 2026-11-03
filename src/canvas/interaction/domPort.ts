@@ -105,7 +105,9 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         const el = inspector.querySelector(
           target.name === "autoscaling-target"
             ? '[data-testid="autoscaling-target"]'
-            : `[data-testid="inspector-field-${target.name}"]`,
+            : target.name === "cache-add-rule"
+              ? '[data-testid="cache-add-rule"]'
+              : `[data-testid="inspector-field-${target.name}"]`,
         );
         if (!el || (target.owner && el.getAttribute("data-name-field") !== target.owner)) return { state: "parked" };
         return { state: "ready", el };

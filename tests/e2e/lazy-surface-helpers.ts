@@ -37,7 +37,7 @@ export function surfaceChunk(id: LazySurfaceId) {
 
 /** Real entry points, rather than test-only component replacements. Every registration must supply one. */
 export async function openSurface(page: Page, id: LazySurfaceId) {
-  const d = id === "live.cache" ? cacheFixture() : lazySurfacesFixture();
+  const d = id === "live.cache" || id === "inspector.cache" ? cacheFixture() : lazySurfacesFixture();
   await page.addInitScript(
     ({ diagrams, prefix }) => {
       for (const [slug, diagram] of diagrams) localStorage.setItem(prefix + slug, JSON.stringify(diagram));
@@ -59,6 +59,11 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
     await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("Inside this area");
     await page.getByTestId("command-item-action:selection.area").click();
+    return;
+  }
+  if (id === "inspector.cache") {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("node-cache").click();
     return;
   }
   if (id === "canvas.stencils") {

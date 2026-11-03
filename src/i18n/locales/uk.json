@@ -2842,5 +2842,6 @@
   "selection.fallback": "Скористайтеся меню виділення, якщо система або читач екрана перехоплює ці клавіші.",
   "selection.extendKeys": "Розширити виділення",
   "menu.selectionAddedBoundary": "Додано до {name}: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Вилучено з меж: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}."
+  "menu.selectionRemovedBoundary": "Вилучено з меж: {count, plural, many {# вузлів} one {# вузол} few {# вузлів} other {# вузлів}}. {selection}.",
+  "cache.addRules": "Додати правила кешування…"
 }

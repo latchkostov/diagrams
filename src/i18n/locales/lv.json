@@ -2822,5 +2822,6 @@
   "selection.fallback": "Izmantojiet atlases izvēlni, ja sistēma vai ekrāna lasītājs pārņem šos taustiņus.",
   "selection.extendKeys": "Paplašināt atlasi",
   "menu.selectionAddedBoundary": "Pievienoti pie {name}: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Noņemti no robežām: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}."
+  "menu.selectionRemovedBoundary": "Noņemti no robežām: {count, plural, zero {# mezgli} one {# mezgls} other {# mezgli}}. {selection}.",
+  "cache.addRules": "Pievienot kešatmiņas kārtulas…"
 }

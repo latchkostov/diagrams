@@ -404,7 +404,8 @@ describe("P2 broker assignment", () => {
           d.planning?.revision === "p3" ||
           d.planning?.revision === "p3-a1" ||
           d.planning?.revision === "p3-w1" ||
-          d.planning?.revision === "p3-w2"
+          d.planning?.revision === "p3-w2" ||
+          d.planning?.revision === "p3-w3"
         )
           return undefined;
         const p1 = upgradePlanning(d);

@@ -1,13 +1,24 @@
 import { checkCache, CACHE_LIMITS, type CacheTable } from "../../model/caching";
 import { compileMatch, matchesRequest, drawStream, streamSeed } from "../routeMatching";
 import { acceptsType } from "../topology";
-import { itemHitShare, expNeg } from "./cacheMath";
+import { cacheHitShare, itemHitShare, expNeg } from "./cacheMath";
 import { popularityTable } from "./popularity";
 import { installCacheRuntime, type CacheRuntime } from "./cacheBridge";
 import type { CacheCounts, CacheRuleState } from "./cacheState";
 import { cachePlan } from "./planning";
 import { cacheScale } from "./cacheScale";
 import { analyzeCapacity } from "../capacity";
+import { latencyMetrics } from "../latency";
+import type { NodeCache } from "./cacheState";
+
+function windowBucket(cache: NodeCache, now: number): number {
+  const second = Math.floor(now / 1000);
+  const ring = (cache.window ??= { second, buckets: new Float64Array(40) });
+  if (second - ring.second >= 10) ring.buckets.fill(0);
+  else for (let s = ring.second + 1; s <= second; s++) ring.buckets.fill(0, (s % 10) * 4, (s % 10) * 4 + 4);
+  ring.second = second;
+  return (second % 10) * 4;
+}
 
 const zeroCounts: CacheCounts = Object.freeze({ requests: 0, hits: 0, misses: 0, notCached: 0, fetches: 0, fills: 0 });
 const counts = (): CacheCounts => ({ ...zeroCounts });
@@ -55,7 +66,8 @@ export const cacheRuntime: CacheRuntime = {
   compile(value, node, seed, scale, remaining, rates) {
     checkCache(value);
     const table = value as CacheTable;
-    return {
+    const cache: NodeCache = {
+      expected: 0,
       counts: counts(),
       rules: [...table.rules, ...(table.default ? [{ id: "", match: undefined, policy: table.default }] : [])].map(
         (rule) => {
@@ -106,6 +118,25 @@ export const cacheRuntime: CacheRuntime = {
         },
       ),
     };
+    cacheRuntime.updateExpected(cache, rates ?? {});
+    return cache;
+  },
+  updateExpected(cache, rates) {
+    let expected = 0,
+      total = 0;
+    for (const rule of cache.rules) {
+      const planned = rates[rule.id]?.rate ?? 0;
+      const fetchMs = rates[rule.id]?.fetchMs ?? 0;
+      // Keep contents, observations and random streams; only configured inputs change.
+      if (rule.rate.planned !== planned) rule.rate = { ...rule.rate, buckets: rule.rate.buckets.slice(), planned };
+      if (rule.fetchMs.planned !== fetchMs)
+        rule.fetchMs = { ...rule.fetchMs, samples: rule.fetchMs.samples.slice(), planned: fetchMs };
+      if (!rule.policy.noStore) {
+        total += planned;
+        expected += planned * cacheHitShare(rule.policy, planned, fetchMs);
+      }
+    }
+    cache.expected = total ? expected / total : 0;
   },
   lookup(cache, type, request, sync, now, size) {
     const rule = cache.rules.find(
@@ -117,6 +148,8 @@ export const cacheRuntime: CacheRuntime = {
       if (rule) rule.counts[key] += size;
     };
     add("requests");
+    const bucket = windowBucket(cache, now);
+    cache.window!.buckets[bucket] += size;
     if (!sync || (request && request.method !== "GET" && request.method !== "HEAD") || !rule || rule.policy.noStore) {
       add("notCached");
       return { rule, item: -1, outcome: "not-cached", at: now };
@@ -142,6 +175,7 @@ export const cacheRuntime: CacheRuntime = {
         : Math.min(steady, 1 - expNeg((itemRate * Math.max(0, now - rule.warmSince - mean)) / 1000));
     const hit = item >= 0 ? now < rule.freshUntil[item] : draw(rule) < (now < rule.statisticalUntil ? share : 0);
     add(hit ? "hits" : "misses");
+    cache.window!.buckets[bucket + (hit ? 1 : 2)] += size;
     return {
       rule,
       item,
@@ -155,6 +189,8 @@ export const cacheRuntime: CacheRuntime = {
     lookup.fetching = true;
     if (now !== undefined) lookup.at = now;
     cache.counts.fetches += size;
+    const bucket = windowBucket(cache, now ?? lookup.at);
+    cache.window!.buckets[bucket + 3] += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
     if (lookup.rule && lookup.item >= 0) lookup.rule.fetching[lookup.item] += size;
   },
@@ -189,6 +225,30 @@ export const cacheRuntime: CacheRuntime = {
       hitRatio: cacheable ? c.hits / cacheable : 0,
       originOffload: c.requests ? 1 - c.fetches / c.requests : 0,
       rules: Object.fromEntries(cache.rules.map((r) => [r.id, { ...r.counts }])),
+    };
+  },
+  details(cache, now) {
+    const totals = [0, 0, 0, 0];
+    if (cache.window) {
+      const second = Math.floor(now / 1000);
+      for (let s = Math.max(0, second - 9); s <= cache.window.second; s++)
+        for (let i = 0; i < 4; i++) totals[i] += cache.window.buckets[(s % 10) * 4 + i];
+    }
+    const latency = cache.latency && latencyMetrics(cache.latency);
+    return {
+      expected: cache.expected,
+      ...(cache.window
+        ? {
+            window: {
+              requests: totals[0],
+              hits: totals[1],
+              misses: totals[2],
+              fetches: totals[3],
+              seconds: Math.min(10, Math.max(0.01, now / 1000)),
+            },
+          }
+        : {}),
+      ...(latency ? { latency: { total: latency, hit: latency.byType.hit, miss: latency.byType.miss } } : {}),
     };
   },
   plan: cachePlan,

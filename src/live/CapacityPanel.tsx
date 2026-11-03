@@ -50,6 +50,7 @@ import {
 import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { formatRate, formatScale } from "./format";
 import { LiveIcon } from "./icons";
+import { CacheDerivations } from "../planning/CacheDerivations";
 import { usePanelEscape } from "./usePanelEscape";
 import type { ElementHandle } from "../canvas/interaction/types";
 
@@ -200,6 +201,7 @@ export const CapacityPanel = memo(function CapacityPanel({
         </header>
 
         <div className="lv-panel-body cap-body">
+          <CacheDerivations diagram={diagram} state={c.getState()} />
           <p className="cap-context" data-testid="capacity-context">
             {disabledHint ? (
               disabledHint

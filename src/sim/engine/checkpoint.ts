@@ -93,7 +93,7 @@ function cloneSized<T>(
       return result;
     }
     bytes += 32;
-    if (value instanceof Float64Array) {
+    if (value instanceof Float64Array || value instanceof Uint8Array) {
       const result = clone ? value.slice() : value;
       seen.set(value, result);
       bytes += value.byteLength;
@@ -163,6 +163,8 @@ function cloneGraph(source: CheckpointGraph, restore = false): [CheckpointGraph,
     // Resolved configuration and its descendants are replaced on edits, never mutated.
     shared.push([node.props, node.props]);
     if (node.latency) shared.push([node.latency, shareLatencyRecorder(node.latency)]);
+    if (node.responseLatency) shared.push([node.responseLatency, shareLatencyRecorder(node.responseLatency)]);
+    if (node.cache?.latency) shared.push([node.cache.latency, shareLatencyRecorder(node.cache.latency)]);
   }
   return cloneSized(source, shared, immutable, restore);
 }

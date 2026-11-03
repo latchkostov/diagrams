@@ -4,6 +4,7 @@ import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { LiveIcon } from "./icons";
 import { formatScale } from "./format";
+import { cacheTraceWords } from "../trace/cacheWords";
 
 const KIND_LABEL: Record<string, string> = {
   inject: "in",
@@ -76,7 +77,7 @@ export function EventLog({ state }: { state: LiveState }) {
             <span className="lv-ev-kind" data-testid="live-event-kind">
               {e.kind === "reject" ? t("admission.rejected") : (KIND_LABEL[e.kind] ?? e.kind)}
             </span>
-            <span className="lv-ev-text">{e.text}</span>
+            <span className="lv-ev-text">{e.cache ? cacheTraceWords(e.cache, e.nodeId, d) : e.text}</span>
           </li>
         ))}
       </ol>

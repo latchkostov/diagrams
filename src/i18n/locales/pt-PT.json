@@ -2831,5 +2831,6 @@
   "selection.fallback": "Use o menu de seleção se o sistema ou o leitor de ecrã capturar estas teclas.",
   "selection.extendKeys": "Alargar seleção",
   "menu.selectionAddedBoundary": "Adicionados a {name}: {count, plural, other {# nós} one {# nó}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Removidos dos limites: {count, plural, other {# nós} one {# nó}}. {selection}."
+  "menu.selectionRemovedBoundary": "Removidos dos limites: {count, plural, other {# nós} one {# nó}}. {selection}.",
+  "cache.addRules": "Adicionar regras de cache…"
 }

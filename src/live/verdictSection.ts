@@ -10,6 +10,7 @@ export function verdictSection(key?: string, kind: "node" | "edge" = "node", rea
   if (key === "waiting" && readers !== undefined) return readers ? "readers" : null;
   if (key === "threads" || key === "retry" || key === "breaker" || key === "waiting") return "threads";
   if (key === "timeout") return "latency";
+  if (key === "cold" || key === "stampede") return "cache";
   if (key === "lag" || key === "unread") return "readers";
   if (key === "memory") return "resources";
   if (key === "loss" || key === "failed" || key === "rejected" || key === "shed" || key === "down") return "outcomes";

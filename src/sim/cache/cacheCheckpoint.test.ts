@@ -26,3 +26,20 @@ it("losslessly restores sparse and dense rings, fractional counters and every mu
     expect(rule).toEqual(expected);
   }
 });
+
+it("preserves full rings with large integers, fractional samples and signed zero", () => {
+  const rule = cacheRuntime.compile({ rules: [], default: { ttlMs: 1000, keys: 1 } }, "cache", 7, 1, {
+    value: 4096,
+  }).rules[0];
+  const samples = Float64Array.from(
+    { length: 32 },
+    (_, i) => [-0, i / 3, 127, 128, 16384, 2 ** 50 - 1, Number.MAX_SAFE_INTEGER][i % 7],
+  );
+  rule.fetchMs = { samples, cursor: 17, count: 32, sum: samples.reduce((a, b) => a + b), planned: 42 };
+  const checkpoint = new CacheCheckpoint(rule);
+  expect(checkpoint.restore()).toEqual(rule);
+  rule.fetchMs.samples.fill(0);
+  expect(checkpoint.restore().fetchMs.samples).toEqual(
+    samples.map((_, i) => [-0, i / 3, 127, 128, 16384, 2 ** 50 - 1, Number.MAX_SAFE_INTEGER][i % 7]),
+  );
+});

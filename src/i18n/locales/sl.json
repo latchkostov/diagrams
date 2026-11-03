@@ -2845,5 +2845,6 @@
   "selection.fallback": "Uporabite meni za izbor, če sistem ali bralnik zaslona prestreže te tipke.",
   "selection.extendKeys": "Razširi izbor",
   "menu.selectionAddedBoundary": "Dodano v {name}: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Odstranjeno iz meja: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}."
+  "menu.selectionRemovedBoundary": "Odstranjeno iz meja: {count, plural, other {# vozlišč} one {# vozlišče} two {# vozlišč} few {# vozlišč}}. {selection}.",
+  "cache.addRules": "Dodaj pravila predpomnilnika…"
 }

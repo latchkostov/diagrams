@@ -97,8 +97,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -118,8 +126,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -1668,8 +1684,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -1689,8 +1713,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -3064,8 +3096,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -3085,8 +3125,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -4635,8 +4683,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -4656,8 +4712,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -6027,8 +6091,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -6048,8 +6120,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -7598,8 +7678,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -7619,8 +7707,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -9161,8 +9257,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -9182,8 +9286,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -10732,8 +10844,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -10753,8 +10873,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -12162,7 +12290,7 @@
               "properties": {
                 "label": { "type": "string" },
                 "node": { "$ref": "#/$defs/Ref", "description": "Omit with metric 'inSystem'." },
-                "metric": { "type": "string", "enum": ["processed", "backlog", "inFlight", "failed", "timedOut", "retried", "shortCircuited", "shed", "amplification", "goodput", "threadsBusy", "threadsWaiting", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
+                "metric": { "type": "string", "enum": ["hitRatio", "originOffload", "originFetches", "p95", "processed", "backlog", "inFlight", "failed", "timedOut", "retried", "shortCircuited", "shed", "amplification", "goodput", "threadsBusy", "threadsWaiting", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
                 "op": { "type": "string", "enum": ["<", "<=", "==", ">=", ">"] },
                 "value": { "type": "number" },
                 "when": { "type": "string", "enum": ["always", "eventually", "end"], "default": "end" }
@@ -12240,8 +12368,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -12261,8 +12397,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -13811,8 +13955,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -13832,8 +13984,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -15202,8 +15362,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -15223,8 +15391,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -16773,8 +16949,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -16794,8 +16978,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -18160,8 +18352,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -18181,8 +18381,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],
@@ -19731,8 +19939,16 @@
                           "allOf": [
                             {
                               "anyOf": [
-                                { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                                { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["ttlMs"],
+                                  "properties": { "noStore": { "type": "null" } }
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "required": ["noStore"],
+                                  "properties": { "ttlMs": { "type": "null" } }
+                                }
                               ]
                             }
                           ],
@@ -19752,8 +19968,16 @@
                     "allOf": [
                       {
                         "anyOf": [
-                          { "required": ["ttlMs"], "properties": { "noStore": { "type": "null" } } },
-                          { "required": ["noStore"], "properties": { "ttlMs": { "type": "null" } } }
+                          {
+                            "additionalProperties": true,
+                            "required": ["ttlMs"],
+                            "properties": { "noStore": { "type": "null" } }
+                          },
+                          {
+                            "additionalProperties": true,
+                            "required": ["noStore"],
+                            "properties": { "ttlMs": { "type": "null" } }
+                          }
                         ]
                       }
                     ],

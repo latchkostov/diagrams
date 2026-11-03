@@ -403,6 +403,22 @@ const diagramPresets: Preset[] = [
   },
   {
     kind: "diagram",
+    id: "cache-chip",
+    title: "Cache hit chip",
+    group: "Diagrams",
+    description: "A warm edge answers requests and shows its hit ratio in Live.",
+    diagram: cacheFixture,
+  },
+  {
+    kind: "diagram",
+    id: "cache-hover",
+    title: "Cache hover details",
+    group: "Diagrams",
+    description: "Cache hits, misses and their measured latency on the same read-through path.",
+    diagram: cacheFixture,
+  },
+  {
+    kind: "diagram",
     id: "inspector-layout",
     title: "Inspector layout",
     group: "Diagrams",

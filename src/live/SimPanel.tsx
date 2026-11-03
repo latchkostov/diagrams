@@ -67,6 +67,30 @@ const ACTIONS: { value: Exclude<TimelineAction["do"], "fault">; label: string }[
   { value: "trace", label: "Trace a message" },
 ];
 const FIELDS: { value: MetricField; label: string }[] = [
+  {
+    value: "hitRatio",
+    get label() {
+      return translate("cache.hitMetric");
+    },
+  },
+  {
+    value: "originOffload",
+    get label() {
+      return translate("cache.offloadMetric");
+    },
+  },
+  {
+    value: "originFetches",
+    get label() {
+      return translate("cache.fetchMetric");
+    },
+  },
+  {
+    value: "p95",
+    get label() {
+      return translate("cache.p95Metric");
+    },
+  },
   { value: "processed", label: "processed" },
   { value: "backlog", label: "backlog" },
   { value: "lag", label: "lag" },

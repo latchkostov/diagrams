@@ -2848,5 +2848,6 @@
   "selection.fallback": "Gebruik het selectiemenu als het systeem of de schermlezer deze toetsen onderschept.",
   "selection.extendKeys": "Selectie uitbreiden",
   "menu.selectionAddedBoundary": "Toegevoegd aan {name}: {count, plural, other {# knooppunten} one {# knooppunt}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Uit grenzen verwijderd: {count, plural, other {# knooppunten} one {# knooppunt}}. {selection}."
+  "menu.selectionRemovedBoundary": "Uit grenzen verwijderd: {count, plural, other {# knooppunten} one {# knooppunt}}. {selection}.",
+  "cache.addRules": "Cacheregels toevoegen…"
 }
