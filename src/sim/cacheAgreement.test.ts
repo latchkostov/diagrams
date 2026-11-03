@@ -40,7 +40,8 @@ it.each([1, 7, 17, 42, 99])("A1: analysis and Live agree over a steady 20 s wind
   }
 });
 
-it("A1: random rule sizes and TTLs preserve steady-state agreement", () => {
+// Keep Nightly's full case count without putting every simulation under one test-runner timeout.
+it.each([0, 1, 2, 3, 4])("A1: random rule sizes and TTLs preserve steady-state agreement (batch %i)", (batch) => {
   fc.assert(
     fc.property(
       fc.integer({ min: 1000, max: 20_000 }),
@@ -51,6 +52,9 @@ it("A1: random rule sizes and TTLs preserve steady-state agreement", () => {
         expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(0.02);
       },
     ),
-    { numRuns: propertyRuns(5) },
+    {
+      numRuns: propertyRuns(1),
+      ...(fc.readConfigureGlobal().seed === undefined ? {} : { seed: (fc.readConfigureGlobal().seed! + batch) | 0 }),
+    },
   );
 });

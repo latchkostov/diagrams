@@ -27,3 +27,5 @@ The cache runtime measures 1,920 B gzip. Live's static closure beyond the canvas
 Cache schema constants share the existing native model initialization group. A production-build regression prevents a lazy authoring chunk from seeing an uninitialized cache schema.
 
 Restarting Free play warms the cache from the current Inputs, including Traffic ×, rather than the diagram's base rate.
+
+The randomized agreement gate uses five seeded batches, preserving all cases and simulation windows at Nightly's 20× multiplier without placing 100 simulations under one test-runner timeout.
