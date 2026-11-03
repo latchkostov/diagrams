@@ -12,21 +12,23 @@ vi.mock("./lazyNodeSettings", () => ({
   NodeSettings: () => <div data-testid="requested-field" />,
 }));
 
-it.each([undefined, { name: "cache-add-rule", seq: 1 }])(
-  "initial Live selection opens only a requested field (%j)",
-  async (focus) => {
-    const props = {
-      node: { id: "cache", data: { stencil: "generic.cdn" } },
-      editor: {},
-      groups: [],
-    } as unknown as ComponentProps<typeof NodePanel>;
-    const host = document.createElement("div"),
-      root = createRoot(host);
-    try {
-      await act(async () => root.render(<NodePanel {...props} focus={focus} />));
-      expect(!!host.querySelector('[data-testid="requested-field"]')).toBe(!!focus);
-    } finally {
-      await act(async () => root.unmount());
-    }
-  },
-);
+it.each([
+  { focus: undefined, stencil: "generic.cdn", settings: false },
+  { focus: { name: "cache-add-rule", seq: 1 }, stencil: "generic.cdn", settings: true },
+  { focus: { name: "label", seq: 1 }, stencil: "generic.service", settings: false },
+  { focus: { name: "cache-add-rule", seq: 1 }, stencil: "generic.service", settings: false },
+])("initial Live selection reveals only requested cache fields (%j)", async ({ focus, stencil, settings }) => {
+  const props = {
+    node: { id: "cache", data: { stencil } },
+    editor: {},
+    groups: [],
+  } as unknown as ComponentProps<typeof NodePanel>;
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  try {
+    await act(async () => root.render(<NodePanel {...props} focus={focus} />));
+    expect(!!host.querySelector('[data-testid="requested-field"]')).toBe(settings);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

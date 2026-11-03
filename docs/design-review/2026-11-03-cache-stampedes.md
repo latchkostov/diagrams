@@ -10,9 +10,11 @@ Coalescing-only edits keep current fetches and waiters visible while they drain.
 
 The final origin-menu review keeps the toggle inside the existing Simulation submenu. A single storing rule shares the confirmed preset; multiple rules open the existing inspector. A routed connection must be the unambiguous origin target; otherwise the node's Properties → Cache rules remains available. This resolves the reviewer's unrelated-beacon finding without extra chrome or a misleading connection-scoped edit.
 
-The production browser regression also caught the initial Live inspector hiding fields despite an explicit named-focus request. A fresh node panel now opens Edit properties for that request, as it already did for later requests. The test fails with the former behavior and passes with the fix; the designer approved this correction.
+The production browser regression also caught the initial Live inspector hiding cache fields despite an explicit focus request. A fresh cache-capable node panel now opens Edit properties for a cache-rule request, then consumes it so selecting another node does not reveal its properties. Broader initial named-focus handling caused tutorial reconstruction to advance automatically; the reveal is now cache-specific and preserves other initial Live focus behavior. The resource-headroom tutorial passes twice on clean master and fails twice before this correction. The corrected tutorial and cache cases pass all 30 tests over five Linux repeats; the stale-focus regression fails against the pre-fix product source. The designer approved this bounded correction.
 
 The Expected readout and Inputs derivations keep the same fresh-hit percentage while showing the lower coalesced origin rate. Fractional fetch rates remain visible instead of rounding to zero. The cold-cache full-rate sentence appears only for independent misses, because coalescing also collapses cold cohorts. The example's start-card summary states its first fix. Waiting and cumulative coalesced copy share one ICU message without changing the rendered words.
+
+The example advertises caching and requests that wait. Routing remains an implementation detail of its addressed items, so it is omitted from the gallery's routing filter. The designer approved this lesson-specific tagging; the existing routing lesson list remains unchanged.
 
 ## Disposition
 

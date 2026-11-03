@@ -76,6 +76,8 @@ describe("example gallery", () => {
   });
   it("uses only features actually configured in the public examples", () => {
     const tags = (slug: string) => publicItems.find((e) => e.slug === slug)?.shows;
+    expect(tags("cache-stampede")).toContain("caching");
+    expect(tags("cache-stampede")).not.toContain("routing");
     expect(tags("branch-to-datacentre")).toEqual(["networkDevices"]);
     expect(tags("notification-fanout")).toEqual(["partitions", "rateLimits"]);
     expect(tags("nightly-batch-elt")).toEqual([]);
@@ -107,7 +109,6 @@ describe("example gallery", () => {
       "recommendations-feature-store",
       "video-on-demand-pipeline",
       "api-route-table",
-      "cache-stampede",
     ]);
   });
   it("teaches requests that wait in blocking, timeout, pool and busy-thread order", () => {
@@ -126,7 +127,7 @@ describe("example gallery", () => {
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
-      "cache-stampede": ["caching", "requestsWait", "routing"],
+      "cache-stampede": ["caching", "requestsWait"],
       "vendor-edge-storefront": ["vendorStencils"],
       "scale-on-busy-threads": ["requestsWait", "autoscaling"],
       "slow-payment-provider": ["requestsWait", "resilience", "runHistory", "faultDrills"],

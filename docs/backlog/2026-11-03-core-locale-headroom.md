@@ -8,4 +8,4 @@ Trim core catalogue ownership or stabilize lookup identities in a separate, meas
 
 ## Live download headroom
 
-The same owner's dedicated bundle trim should recover Live's 8,192 B headroom floor. Its static download beyond the canvas is 127,076 B gzip against 135,000 B: 7,924 B remain, with 1,780 B before the existing 6,144 B reserve. The cache runtime remains a separate 2,944 B lazy chunk. Existing reserve and startup-split gates pass; do not fold the runtime into Live or increase a budget to recover room.
+The same owner's dedicated bundle trim should recover Live's 8,192 B headroom floor. Its static download beyond the canvas is 127,063 B gzip against 135,000 B: 7,937 B remain, with 1,793 B before the existing 6,144 B reserve. The cache runtime remains a separate 2,943 B lazy chunk. Existing reserve and startup-split gates pass; do not fold the runtime into Live or increase a budget to recover room.

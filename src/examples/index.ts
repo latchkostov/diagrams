@@ -113,6 +113,7 @@ const publicExamples: PublicExample[] = (
     {
       slug: "cache-stampede",
       theme: "reliability",
+      omitShows: ["routing"],
       summary: msg("examples.cacheStampedeSummary"),
     },
     {

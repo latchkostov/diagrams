@@ -103,6 +103,9 @@ test("an origin with several storing rules opens the cache inspector instead of 
   await expect(page.getByTestId("cache-add-rule")).toBeFocused();
   await expect(page.getByTestId("cache-rule-launch")).toBeVisible();
   await expect(page.getByTestId("cache-rule-products")).toBeVisible();
+  await page.getByTestId("node-origin").click();
+  await waitForSelectionSettled(page);
+  await expect(page.getByTestId("dock-edit-properties")).toHaveAttribute("aria-expanded", "false");
 });
 
 test("One fetch per item is off by default, behind the expiry fold, and undoable", async ({ page }) => {
