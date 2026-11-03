@@ -10,7 +10,16 @@ Black Friday's four-second note describes the caching benefit qualitatively whil
 
 Nine authorized goldens changed: Black Friday's native diagram, draw.io XML and metadata, Interactive HTML metadata, agent describe and edit results, skill share-link metadata, and doors-open note/event output carry the revised narration. Export byte counts and hashes change with that text. The global pseudolocale catalog hash records the measurement-scope wording. No browser drawing golden changed.
 
-Six synthetic cache-corpus planning goldens also expose the original latency-loss bug. They remain unchanged pending the owner's decision about the task's golden restriction.
+Six approved synthetic cache-corpus planning goldens correct the same latency-loss bug. In each file, `edit.resolved.origin.latencyMs` changes from 0 to the configured 50 ms, while `edit.analysis` updates origin offered demand and the `fetch` connection rate. Their dependent origin capacity badges change as follows (all remain unlimited throughput):
+
+- `node/planning/corpus-w3-deadline.json`: normal, half-pods, double-partitions and steady badges change 26/s → 33/s; black-friday changes 65/s → 107/s.
+- `node/planning/corpus-w3-methods.json`: normal, half-pods, double-partitions and steady badges change 102/s → 107/s; black-friday changes 506/s → 529/s.
+- `node/planning/corpus-w3-read-through.json`: normal, half-pods, double-partitions and steady badges change 20/s → 28/s; black-friday changes 29/s → 74/s.
+- `node/planning/corpus-w3-routed.json`: normal, half-pods, double-partitions and steady badges change 4/s → 4.9/s; black-friday changes 4.9/s → 9.8/s.
+- `node/planning/corpus-w3-sampling.json`: only the black-friday badge changes, 484/s → 488/s; the other rounded badges stay unchanged.
+- `node/planning/corpus-w3-ttl-warm.json`: normal, half-pods, double-partitions and steady badges change 20/s → 28/s; black-friday changes 29/s → 74/s.
+
+These are 44 field changes, matching the approved review inventory. No other per-diagram golden changes beyond Black Friday's narration.
 
 ## Agreement validation
 
