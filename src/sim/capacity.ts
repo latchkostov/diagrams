@@ -642,6 +642,7 @@ export function analyzeCapacity(
   function branchRoute(edge: CompiledEdge, route: CompiledRoute | undefined): CompiledRoute | undefined {
     return callerRoute.get(edge.id) ?? route;
   }
+  const edgeInputs = new Map(diagram.edges.map((edge) => [edge.id, edge]));
   let rates = external,
     converged = false,
     iterations = 0;
@@ -654,20 +655,6 @@ export function analyzeCapacity(
     if (hasCaches) {
       cacheDemand = Object.create(null);
       for (const [id, matcher] of cacheMatchers) {
-        const fetchMs = Math.max(
-          0,
-          ...(outgoing.get(id) ?? [])
-            .filter((e) => e.sync && !e.deny)
-            .map((e) => {
-              const target = entries.get(e.to)!;
-              const delay = diagram.edges.find((input) => input.id === e.id)?.props?.networkDelayMs;
-              return (
-                10 +
-                (waiting.nodes.get(e.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
-                2 * (typeof delay === "number" ? delay : 0)
-              );
-            }),
-        );
         const byRule: NonNullable<CapacityAnalysis["cacheDemand"]>[string] = Object.create(null);
         const policies = new Map<string, import("../model/caching").CachePolicy>();
         for (const [key, rate] of rates.get(id) ?? []) {
@@ -681,11 +668,43 @@ export function analyzeCapacity(
               : "legacy";
           const admitted = decision === "legacy" ? 1 : decision.forwarded;
           if (!admitted) continue;
-          const item = (byRule[rule.id] ??= { rate: 0, fetchMs, hitRatio: 0 });
+          const origins =
+            decision === "legacy"
+              ? (outgoing.get(id) ?? []).filter(
+                  (edge) =>
+                    edge.sync &&
+                    !edge.deny &&
+                    !edge.dlq &&
+                    takes(edge, { type: c.type, route: branchRoute(edge, c.route) }),
+                )
+              : decision.eligible;
+          let fetchMs = 0;
+          origins.forEach((edge, index) => {
+            if (edge.deny) return;
+            const target = entries.get(edge.to)!;
+            const delay = edgeInputs.get(edge.id)?.props?.networkDelayMs;
+            const response =
+              10 +
+              (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
+              2 * (typeof delay === "number" ? delay : 0);
+            if (entry.role === "gateway")
+              fetchMs +=
+                response *
+                (decision === "legacy"
+                  ? 1 / origins.length
+                  : decision.weights[index] / decision.forwarded / decision.sum);
+            else fetchMs = Math.max(fetchMs, response);
+          });
+          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0 });
           item.rate += rate * admitted;
+          item.fetchMs += rate * admitted * fetchMs;
           policies.set(rule.id, rule.policy);
         }
-        for (const [id, policy] of policies) byRule[id].hitRatio = cacheHitShare(policy, byRule[id].rate, fetchMs);
+        for (const [id, policy] of policies) {
+          const item = byRule[id];
+          item.fetchMs /= item.rate;
+          item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
+        }
         cacheDemand[id] = byRule;
       }
     }

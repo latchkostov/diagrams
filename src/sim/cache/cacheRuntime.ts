@@ -5,17 +5,41 @@ import { itemHitShare, expNeg } from "./cacheMath";
 import { popularityTable } from "./popularity";
 import { installCacheRuntime, type CacheRuntime } from "./cacheBridge";
 import type { CacheCounts, CacheRuleState } from "./cacheState";
-import { cacheEnabled } from "../../model/caching";
-import { stencilRole } from "../../stencils/roles";
 import { cachePlan } from "./planning";
+import { cacheScale } from "./cacheScale";
+import { analyzeCapacity } from "../capacity";
 
-const counts = (): CacheCounts => ({ requests: 0, hits: 0, misses: 0, notCached: 0, fetches: 0, fills: 0 });
+const zeroCounts: CacheCounts = Object.freeze({ requests: 0, hits: 0, misses: 0, notCached: 0, fetches: 0, fills: 0 });
+const counts = (): CacheCounts => ({ ...zeroCounts });
+const initialRates = new Map<number, CacheRuleState["rate"]>();
+const initialFetches = new Map<number, CacheRuleState["fetchMs"]>();
+function initialRate(planned: number): CacheRuleState["rate"] {
+  let state = initialRates.get(planned);
+  if (!state) {
+    const buckets = new Float64Array(10).fill(planned);
+    buckets[0] = 0;
+    state = Object.freeze({ buckets, second: 0, planned });
+    if (initialRates.size >= 256) initialRates.clear();
+    initialRates.set(planned, state);
+  }
+  return state;
+}
+function initialFetch(planned: number): CacheRuleState["fetchMs"] {
+  let state = initialFetches.get(planned);
+  if (!state) {
+    state = Object.freeze({ samples: new Float64Array(32), cursor: 0, count: 0, sum: 0, planned });
+    if (initialFetches.size >= 256) initialFetches.clear();
+    initialFetches.set(planned, state);
+  }
+  return state;
+}
 function draw(rule: CacheRuleState): number {
   const next = drawStream(rule.stream);
   rule.stream = next.state;
   return next.value;
 }
 function rate(rule: CacheRuleState, now: number, size: number): number {
+  if (Object.isFrozen(rule.rate)) rule.rate = { ...rule.rate, buckets: rule.rate.buckets.slice() };
   const second = Math.floor(now / 1000),
     ring = rule.rate;
   if (second - ring.second >= 10) ring.buckets.fill(0);
@@ -62,8 +86,6 @@ export const cacheRuntime: CacheRuntime = {
             if (hit.value < itemHitShare(planned * popularity!.bands[i].share, rule.policy.ttlMs!, fetchMs))
               freshUntil[i] = ttl.value * rule.policy.ttlMs!;
           }
-          const buckets = new Float64Array(10).fill(planned);
-          buckets[0] = 0;
           return {
             id: rule.id,
             match: rule.match ? compileMatch(address) : undefined,
@@ -73,11 +95,12 @@ export const cacheRuntime: CacheRuntime = {
             popularity,
             stream: streamSeed(seed, node, `cache:${rule.id}`),
             tracked,
+            statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) : 0,
             freshUntil,
             fetching: new Float64Array(tracked),
-            rate: { buckets, second: 0, planned },
-            fetchMs: { samples: new Float64Array(32), cursor: 0, count: 0, sum: 0, planned: fetchMs },
-            counts: counts(),
+            rate: initialRate(planned),
+            fetchMs: initialFetch(fetchMs),
+            counts: zeroCounts,
             ...(rates ? {} : { warmSince: 0 }),
           };
         },
@@ -88,6 +111,7 @@ export const cacheRuntime: CacheRuntime = {
     const rule = cache.rules.find(
       (r) => !r.match || ((!r.address || matchesRequest(r.match, request)) && acceptsType(r.types, type)),
     );
+    if (rule && Object.isFrozen(rule.counts)) rule.counts = counts();
     const add = (key: keyof CacheCounts) => {
       cache.counts[key] += size;
       if (rule) rule.counts[key] += size;
@@ -116,7 +140,7 @@ export const cacheRuntime: CacheRuntime = {
       rule.warmSince === undefined
         ? steady
         : Math.min(steady, 1 - expNeg((itemRate * Math.max(0, now - rule.warmSince - mean)) / 1000));
-    const hit = item >= 0 ? now < rule.freshUntil[item] : draw(rule) < share;
+    const hit = item >= 0 ? now < rule.freshUntil[item] : draw(rule) < (now < rule.statisticalUntil ? share : 0);
     add(hit ? "hits" : "misses");
     return {
       rule,
@@ -141,6 +165,7 @@ export const cacheRuntime: CacheRuntime = {
     if (!rule) return;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
     if (!ok || lookup.outcome !== "miss") return;
+    if (Object.isFrozen(rule.fetchMs)) rule.fetchMs = { ...rule.fetchMs, samples: rule.fetchMs.samples.slice() };
     const mean = rule.fetchMs,
       duration = now - lookup.at;
     if (mean.count === mean.samples.length) mean.sum -= mean.samples[mean.cursor];
@@ -148,6 +173,8 @@ export const cacheRuntime: CacheRuntime = {
     mean.samples[mean.cursor] = duration;
     mean.sum += duration;
     mean.cursor = (mean.cursor + 1) % mean.samples.length;
+    // Statistical freshness is approximate, but only successful replies can renew it.
+    if (lookup.item < 0) rule.statisticalUntil = now + rule.policy.ttlMs!;
     if (lookup.item >= 0 && now >= rule.freshUntil[lookup.item]) {
       rule.freshUntil[lookup.item] = now + rule.policy.ttlMs!;
       rule.counts.fills++;
@@ -165,21 +192,7 @@ export const cacheRuntime: CacheRuntime = {
     };
   },
   plan: cachePlan,
-  scale(diagram, simulation, scale) {
-    const rates = cachePlan(diagram, simulation);
-    for (const node of diagram.nodes) {
-      const table = simulation.setup?.props?.[node.id]?.cache ?? node.props?.cache;
-      if (!cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), table)) continue;
-      for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
-        if (rule.policy.noStore) continue;
-        const hottest = popularityTable(rule.policy.keys, rule.policy.popularity).hottestShare;
-        scale = Math.min(
-          scale,
-          Math.max(1, ((rates[node.id]?.[rule.id]?.rate ?? 0) * hottest * rule.policy.ttlMs!) / 1000 / 50),
-        );
-      }
-    }
-    return scale;
-  },
+  scale: (diagram, simulation, scale) =>
+    cacheScale(diagram, simulation, scale, analyzeCapacity(diagram, simulation).cacheDemand ?? {}),
 };
 installCacheRuntime(cacheRuntime);

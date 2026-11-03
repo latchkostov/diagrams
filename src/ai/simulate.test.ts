@@ -126,3 +126,21 @@ describe("buildSimulation", () => {
     expect(() => buildSimulation(d, spec())).toThrow("volume budget");
   });
 });
+
+it("authors a caching simulation before the playback runtime is installed", async () => {
+  const { cacheFixture } = await import("../lab/cacheFixture");
+  const { installCacheRuntime, requireCacheRuntime } = await import("../sim/cache/cacheBridge");
+  const { cacheRuntime } = await import("../sim/cache/cacheRuntime");
+  installCacheRuntime(undefined);
+  try {
+    expect(() => requireCacheRuntime()).toThrow();
+    const sim = buildSimulation(cacheFixture(), {
+      title: "Busy readers",
+      traffic: [{ from: "source", pattern: "constant", ratePerSec: 1000 }],
+    });
+    expect(sim.scale).toBeGreaterThanOrEqual(1);
+    expect(() => requireCacheRuntime()).toThrow();
+  } finally {
+    installCacheRuntime(cacheRuntime);
+  }
+});

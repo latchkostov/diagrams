@@ -1,6 +1,7 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { checkpointBytes } from "./engine/checkpoint";
 import { createEngine } from "./engine";
+import { cacheRuntime } from "./cache/cacheRuntime";
 import { cacheFixture } from "../lab/cacheFixture";
 
 it("sizes cycles and aliases once and includes Map/Set payloads", () => {
@@ -36,4 +37,47 @@ it("bounds the W3 checkpoint increment at the 4096 tracked-item limit", () => {
   delete d.nodes[1].props!.cache;
   e.load(d);
   expect(withCache - e.checkpoint().bytes).toBeLessThanOrEqual(130 * 1024);
+});
+
+it("bounds checkpoints at maximum cache rules and tracked items", () => {
+  const d = cacheFixture();
+  for (let i = 1; i < 8; i++) {
+    d.nodes.push({ ...structuredClone(d.nodes[1]), id: `cache${i}` });
+    d.edges.push({ ...structuredClone(d.edges[1]), id: `fetch${i}`, from: `cache${i}` });
+  }
+  for (const node of d.nodes.filter((n) => n.stencil === "generic.cdn"))
+    node.props!.cache = {
+      rules: Array.from({ length: 32 }, (_, i) => ({
+        id: `r${i}`,
+        match: { types: [`Page${i}`] },
+        policy: { ttlMs: 1000, keys: 1000 },
+      })),
+    };
+  const compile = vi.spyOn(cacheRuntime, "compile");
+  const e = createEngine({ seed: 7 });
+  try {
+    e.load(d);
+    expect(compile.mock.results.flatMap((r) => r.value.rules).length).toBe(256);
+    expect(compile.mock.results.flatMap((r) => r.value.rules).reduce((sum, r) => sum + r.tracked, 0)).toBe(4096);
+    const bytes = e.checkpoint().bytes;
+    for (const node of d.nodes) delete node.props?.cache;
+    e.load(d);
+    expect(bytes - e.checkpoint().bytes).toBeLessThanOrEqual(130 * 1024);
+  } finally {
+    compile.mockRestore();
+  }
+});
+
+it("restores untouched shared cache state before its first write", () => {
+  const e = createEngine({ seed: 7 });
+  e.load(cacheFixture());
+  const token = e.checkpoint();
+  const play = () => {
+    e.setTraffic(true);
+    e.step(2000);
+    return e.snapshot();
+  };
+  const expected = play();
+  e.restore(token);
+  expect(play()).toEqual(expected);
 });

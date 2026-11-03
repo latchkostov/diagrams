@@ -88,3 +88,35 @@ it("upgrade previews exclude dormant/no-store tables and include saved storing o
   d.edges = d.edges.filter((e) => e.id !== "fetch");
   expect(cacheUpgradeNodes(d)).toEqual([]);
 });
+
+it.each(["setup", "timeline"])("refuses stencil edits with %s-only cache rules before saving", async (where) => {
+  const { createRoutingValidator } = await import("./routingValidation");
+  const { validateDiagram } = await import("../interop/native");
+  const d = cacheFixture();
+  const cache = d.nodes[1].props!.cache;
+  delete d.nodes[1].props!.cache;
+  d.simulations = [
+    {
+      id: "saved",
+      title: "Saved",
+      traffic: [],
+      ...(where === "setup"
+        ? { setup: { props: { cache: { cache } } } }
+        : { timeline: [{ atMs: 1000, action: { do: "props" as const, node: "cache", props: { cache } } }] }),
+    },
+  ];
+  const validate = createRoutingValidator();
+  expect(validate(d)).toBeUndefined();
+  const edited = { ...d, title: "Keep this edit" };
+  expect(validate(edited)).toBeUndefined();
+  const invalid = {
+    ...edited,
+    nodes: edited.nodes.map((n) => (n.id === "cache" ? { ...n, stencil: "generic.service" } : n)),
+  };
+  expect(validate(invalid)).toContain("cannot cache");
+  // The editor retains the last accepted candidate; the saved document still reloads with every edit.
+  const reloaded = validateDiagram(JSON.parse(JSON.stringify(edited)));
+  expect(reloaded.ok).toBe(true);
+  if (reloaded.ok) expect(reloaded.diagram).toEqual(edited);
+  expect(validate({ ...edited, nodes: edited.nodes.filter((n) => n.id !== "cache") })).toBeDefined();
+});

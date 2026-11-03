@@ -142,7 +142,14 @@ function cloneGraph(source: CheckpointGraph): [CheckpointGraph, number] {
   const immutable: object[] = [];
   for (const { trace } of source[15].store.values()) if (trace) shared.push([trace, trace]);
   for (const node of source[0].values()) {
-    for (const rule of node.cache?.rules ?? []) if (rule.popularity) immutable.push(rule.popularity);
+    for (const rule of node.cache?.rules ?? []) {
+      if (rule.popularity) immutable.push(rule.popularity);
+      // Compiled predicates and saved cache configuration never mutate during a run.
+      for (const value of [rule.match, rule.types, rule.policy, node.rawProps.cache])
+        if (value && typeof value === "object") immutable.push(value);
+      // Unused rings/counters are shared initial values; their first write detaches them.
+      for (const value of [rule.rate, rule.fetchMs, rule.counts]) if (Object.isFrozen(value)) immutable.push(value);
+    }
     // Resolved configuration and its descendants are replaced on edits, never mutated.
     shared.push([node.props, node.props]);
     if (node.latency) shared.push([node.latency, shareLatencyRecorder(node.latency)]);

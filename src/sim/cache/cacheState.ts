@@ -24,6 +24,7 @@ export interface CacheRuleState {
   popularity?: PopularityTable;
   stream: number;
   tracked: number;
+  statisticalUntil: number;
   freshUntil: Float64Array;
   fetching: Float64Array;
   rate: { buckets: Float64Array; second: number; planned: number };

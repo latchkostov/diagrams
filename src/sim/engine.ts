@@ -170,6 +170,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const nodes = new Map<string, Node>();
   let planning: DiagramFile["planning"];
   let cacheRuntime: CacheRuntime | undefined;
+  let callSettings = new Map<string, import("./types").EdgeSimProps["caller"]>();
   let cacheRates: ReturnType<CacheRuntime["plan"]> | undefined;
   function compileCaches(only?: string): void {
     const retained = only
@@ -188,8 +189,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         node.cache = cacheRuntime.compile(node.rawProps.cache, node.id, seed, scale, remaining, cacheRates?.[node.id]);
       } else node.cache = undefined;
       if (node.role === "store") node.waits = !!node.cache;
+      for (const edge of node.outgoing) initializeCall(edge, !!node.cache);
       if (node.cache)
         node.frees = node.outgoing.filter((e) => callEligible(node.role, e, true)).every((e) => !e.policy?.blocking);
+    }
+  }
+  /** Load and cache activation share the same capabilities, preserving live retry/breaker state. */
+  function initializeCall(edge: Edge, cache: boolean): void {
+    if (!waits() || !callEligible(edge.from.role, edge, cache)) return;
+    edge.from.waits = true;
+    if (edge.to.role === "processor") edge.to.callTarget = true;
+    const { retry, breaker } = callSettings.get(edge.id) ?? {};
+    if (retries() && (retry || breaker) && !edge.retry) {
+      classifies = true;
+      edge.retry = {
+        policy: structuredClone(retry ?? { maxAttempts: 1, backoffMs: 0, strategy: "fixed", retryOn: [] }),
+        window: createRetryWindow(),
+      };
+      if (breaker) edge.breaker = { policy: structuredClone(breaker), state: createBreaker() };
+      Object.assign(edge.calls, emptyRetryCounts());
     }
   }
   /** Retries execute in this diagram (p3-w2 and a call with a retry policy). Only then are attempts classified
@@ -3518,6 +3536,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       waitsEnabled = revisionAtLeast(planning?.revision, "p3-w1");
       classifies = false;
+      callSettings = new Map();
       configuration = undefined;
       topology++;
       nodes.clear();
@@ -3629,26 +3648,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           edge.policy = callPolicy(from.stencil, props?.caller as import("./types").EdgeSimProps["caller"]);
           const delay = props?.networkDelayMs;
           edge.networkDelayMs = typeof delay === "number" && Number.isFinite(delay) ? Math.max(0, delay) : 0;
-          if (callEligible(from.role, edge, cacheEnabled(planning, from.stencil, from.role, from.rawProps.cache))) {
-            from.waits = true;
-            if (to.role === "processor") to.callTarget = true;
-          }
         }
-        const breaker = (props?.caller as import("./types").EdgeSimProps["caller"])?.breaker;
-        const retry = (props?.caller as import("./types").EdgeSimProps["caller"])?.retry;
-        if (
-          retries() &&
-          callEligible(from.role, edge, cacheEnabled(planning, from.stencil, from.role, from.rawProps.cache)) &&
-          (retry || breaker)
-        ) {
-          classifies = true;
-          edge.retry = {
-            policy: structuredClone(retry ?? { maxAttempts: 1, backoffMs: 0, strategy: "fixed", retryOn: [] }),
-            window: createRetryWindow(),
-          };
-          if (breaker) edge.breaker = { policy: structuredClone(breaker), state: createBreaker() };
-          Object.assign(edge.calls, emptyRetryCounts());
-        }
+        callSettings.set(edge.id, props?.caller as import("./types").EdgeSimProps["caller"]);
+        initializeCall(edge, cacheEnabled(planning, from.stencil, from.role, from.rawProps.cache));
         if (props && routes) {
           // A caller's address belongs to a Request out of a source or service; on a router's edges it's dormant.
           const caller = from.role === "source" || from.role === "processor" || from.role === "none";

@@ -2,6 +2,8 @@ import { canCutLink } from "../model/faultRuntime";
 import type { DiagramFile, Simulation, TrafficShape, TimelineStep } from "../model/types";
 import { simulationProblem, simulationReferenceWarnings } from "../interop/native";
 import { autoScale } from "../sim/scale";
+import { analyzeCapacity } from "../sim/capacity";
+import { hasCacheRules } from "../model/caching";
 import { uniqueId } from "../editor/ids";
 import { resolveRef, normalizeRef, ReferenceError } from "./refs";
 import { checkBudget, checkSchema, validated } from "./validation";
@@ -124,7 +126,11 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
         }
       : {}),
   };
-  simulation.scale = autoScale(simulation, diagram);
+  simulation.scale = autoScale(
+    simulation,
+    diagram,
+    hasCacheRules(diagram) ? (analyzeCapacity(diagram, simulation).cacheDemand ?? {}) : undefined,
+  );
   const problem = simulationProblem(simulation);
   if (problem) throw new Error(problem);
   const warnings = simulationReferenceWarnings(simulation, new Set(diagram.nodes.map((n) => n.id)), diagram);

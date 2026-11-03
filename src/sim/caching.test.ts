@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { cacheFixture } from "../lab/cacheFixture";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
@@ -130,8 +130,9 @@ it("drains the pinned nested-retry case using its finite work bound", () => {
   e.setFault({ kind: "slow", node: "tier0", factor: 1 });
   e.step(3500);
   e.step(30_000);
-  // Timeout does not cancel nested downstream retries. A fixed 30 s drain is insufficient.
-  expect(e.metrics().inSystem).toBe(4);
+  // Failed fetches cannot manufacture statistical hits to terminate nested retries.
+  // Timeout does not cancel downstream retries; the finite recovery bound still drains them all.
+  expect(e.metrics().inSystem).toBe(26);
   for (const node of d.nodes) if (node.id.startsWith("tier")) e.setNodeProps(node.id, { failureRate: 0 });
   const steps = Math.ceil(recoveryWorkMs(d, retryDrain.scale, 12) / 1000);
   for (let i = 0; i < steps && e.metrics().inSystem; i++) e.step(1000);
@@ -166,4 +167,121 @@ it("automatic scale keeps the hottest item above the 50-dots-per-TTL tracking th
   expect(cache.rules[0].tracked).toBeGreaterThan(0);
   const coarse = cacheRuntime.compile(d.nodes[1].props!.cache, "cache", 7, scale * 100, { value: 4096 }, rates);
   expect(coarse.rules[0].tracked).toBe(0);
+});
+
+it("cold statistical cache never hits when every fetch fails", () => {
+  const d = cacheFixture();
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { latencyMs: 10, jitter: 0, concurrency: 1000, failureRate: 1 };
+  const e = createEngine({ seed: 7, scale: 10 });
+  e.load(d);
+  e.setTraffic(true);
+  e.step(10_000);
+  const c = e.snapshot().nodes.cache.cache!;
+  expect(c.fetches).toBeGreaterThan(0);
+  expect(c.fills).toBe(0);
+  expect(c.hits).toBe(0);
+});
+
+it("warm statistical hits stop after the TTL during an origin outage", () => {
+  const d = cacheFixture();
+  const e = createEngine({ seed: 7, scale: 10 });
+  e.load(d, cacheRuntime.plan(d));
+  e.setNodeStatus("origin", "down");
+  e.setTraffic(true);
+  e.step(500);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBeGreaterThan(0);
+  e.step(1000);
+  const hits = e.snapshot().nodes.cache.cache!.hits;
+  e.step(5000);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBe(hits);
+});
+
+it.each(["setup", "timeline"])(
+  "%s-only read-through activation initializes retries, breakers and target reservations",
+  async (where) => {
+    const { createSimulationRun } = await import("./simulation");
+    const d = cacheFixture();
+    d.nodes[1].stencil = "generic.cache";
+    const cache = d.nodes[1].props!.cache;
+    delete d.nodes[1].props!.cache;
+    d.nodes[2].stencil = "generic.service";
+    d.nodes[2].props = { latencyMs: 10, jitter: 0, concurrency: 100, failureRate: 1 };
+    d.edges[1].props!.caller = {
+      retry: { maxAttempts: 3, backoffMs: 10, strategy: "fixed", retryOn: ["transient"] },
+      breaker: { minimumCalls: 2, openMs: 10_000 },
+    };
+    let reserved = false;
+    const run = createSimulationRun(
+      d,
+      {
+        id: "activate",
+        title: "Activate",
+        seed: 7,
+        scale: 10,
+        durationMs: 2000,
+        traffic: [
+          { id: "load", node: "source", shape: { kind: "constant", ratePerSec: 200, durationMs: 1000, fromMs: 200 } },
+        ],
+        ...(where === "setup"
+          ? { setup: { props: { cache: { cache } } } }
+          : { timeline: [{ atMs: 100, action: { do: "props" as const, node: "cache", props: { cache } } }] }),
+      },
+      {
+        verifyLedger: (state) => {
+          if ([...state.ledger.reservations.values()].some((r) => r.owner === "origin" && r.scope === "request"))
+            reserved = true;
+        },
+      },
+    );
+    run.step(2000);
+    const s = run.engine.snapshot();
+    expect(s.edges.fetch.calls!.retried).toBeGreaterThan(0);
+    expect(s.edges.fetch.calls!.shortCircuited).toBeGreaterThan(0);
+    expect(s.edges.fetch.breaker!.state).toBe("open");
+    expect(reserved).toBe(true);
+    expect(s.inSystem).toBe(0);
+  },
+);
+
+it("sampling uses peak demand, warming uses initial demand, and idle rules do not constrain scale", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = {
+    rules: [{ id: "idle", match: { types: ["Unused"] }, policy: { ttlMs: 1000 } }],
+    default: { ttlMs: 86_400_000, keys: 1 },
+  };
+  const sim = {
+    id: "ramp",
+    title: "Ramp",
+    traffic: [
+      {
+        id: "r",
+        node: "source",
+        shape: {
+          kind: "ramp" as const,
+          startRate: 0,
+          stages: [{ targetRate: 10_000, durationMs: 60_000 }],
+        },
+      },
+    ],
+  };
+  expect(autoScale(sim, d)).toBe(200);
+  expect(cacheRuntime.plan(d, sim).cache?.[""]?.rate ?? 0).toBe(0);
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 5000, keys: 1000 } };
+  const peak = {
+    ...sim,
+    traffic: [{ ...sim.traffic[0], shape: { kind: "constant" as const, ratePerSec: 10_000, durationMs: 60_000 } }],
+  };
+  const expected = autoScale(peak, d);
+  expect(expected).toBeGreaterThan(1);
+  expect(expected).toBeLessThan(200);
+  expect(autoScale(sim, d)).toBe(expected);
+});
+
+it("origin property lookup does not rescan the edge array in the demand solver", () => {
+  const d = cacheFixture();
+  const find = vi.spyOn(d.edges, "find");
+  analyzeCapacity(d);
+  expect(find).not.toHaveBeenCalled();
+  find.mockRestore();
 });

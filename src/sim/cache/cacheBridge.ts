@@ -30,7 +30,7 @@ export interface CacheRuntime {
   scale(diagram: DiagramFile, simulation: Simulation, scale: number): number;
 }
 let installed: CacheRuntime | undefined;
-export function installCacheRuntime(runtime: CacheRuntime): void {
+export function installCacheRuntime(runtime: CacheRuntime | undefined): void {
   installed = runtime;
 }
 export function requireCacheRuntime(): CacheRuntime {
