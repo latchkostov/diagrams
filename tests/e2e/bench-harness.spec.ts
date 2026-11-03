@@ -1,19 +1,22 @@
 import { eventPipeline } from "../../src/bench/workloads/pipeline";
 import { Bench } from "../bench/ui/harness";
-import { test, expect, pauseClock, savedDiagram } from "./fixtures";
+import { performanceTest as base, expect, pauseClock, savedDiagram } from "./fixtures";
 
-test.beforeEach(async ({ page, baseURL }, info) => {
+const test = base.extend<{ bench: Bench }>({
+  bench: async ({ page }, use) => use(await Bench.create(page)),
+});
+
+test.beforeEach(async ({ bench, baseURL }, info) => {
   const d = eventPipeline(info.title.startsWith("benchmark reset") ? 16 : 100);
-  const b = await Bench.create(page);
-  await b.open({ text: JSON.stringify(d), d }, { url: baseURL });
-  await b.canvasSettled();
+  await bench.open({ text: JSON.stringify(d), d }, { url: baseURL });
+  // Each test's first geometry operation waits for the camera; do not repeat it in setup.
 });
 
 test("benchmark reset discards the Edit drag, selection and camera before measuring Live", async ({
   page,
   baseURL,
+  bench: b,
 }) => {
-  const b = new Bench(page, await page.context().newCDPSession(page));
   const d = eventPipeline(16);
   await b.fitDiagram();
   const before = await b.viewport();
@@ -39,8 +42,7 @@ test("benchmark reset discards the Edit drag, selection and camera before measur
   await expect(page.getByTestId("live-controls")).toBeVisible();
 });
 
-test("zoomed-out Overview keeps every node silhouette reachable below the text floor", async ({ page }) => {
-  const b = new Bench(page, await page.context().newCDPSession(page));
+test("zoomed-out Overview keeps every node silhouette reachable below the text floor", async ({ page, bench: b }) => {
   // Reach the same minimum scale with one real gesture. Fourteen toolbar clicks consumed
   // most of the whole-test backstop on loaded CI before selection could finish settling.
   const at = await b.emptySpot({ x: 0.5, y: 0.5 });
@@ -57,8 +59,7 @@ test("zoomed-out Overview keeps every node silhouette reachable below the text f
   await expect(page.getByTestId(target)).toBeInViewport();
 });
 
-test("benchmark selection waits for the deferred Inspector reveal and pan", async ({ page }) => {
-  const b = new Bench(page, await page.context().newCDPSession(page));
+test("benchmark selection waits for the deferred Inspector reveal and pan", async ({ page, bench: b }) => {
   const ids = eventPipeline(100).nodes.map((n) => n.id);
   const target = await b.nodeNearCentre(ids);
   await page.clock.install();
@@ -87,8 +88,7 @@ test("benchmark selection waits for the deferred Inspector reveal and pan", asyn
   }
 });
 
-test("benchmark finds cards outside the old centre circle without moving the camera", async ({ page }) => {
-  const b = new Bench(page, await page.context().newCDPSession(page));
+test("benchmark finds cards outside the old centre circle without moving the camera", async ({ page, bench: b }) => {
   await b.fitDiagram();
   const ids = eventPipeline(100).nodes.map((n) => n.id);
   const target = await page.getByTestId("canvas-wrap").evaluate((pane, ids) => {
@@ -122,8 +122,7 @@ test("benchmark finds cards outside the old centre circle without moving the cam
   expect(await b.viewport()).toEqual(before);
 });
 
-test("benchmark fits an off-pane card through the app before clicking it", async ({ page }) => {
-  const b = new Bench(page, await page.context().newCDPSession(page));
+test("benchmark fits an off-pane card through the app before clicking it", async ({ page, bench: b }) => {
   const target = await b.nodeNearCentre(eventPipeline(100).nodes.map((n) => n.id));
   // Inspector selection/reveal has its own case above. This setup needs only an off-pane card.
   const pane = await page.getByTestId("canvas-wrap").boundingBox();
