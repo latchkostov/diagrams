@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "A cache stampede",
+    "direction": "LR",
+    "nodes": [
+      { "id": "shoppers", "stencil": "generic.service", "label": "Shoppers", "x": 40, "y": 40 },
+      { "id": "cdn", "stencil": "cloudflare", "label": "Edge CDN", "x": 400, "y": 40 },
+      { "id": "origin", "stencil": "generic.service", "label": "Product API", "sublabel": "4 threads · 60 ms · blocking", "x": 760, "y": 40 },
+      { "id": "db", "stencil": "generic.database", "label": "Catalog DB", "x": 1159, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-shoppers-cdn", "from": "shoppers", "to": "cdn", "kind": "sync" },
+      { "id": "e2-cdn-origin", "from": "cdn", "to": "origin", "kind": "sync" },
+      { "id": "e3-origin-db", "from": "origin", "to": "db", "kind": "sync" }
+    ]
+  }
+}

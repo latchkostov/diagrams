@@ -86,6 +86,12 @@ const FIELDS: { value: MetricField; label: string }[] = [
     },
   },
   {
+    value: "itemFetches",
+    get label() {
+      return translate("cache.itemMetric");
+    },
+  },
+  {
     value: "p95",
     get label() {
       return translate("cache.p95Metric");

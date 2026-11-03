@@ -9,6 +9,46 @@ import { arbCacheDiagram } from "../test/cacheScenarios";
 import { assertCacheInvariants } from "./cacheInvariants";
 import { recoveryWorkMs } from "../test/resilienceRecovery";
 
+it("C3: arbitrary overlapping cohorts own at most one real fetch, including failures and deadlines", () => {
+  fc.assert(
+    fc.property(
+      fc.integer(),
+      fc.constantFrom(1, 2, 10, 50),
+      fc.integer({ min: 2, max: 40 }),
+      fc.constantFrom(0, 0.5, 1),
+      fc.integer({ min: 30, max: 300 }),
+      (seed, scale, requests, failureRate, deadlineMs) => {
+        const d = cacheFixture();
+        d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 1, coalesce: true } };
+        d.nodes[2].stencil = "generic.service";
+        d.nodes[2].props = { latencyMs: 50, jitter: 0, concurrency: 100, failureRate };
+        d.edges[1].props = { caller: { deadlineMs } };
+        const watch = watchCheckpoints();
+        try {
+          const e = createEngine({ seed, scale, maxParticles: 0 });
+          e.load(d, { cache: { "": { rate: 50000, fetchMs: 0 } } });
+          e.checkpoint();
+          e.step(110);
+          e.inject("source", requests, { spreadMs: 200 });
+          for (let tick = 0; tick < 100; tick++) {
+            e.step(10);
+            for (const node of watch.sources[0][0].values()) {
+              if (!node.cache) continue;
+              assertCacheInvariants(node.cache, false, node.calls.values());
+              for (const flight of node.cache.flights?.values() ?? []) expect(flight.message.represented).toBe(1);
+            }
+          }
+          expect(e.snapshot().inSystem).toBe(0);
+          assertCacheInvariants(watch.sources[0][0].get("cache")!.cache!, true);
+        } finally {
+          watch.stop();
+        }
+      },
+    ),
+    { numRuns: propertyRuns(50) },
+  );
+});
+
 it("C1/C2/C5/C7/C8: random cache runs conserve, drain and replay independently of global draws", () => {
   fc.assert(
     fc.property(
@@ -78,7 +118,7 @@ it("C4: random tracked lookups never hit an expired item", () => {
   );
 });
 
-it("C1/C2/C5/C7/C8: inherited resilience scenarios preserve cache ownership through faults and replay", () => {
+it("C1/C2/C3/C5/C7/C8: inherited resilience scenarios preserve cache ownership through faults and replay", () => {
   fc.assert(
     fc.property(arbCacheDiagram, fc.integer(), ({ diagram, scale }, seed) => {
       const watch = watchCheckpoints();
@@ -90,10 +130,17 @@ it("C1/C2/C5/C7/C8: inherited resilience scenarios preserve cache ownership thro
         const suffix = () => {
           for (let tick = 0; tick < 100; tick++) {
             if (tick === 10) e.setFault({ kind: "slow", node: "tier0", factor: 2 });
+            if (tick === 15) {
+              const policy = (
+                diagram.nodes.find((n) => n.id === "cache")!.props!.cache as import("../model/caching").CacheTable
+              ).default!;
+              if (!policy.noStore)
+                e.setNodeProps("cache", { cache: { rules: [], default: { ...policy, coalesce: true } } });
+            }
             if (tick === 30) e.setFault({ kind: "slow", node: "tier0", factor: 1 });
             e.step(50);
             for (const node of watch.sources[0][0].values())
-              if (node.cache) assertCacheInvariants(node.cache, !e.snapshot().inSystem);
+              if (node.cache) assertCacheInvariants(node.cache, !e.snapshot().inSystem, node.calls.values());
           }
           return e.snapshot();
         };
@@ -104,7 +151,8 @@ it("C1/C2/C5/C7/C8: inherited resilience scenarios preserve cache ownership thro
         const steps = Math.ceil(recoveryWorkMs(diagram, scale, 12) / 1000);
         for (let tick = 0; tick < steps && e.metrics().inSystem; tick++) e.step(1000);
         expect(e.snapshot().inSystem).toBe(0);
-        for (const node of watch.sources[0][0].values()) if (node.cache) assertCacheInvariants(node.cache, true);
+        for (const node of watch.sources[0][0].values())
+          if (node.cache) assertCacheInvariants(node.cache, true, node.calls.values());
       } finally {
         watch.stop();
       }

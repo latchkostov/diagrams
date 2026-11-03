@@ -1,6 +1,7 @@
 import { BROKERS, sameBadge, sameParts } from "./badgeMemo";
 import { badgeAttributes } from "./badgeAttributes";
 import { cacheReadout } from "./cacheReadout";
+import { cacheHerd } from "./cacheHerd";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useWorkbenchDock } from "../canvas/inspector/dockState";
 import { inHoverBridge } from "./hoverBridge";
@@ -143,6 +144,7 @@ export function NodeBadges({
     const { calls, breaker } = state.snapshot.edges[e.id] ?? {};
     if (!calls) continue;
     const queued = ui.controller.queuedCalls(e.id);
+    const herd = e.kind === "sync" ? cacheHerd(state.snapshot.nodes[e.from] ?? {}, state.snapshot.scale) : undefined;
     const timedOut = currentHealth(calls).timedOut;
     if (
       !(breaker && breaker.state !== "closed") &&
@@ -155,6 +157,10 @@ export function NodeBadges({
       ...calls,
       timedOut,
       breaker,
+      herd:
+        herd?.edge === e.id
+          ? { ...herd, seconds: Math.max(0, state.snapshot.time - herd.expiredAt) / 1000 }
+          : undefined,
       queued,
       pool: callPolicy("", e.props?.caller as EdgeSimProps["caller"]).pool,
       from: names.get(e.from) ?? e.from,
@@ -442,11 +448,11 @@ const NodeBadge = memo(function NodeBadge(
           )}
           {s.status !== "down" && cache && (
             <span
-              className={`lv-metric mono${cache.warming ? " is-failover" : ""}`}
+              className={`lv-metric mono${cache.warming || cache.stampede ? " is-failover" : ""}`}
               data-testid={`node-cache-${node.id}`}
               aria-label={cache.label}
             >
-              <span aria-hidden>▣</span> {cache.text}
+              {!cache.stampede && <span aria-hidden>▣</span>} {cache.text}
             </span>
           )}
           {/* Capacity describes the current outage and waiting traffic, unlike stale throughput/latency. */}

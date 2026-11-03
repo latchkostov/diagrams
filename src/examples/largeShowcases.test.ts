@@ -169,6 +169,30 @@ describe("large showcases", () => {
     expect(end.nodes.wms.failed).toBe(0);
   });
 
+  it.each([1, 7, 17, 42, 99])("Black Friday: doorbuster herds collapse without scaling (seed %s)", (seed) => {
+    const d = diagram("black-friday-commerce");
+    const sim = { ...simulation("black-friday-commerce", "doorbuster-stampede"), seed };
+    const run = createSimulationRun(d, sim, { maxParticles: 0 });
+    let before = 0,
+      after = 0,
+      backlog = 0;
+    while (!run.state().done) {
+      run.step(10);
+      const s = run.engine.snapshot(),
+        herd = s.nodes.cdn.cacheDetails?.herd;
+      const fetches = herd?.rule === "doorbuster" ? herd.fetches : 0;
+      if (s.time < 18000) {
+        before = Math.max(before, fetches);
+        backlog = Math.max(backlog, s.nodes["catalog-bff"].backlog * 50);
+      } else if (herd && herd.expiredAt >= 18000) after = Math.max(after, fetches);
+    }
+    expect(before).toBeGreaterThanOrEqual(200);
+    expect(before).toBeLessThanOrEqual(500);
+    expect(backlog).toBeGreaterThanOrEqual(150);
+    expect(after).toBe(1);
+    expect(run.state().expectations.map((e) => e.status)).toEqual(["pass", "pass", "pass"]);
+  });
+
   it("Cells: a dark region's travellers move to the other two, and every booking replicates", () => {
     const { end, samples } = play("cell-based-bookings", "region-evacuation");
     const during = between(samples, 6000, 18000);

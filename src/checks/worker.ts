@@ -9,6 +9,7 @@ import { executeChecks, executeRequestChecks } from "./execute";
 import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
 import { confirmedThreadFix, type ThreadFixRequest } from "../live/threadFixPlan";
 import { confirmedResilienceFix } from "../live/resilienceFixPlan";
+import { confirmedCacheFix } from "../live/cacheFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
 
 export interface CheckRequest {
@@ -46,13 +47,22 @@ scope.onmessage = (e) => {
       scope.postMessage({
         id,
         threadFix:
-          request.trouble.action.kind === "resilience"
-            ? confirmedResilienceFix({
+          request.trouble.action.kind === "cache"
+            ? confirmedCacheFix({
                 context: request.context,
+                node: request.trouble.action.node,
+                rule: request.trouble.action.rule,
+                item: request.trouble.action.item,
                 edge: request.trouble.action.edge,
                 time: request.time,
               })
-            : confirmedThreadFix(request),
+            : request.trouble.action.kind === "resilience"
+              ? confirmedResilienceFix({
+                  context: request.context,
+                  edge: request.trouble.action.edge,
+                  time: request.time,
+                })
+              : confirmedThreadFix(request),
       });
     } else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
     else if (e.data.requests) {

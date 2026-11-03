@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "ec582b0b1587ba431374086ff2499a17dc58e8fe63488c56ac1f97b53e48becd", "bytes": 201176 },
+  "file": { "sha256": "4d53f3773e8d89afbc491f37e57b6666884c8e63c25dc7e670b31cd52d3ee021", "bytes": 202240 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -1341,18 +1341,32 @@
       ],
       "simulations": [
         {
-          "id": "partner-quota",
-          "title": "The warehouse partner throttles",
-          "description": "A sustained peak at the 3PL warehouse API, which allows 60 pick requests a second. KEDA keeps fulfilment lag low by adding workers, but every worker calls the same partner: the quota rejects the excess. Scaling consumers moved the bottleneck.",
-          "seed": 13,
+          "id": "doorbuster-stampede",
+          "title": "The doorbuster stampede",
+          "seed": 14,
           "scale": 50,
+          "durationMs": 30000,
           "setup": {
             "props": {
-              "wms": {
-                "api": {
-                  "maxInFlight": 100,
-                  "quotas": [
-                    { "id": "wms-rate", "unit": "requests", "amount": 60, "windowMs": 1000, "algorithm": "token-bucket" }
+              "web": {
+                "trafficMix": {
+                  "mode": "shares",
+                  "entries": [
+                    { "routeId": "doorbuster", "share": 0.3 },
+                    { "routeId": "browse", "share": 0.02 },
+                    { "routeId": "search", "share": 0.01 },
+                    { "routeId": "beacon", "share": 0.67 }
+                  ]
+                }
+              },
+              "app": {
+                "trafficMix": {
+                  "mode": "shares",
+                  "entries": [
+                    { "routeId": "doorbuster", "share": 0.3 },
+                    { "routeId": "browse", "share": 0.02 },
+                    { "routeId": "search", "share": 0.01 },
+                    { "routeId": "beacon", "share": 0.67 }
                   ]
                 }
               }
@@ -1362,45 +1376,92 @@
             {
               "id": "web-traffic",
               "node": "web",
-              "label": "Web shoppers",
-              "shape": { "kind": "constant", "ratePerSec": 1000, "durationMs": 15000 }
+              "shape": { "kind": "constant", "ratePerSec": 1800, "durationMs": 30000 }
             },
             {
               "id": "app-traffic",
               "node": "app",
-              "label": "App shoppers",
-              "shape": { "kind": "constant", "ratePerSec": 700, "durationMs": 15000 }
+              "shape": { "kind": "constant", "ratePerSec": 1200, "durationMs": 30000 }
             }
           ],
           "timeline": [
             {
-              "atMs": 0,
-              "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["outbox-relay", "orders"] }
+              "atMs": 1000,
+              "action": { "do": "note", "text": "A flash-sale landing page gets 900 views/s. Each page sends about two analytics beacons; only 90 requests/s browse other products or search. Watch Edge CDN and Catalog BFF.", "focus": ["cdn", "gateway", "catalog-bff"] }
             },
             {
-              "atMs": 4000,
-              "action": { "do": "note", "text": "KEDA adds fulfilment workers to keep lag near its target of 20 per worker.", "focus": ["orders", "fulfilment"] }
+              "atMs": 5000,
+              "action": { "do": "note", "text": "The doorbuster expires every ten seconds: roughly 250–450 fetches race for one item. Catalog BFF queues them; the other stories keep their original traffic and capacity.", "focus": ["cdn", "gateway", "catalog-bff"] }
             },
             {
-              "atMs": 8000,
-              "action": { "do": "note", "text": "Every worker calls the 3PL API, which allows 60 picks a second, so the rest are rejected. More workers can't raise a partner's quota: batch picks, or agree a higher limit.", "focus": ["fulfilment", "wms"] }
+              "atMs": 18000,
+              "action": {
+                "do": "props",
+                "node": "cdn",
+                "props": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "doorbuster",
+                        "policy": { "ttlMs": 10000, "keys": 1, "coalesce": true },
+                        "label": "Doorbuster",
+                        "match": {
+                          "path": { "kind": "exact", "value": "/products/doorbuster-tv" },
+                          "methods": ["GET"]
+                        }
+                      },
+                      {
+                        "id": "products",
+                        "policy": { "keys": 50000, "ttlMs": 300000, "popularity": "typical" },
+                        "label": "Product pages",
+                        "match": { "path": { "kind": "template", "value": "/products/{id}" }, "methods": ["GET"] }
+                      },
+                      {
+                        "id": "search",
+                        "policy": { "keys": 200000, "ttlMs": 60000, "popularity": "steep" },
+                        "label": "Search",
+                        "match": { "path": { "kind": "prefix", "value": "/search/" }, "methods": ["GET"] }
+                      },
+                      {
+                        "id": "orders",
+                        "policy": { "noStore": true },
+                        "label": "Order status",
+                        "match": { "path": { "kind": "template", "value": "/orders/{id}" }, "methods": ["GET"] }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "atMs": 18000,
+              "action": { "do": "note", "text": "The team turns on One fetch per item. The next expiries send one fetch; everyone shares its reply.", "focus": ["cdn", "gateway", "catalog-bff"] }
             }
           ],
           "expectations": [
             {
-              "id": "throttled",
-              "label": "The 3PL rejects picks over its quota",
-              "metric": { "node": "wms", "field": "rejected" },
-              "op": ">",
-              "value": 0,
+              "id": "doorbuster-fetches",
+              "label": "Doorbuster fetches in flight ≤ 1 at 28 s",
+              "metric": { "node": "cdn", "field": "itemFetches" },
+              "op": "<=",
+              "value": 1,
+              "when": "at",
+              "atMs": 28000
+            },
+            {
+              "id": "catalog-backlog",
+              "label": "Catalog BFF backlog < 50 at the end",
+              "metric": { "node": "catalog-bff", "field": "backlog" },
+              "op": "<",
+              "value": 50,
               "when": "end"
             },
             {
-              "id": "kept-up",
-              "label": "Fulfilment still keeps up with Kafka",
-              "metric": { "node": "orders", "field": "lag", "group": "fulfilment" },
-              "op": "==",
-              "value": 0,
+              "id": "shopper-p95",
+              "label": "Shoppers p95 < 300 ms at the end",
+              "metric": { "node": "web", "field": "p95" },
+              "op": "<",
+              "value": 300,
               "when": "end"
             }
           ]

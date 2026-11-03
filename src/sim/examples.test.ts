@@ -17,7 +17,7 @@ const SIMULATIONS: Record<string, number> = {
   "../examples/scale-on-busy-threads.json": 3,
   "../examples/where-the-time-goes.json": 3,
   "../examples/aws-serverless-orders.json": 3,
-  "../examples/black-friday-commerce.json": 3,
+  "../examples/black-friday-commerce.json": 4,
   "../examples/ev-charging-network.json": 4,
   "../examples/hybrid-enterprise-network.json": 3,
   "../examples/recommendations-feature-store.json": 4,
@@ -72,6 +72,7 @@ describe("saved example simulations with the real stencil registry", () => {
           (simulation.expectations ?? []).map((e) => ({
             id: e.id,
             status:
+              (path === "../examples/cache-stampede.json" && simulation.id === "ttl-only") ||
               (path === "../examples/retry-storm.json" &&
                 ["three-quick-retries", "jittered-backoff"].includes(simulation.id)) ||
               (["../examples/blocking-call.json", "../examples/scale-on-busy-threads.json"].includes(path) &&

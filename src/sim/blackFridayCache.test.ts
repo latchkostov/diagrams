@@ -25,8 +25,8 @@ it("keeps the upgraded showcase clean in configured Checks and simulation eviden
   const evidence = collectEvidence(d, { now: () => 0 });
   expect(evidence.played.map((s) => s.id)).toEqual(d.simulations!.map((s) => s.id));
   expect(withEvidence(configured, evidence, d.checks).result.findings).toEqual([]);
-  for (const simulation of d.simulations!)
-    expect(simulation.expectations).toEqual(frozen.simulations.find((s) => s.id === simulation.id)!.expectations);
+  for (const simulation of frozen.simulations)
+    expect(d.simulations!.find((s) => s.id === simulation.id)!.expectations).toEqual(simulation.expectations);
 });
 it("keeps the released A1 example frozen and measures the edge's warm peak and cold peak", () => {
   expect(frozen.planning.revision).toBe("p3-a1");

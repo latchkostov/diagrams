@@ -107,6 +107,7 @@ describe("example gallery", () => {
       "recommendations-feature-store",
       "video-on-demand-pipeline",
       "api-route-table",
+      "cache-stampede",
     ]);
   });
   it("teaches requests that wait in blocking, timeout, pool and busy-thread order", () => {
@@ -117,6 +118,7 @@ describe("example gallery", () => {
     ).toEqual([
       "black-friday-commerce",
       "blocking-call",
+      "cache-stampede",
       "retry-storm",
       "slow-payment-provider",
       "scale-on-busy-threads",
@@ -124,6 +126,7 @@ describe("example gallery", () => {
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
+      "cache-stampede": ["caching", "requestsWait", "routing"],
       "vendor-edge-storefront": ["vendorStencils"],
       "scale-on-busy-threads": ["requestsWait", "autoscaling"],
       "slow-payment-provider": ["requestsWait", "resilience", "runHistory", "faultDrills"],

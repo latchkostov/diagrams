@@ -32,10 +32,13 @@ it.each([
   { ttlMs: 1000, keys: 0 },
   { ttlMs: 1000, keys: 1_000_001 },
   { ttlMs: 1000, popularity: "custom" },
-  { ttlMs: 1000, coalesce: true },
+  { ttlMs: 1000, coalesce: "yes" },
   { ttlMs: 1000, staleWhileRevalidateMs: 1000 },
 ])("rejects unsupported cache policy %j", (policy) => {
   expect(cacheProblem({ rules: [], default: policy })).toBeDefined();
+});
+it.each([true, false])("accepts the explicit coalescing option %s", (coalesce) => {
+  expect(cacheProblem({ rules: [], default: { ttlMs: 1000, coalesce } })).toBeUndefined();
 });
 it("validates bounds and every persisted setup/timeline context", () => {
   const d = cacheFixture();

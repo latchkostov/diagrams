@@ -1,0 +1,348 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"A cache stampede\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 2 simulations\ndescription: \"A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting five seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.\"\nnodes:\n  \"shoppers\" \"client.browser\" (\"Web Browser\") \"Shoppers\" props={\"ratePerSec\":400,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"launch\",\"share\":0.8},{\"routeId\":\"products\",\"share\":0.2}]}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"requests\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"generic.cdn\" (\"CDN\") \"Edge CDN\" props={\"latencyMs\":5,\"jitter\":0,\"cache\":{\"rules\":[{\"id\":\"launch\",\"label\":\"Launch page\",\"match\":{\"path\":{\"kind\":\"exact\",\"value\":\"/launch\"}},\"policy\":{\"ttlMs\":5000,\"keys\":1}},{\"id\":\"products\",\"label\":\"Other products\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/products/\"}},\"policy\":{\"ttlMs\":300000,\"keys\":20000,\"popularity\":\"typical\"}}]}} arrivingTypes=[\"Shoppers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"origin\"}] explanation=undefined cache={\"rules\":[{\"id\":\"launch\",\"label\":\"Launch page\",\"match\":{\"path\":{\"kind\":\"exact\",\"value\":\"/launch\"}},\"policy\":{\"ttlMs\":5000,\"keys\":1},\"expected\":{\"rate\":320,\"fetchMs\":190,\"hitRatio\":0.9628114093152004}},{\"id\":\"products\",\"label\":\"Other products\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/products/\"}},\"policy\":{\"ttlMs\":300000,\"keys\":20000,\"popularity\":\"typical\"},\"expected\":{\"rate\":80,\"fetchMs\":190,\"hitRatio\":0.6608755790789057}}],\"origin\":[\"fetch\"]}\n  \"origin\" \"generic.service\" (\"Service\") \"Product API\" / \"4 threads · 60 ms · blocking\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":60,\"jitter\":0} arrivingTypes=[\"Shoppers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"read\",\"peer\":\"db\"}] explanation={\"waits\":{\"workMs\":60,\"callMs\":20,\"threadHoldMs\":80,\"memoryResidenceMs\":80,\"slots\":4,\"ceiling\":50},\"id\":\"origin\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":39.030302692823426,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.08,\"utilization\":0.7806060538564685,\"growth\":0,\"contributors\":[{\"edge\":\"fetch\",\"node\":\"cdn\",\"label\":\"Shoppers\",\"rate\":39.030302692823426,\"via\":\"Edge CDN\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"products\",\"address\":\"GET /products/example\",\"offered\":27.129953673687545,\"rejected\":0,\"throttled\":0},{\"route\":\"launch\",\"address\":\"GET /launch\",\"offered\":11.90034901913588,\"rejected\":0,\"throttled\":0}]} requestsWait={\"threads\":4,\"holdMs\":80,\"ceilingPerSec\":50} queue={\"limit\":null,\"order\":\"fifo\",\"whenFull\":\"reject-new\",\"maxWaitMs\":null,\"waitCeilingMs\":null}\n  \"db\" \"generic.database\" (\"Database\") \"Catalog DB\" props={\"latencyMs\":20,\"jitter\":0} arrivingTypes=[\"Shoppers\"] capabilities=[] explanation=undefined\nconnections:\n  \"requests\" \"shoppers\" -> \"cdn\" sync carriedTypes=[\"Shoppers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\n  \"fetch\" \"cdn\" -> \"origin\" sync carriedTypes=[\"Shoppers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\n  \"read\" \"origin\" -> \"db\" sync carriedTypes=[\"Shoppers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nrequest routes (2):\n  \"launch\" GET \"/launch\" \"Launch page\"\n  \"products\" GET \"/products/example\" \"Other products\"\nsimulation \"ttl-only\" \"TTL only\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"shoppers\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.\",\"focus\":[\"cdn\",\"origin\"]}},{\"atMs\":12000,\"action\":{\"do\":\"note\",\"text\":\"Each miss fetches the same item. Queuing makes the next reply slower, so more requests join the herd.\",\"focus\":[\"cdn\",\"origin\"]}}]; expectations=[{\"id\":\"backlog\",\"label\":\"Product API backlog < 50, always\",\"metric\":{\"node\":\"origin\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":50,\"when\":\"always\"},{\"id\":\"latency\",\"label\":\"Shoppers p95 < 300 ms at the end\",\"metric\":{\"node\":\"shoppers\",\"field\":\"p95\"},\"op\":\"<\",\"value\":300,\"when\":\"end\"},{\"id\":\"fetches\",\"label\":\"Launch page fetches in flight < 5, always\",\"metric\":{\"node\":\"cdn\",\"field\":\"itemFetches\"},\"op\":\"<\",\"value\":5,\"when\":\"always\"}]\nsimulation \"one-fetch\" \"One fetch per item\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"shoppers\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.\",\"focus\":[\"cdn\",\"origin\"]}},{\"atMs\":12000,\"action\":{\"do\":\"note\",\"text\":\"One origin fetch serves everyone waiting for the same item.\",\"focus\":[\"cdn\",\"origin\"]}}]; expectations=[{\"id\":\"backlog\",\"label\":\"Product API backlog < 50, always\",\"metric\":{\"node\":\"origin\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":50,\"when\":\"always\"},{\"id\":\"latency\",\"label\":\"Shoppers p95 < 300 ms at the end\",\"metric\":{\"node\":\"shoppers\",\"field\":\"p95\"},\"op\":\"<\",\"value\":300,\"when\":\"end\"},{\"id\":\"fetches\",\"label\":\"Launch page fetches in flight < 5, always\",\"metric\":{\"node\":\"cdn\",\"field\":\"itemFetches\"},\"op\":\"<\",\"value\":5,\"when\":\"always\"}]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "A cache stampede",
+      "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting five seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.",
+      "direction": "LR",
+      "planning": {
+        "revision": "p3-w3",
+        "requestRoutes": [
+          { "id": "launch", "label": "Launch page", "address": { "method": "GET", "path": "/launch" } },
+          { "id": "products", "label": "Other products", "address": { "method": "GET", "path": "/products/example" } }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "shoppers",
+          "stencil": "client.browser",
+          "label": "Shoppers",
+          "x": 0,
+          "y": 160,
+          "props": {
+            "ratePerSec": 400,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [{ "routeId": "launch", "share": 0.8 }, { "routeId": "products", "share": 0.2 }]
+            }
+          },
+          "arrivingTypes": [],
+          "capabilities": [{ "kind": "calls", "edge": "requests", "peer": "cdn" }]
+        },
+        {
+          "id": "cdn",
+          "stencil": "generic.cdn",
+          "label": "Edge CDN",
+          "x": 330,
+          "y": 160,
+          "props": {
+            "latencyMs": 5,
+            "jitter": 0,
+            "cache": {
+              "rules": [
+                {
+                  "id": "launch",
+                  "label": "Launch page",
+                  "match": { "path": { "kind": "exact", "value": "/launch" } },
+                  "policy": { "ttlMs": 5000, "keys": 1 }
+                },
+                {
+                  "id": "products",
+                  "label": "Other products",
+                  "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                  "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                }
+              ]
+            }
+          },
+          "arrivingTypes": ["Shoppers"],
+          "capabilities": [{ "kind": "calls", "edge": "fetch", "peer": "origin" }],
+          "cache": {
+            "rules": [
+              {
+                "id": "launch",
+                "label": "Launch page",
+                "match": { "path": { "kind": "exact", "value": "/launch" } },
+                "policy": { "ttlMs": 5000, "keys": 1 },
+                "expected": { "rate": 320, "fetchMs": 190, "hitRatio": 0.9628114093152004 }
+              },
+              {
+                "id": "products",
+                "label": "Other products",
+                "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" },
+                "expected": { "rate": 80, "fetchMs": 190, "hitRatio": 0.6608755790789057 }
+              }
+            ],
+            "origin": ["fetch"]
+          }
+        },
+        {
+          "id": "origin",
+          "stencil": "generic.service",
+          "label": "Product API",
+          "x": 660,
+          "y": 160,
+          "sublabel": "4 threads · 60 ms · blocking",
+          "props": { "replicas": 1, "concurrency": 4, "latencyMs": 60, "jitter": 0 },
+          "arrivingTypes": ["Shoppers"],
+          "capabilities": [{ "kind": "calls", "edge": "read", "peer": "db" }],
+          "explanation": {
+            "waits": { "workMs": 60, "callMs": 20, "threadHoldMs": 80, "memoryResidenceMs": 80, "slots": 4, "ceiling": 50 },
+            "id": "origin",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 50,
+            "offered": 39.030302692823426,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.08,
+            "utilization": 0.7806060538564685,
+            "growth": 0,
+            "contributors": [
+              { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 39.030302692823426, "via": "Edge CDN" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "products", "address": "GET /products/example", "offered": 27.129953673687545, "rejected": 0, "throttled": 0 },
+              { "route": "launch", "address": "GET /launch", "offered": 11.90034901913588, "rejected": 0, "throttled": 0 }
+            ]
+          },
+          "requestsWait": { "threads": 4, "holdMs": 80, "ceilingPerSec": 50 },
+          "queue": { "limit": null, "order": "fifo", "whenFull": "reject-new", "maxWaitMs": null, "waitCeilingMs": null }
+        },
+        {
+          "id": "db",
+          "stencil": "generic.database",
+          "label": "Catalog DB",
+          "x": 990,
+          "y": 160,
+          "props": { "latencyMs": 20, "jitter": 0 },
+          "arrivingTypes": ["Shoppers"],
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "requests",
+          "from": "shoppers",
+          "to": "cdn",
+          "kind": "sync",
+          "props": { "networkDelayMs": 15 },
+          "carriedTypes": ["Shoppers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        },
+        {
+          "id": "fetch",
+          "from": "cdn",
+          "to": "origin",
+          "kind": "sync",
+          "props": { "networkDelayMs": 50, "caller": { "deadlineMs": 2000 } },
+          "carriedTypes": ["Shoppers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        },
+        {
+          "id": "read",
+          "from": "origin",
+          "to": "db",
+          "kind": "sync",
+          "props": { "caller": { "wait": "blocking" } },
+          "carriedTypes": ["Shoppers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        }
+      ],
+      "messageTypesComplete": true,
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "ttl-only",
+          "title": "TTL only",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 40000,
+          "traffic": [
+            {
+              "id": "shoppers",
+              "node": "shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] }
+            },
+            {
+              "atMs": 12000,
+              "action": { "do": "note", "text": "Each miss fetches the same item. Queuing makes the next reply slower, so more requests join the herd.", "focus": ["cdn", "origin"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "backlog",
+              "label": "Product API backlog < 50, always",
+              "metric": { "node": "origin", "field": "backlog" },
+              "op": "<",
+              "value": 50,
+              "when": "always"
+            },
+            {
+              "id": "latency",
+              "label": "Shoppers p95 < 300 ms at the end",
+              "metric": { "node": "shoppers", "field": "p95" },
+              "op": "<",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "fetches",
+              "label": "Launch page fetches in flight < 5, always",
+              "metric": { "node": "cdn", "field": "itemFetches" },
+              "op": "<",
+              "value": 5,
+              "when": "always"
+            }
+          ]
+        },
+        {
+          "id": "one-fetch",
+          "title": "One fetch per item",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 40000,
+          "traffic": [
+            {
+              "id": "shoppers",
+              "node": "shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] }
+            },
+            {
+              "atMs": 12000,
+              "action": { "do": "note", "text": "One origin fetch serves everyone waiting for the same item.", "focus": ["cdn", "origin"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "backlog",
+              "label": "Product API backlog < 50, always",
+              "metric": { "node": "origin", "field": "backlog" },
+              "op": "<",
+              "value": 50,
+              "when": "always"
+            },
+            {
+              "id": "latency",
+              "label": "Shoppers p95 < 300 ms at the end",
+              "metric": { "node": "shoppers", "field": "p95" },
+              "op": "<",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "fetches",
+              "label": "Launch page fetches in flight < 5, always",
+              "metric": { "node": "cdn", "field": "itemFetches" },
+              "op": "<",
+              "value": 5,
+              "when": "always"
+            }
+          ],
+          "setup": {
+            "props": {
+              "cdn": {
+                "cache": {
+                  "rules": [
+                    {
+                      "id": "launch",
+                      "label": "Launch page",
+                      "match": { "path": { "kind": "exact", "value": "/launch" } },
+                      "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                    },
+                    {
+                      "id": "products",
+                      "label": "Other products",
+                      "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                      "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ],
+      "routeDemand": {
+        "shoppers": {
+          "launch": { "offered": 320, "rejected": 0, "throttled": 0 },
+          "products": { "offered": 80, "rejected": 0, "throttled": 0 }
+        },
+        "cdn": {
+          "launch": { "offered": 320, "rejected": 0, "throttled": 0, "servedFromCache": 308.0996509808641 },
+          "products": { "offered": 80, "rejected": 0, "throttled": 0, "servedFromCache": 52.870046326312455 }
+        },
+        "origin": {
+          "launch": { "offered": 11.90034901913588, "rejected": 0, "throttled": 0 },
+          "products": { "offered": 27.129953673687545, "rejected": 0, "throttled": 0 }
+        },
+        "db": {
+          "launch": { "offered": 11.90034901913588, "rejected": 0, "throttled": 0 },
+          "products": { "offered": 27.129953673687545, "rejected": 0, "throttled": 0 }
+        }
+      },
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"A cache stampede\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting five seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.\"\nnodes:\n  \"shoppers\" \"client.browser\" (\"Web Browser\") \"Shoppers\" props={\"ratePerSec\":400,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"launch\",\"share\":0.8},{\"routeId\":\"products\",\"share\":0.2}]}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"requests\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"generic.cdn\" (\"CDN\") \"Edge CDN\" props={\"latencyMs\":5,\"jitter\":0,\"cache\":{\"rules\":[{\"id\":\"launch\",\"label\":\"Launch page\",\"match\":{\"path\":{\"kind\":\"exact\",\"value\":\"/launch\"}},\"policy\":{\"ttlMs\":5000,\"keys\":1}},{\"id\":\"products\",\"label\":\"Other products\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/products/\"}},\"policy\":{\"ttlMs\":300000,\"keys\":20000,\"popularity\":\"typical\"}}]}} arrivingTypes=[\"Shoppers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"origin\"}] explanation=undefined cache={\"rules\":[{\"id\":\"launch\",\"label\":\"Launch page\",\"match\":{\"path\":{\"kind\":\"exact\",\"value\":\"/launch\"}},\"policy\":{\"ttlMs\":5000,\"keys\":1},\"expected\":{\"rate\":320,\"fetchMs\":190,\"hitRatio\":0.9628114093152004}},{\"id\":\"products\",\"label\":\"Other products\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/products/\"}},\"policy\":{\"ttlMs\":300000,\"keys\":20000,\"popularity\":\"typical\"},\"expected\":{\"rate\":80,\"fetchMs\":190,\"hitRatio\":0.6608755790789057}}],\"origin\":[\"fetch\"]}\nconnections:\n  \"requests\" \"shoppers\" -> \"cdn\" sync carriedTypes=[\"Shoppers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nrequest routes (2):\n  \"launch\" GET \"/launch\" \"Launch page\"\n… 3 lines omitted"
+  }
+}

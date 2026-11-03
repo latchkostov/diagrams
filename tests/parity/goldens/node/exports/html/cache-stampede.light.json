@@ -1,0 +1,220 @@
+{
+  "file": { "sha256": "484e8a66e8888bfab7f49cc8b3ca5b20f3ee067eac942ce705257d5d1d1e443e", "bytes": 15784 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "title": "A cache stampede",
+      "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting five seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.",
+      "planning": {
+        "revision": "p3-w3",
+        "requestRoutes": [
+          { "id": "launch", "label": "Launch page", "address": { "method": "GET", "path": "/launch" } },
+          { "id": "products", "label": "Other products", "address": { "method": "GET", "path": "/products/example" } }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "shoppers",
+          "stencil": "client.browser",
+          "label": "Shoppers",
+          "x": 0,
+          "y": 160,
+          "props": {
+            "ratePerSec": 400,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [{ "routeId": "launch", "share": 0.8 }, { "routeId": "products", "share": 0.2 }]
+            }
+          }
+        },
+        {
+          "id": "cdn",
+          "stencil": "generic.cdn",
+          "label": "Edge CDN",
+          "x": 330,
+          "y": 160,
+          "props": {
+            "latencyMs": 5,
+            "jitter": 0,
+            "cache": {
+              "rules": [
+                {
+                  "id": "launch",
+                  "label": "Launch page",
+                  "match": { "path": { "kind": "exact", "value": "/launch" } },
+                  "policy": { "ttlMs": 5000, "keys": 1 }
+                },
+                {
+                  "id": "products",
+                  "label": "Other products",
+                  "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                  "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "origin",
+          "stencil": "generic.service",
+          "label": "Product API",
+          "x": 660,
+          "y": 160,
+          "sublabel": "4 threads · 60 ms · blocking",
+          "props": { "replicas": 1, "concurrency": 4, "latencyMs": 60, "jitter": 0 }
+        },
+        {
+          "id": "db",
+          "stencil": "generic.database",
+          "label": "Catalog DB",
+          "x": 990,
+          "y": 160,
+          "props": { "latencyMs": 20, "jitter": 0 }
+        }
+      ],
+      "edges": [
+        { "id": "requests", "from": "shoppers", "to": "cdn", "kind": "sync", "props": { "networkDelayMs": 15 } },
+        {
+          "id": "fetch",
+          "from": "cdn",
+          "to": "origin",
+          "kind": "sync",
+          "props": { "networkDelayMs": 50, "caller": { "deadlineMs": 2000 } }
+        },
+        { "id": "read", "from": "origin", "to": "db", "kind": "sync", "props": { "caller": { "wait": "blocking" } } }
+      ],
+      "simulations": [
+        {
+          "id": "ttl-only",
+          "title": "TTL only",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 40000,
+          "traffic": [
+            {
+              "id": "shoppers",
+              "node": "shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] }
+            },
+            {
+              "atMs": 12000,
+              "action": { "do": "note", "text": "Each miss fetches the same item. Queuing makes the next reply slower, so more requests join the herd.", "focus": ["cdn", "origin"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "backlog",
+              "label": "Product API backlog < 50, always",
+              "metric": { "node": "origin", "field": "backlog" },
+              "op": "<",
+              "value": 50,
+              "when": "always"
+            },
+            {
+              "id": "latency",
+              "label": "Shoppers p95 < 300 ms at the end",
+              "metric": { "node": "shoppers", "field": "p95" },
+              "op": "<",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "fetches",
+              "label": "Launch page fetches in flight < 5, always",
+              "metric": { "node": "cdn", "field": "itemFetches" },
+              "op": "<",
+              "value": 5,
+              "when": "always"
+            }
+          ]
+        },
+        {
+          "id": "one-fetch",
+          "title": "One fetch per item",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 40000,
+          "traffic": [
+            {
+              "id": "shoppers",
+              "node": "shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] }
+            },
+            {
+              "atMs": 12000,
+              "action": { "do": "note", "text": "One origin fetch serves everyone waiting for the same item.", "focus": ["cdn", "origin"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "backlog",
+              "label": "Product API backlog < 50, always",
+              "metric": { "node": "origin", "field": "backlog" },
+              "op": "<",
+              "value": 50,
+              "when": "always"
+            },
+            {
+              "id": "latency",
+              "label": "Shoppers p95 < 300 ms at the end",
+              "metric": { "node": "shoppers", "field": "p95" },
+              "op": "<",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "fetches",
+              "label": "Launch page fetches in flight < 5, always",
+              "metric": { "node": "cdn", "field": "itemFetches" },
+              "op": "<",
+              "value": 5,
+              "when": "always"
+            }
+          ],
+          "setup": {
+            "props": {
+              "cdn": {
+                "cache": {
+                  "rules": [
+                    {
+                      "id": "launch",
+                      "label": "Launch page",
+                      "match": { "path": { "kind": "exact", "value": "/launch" } },
+                      "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                    },
+                    {
+                      "id": "products",
+                      "label": "Other products",
+                      "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                      "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "icons": {
+      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+      "generic-cdn": { "sha256": "de0ca0a8bd4fe3e2c16d9d74338394ad4efb0ec1e9ecbff756ac11a67547ddf4", "bytes": 471 },
+      "generic-database": { "sha256": "06a266a48958bdcedb816c4813ca231592e2cf39d848bb915f2ba64b12226c64", "bytes": 477 },
+      "generic-service": { "sha256": "3fe5e72fd8c35eb0ef93e590677e2e7ffb6b3d31449533176a4e82fe9b6d0add", "bytes": 579 }
+    },
+    "options": { "theme": "light", "startSimulation": "ttl-only", "exportedOn": "2026-01-01" }
+  }
+}

@@ -1,0 +1,13 @@
+## Stampede and coalescing UX review
+
+Reviewed the public four-node comparison, its Live callout and inspector screenshots, the new Black Friday story, and the component/editor diff against the chrome budget and progressive-disclosure rules. The expiry checkbox stays in the existing cache inspector fold, defaults off and explains real CDN defaults. The callout has one confirmed action; the toast names the edited simulation and offers keyboard Undo. Existing pill placement reserves labels, nodes and readouts. There are no new top-bar or Live transport controls.
+
+## Findings resolved
+
+The designer-agent review found four issues: memo equality omitted herd data; successfully held waiters inherited warning colour; a routed lesson chose the first origin; and unrelated source latency could trigger cache trouble. The comparator now follows herd fields, held waiters stay neutral, peak observations retain their actual origin edge, and detection reads only upstream sources. A mounted rerender test and routed/source-isolation regressions protect these corrections.
+
+Coalescing-only edits keep current fetches and waiters visible while they drain. Confirmation counts two later expiries of the same tracked item; it cannot certify two different items as two expiries. Events remains the action when evidence is insufficient, including an expiry too early to have a measured latency baseline.
+
+## Disposition
+
+Designer-agent review approved the corrected diff, subject to the required gates. Public screenshots are stored under `C:/Users/latch/bin/codex-tasks/cdn-3-shots/`. The new example shows expiry trouble within its first ten seconds and offers a same-seed comparison with unchanged expectation thresholds. The next ladder step remains PR 4.

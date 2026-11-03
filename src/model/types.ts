@@ -261,6 +261,7 @@ export const METRIC_FIELDS = [
   "hitRatio",
   "originOffload",
   "originFetches",
+  "itemFetches",
   "p95",
   "processed",
   "backlog",

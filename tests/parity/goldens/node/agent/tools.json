@@ -114,7 +114,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -143,7 +144,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -1701,7 +1703,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -1730,7 +1733,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -3113,7 +3117,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -3142,7 +3147,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -4700,7 +4706,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -4729,7 +4736,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -6108,7 +6116,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -6137,7 +6146,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -7695,7 +7705,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -7724,7 +7735,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -9274,7 +9286,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -9303,7 +9316,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -10861,7 +10875,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -10890,7 +10905,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -12290,7 +12306,7 @@
               "properties": {
                 "label": { "type": "string" },
                 "node": { "$ref": "#/$defs/Ref", "description": "Omit with metric 'inSystem'." },
-                "metric": { "type": "string", "enum": ["hitRatio", "originOffload", "originFetches", "p95", "processed", "backlog", "inFlight", "failed", "timedOut", "retried", "shortCircuited", "shed", "amplification", "goodput", "threadsBusy", "threadsWaiting", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
+                "metric": { "type": "string", "enum": ["hitRatio", "originOffload", "originFetches", "itemFetches", "p95", "processed", "backlog", "inFlight", "failed", "timedOut", "retried", "shortCircuited", "shed", "amplification", "goodput", "threadsBusy", "threadsWaiting", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
                 "op": { "type": "string", "enum": ["<", "<=", "==", ">=", ">"] },
                 "value": { "type": "number" },
                 "when": { "type": "string", "enum": ["always", "eventually", "end"], "default": "end" }
@@ -12385,7 +12401,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -12414,7 +12431,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -13972,7 +13990,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -14001,7 +14020,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -15379,7 +15399,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -15408,7 +15429,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -16966,7 +16988,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -16995,7 +17018,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -18369,7 +18393,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -18398,7 +18423,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }
@@ -19956,7 +19982,8 @@
                             "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                            "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                            "coalesce": { "type": "boolean" }
                           }
                         }
                       }
@@ -19985,7 +20012,8 @@
                       "ttlMs": { "type": "number", "minimum": 100, "maximum": 86400000 },
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
-                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] }
+                      "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
+                      "coalesce": { "type": "boolean" }
                     }
                   }
                 }

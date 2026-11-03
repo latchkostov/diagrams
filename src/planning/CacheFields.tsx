@@ -3,6 +3,7 @@ import type { EditorApi } from "../editor/types";
 import type { DiagramFile } from "../model/types";
 import { checkCache, type CachePolicy, type CacheRule, type CacheTable, type Popularity } from "../model/caching";
 import { newCacheRule } from "../model/cacheEdits";
+import { oneFetchPerItem } from "../sim/cachePresets";
 import { revisionAtLeast } from "../model/revisions";
 import { matchText } from "../model/routingAppearance";
 import { MatchEditor } from "./RoutingFields";
@@ -174,6 +175,18 @@ function CachePolicyFields({
               </p>
             </>
           )}
+          <ReadoutDisclosure title={t("cache.expires")} testId={`${id}-expires`}>
+            <label className="insp-check">
+              <input
+                type="checkbox"
+                data-testid={`${id}-coalesce`}
+                checked={!!p.coalesce}
+                onChange={(e) => set(e.currentTarget.checked ? oneFetchPerItem(p) : { ...p, coalesce: false })}
+              />
+              {t("cache.oneFetch")}
+            </label>
+            <p className="insp-note">{t("cache.coalesceHint")}</p>
+          </ReadoutDisclosure>
         </>
       )}
     </>

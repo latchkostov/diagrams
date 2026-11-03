@@ -1,0 +1,14 @@
+---
+title: "Shoppers #1 · 240 ms end to end · 3 copies"
+---
+sequenceDiagram
+  participant shoppers as Shoppers
+  participant cdn as Edge CDN
+  participant origin as Product API
+  participant db as Catalog DB
+  shoppers->>cdn: Shoppers (+0.00 s)
+  cdn->>origin: Shoppers (+0.03 s)
+  origin->>db: Shoppers (+0.14 s)
+  db-->>origin: reply (+0.17 s)
+  origin-->>cdn: reply (+0.17 s)
+  cdn-->>shoppers: reply (+0.22 s)

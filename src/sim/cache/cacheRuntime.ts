@@ -20,8 +20,18 @@ function windowBucket(cache: NodeCache, now: number): number {
   return (second % 10) * 4;
 }
 
-const zeroCounts: CacheCounts = Object.freeze({ requests: 0, hits: 0, misses: 0, notCached: 0, fetches: 0, fills: 0 });
+const zeroCounts: CacheCounts = Object.freeze({
+  requests: 0,
+  hits: 0,
+  misses: 0,
+  coalesced: 0,
+  notCached: 0,
+  fetches: 0,
+  fills: 0,
+});
 const counts = (): CacheCounts => ({ ...zeroCounts });
+// Keep the existing cumulative report shape when no requests were collapsed.
+const reportCounts = ({ coalesced, ...rest }: CacheCounts) => ({ ...rest, ...(coalesced ? { coalesced } : {}) });
 const initialRates = new Map<number, CacheRuleState["rate"]>();
 const initialFetches = new Map<number, CacheRuleState["fetchMs"]>();
 function initialRate(planned: number): CacheRuleState["rate"] {
@@ -63,10 +73,38 @@ function rate(rule: CacheRuleState, now: number, size: number): number {
   return ring.buckets.reduce((a, b) => a + b, 0) / Math.max(0.01, ring.planned > 0 ? span : Math.min(span, now / 1000));
 }
 export const cacheRuntime: CacheRuntime = {
+  reconfigure(cache, value) {
+    checkCache(value);
+    const table = value as CacheTable;
+    const next = [...table.rules, ...(table.default ? [{ id: "", match: undefined, policy: table.default }] : [])];
+    if (!cache.rules.some((r) => r.policy.coalesce) && !next.some((r) => r.policy.coalesce)) return false;
+    if (next.length !== cache.rules.length) return false;
+    for (let i = 0; i < next.length; i++) {
+      const before = cache.rules[i],
+        after = next[i];
+      const { types, ...address } = after.match ?? {};
+      const oldPolicy = before.policy,
+        newPolicy = after.policy;
+      if (
+        before.id !== after.id ||
+        oldPolicy.ttlMs !== newPolicy.ttlMs ||
+        oldPolicy.noStore !== newPolicy.noStore ||
+        oldPolicy.keys !== newPolicy.keys ||
+        oldPolicy.popularity !== newPolicy.popularity ||
+        JSON.stringify(before.match) !== JSON.stringify(after.match ? compileMatch(address) : undefined) ||
+        JSON.stringify(before.types) !== JSON.stringify(types)
+      )
+        return false;
+    }
+    // Keep the same rule identities: in-flight fills and parked waiters still own them.
+    for (let i = 0; i < next.length; i++) cache.rules[i].policy = next[i].policy;
+    return true;
+  },
   compile(value, node, seed, scale, remaining, rates) {
     checkCache(value);
     const table = value as CacheTable;
     const cache: NodeCache = {
+      herdThreshold: Math.max(20, 4 * scale),
       expected: 0,
       counts: counts(),
       rules: [...table.rules, ...(table.default ? [{ id: "", match: undefined, policy: table.default }] : [])].map(
@@ -192,7 +230,18 @@ export const cacheRuntime: CacheRuntime = {
     const bucket = windowBucket(cache, now ?? lookup.at);
     cache.window!.buckets[bucket + 3] += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
-    if (lookup.rule && lookup.item >= 0) lookup.rule.fetching[lookup.item] += size;
+    if (lookup.rule && lookup.item >= 0) {
+      const fetches = (lookup.rule.fetching[lookup.item] += size);
+      if (fetches > (cache.peakHerd?.fetches ?? 0))
+        cache.peakHerd = { rule: lookup.rule.id, item: lookup.item + 1, fetches, edge: lookup.origin };
+      if (fetches >= cache.herdThreshold && fetches - size < cache.herdThreshold) {
+        (cache.herds ??= new Map()).set(`${lookup.rule.id}:${lookup.item}`, {
+          expiredAt: lookup.freshUntil ?? lookup.at,
+          edge: lookup.origin,
+        });
+        return fetches;
+      }
+    }
   },
   settle(cache, lookup, now, size, ok) {
     if (!lookup.fetching) return;
@@ -200,6 +249,7 @@ export const cacheRuntime: CacheRuntime = {
     const rule = lookup.rule;
     if (!rule) return;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
+    if (lookup.item >= 0 && !rule.fetching[lookup.item]) cache.herds?.delete(`${rule.id}:${lookup.item}`);
     if (!ok || lookup.outcome !== "miss") return;
     if (Object.isFrozen(rule.fetchMs)) rule.fetchMs = { ...rule.fetchMs, samples: rule.fetchMs.samples.slice() };
     const mean = rule.fetchMs,
@@ -219,13 +269,18 @@ export const cacheRuntime: CacheRuntime = {
   },
   read(cache) {
     const c = cache.counts,
-      cacheable = c.hits + c.misses;
+      cacheable = c.hits + c.misses + c.coalesced;
     return {
-      ...c,
+      ...reportCounts(c),
       hitRatio: cacheable ? c.hits / cacheable : 0,
       originOffload: c.requests ? 1 - c.fetches / c.requests : 0,
-      rules: Object.fromEntries(cache.rules.map((r) => [r.id, { ...r.counts }])),
+      rules: Object.fromEntries(cache.rules.map((r) => [r.id, reportCounts(r.counts)])),
     };
+  },
+  itemFetches(cache) {
+    let most = 0;
+    for (const rule of cache.rules) for (const fetching of rule.fetching) most = Math.max(most, fetching);
+    return most;
   },
   details(cache, now) {
     const totals = [0, 0, 0, 0];
@@ -235,8 +290,30 @@ export const cacheRuntime: CacheRuntime = {
         for (let i = 0; i < 4; i++) totals[i] += cache.window.buckets[(s % 10) * 4 + i];
     }
     const latency = cache.latency && latencyMetrics(cache.latency);
+    let herd: import("./cacheState").CacheDetails["herd"];
+    for (const rule of cache.rules) {
+      for (let item = 0; item < rule.tracked; item++) {
+        const fetches = rule.fetching[item];
+        const flight = cache.flights?.get(`${rule.id}:${item}`);
+        const waiting = flight?.cacheFlight?.waiting ?? 0;
+        const episode = cache.herds?.get(`${rule.id}:${item}`);
+        if (Math.max(fetches, waiting) > (herd ? Math.max(herd.fetches, herd.waiting) : 0))
+          herd = {
+            rule: rule.id,
+            item: item + 1,
+            fetches,
+            waiting,
+            expiredAt: episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[item],
+            edge: episode?.edge ?? flight?.cache?.origin,
+          };
+      }
+    }
     return {
       expected: cache.expected,
+      herdThreshold: cache.herdThreshold,
+      itemFetches: cacheRuntime.itemFetches(cache),
+      ...(cache.peakHerd ? { peakHerd: cache.peakHerd } : {}),
+      ...(herd ? { herd } : {}),
       ...(cache.window
         ? {
             window: {

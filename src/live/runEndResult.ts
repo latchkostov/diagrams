@@ -44,6 +44,19 @@ function budgetRecoveryEvidence(state: LiveState, diagram: DiagramFile): BudgetR
 export function runEndResult(state: LiveState, diagram: DiagramFile): string | undefined {
   if (!state.run?.done) return;
   const effective = simulationEdges(diagram, state.running ?? undefined);
+  for (const node of effective.nodes) {
+    const peak = state.snapshot.nodes[node.id]?.cacheDetails?.peakHerd;
+    if (!peak || peak.fetches < Math.max(20, 4 * (state.snapshot.scale ?? 1))) continue;
+    const edge = effective.edges.find(
+      (e) => e.from === node.id && e.kind === "sync" && (!peak.edge || e.id === peak.edge),
+    );
+    const table = node.props?.cache as import("../model/caching").CacheTable | undefined;
+    return t("cache.stampedeLesson", {
+      rule: table?.rules.find((r) => r.id === peak.rule)?.label || peak.rule || t("cache.everythingElse"),
+      count: peak.fetches,
+      origin: effective.nodes.find((n) => n.id === edge?.to)?.label ?? t("cache.origin"),
+    });
+  }
   const resilience = effective.edges.find(
     (e) =>
       (e.props?.caller as EdgeSimProps["caller"])?.retry && (state.snapshot.edges[e.id]?.calls?.windowRetried ?? 0) > 0,

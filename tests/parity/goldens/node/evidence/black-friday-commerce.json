@@ -3,7 +3,8 @@
     "played": [
       { "id": "doors-open", "title": "Black Friday: doors open", "playedMs": 33210, "capped": false },
       { "id": "poison-deploy", "title": "A bad Loyalty deploy", "playedMs": 24270, "capped": false },
-      { "id": "partner-quota", "title": "The warehouse partner throttles", "playedMs": 32720, "capped": false }
+      { "id": "partner-quota", "title": "The warehouse partner throttles", "playedMs": 32720, "capped": false },
+      { "id": "doorbuster-stampede", "title": "The doorbuster stampede", "playedMs": 30000, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],
@@ -17,6 +18,6 @@
     "notChecked": { "retryStorm": 1 },
     "findings": [],
     "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms.",
-    "simulations": "Played 3 saved simulations (at most 60 s each)."
+    "simulations": "Played 4 saved simulations (at most 60 s each)."
   }
 }

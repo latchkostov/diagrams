@@ -12,7 +12,7 @@ import type { TroubleAction } from "./observedTrouble";
 
 export type ThreadFixAction = Extract<
   TroubleAction,
-  { kind: "free-thread" | "add-timeout" | "scale-threads" | "resilience" }
+  { kind: "free-thread" | "add-timeout" | "scale-threads" | "resilience" | "cache" }
 >;
 
 export interface ThreadFixContext {
@@ -33,7 +33,27 @@ export const applyThreadFix: ApplyThreadFix = ({ editor, controller, interaction
     editor.undo();
     interaction?.dispatch({ type: "callout.closed", hadFocus, undo: true });
   };
-  if (action.kind === "resilience") {
+  if (action.kind === "cache") {
+    const diagram = editor.getDiagram();
+    const state = controller.getState();
+    const saved = diagram.simulations?.find((s) => s.id === state.simulation?.id);
+    if (state.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved))) return;
+    if (saved) {
+      const next = {
+        ...saved,
+        setup: {
+          ...saved.setup,
+          props: {
+            ...saved.setup?.props,
+            [action.node]: { ...saved.setup?.props?.[action.node], cache: action.cache },
+          },
+        },
+      };
+      editor.updateMeta({ simulations: diagram.simulations!.map((s) => (s.id === saved.id ? next : s)) });
+      controller.setBase(next);
+    } else editor.setNodeProps(action.node, { cache: action.cache });
+    sayThreadFix(undo, label, saved?.title);
+  } else if (action.kind === "resilience") {
     const effective = effectiveCallerPolicy(editor, action.edge);
     if (!effective?.editable) return;
     if (action.queue) {

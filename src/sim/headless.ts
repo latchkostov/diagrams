@@ -98,7 +98,7 @@ function applyRecorded(run: SimulationRun): number {
  * after them is passed. `sample` runs once per simulated second of play, and where the run stopped at a pausing note,
  * whatever controls split the steps in between.
  */
-export function advanceHeadless(run: SimulationRun, horizon: number, sample?: () => void): void {
+export function advanceHeadless(run: SimulationRun, horizon: number, sample?: () => void, sampleEveryMs = 1000): void {
   const end = Math.ceil(horizon / SIM_TICK_MS) * SIM_TICK_MS;
   let from = run.state().time;
   for (let steps = 0; steps <= Math.ceil(end / SIM_TICK_MS) + 10000; steps++) {
@@ -109,7 +109,7 @@ export function advanceHeadless(run: SimulationRun, horizon: number, sample?: ()
       run.resume();
       continue;
     }
-    const target = Math.min(from + 1000, end);
+    const target = Math.min(from + sampleEveryMs, end);
     run.step(Math.min(target - state.time, next));
     const after = run.state();
     if (after.time <= state.time && !after.waiting) throw new WorkBudgetError("Headless replay did not advance");
