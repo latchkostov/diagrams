@@ -182,7 +182,9 @@ export const cacheRuntime: CacheRuntime = {
     // Sparse sampled misses need not refill once per TTL. Once pending fills
     // stop making progress on their expected clock (or fail), use only the TTL
     // of the last successful fill. New arrivals never extend either deadline.
-    const healthy = rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
+    // Without planned demand, isolated injections retain fill-bounded expiry.
+    const healthy =
+      rule.rate.planned > 0 && rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
     const available = healthy || now < Math.abs(rule.statisticalUntil);
     // Stratify statistical outcomes: the shared formula already includes item
     // expiry. Independent whole-dot draws can leave artificial gaps between

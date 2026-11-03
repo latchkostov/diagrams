@@ -1,6 +1,6 @@
 ## Cache agreement at coarse sampling scales (#431, round 2)
 
-Statistical cache freshness now uses the shared Expected formula while fills are healthy. Pending fills have a bounded progress clock; overdue or failed fills fall back to the last successful fill's TTL. Arrivals cannot extend either deadline. This removes a second expiry penalty when sampled misses are farther apart than a short TTL, while retaining the paused-origin and failed-fetch protections.
+Statistical cache freshness now uses the shared Expected formula for positive planned demand while fills are healthy. Unplanned injections keep fill-bounded expiry. Pending fills have a bounded progress clock; overdue or failed fills fall back to the last successful fill's TTL. Arrivals cannot extend either deadline. This removes a second expiry penalty when sampled misses are farther apart than a short TTL, while retaining the paused-origin and failed-fetch protections.
 
 The reviewer cases use one Even item, a 100 ms TTL and a 10 ms fetch. Over the steady 40–60 s window across seeds 1, 7, 17, 42 and 99:
 
