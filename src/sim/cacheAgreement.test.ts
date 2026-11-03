@@ -9,35 +9,42 @@ import { explanationSimulation } from "../planning/explanation";
 import type { Popularity } from "../model/caching";
 import { configuredPlanning } from "../planning/cache";
 import { startingCacheRates } from "./cache/cacheBridge";
+import { autoScale } from "./scale";
 
-const sweep: { scale: number; before: number; after: number }[] = [];
+const sweep: { mode: number | "auto"; scale: number; before: number; after: number }[] = [];
 afterAll(() =>
   console.info(
     "agreement sweep maxima",
     JSON.stringify(
-      [1, 10].map((scale) => ({
-        scale,
-        cases: sweep.filter((r) => r.scale === scale).length,
-        before: Math.max(...sweep.filter((r) => r.scale === scale).map((r) => r.before)),
-        after: Math.max(...sweep.filter((r) => r.scale === scale).map((r) => r.after)),
+      [1, 10, "auto"].map((mode) => ({
+        mode,
+        cases: sweep.filter((r) => r.mode === mode).length,
+        before: Math.max(...sweep.filter((r) => r.mode === mode).map((r) => r.before)),
+        after: Math.max(...sweep.filter((r) => r.mode === mode).map((r) => r.after)),
       })),
     ),
   ),
 );
 
+function agreementDiagram(keys: number, ttlMs: number, popularity: Popularity, rate: number, fetchMs: number) {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = rate;
+  d.nodes[2].props!.latencyMs = fetchMs - 10;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs, keys, popularity } };
+  return d;
+}
+
 export function agreement(
   seed: number,
-  scale: number,
+  scale: number | "auto",
   keys = 1000,
   ttlMs = 5000,
   popularity: Popularity = "typical",
   rate = 1000,
   fetchMs = 60,
 ) {
-  const d = cacheFixture();
-  d.nodes[0].props!.ratePerSec = rate;
-  d.nodes[2].props!.latencyMs = fetchMs - 10;
-  d.nodes[1].props!.cache = { rules: [], default: { ttlMs, keys, popularity } };
+  const d = agreementDiagram(keys, ttlMs, popularity, rate, fetchMs);
+  if (scale === "auto") scale = autoScale(explanationSimulation(d), d);
   const legacyExpected = analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))).cacheDemand!.cache[""]
     .hitRatio;
   const expected = analyzePlanningCapacity(d, explanationSimulation(d)).cacheDemand!.cache[""].hitRatio;
@@ -103,6 +110,33 @@ it.each([1, 10])("A1: short freshness intervals use the formula below tick resol
   );
 });
 
+it.each([1, 7, 17, 42, 99])(
+  "one-item agreement at scale 10 and at the automatically selected scale, seed %i",
+  (seed) => {
+    for (const scale of [10, "auto"] as const) {
+      const result = agreement(seed, scale, 1, 100, "even", 200, 10);
+      console.info("one-item agreement", JSON.stringify(result));
+      expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(0.03);
+    }
+  },
+);
+
+it.each(Array.from({ length: 20 }, (_, i) => i + 1))(
+  "automatic short-TTL scale preserves Expected/Live agreement (%i items)",
+  (keys) => {
+    for (const rate of [200, 2000]) {
+      const runs = [1, 7, 17, 42, 99].map((seed) => agreement(seed, "auto", keys, 100, "even", rate, 10));
+      const observed = runs.reduce((sum, r) => sum + r.observed, 0) / runs.length;
+      const error = Math.abs(observed - runs[0].expected);
+      console.info(
+        "automatic agreement",
+        JSON.stringify({ ...runs[0], observed, error, dotsPerSec: rate / runs[0].scale }),
+      );
+      expect(error, JSON.stringify({ runs, observed, error })).toBeLessThanOrEqual(runs[0].scale === 1 ? 0.02 : 0.03);
+    }
+  },
+);
+
 // Keep Nightly's full case count without putting every simulation under one test-runner timeout.
 it.each([0, 1, 2, 3, 4])("A1: random rule sizes and TTLs preserve steady-state agreement (batch %i)", (batch) => {
   fc.assert(
@@ -122,52 +156,50 @@ it.each([0, 1, 2, 3, 4])("A1: random rule sizes and TTLs preserve steady-state a
   );
 });
 
-// One property case per test retains Nightly coverage without accumulating
-// many simulations under one hang backstop. Never raise the runner timeout.
-it.each([0, 1, 2, 3, 4].flatMap((batch) => Array.from({ length: propertyRuns(1) }, (_, run) => ({ batch, run }))))(
-  "A1: item count, popularity, TTL, fetch time and rate sweep (batch $batch, case $run)",
-  ({ batch, run }) => {
-    let index = 0;
-    let shrinking = false;
-    fc.assert(
-      fc.property(
-        fc.constantFrom(20, 256, 1000, 20_000),
-        fc.constantFrom(100, 1000, 5000, 30_000),
-        fc.constantFrom<Popularity>("even", "gentle", "typical", "steep"),
-        fc.constantFrom(200, 1000, 2000),
-        fc.constantFrom(10, 60, 250, 1510),
-        fc.integer(),
-        (keys, ttl, popularity, rate, fetchMs, seed) => {
-          // Generate the original seeded sequence in every case, exercising only
-          // its assigned input. After a failure, exercise every shrink candidate.
-          if (index++ !== run && !shrinking) return;
-          try {
-            for (const scale of [1, 10]) {
-              // Keep each window at 20 s. At least five seeds and 10,000 observed
-              // dots give low-rate sampled traffic enough statistical power.
-              const seeds = Math.max(5, Math.ceil(10_000 / ((20 * rate) / scale)));
-              const runs = Array.from({ length: seeds }, (_, n) =>
-                agreement((seed + n) | 0, scale, keys, ttl, popularity, rate, fetchMs),
-              );
-              const requests = runs.reduce((sum, r) => sum + r.requests, 0);
-              const observed = runs.reduce((sum, r) => sum + r.observed * r.requests, 0) / requests;
-              const error = Math.abs(observed - runs[0].expected);
-              sweep.push({ scale, before: Math.abs(observed - runs[0].legacyExpected), after: error });
-              expect(error, JSON.stringify({ runs, observed, error })).toBeLessThanOrEqual(scale === 1 ? 0.02 : 0.03);
-            }
-          } catch (error) {
-            shrinking = true;
-            throw error;
-          }
+// Generate the same seeded case corpus for every scale. Run each observation
+// separately, then assert the original aggregate bound, without changing the
+// 40 s warm-up, 20 s measurement, minimum seeds or 10,000-dot sample floor.
+for (const batch of [0, 1, 2, 3, 4]) {
+  const cases = fc.sample(
+    fc.tuple(
+      fc.constantFrom(1, 2, 5, 10, 20, 256, 1000, 20_000),
+      fc.constantFrom(100, 1000, 5000, 30_000),
+      fc.constantFrom<Popularity>("even", "gentle", "typical", "steep"),
+      fc.constantFrom(200, 1000, 2000),
+      fc.constantFrom(10, 60, 250, 1510),
+      fc.integer(),
+    ),
+    {
+      numRuns: propertyRuns(1),
+      ...(fc.readConfigureGlobal().seed === undefined ? {} : { seed: (fc.readConfigureGlobal().seed! + batch) | 0 }),
+    },
+  );
+  for (const [run, [keys, ttl, popularity, rate, fetchMs, seed]] of cases.entries()) {
+    for (const mode of [1, 10, "auto"] as const) {
+      const d = agreementDiagram(keys, ttl, popularity, rate, fetchMs);
+      const scale = mode === "auto" ? autoScale(explanationSimulation(d), d) : mode;
+      const seeds = Math.max(5, Math.ceil(10_000 / ((20 * rate) / scale)));
+      const runs: ReturnType<typeof agreement>[] = [];
+      const label = `batch ${batch}, case ${run}, scale ${mode}`;
+      it.each(Array.from({ length: seeds }, (_, n) => (seed + n) | 0))(
+        `A1: item count, popularity, TTL, fetch time and rate sweep observation (${label}, seed %i)`,
+        (sampleSeed) => {
+          const result = agreement(sampleSeed, scale, keys, ttl, popularity, rate, fetchMs);
+          expect(Number.isFinite(result.observed), JSON.stringify(result)).toBe(true);
+          runs.push(result);
         },
-      ),
-      {
-        numRuns: propertyRuns(1),
-        ...(fc.readConfigureGlobal().seed === undefined ? {} : { seed: (fc.readConfigureGlobal().seed! + batch) | 0 }),
-      },
-    );
-  },
-);
+      );
+      it(`A1: item count, popularity, TTL, fetch time and rate sweep agreement (${label})`, () => {
+        expect(runs).toHaveLength(seeds);
+        const requests = runs.reduce((sum, r) => sum + r.requests, 0);
+        const observed = runs.reduce((sum, r) => sum + r.observed * r.requests, 0) / requests;
+        const error = Math.abs(observed - runs[0].expected);
+        sweep.push({ mode, scale, before: Math.abs(observed - runs[0].legacyExpected), after: error });
+        expect(error, JSON.stringify({ runs, observed, error })).toBeLessThanOrEqual(scale === 1 ? 0.02 : 0.03);
+      });
+    }
+  }
+}
 
 function routedOrigins() {
   const d = cacheFixture();

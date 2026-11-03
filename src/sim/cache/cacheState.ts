@@ -36,6 +36,8 @@ export interface CacheRuleState {
   tracked: number;
   statisticalUntil: number;
   statisticalCredit: number;
+  statisticalPending: number;
+  statisticalDue: number;
   freshUntil: Float64Array;
   fetching: Float64Array;
   rate: { buckets: Float64Array; second: number; planned: number };

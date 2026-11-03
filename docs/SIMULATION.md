@@ -11,6 +11,8 @@ Cache outcomes apply to whole awaited dots. At scale N, pass-through origin miss
 
 Untracked items use the same renewal formula as analysis with a measured request rate and fetch time. They show average misses rather than individual expiry herds. An item with a real herd can still be statistical at coarse scales. The statistical tail assumes steady random arrivals; cold warm-up is an approximation. During traffic changes its ten-second rate window lags. Analysis assumes Poisson arrivals, while Live uses regular arrivals with seeded item draws. Agreement is promised in steady state, not during ramps.
 
+Healthy statistical bands retain that formula between sampled fills, even when those fills are farther apart than a TTL. A pending fill starts a progress clock using the measured mean fetch duration (or the planned duration before measurements). Successful fills advance it; new arrivals cannot. If pending fills stop making progress by that clock, or a fill fails, hits are bounded by the last successful fill's TTL. This is a rule-wide approximation, not per-item expiry tracking; a successful fill can restore the statistical band while other fetches remain pending.
+
 Expiry and fills resolve on ten-millisecond ticks. All replicas share one cache; there are no per-location caches. Stores still accept unlimited parallel work, so an origin store's load appears as request rate rather than queueing pain. Coalescing, stale responses, purges and cache-aside are not enabled by cache core.
 
 Replicas multiply a service's available parallel slots; they do not multiply an API account's

@@ -111,6 +111,8 @@ export const cacheRuntime: CacheRuntime = {
             tracked,
             statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) : 0,
             statisticalCredit: drawStream(streamSeed(seed, node, `cache-credit:${rule.id}`)).value * scale,
+            statisticalPending: 0,
+            statisticalDue: 0,
             freshUntil,
             fetching: new Float64Array(tracked),
             rate: initialRate(planned),
@@ -176,7 +178,12 @@ export const cacheRuntime: CacheRuntime = {
       rule.warmSince === undefined
         ? steady
         : Math.min(steady, 1 - expNeg((itemRate * Math.max(0, now - rule.warmSince - mean)) / 1000));
-    const available = now < Math.abs(rule.statisticalUntil);
+    // Healthy statistical bands already include expiry in the shared formula.
+    // Sparse sampled misses need not refill once per TTL. Once pending fills
+    // stop making progress on their expected clock (or fail), use only the TTL
+    // of the last successful fill. New arrivals never extend either deadline.
+    const healthy = rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
+    const available = healthy || now < Math.abs(rule.statisticalUntil);
     // Stratify statistical outcomes: the shared formula already includes item
     // expiry. Independent whole-dot draws can leave artificial gaps between
     // successful fills at coarse scales and charge that expiry a second time.
@@ -189,8 +196,6 @@ export const cacheRuntime: CacheRuntime = {
         ? now < rule.freshUntil[item]
         : available && (stratified ? rule.statisticalCredit >= size : sample < share);
     if (item < 0 && stratified) rule.statisticalCredit = Math.min(size, rule.statisticalCredit - (hit ? size : 0));
-    // Only successful fills renew availability, including when an origin pauses
-    // indefinitely and its pending fetches never settle.
     add(hit ? "hits" : "misses");
     cache.window!.buckets[bucket + (hit ? 1 : 2)] += size;
     return {
@@ -210,12 +215,21 @@ export const cacheRuntime: CacheRuntime = {
     cache.window!.buckets[bucket + 3] += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
     if (lookup.rule && lookup.item >= 0) lookup.rule.fetching[lookup.item] += size;
+    if (lookup.rule && lookup.item < 0 && lookup.outcome === "miss") {
+      const rule = lookup.rule;
+      if (!rule.statisticalPending) {
+        const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
+        rule.statisticalDue = lookup.at + mean;
+      }
+      rule.statisticalPending++;
+    }
   },
   settle(cache, lookup, now, size, ok) {
     if (!lookup.fetching) return;
     lookup.fetching = undefined;
     const rule = lookup.rule;
     if (!rule) return;
+    if (lookup.item < 0 && lookup.outcome === "miss") rule.statisticalPending--;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
     if (!ok || lookup.outcome !== "miss") {
       if (!ok && lookup.item < 0 && lookup.outcome === "miss" && rule.statisticalUntil > 0)
@@ -230,8 +244,12 @@ export const cacheRuntime: CacheRuntime = {
     mean.samples[mean.cursor] = duration;
     mean.sum += duration;
     mean.cursor = (mean.cursor + 1) % mean.samples.length;
-    // Statistical freshness is approximate, but only successful replies can renew it.
-    if (lookup.item < 0) rule.statisticalUntil = now + rule.policy.ttlMs!;
+    // A successful reply is progress for the shared statistical band. Keep one
+    // bounded progress clock even when many sampled fetches remain in flight.
+    if (lookup.item < 0) {
+      rule.statisticalUntil = now + rule.policy.ttlMs!;
+      rule.statisticalDue = now + mean.sum / mean.count;
+    }
     // Replies belong to the expiry they observed. A duplicate from an older
     // fetch cycle must not refill again after the first fill has itself expired.
     if (lookup.item >= 0 && lookup.freshUntil === rule.freshUntil[lookup.item] && now >= rule.freshUntil[lookup.item]) {

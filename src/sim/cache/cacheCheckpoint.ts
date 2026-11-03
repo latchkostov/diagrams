@@ -6,6 +6,8 @@ type Config = Omit<
   | "stream"
   | "statisticalUntil"
   | "statisticalCredit"
+  | "statisticalPending"
+  | "statisticalDue"
   | "warmSince"
   | "counts"
   | "rate"
@@ -45,7 +47,14 @@ export class CacheCheckpoint {
     };
     const { id, match, address, types, policy, popularity, tracked } = rule;
     this.config = { id, match, address, types, policy, popularity, tracked };
-    values.push(rule.stream, rule.statisticalUntil, rule.statisticalCredit, rule.warmSince ?? -1);
+    values.push(
+      rule.stream,
+      rule.statisticalUntil,
+      rule.statisticalCredit,
+      rule.statisticalPending,
+      rule.statisticalDue,
+      rule.warmSince ?? -1,
+    );
     counts(rule.counts);
     values.push(rule.rate.second, rule.rate.planned);
     array(rule.rate.buckets);
@@ -124,12 +133,16 @@ export class CacheCheckpoint {
     const stream = next(),
       statisticalUntil = next(),
       statisticalCredit = next(),
+      statisticalPending = next(),
+      statisticalDue = next(),
       warmSince = next();
     return {
       ...this.config,
       stream,
       statisticalUntil,
       statisticalCredit,
+      statisticalPending,
+      statisticalDue,
       ...(warmSince < 0 ? {} : { warmSince }),
       counts: counts(),
       rate: { second: next(), planned: next(), buckets: array() },

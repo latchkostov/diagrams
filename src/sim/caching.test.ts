@@ -293,6 +293,34 @@ it("warm statistical hits expire after the last successful fill when the origin 
   expect(e.snapshot().nodes.cache.cache!.hits).toBe(hits);
 });
 
+it("coarse statistical fills stop making progress during a pause and replay their overdue clock", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 2000;
+  d.nodes[2].props!.latencyMs = 0;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 1, popularity: "even" } };
+  const e = createEngine({ seed: 7, scale: 50, maxParticles: 0 });
+  e.load(d, cacheRuntime.plan(d));
+  e.setTraffic(true);
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.hitRatio).toBeGreaterThan(0.87);
+  e.setNodeStatus("origin", "paused");
+  e.step(500);
+  const token = e.checkpoint();
+  const before = e.snapshot().nodes.cache.cache!;
+  const suffix = () => {
+    e.step(2000);
+    return e.snapshot();
+  };
+  const expected = suffix();
+  expect(expected.nodes.cache.cache!.hits).toBe(before.hits);
+  expect(expected.nodes.cache.cache!.fetches).toBeGreaterThan(before.fetches);
+  e.restore(token);
+  expect(suffix()).toEqual(expected);
+  e.setNodeStatus("origin", "up");
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBeGreaterThan(before.hits);
+});
+
 it("cold statistical cache never hits when every fetch fails", () => {
   const d = cacheFixture();
   d.nodes[2].stencil = "generic.service";
