@@ -91,6 +91,8 @@ export interface Delivery {
   original: Message;
 }
 export interface Work extends ExecutionWork<Group> {
+  /** Awaited response timing starts at this node's arrival, before local admission. */
+  responseAt?: number;
   cache?: import("../cache/cacheState").CacheLookup;
   /** Cache response latency includes local queue/service time before an origin fetch starts. */
   cacheAt?: number;
@@ -144,6 +146,8 @@ export interface Node {
   /** Last tick-loop admission phase completed by this node. */
   admittedAt?: number;
   latency?: LatencyRecorder;
+  /** Completed awaited requests, arrival to reply; metric-only on non-caching nodes. */
+  responseLatency?: LatencyRecorder;
   fleet?: Fleet;
   id: string;
   label: string;

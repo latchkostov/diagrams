@@ -2168,6 +2168,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function complete(node: Node, work: Work): void {
+    if (!node.cache && work.responseAt !== undefined)
+      recordLatency(
+        (node.responseLatency ??= createLatencyRecorder()),
+        undefined,
+        time - work.responseAt,
+        0,
+        0,
+        undefined,
+        undefined,
+        undefined,
+        dotsOf(work.message),
+      );
     if (node.cache && work.cache) {
       const recorder =
         node.cache.latency ??
@@ -2483,6 +2495,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function arrive(node: Node, work: Work): void {
+    if (waits() && work.via?.sync) work.responseAt ??= time;
     work.admissibleActive = node.activeMs;
     // Pushed requests (not broker deliveries) for request-rate scalers; real units.
     if (node.fleet && !work.delivery) node.fleet.arrivals += sizeOf(work.message);
@@ -3227,6 +3240,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     routeCounts = new Map();
     for (const node of nodes.values()) {
       node.latency = undefined;
+      node.responseLatency = undefined;
       node.streams = new Map();
       node.mixCredit.fill(0);
       node.mixDeficit.fill(0);
@@ -3535,7 +3549,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const node = nodes.get(metric.node);
       if (!node) return undefined;
       if (metric.field === "p95") {
-        const recorder = responseLatency(node);
+        const recorder =
+          node.cache || node.role === "source" ? responseLatency(node) : (node.responseLatency ?? node.latency);
         return recorder ? latencyMetrics(recorder).p95 : 0;
       }
       if (metric.field === "originFetches") return (node.cache?.counts.fetches ?? 0) / scale;
@@ -3962,6 +3977,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         sinceFault = Object.freeze({ atMs: time, fault: Object.freeze(structuredClone(fault)) });
         for (const node of nodes.values()) {
           node.latency = undefined;
+          node.responseLatency = undefined;
           if (node.cache) node.cache.latency = undefined;
         }
       }
