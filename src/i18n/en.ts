@@ -3125,6 +3125,7 @@ const en = {
   "autoscaling.scaleBusy": "Scale on busy threads",
   "autoscaling.planBusy":
     "In “{simulation}”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
+  "examples.cacheStampedeSummary": "One fetch per item",
   "cache.rules": "Cache rules",
   "cache.coalescingAction": "{mode, select, perRequest {Fetch per request} other {One fetch per item}}",
   "cache.herdEvent": "{node}: {count, plural, one {# fetch} other {# fetches}} in flight for one {rule} item",
@@ -3139,11 +3140,10 @@ const en = {
   "cache.stampedeDetail":
     "{node}'s {rule} item expired and {count, plural, one {# request went} other {# requests went}} to {origin} before the first reply.",
   "cache.itemMetric": "fetches in flight for one item",
-  "cache.waitingTrace": "Waiting for another request's fetch of the same item",
   "cache.stampedeLesson":
     "{rule} expiring sent {count, plural, one {# request} other {# requests}} to {origin} at once. One fetch per item sends 1.",
-  "cache.collapsedCount":
-    "{count, plural, one {# request shared another fetch} other {# requests shared another fetch}}",
+  "cache.coalesced":
+    "{mode, select, waiting {Waiting for another request's fetch of the same item} other {{count, plural, one {# request shared another fetch} other {# requests shared another fetch}}}}",
   "cache.rulesHint": "Checked after routing. A hit answers here; a miss goes to the origin and fills the cache.",
   "cache.addRules": "Add cache rules…",
   "cache.keepFor": "Keep for",

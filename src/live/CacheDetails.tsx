@@ -32,7 +32,7 @@ export function CacheDetails({
     <div data-testid="cache-readout">
       <p>{readout ? t("cache.summary", readout) : t("cache.noCacheable")}</p>
       {!!s.cache?.coalesced && (
-        <p data-testid="cache-coalesced">{t("cache.collapsedCount", { count: s.cache.coalesced })}</p>
+        <p data-testid="cache-coalesced">{t("cache.coalesced", { mode: "count", count: s.cache.coalesced })}</p>
       )}
       {w && (
         <p data-testid="cache-window-counts">

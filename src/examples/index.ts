@@ -113,6 +113,7 @@ const publicExamples: PublicExample[] = (
     {
       slug: "cache-stampede",
       theme: "reliability",
+      summary: msg("examples.cacheStampedeSummary"),
     },
     {
       slug: "retry-storm",

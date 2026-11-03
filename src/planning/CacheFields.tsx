@@ -379,9 +379,12 @@ export function CacheFields({
                         ? t("cache.expected", {
                             hit: Math.round(demand[rule.id].hitRatio * 100),
                             rate: formatNumber(demand[rule.id].rate, { maximumFractionDigits: 0 }),
-                            fetch: formatNumber(demand[rule.id].rate * (1 - demand[rule.id].hitRatio), {
-                              maximumFractionDigits: 0,
-                            }),
+                            fetch: formatNumber(
+                              demand[rule.id].rate * (demand[rule.id].fetchShare ?? 1 - demand[rule.id].hitRatio),
+                              demand[rule.id].fetchShare === undefined
+                                ? { maximumFractionDigits: 0 }
+                                : { maximumSignificantDigits: 2 },
+                            ),
                             origin: origin || t("cache.origin"),
                           })
                         : t("cache.noTraffic")}

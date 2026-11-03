@@ -3118,6 +3118,50 @@ exports[`public examples route cleanly (estimated card sizes) > branch-to-datace
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > cache-stampede.json 1`] = `
+[
+  {
+    "id": "requests",
+    "points": [
+      {
+        "x": 220,
+        "y": 196,
+      },
+      {
+        "x": 330,
+        "y": 196,
+      },
+    ],
+  },
+  {
+    "id": "fetch",
+    "points": [
+      {
+        "x": 550,
+        "y": 196,
+      },
+      {
+        "x": 660,
+        "y": 196,
+      },
+    ],
+  },
+  {
+    "id": "read",
+    "points": [
+      {
+        "x": 919,
+        "y": 196,
+      },
+      {
+        "x": 990,
+        "y": 196,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > cdc-analytics.json 1`] = `
 [
   {

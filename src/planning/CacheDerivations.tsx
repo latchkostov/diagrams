@@ -37,20 +37,24 @@ export function CacheDerivations({
                           count: r.policy.keys ?? 1000,
                           popularity: popularityLabel(r.policy.popularity ?? "typical"),
                           hit: Math.round(r.hitRatio * 100),
-                          fetch: number(r.rate * (1 - r.hitRatio)),
+                          fetch:
+                            r.fetchShare === undefined
+                              ? number(r.rate * (1 - r.hitRatio))
+                              : formatNumber(r.rate * r.fetchShare, { maximumSignificantDigits: 2 }),
                           origin: r.origin || t("cache.origin"),
                         })
                       : t("cache.noTraffic")}
                   </p>
                 ))}
-              {cache?.some((r) => r.rate > 0) && (
-                <p>
-                  {t("cache.coldDerivation", {
-                    origin: cache[0].origin || t("cache.origin"),
-                    rate: number(configured.analysis.nodes[node.id].offered),
-                  })}
-                </p>
-              )}
+              {cache?.some((r) => r.rate > 0) &&
+                !cache.some((r) => r.rate > 0 && r.policy.coalesce && !r.policy.noStore) && (
+                  <p>
+                    {t("cache.coldDerivation", {
+                      origin: cache[0].origin || t("cache.origin"),
+                      rate: number(configured.analysis.nodes[node.id].offered),
+                    })}
+                  </p>
+                )}
             </div>
           );
         })}

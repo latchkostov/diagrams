@@ -12,6 +12,8 @@ The final origin-menu review keeps the toggle inside the existing Simulation sub
 
 The production browser regression also caught the initial Live inspector hiding fields despite an explicit named-focus request. A fresh node panel now opens Edit properties for that request, as it already did for later requests. The test fails with the former behavior and passes with the fix; the designer approved this correction.
 
+The Expected readout and Inputs derivations keep the same fresh-hit percentage while showing the lower coalesced origin rate. Fractional fetch rates remain visible instead of rounding to zero. The cold-cache full-rate sentence appears only for independent misses, because coalescing also collapses cold cohorts. The example's start-card summary states its first fix. Waiting and cumulative coalesced copy share one ICU message without changing the rendered words.
+
 ## Disposition
 
 Designer-agent review approved the corrected diff, subject to the required gates. Public screenshots are stored under `C:/Users/latch/bin/codex-tasks/cdn-3-shots/`. The new example shows expiry trouble within its first ten seconds and offers a same-seed comparison with unchanged expectation thresholds. The next ladder step remains PR 4.
