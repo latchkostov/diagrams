@@ -11,6 +11,51 @@ import { analyzeCapacity } from "../capacity";
 import { latencyMetrics } from "../latency";
 import type { NodeCache } from "./cacheState";
 
+type ActiveItem = { rule: CacheRuleState; item: number; order: number };
+type Summary = { herd?: import("./cacheState").CacheDetails["herd"]; itemFetches: number };
+// Derived state never enters checkpoints. A restored cache builds its index once;
+// subsequent reads visit only active items, and share a summary until work changes.
+const summaries = new WeakMap<NodeCache, { active: Map<string, ActiveItem>; value?: Summary }>();
+function summaryState(cache: NodeCache) {
+  let state = summaries.get(cache);
+  if (!state) {
+    const active = new Map<string, ActiveItem>();
+    cache.rules.forEach((rule, order) => {
+      for (let item = 0; item < rule.tracked; item++)
+        if (rule.fetching[item]) active.set(`${rule.id}:${item}`, { rule, item, order });
+    });
+    state = { active };
+    summaries.set(cache, state);
+  }
+  return state;
+}
+function summary(cache: NodeCache): Summary {
+  const state = summaryState(cache);
+  if (state.value) return state.value;
+  let herd: Summary["herd"],
+    best: ActiveItem | undefined,
+    itemFetches = 0;
+  for (const active of state.active.values()) {
+    const { rule, item } = active;
+    const candidate = cacheRuntime.observeItem(cache, rule.id, item + 1)!;
+    itemFetches = Math.max(itemFetches, candidate.fetches);
+    // Independent-fetch trouble wins over a larger, harmless held-waiter herd.
+    const priority = (value: NonNullable<Summary["herd"]>) => (value.fetches >= cache.herdThreshold ? 1 : 0);
+    if (
+      !herd ||
+      priority(candidate) > priority(herd) ||
+      (priority(candidate) === priority(herd) &&
+        (Math.max(candidate.fetches, candidate.waiting) > Math.max(herd.fetches, herd.waiting) ||
+          (Math.max(candidate.fetches, candidate.waiting) === Math.max(herd.fetches, herd.waiting) &&
+            (active.order < best!.order || (active.order === best!.order && item < best!.item)))))
+    ) {
+      herd = candidate;
+      best = active;
+    }
+  }
+  return (state.value = { herd, itemFetches });
+}
+
 function windowBucket(cache: NodeCache, now: number): number {
   const second = Math.floor(now / 1000);
   const ring = (cache.window ??= { second, buckets: new Float64Array(40) });
@@ -232,6 +277,13 @@ export const cacheRuntime: CacheRuntime = {
     if (lookup.rule) lookup.rule.counts.fetches += size;
     if (lookup.rule && lookup.item >= 0) {
       const fetches = (lookup.rule.fetching[lookup.item] += size);
+      const state = summaryState(cache);
+      state.active.set(`${lookup.rule.id}:${lookup.item}`, {
+        rule: lookup.rule,
+        item: lookup.item,
+        order: cache.rules.indexOf(lookup.rule),
+      });
+      state.value = undefined;
       if (fetches > (cache.peakHerd?.fetches ?? 0))
         cache.peakHerd = { rule: lookup.rule.id, item: lookup.item + 1, fetches, edge: lookup.origin };
       if (fetches >= cache.herdThreshold && fetches - size < cache.herdThreshold) {
@@ -249,6 +301,11 @@ export const cacheRuntime: CacheRuntime = {
     const rule = lookup.rule;
     if (!rule) return;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
+    if (lookup.item >= 0) {
+      const state = summaryState(cache);
+      if (!rule.fetching[lookup.item]) state.active.delete(`${rule.id}:${lookup.item}`);
+      state.value = undefined;
+    }
     if (lookup.item >= 0 && !rule.fetching[lookup.item]) cache.herds?.delete(`${rule.id}:${lookup.item}`);
     if (!ok || lookup.outcome !== "miss") return;
     if (Object.isFrozen(rule.fetchMs)) rule.fetchMs = { ...rule.fetchMs, samples: rule.fetchMs.samples.slice() };
@@ -278,53 +335,53 @@ export const cacheRuntime: CacheRuntime = {
     };
   },
   itemFetches(cache) {
-    let most = 0;
-    for (const rule of cache.rules) for (const fetching of rule.fetching) most = Math.max(most, fetching);
-    return most;
+    return summary(cache).itemFetches;
+  },
+  invalidateSummary(cache) {
+    const state = summaries.get(cache);
+    if (state) state.value = undefined;
+  },
+  observeItem(cache, id, item) {
+    const rule = cache.rules.find((r) => r.id === id);
+    if (!rule || !Number.isInteger(item) || item < 1 || item > rule.tracked) return;
+    const index = item - 1,
+      key = `${id}:${index}`,
+      flight = cache.flights?.get(key),
+      episode = cache.herds?.get(key);
+    return {
+      rule: id,
+      item,
+      fetches: rule.fetching[index],
+      waiting: flight?.cacheFlight?.waiting ?? 0,
+      expiredAt: episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[index],
+      edge: episode?.edge ?? flight?.cache?.origin,
+    };
+  },
+  window(cache, now) {
+    if (!cache.window) return;
+    const totals = [0, 0, 0, 0];
+    const second = Math.floor(now / 1000);
+    for (let s = Math.max(0, second - 9); s <= cache.window.second; s++)
+      for (let i = 0; i < 4; i++) totals[i] += cache.window.buckets[(s % 10) * 4 + i];
+    return {
+      requests: totals[0],
+      hits: totals[1],
+      misses: totals[2],
+      fetches: totals[3],
+      seconds: Math.min(10, Math.max(0.01, now / 1000)),
+    };
   },
   details(cache, now) {
-    const totals = [0, 0, 0, 0];
-    if (cache.window) {
-      const second = Math.floor(now / 1000);
-      for (let s = Math.max(0, second - 9); s <= cache.window.second; s++)
-        for (let i = 0; i < 4; i++) totals[i] += cache.window.buckets[(s % 10) * 4 + i];
-    }
     const latency = cache.latency && latencyMetrics(cache.latency);
-    let herd: import("./cacheState").CacheDetails["herd"];
-    for (const rule of cache.rules) {
-      for (let item = 0; item < rule.tracked; item++) {
-        const fetches = rule.fetching[item];
-        const flight = cache.flights?.get(`${rule.id}:${item}`);
-        const waiting = flight?.cacheFlight?.waiting ?? 0;
-        const episode = cache.herds?.get(`${rule.id}:${item}`);
-        if (Math.max(fetches, waiting) > (herd ? Math.max(herd.fetches, herd.waiting) : 0))
-          herd = {
-            rule: rule.id,
-            item: item + 1,
-            fetches,
-            waiting,
-            expiredAt: episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[item],
-            edge: episode?.edge ?? flight?.cache?.origin,
-          };
-      }
-    }
+    const { herd, itemFetches } = summary(cache);
+    const window = cacheRuntime.window(cache, now);
     return {
       expected: cache.expected,
       herdThreshold: cache.herdThreshold,
-      itemFetches: cacheRuntime.itemFetches(cache),
+      itemFetches,
       ...(cache.peakHerd ? { peakHerd: cache.peakHerd } : {}),
-      ...(herd ? { herd } : {}),
-      ...(cache.window
-        ? {
-            window: {
-              requests: totals[0],
-              hits: totals[1],
-              misses: totals[2],
-              fetches: totals[3],
-              seconds: Math.min(10, Math.max(0.01, now / 1000)),
-            },
-          }
-        : {}),
+      ...(herd ? { herd: { ...herd } } : {}),
+      ...(window ? { window } : {}),
       ...(latency ? { latency: { total: latency, hit: latency.byType.hit, miss: latency.byType.miss } } : {}),
     };
   },

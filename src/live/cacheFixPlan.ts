@@ -107,10 +107,9 @@ export function confirmedCacheFix({
       horizon,
       () => {
         const s = realSnapshot(run.engine.snapshot()),
-          cache = s.nodes[node],
           target = s.nodes[origin];
-        const herd = cache?.cacheDetails?.herd;
-        const flight = herd?.rule === rule && herd.item === item ? herd.fetches : 0;
+        const herd = run.engine.observeCacheItem(node, rule, item);
+        const flight = herd?.fetches ?? 0;
         const p95 = Math.max(0, ...sources.map((source) => s.nodes[source.id]?.latency?.p95 ?? 0));
         if (s.time <= time && flight >= herdThreshold(s.scale) && previousFlight < herdThreshold(s.scale)) {
           out.preBacklog = lastBacklog;

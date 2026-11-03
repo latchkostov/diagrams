@@ -15,6 +15,7 @@ import { installThreadVerification, waitForThreadVerification } from "./thread-v
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
+import type { CacheTable } from "../../src/model/caching";
 
 async function originMenu(page: Page) {
   const at = await edgePoint(page, "fetch");
@@ -147,4 +148,35 @@ test("coalescing shows one real fetch with waiting shoppers during the herd", as
     mkdirSync(process.env.CDN_SHOTS, { recursive: true });
     await page.screenshot({ path: join(process.env.CDN_SHOTS, "coalesced-waiters.png") });
   }
+});
+
+test("the inspector reads the running One fetch per item policy and toggles only that simulation", async ({ page }) => {
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "cache-stampede",
+    diagram: stampede,
+  });
+  await gotoLive(page, "./?view=canvas&example=cache-stampede&live=1&paused=1&sim=one-fetch");
+  await waitForStableViewport(page);
+  const before = await savedDiagram(page);
+  const cache = before.simulations?.[1].setup?.props?.cdn.cache as CacheTable | undefined;
+  if (!cache) throw new Error("Expected the saved comparison's cache policy");
+  const expected = structuredClone(cache);
+  const launch = expected.rules.find((rule) => rule.id === "launch");
+  if (!launch) throw new Error("Expected the launch rule in the saved comparison");
+  launch.policy.coalesce = false;
+  await originMenu(page);
+  await page.getByTestId("context-menu-item-edge.cache-rules").click();
+  await expect(page.getByTestId("cache-add-rule")).toBeFocused();
+  await page.getByTestId("cache-rule-launch-expires-toggle").click();
+  const toggle = page.getByTestId("cache-rule-launch-coalesce");
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck();
+  await expect(toggle).not.toBeChecked();
+  await expect.poll(async () => (await savedDiagram(page)).simulations?.[1].setup?.props?.cdn.cache).toEqual(expected);
+  const after = await savedDiagram(page);
+  expect(after.nodes).toEqual(before.nodes);
+  expect(after.simulations?.[0]).toEqual(before.simulations?.[0]);
+  await page.getByTestId("node-cdn").focus();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(toggle).toBeChecked();
 });

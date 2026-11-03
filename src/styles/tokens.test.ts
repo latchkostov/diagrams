@@ -21,6 +21,17 @@ function themeTokens(block: string) {
 const light = css.split('[data-theme="dark"]')[0];
 const themes = [themeTokens(light), themeTokens(light + css.split('[data-theme="dark"]')[1])];
 
+it("keeps the herd pill's small warning text at AA in both themes", () => {
+  const live = readFileSync("src/styles/live.css", "utf8");
+  const ink = /\.lv-call-pill\.is-herd \{[^}]*color: var\(--([\w-]+)\)/.exec(live)![1];
+  const surface = /\.lv-call-pill \{[^}]*background: var\(--([\w-]+)\)/.exec(live)![1];
+  for (const tokens of themes) {
+    const a = luminance(tokens[ink]),
+      b = luminance(tokens[surface]);
+    expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 it("keeps populated low-zoom failure pills at AA in both themes", () => {
   const style = readFileSync("src/styles/canvas/chips.css", "utf8");
   const block = /\.chip-trouble\[data-failing\] \{([^}]+)\}/.exec(style)![1];

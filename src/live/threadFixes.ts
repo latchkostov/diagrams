@@ -1,5 +1,7 @@
 import { t } from "../i18n";
 import { effectiveCallerPolicy } from "../editor/callerPolicy";
+import { nodeCachePolicy } from "../editor/cachePolicy";
+import { planningHost } from "./planningHost";
 import { notify } from "../interop/ui/toast";
 import type { EditorApi } from "../editor/types";
 import type { InteractionController } from "../canvas/interaction/controller";
@@ -34,25 +36,12 @@ export const applyThreadFix: ApplyThreadFix = ({ editor, controller, interaction
     interaction?.dispatch({ type: "callout.closed", hadFocus, undo: true });
   };
   if (action.kind === "cache") {
-    const diagram = editor.getDiagram();
-    const state = controller.getState();
-    const saved = diagram.simulations?.find((s) => s.id === state.simulation?.id);
-    if (state.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved))) return;
-    if (saved) {
-      const next = {
-        ...saved,
-        setup: {
-          ...saved.setup,
-          props: {
-            ...saved.setup?.props,
-            [action.node]: { ...saved.setup?.props?.[action.node], cache: action.cache },
-          },
-        },
-      };
-      editor.updateMeta({ simulations: diagram.simulations!.map((s) => (s.id === saved.id ? next : s)) });
-      controller.setBase(next);
-    } else editor.setNodeProps(action.node, { cache: action.cache });
-    sayThreadFix(undo, label, saved?.title);
+    const policy = nodeCachePolicy(editor, action.node, {
+      controller,
+      slowmo: planningHost.get()?.slowmo ?? { active: false },
+    });
+    if (!policy?.set(action.cache)) return;
+    sayThreadFix(undo, label, policy.simulation);
   } else if (action.kind === "resilience") {
     const effective = effectiveCallerPolicy(editor, action.edge);
     if (!effective?.editable) return;

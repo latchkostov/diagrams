@@ -4,15 +4,58 @@ import { planningHost } from "../live/planningHost";
 import { cacheEnabled, type CacheTable } from "../model/caching";
 import { stencilRole } from "../stencils/roles";
 import type { RouteTable } from "../model/requestRouting";
+import type { DiagramFile } from "../model/types";
+
+type CachePolicyLive = {
+  controller: Pick<LiveUi["controller"], "getState" | "setBase">;
+  slowmo: Pick<LiveUi["slowmo"], "active">;
+};
+
+/** One owner and writer for the inspector, origin menu and verified fix. */
+export function nodeCachePolicy(
+  editor: Pick<EditorApi, "getDiagram" | "setNodeProps" | "updateMeta">,
+  nodeId: string,
+  live: CachePolicyLive | null = planningHost.get(),
+  rendered?: DiagramFile,
+) {
+  const d = rendered ?? editor.getDiagram(),
+    node = d.nodes.find((n) => n.id === nodeId);
+  if (!node) return;
+  const state = live?.controller.getState(),
+    props = state?.configuration[nodeId],
+    table = (props ? props.cache : node.props?.cache) as CacheTable | undefined;
+  if (!table) return;
+  const saved = d.simulations?.find((s) => s.id === state?.simulation?.id);
+  const draft = !!state?.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved));
+  const editable = !live?.slowmo.active && !draft;
+  return {
+    node: nodeId,
+    table,
+    editable,
+    simulation: saved?.title,
+    set(cache: CacheTable, options?: EditOptions) {
+      if (!editable || JSON.stringify(cache) === JSON.stringify(table)) return false;
+      if (saved) {
+        const next = {
+          ...saved,
+          setup: {
+            ...saved.setup,
+            props: { ...saved.setup?.props, [nodeId]: { ...saved.setup?.props?.[nodeId], cache } },
+          },
+        };
+        editor.updateMeta({ simulations: d.simulations!.map((s) => (s.id === saved.id ? next : s)) }, options);
+        live?.controller.setBase(next);
+      } else editor.setNodeProps(nodeId, { cache }, options);
+      return true;
+    },
+  };
+}
 
 /** The node policy the current origin connection actually uses, with the same saved-run ownership as callers. */
 export function effectiveCachePolicy(
   editor: Pick<EditorApi, "getDiagram" | "setNodeProps" | "updateMeta">,
   edgeId: string,
-  live: {
-    controller: Pick<LiveUi["controller"], "getState" | "setBase">;
-    slowmo: Pick<LiveUi["slowmo"], "active">;
-  } | null = planningHost.get(),
+  live: CachePolicyLive | null = planningHost.get(),
 ) {
   const d = editor.getDiagram(),
     edge = d.edges.find((e) => e.id === edgeId);
@@ -37,31 +80,13 @@ export function effectiveCachePolicy(
     // remains available; never present a node-wide policy edit as a change to an unrelated edge.
     if (targets.size !== 1 || !targets.has(edgeId)) return;
   }
-  const saved = d.simulations?.find((s) => s.id === state?.simulation?.id);
-  const draft = !!state?.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved));
-  const editable = !live?.slowmo.active && !draft;
+  const policy = nodeCachePolicy(editor, node.id, live, d)!;
   const storing = [
     ...table.rules.filter((r) => !r.policy.noStore),
     ...(table.default && !table.default.noStore ? [{ id: "", policy: table.default }] : []),
   ];
   return {
-    node: node.id,
-    table,
+    ...policy,
     storing,
-    editable,
-    set(cache: CacheTable, options?: EditOptions) {
-      if (!editable || JSON.stringify(cache) === JSON.stringify(table)) return;
-      if (saved) {
-        const next = {
-          ...saved,
-          setup: {
-            ...saved.setup,
-            props: { ...saved.setup?.props, [node.id]: { ...saved.setup?.props?.[node.id], cache } },
-          },
-        };
-        editor.updateMeta({ simulations: d.simulations!.map((s) => (s.id === saved.id ? next : s)) }, options);
-        live?.controller.setBase(next);
-      } else editor.setNodeProps(node.id, { cache }, options);
-    },
   };
 }

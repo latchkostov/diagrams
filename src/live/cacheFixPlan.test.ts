@@ -67,6 +67,34 @@ it("requires two observed expiries and every recovery band, not one lucky sample
   expect(cacheRecovers({ ...before, herd: false }, after)).toBe(false);
 });
 
+it("verifies the requested item independently of another overlapping item's display summary", () => {
+  const create = headless.createHeadlessRun;
+  const spy = vi.spyOn(headless, "createHeadlessRun").mockImplementation((...args) => {
+    const run = create(...args);
+    const snapshot = run.engine.snapshot;
+    run.engine.snapshot = () => {
+      const s = snapshot();
+      const details = s.nodes.cdn.cacheDetails;
+      if (details?.herd) details.herd = { ...details.herd, rule: "products", item: 2 };
+      return s;
+    };
+    return run;
+  });
+  try {
+    const proven = vi.fn();
+    expect(confirmedCacheFix({ context: context(), node: "cdn", rule: "launch", time: 6000, proven })).toMatchObject({
+      kind: "cache",
+      rule: "launch",
+      step: "coalesce",
+    });
+    expect(proven).toHaveBeenCalledOnce();
+    expect(proven.mock.calls[0][1]).toMatchObject({ maxFetches: 1 });
+    expect(proven.mock.calls[0][1].expiries).toBeGreaterThanOrEqual(2);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
 it("offers no unconfirmed fix for refused, incomplete, over-budget or too-short replays", () => {
   const c = context();
   expect(

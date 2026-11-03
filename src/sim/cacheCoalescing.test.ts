@@ -170,19 +170,53 @@ it("replacing rules during a fetch preserves its old ownership and drains its wa
   expect(e.snapshot().inSystem).toBe(0);
 });
 
-it("a policy edit during a herd keeps its existing fetch, waiters and contents", () => {
+function toggleDuringWork(coalesce: boolean) {
   const d = fixture();
+  const table: CacheTable = {
+    rules: [
+      { id: "hot", match: { types: ["Hot"] }, policy: { ttlMs: 1000, keys: 1, coalesce } },
+      { id: "warm", match: { types: ["Warm"] }, policy: { ttlMs: 5000, keys: 1 } },
+    ],
+  };
+  d.nodes[1].props!.cache = table;
   const e = createEngine({ seed: 7, maxParticles: 0 });
   e.load(d);
-  e.inject("source", 30);
+  e.inject("source", 1, { type: "Warm" });
+  e.step(200);
+  expect(e.snapshot().nodes.cache.cache!.fills).toBe(1);
+  e.inject("source", 30, { type: "Hot" });
   e.step(10);
-  e.setNodeProps("cache", { cache: structuredClone(d.nodes[1].props!.cache) as CacheTable });
-  e.inject("source", 30);
+  const before = e.snapshot().nodes.cache;
+  expect(e.observeCacheItem("cache", "hot", 1)).toMatchObject({
+    fetches: coalesce ? 1 : 30,
+    waiting: coalesce ? 30 : 0,
+  });
+  const next = structuredClone(table);
+  next.rules[0].policy.coalesce = !coalesce;
+  e.setNodeProps("cache", { cache: next });
+  expect(e.snapshot().nodes.cache.cache).toEqual(before.cache);
+  expect(e.observeCacheItem("cache", "hot", 1)).toMatchObject({
+    fetches: coalesce ? 1 : 30,
+    waiting: coalesce ? 30 : 0,
+  });
+  e.inject("source", 1, { type: "Warm" });
+  e.inject("source", 30, { type: "Hot" });
   e.step(10);
-  expect(e.snapshot().edges.fetch.calls!.inFlight).toBe(1);
-  expect(e.snapshot().nodes.cache.cache!.fetches).toBe(1);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBe(before.cache!.hits + 1);
+  expect(e.observeCacheItem("cache", "hot", 1)).toMatchObject({ fetches: 31, waiting: 30 });
+  expect(e.snapshot().nodes.cache.cache!.fetches).toBe(32);
   e.step(1000);
-  expect(e.snapshot().nodes.cache.cache!.coalesced).toBe(59);
-  expect(e.snapshot().nodes.cache.processed).toBe(60);
+  expect(e.snapshot().nodes.cache.cache).toMatchObject({ requests: 62, fetches: 32, coalesced: 29, hits: 1, fills: 2 });
+  expect(e.snapshot().nodes.source.processed).toBe(62);
+  expect(e.snapshot().nodes.source.failed).toBe(0);
+  expect(e.observeCacheItem("cache", "hot", 1)).toMatchObject({ fetches: 0, waiting: 0 });
   expect(e.snapshot().inSystem).toBe(0);
+}
+
+it("enabling coalescing preserves outstanding independent fetches and warm contents", () => {
+  toggleDuringWork(false);
+});
+
+it("disabling coalescing preserves the current flight and its waiters", () => {
+  toggleDuringWork(true);
 });

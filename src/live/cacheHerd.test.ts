@@ -66,3 +66,27 @@ it("an unrelated source's slowdown cannot turn a harmless herd into cache troubl
   expect(watcher.observe(frame(1000, 100, 500), d).some((t) => t.kind === "cache-stampede")).toBe(false);
   expect(watcher.observe(frame(2000, 500, 500), d)[0]?.kind).toBe("cache-stampede");
 });
+
+it("a coalesced item's larger waiter herd cannot hide another item's independent-fetch stampede", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = {
+    rules: [
+      { id: "held", match: { types: ["Held"] }, policy: { ttlMs: 1000, keys: 1, coalesce: true } },
+      { id: "independent", match: { types: ["Independent"] }, policy: { ttlMs: 1000, keys: 1 } },
+    ],
+  };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { latencyMs: 2000, concurrency: 1, jitter: 0 };
+  const e = createEngine({ maxParticles: 0 });
+  e.load(d);
+  const watcher = new TroubleWatcher();
+  watcher.observe(e.snapshot(), d);
+  e.inject("source", 200, { type: "Held" });
+  e.inject("source", 50, { type: "Independent" });
+  e.step(1010);
+  const s = e.snapshot();
+  expect(e.observeCacheItem("cache", "held", 1)).toMatchObject({ fetches: 1, waiting: 200 });
+  expect(s.nodes.cache.cacheDetails?.herd).toMatchObject({ rule: "independent", fetches: 50 });
+  expect(cacheReadout(s.nodes.cache)?.stampede).toBe(true);
+  expect(watcher.observe(s, d)[0]).toMatchObject({ kind: "cache-stampede", action: { rule: "independent" } });
+});

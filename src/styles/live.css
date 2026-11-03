@@ -2726,7 +2726,7 @@ details[open] > summary .lv-disclosure-chevron {
   color: var(--danger);
 }
 .lv-call-pill.is-herd {
-  color: var(--warning);
+  color: var(--warning-ink);
 }
 [data-theme="light"] {
   --hover-danger-ink: #b82330;
