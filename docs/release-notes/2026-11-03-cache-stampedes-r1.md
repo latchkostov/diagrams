@@ -20,7 +20,7 @@ expectation bands, checkpoint bound and bundle limits stay fixed.
 
 ## Verification
 
-All 55 focused unit regressions pass. Eight deliberate mutations covering the seven
+All 56 focused unit regressions pass. Eight deliberate mutations covering the seven
 findings fail their assertions before the fixes are restored. Output parity compares
 3,342 goldens with zero changed, added, missing or stale records.
 
@@ -28,3 +28,7 @@ The production parity build keeps the cache runtime lazy at 3,293 B gzip. Live's
 download beyond the canvas is 127,153 B: 7,847 B of headroom against its 135,000 B budget
 and 1,703 B beyond the existing reserve. Checkpoints during the herd charge 95,240 B at
 scale 1 and 95,243 B at scales 10 and 50, below the unchanged 130 KiB bound.
+
+The Linux repetitions also exposed a controlled Undo update arriving before the editor's
+imperative revision counter. The ownership snapshot follows the changed controlled
+reader immediately, preserving restored rules and the running checkbox value.

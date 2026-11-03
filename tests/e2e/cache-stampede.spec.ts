@@ -176,7 +176,10 @@ test("the inspector reads the running One fetch per item policy and toggles only
   const after = await savedDiagram(page);
   expect(after.nodes).toEqual(before.nodes);
   expect(after.simulations?.[0]).toEqual(before.simulations?.[0]);
-  await page.getByTestId("node-cdn").focus();
-  await page.keyboard.press("ControlOrMeta+z");
+  const undo = page.getByTestId("undo-button");
+  await expect(undo).toBeEnabled();
+  await undo.focus();
+  await expect(undo).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(toggle).toBeChecked();
 });

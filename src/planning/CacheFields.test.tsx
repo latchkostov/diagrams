@@ -96,3 +96,36 @@ it("reuses the ownership snapshot above the analysis limit until the document ch
     await act(async () => root.unmount());
   }
 });
+
+it("takes a controlled Undo snapshot before the imperative document version catches up", async () => {
+  const diagram = cacheFixture();
+  const table: CacheTable = { rules: [{ id: "first", match: { types: ["First"] }, policy: { ttlMs: 1000, keys: 1 } }] };
+  diagram.nodes[1].props!.cache = table;
+  const version = { identity: {}, revision: 0 };
+  const editor = { getDiagram: () => diagram, getDocumentVersion: () => version };
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  const render = (doc: typeof diagram) =>
+    root.render(
+      <CacheFields
+        editor={editor as unknown as EditorApi}
+        nodeId="cache"
+        props={doc.nodes[1].props!}
+        readDiagram={() => doc}
+        counts={{ nodes: 3, edges: 2 }}
+      />,
+    );
+  try {
+    await act(async () => render(diagram));
+    const restored = structuredClone(diagram);
+    (restored.nodes[1].props!.cache as CacheTable).rules.push({
+      id: "second",
+      match: { types: ["Second"] },
+      policy: { ttlMs: 1000, keys: 1 },
+    });
+    await act(async () => render(restored));
+    expect(host.querySelector('[data-testid="cache-rule-second"]')).not.toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
