@@ -24,9 +24,9 @@ All 58 focused unit regressions pass. Nine deliberate mutations covering the sev
 findings fail their assertions before the fixes are restored. Output parity compares
 3,342 goldens with zero changed, added, missing or stale records.
 
-The production parity build keeps the cache runtime lazy at 3,293 B gzip. Live's static
-download beyond the canvas is 127,153 B: 7,847 B of headroom against its 135,000 B budget
-and 1,703 B beyond the existing reserve. Checkpoints during the herd charge 95,240 B at
+The final production parity build keeps the cache runtime lazy at 3,297 B gzip. Live's static
+download beyond the canvas is 127,162 B: 7,838 B of headroom against its 135,000 B budget
+and 1,694 B beyond the existing reserve. Checkpoints during the herd charge 95,240 B at
 scale 1 and 95,243 B at scales 10 and 50, below the unchanged 130 KiB bound.
 
 The Linux repetitions also exposed a controlled Undo update arriving before the editor's
@@ -34,3 +34,12 @@ imperative revision counter. The ownership snapshot follows the changed controll
 reader immediately, preserving restored rules and the running checkbox value.
 Above the analysis size limit, ownership uses the inspector's existing node and saved-run
 metadata without copying the graph, including when the document changes.
+
+The final Linux repeats pass all 378 affected browser tests without failures or flakes.
+The exact requested property sweep passes all 48 runs. The full gate passes 16,116 unit
+and heavy tests, build, size, skill, locale and parity checks; its browser tier passes
+3,394 tests with one subpath discovery failure and 11 skips. The discovery module's
+request remained pending while the dialog showed Loading. The unchanged subpath spec
+then passes both repeats on clean origin/master and on this branch (14 tests each),
+so it is not classified as a confirmed pre-existing failure. The evidence and unresolved
+follow-up are recorded in the dated subpath discovery backlog fragment.
