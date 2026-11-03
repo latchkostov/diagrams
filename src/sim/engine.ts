@@ -3398,6 +3398,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       scale,
       capacityMultiplier,
       sinceFault,
+      classifies,
     ],
     (copy, clock, repair) => {
       partBudget = copy[1];
@@ -3449,6 +3450,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         scale,
         capacityMultiplier,
         sinceFault,
+        classifies,
       ] = clock;
       randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
       configuration = undefined;

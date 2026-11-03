@@ -10,6 +10,52 @@ import { recoveryWorkMs } from "../test/resilienceRecovery";
 import { autoScale } from "./scale";
 import { expNeg } from "./cache/cacheMath";
 import { popularityTable } from "./cache/popularity";
+import { createSimulationRun } from "./simulation";
+
+it("replays prefix reply particles after rewinding timeline cache activation", () => {
+  const d = cacheFixture();
+  d.nodes[1].stencil = "generic.cache";
+  const cache = d.nodes[1].props!.cache;
+  delete d.nodes[1].props!.cache;
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { latencyMs: 10, jitter: 0, concurrency: 100, failureRate: 1 };
+  // The direct caller fails in the prefix, while the store's policy stays dormant.
+  d.edges[0].to = "origin";
+  d.edges[1].props!.caller = {
+    retry: { maxAttempts: 3, backoffMs: 10, strategy: "fixed", retryOn: ["transient"] },
+    breaker: { minimumCalls: 2, openMs: 10_000 },
+  };
+  const run = createSimulationRun(d, {
+    id: "rewind",
+    title: "Rewind activation",
+    seed: 7,
+    durationMs: 1000,
+    traffic: [{ id: "load", node: "source", shape: { kind: "constant", ratePerSec: 200, durationMs: 1000 } }],
+    timeline: [{ atMs: 500, action: { do: "props", node: "cache", props: { cache } } }],
+  });
+  run.step(100);
+  const token = run.checkpoint();
+  const prefix = () =>
+    Array.from({ length: 20 }, () => {
+      run.step(10);
+      return run.engine.snapshot();
+    });
+  const expected = prefix();
+  const replies = expected.flatMap((s) => s.particles.filter((p) => p.kind === "reply"));
+  expect(replies.length).toBeGreaterThan(0);
+  expect(replies.every((p) => p.code === undefined)).toBe(true);
+  run.step(300);
+  expect(run.engine.snapshot().nodes.cache.cache).toBeDefined();
+  expect(run.engine.snapshot().edges.fetch.breaker).toBeDefined();
+  expect(run.engine.snapshot().particles.some((p) => p.kind === "reply" && p.code === 500)).toBe(true);
+  for (let repeat = 0; repeat < 2; repeat++) {
+    run.restore(token);
+    expect(run.engine.snapshot().nodes.cache.cache).toBeUndefined();
+    expect(run.engine.snapshot().edges.fetch.breaker).toBeUndefined();
+    expect(prefix()).toEqual(expected);
+    run.step(300);
+  }
+});
 
 it.each(["generic.cdn", "generic.cache"])("%s answers hits and forwards misses", (stencil) => {
   const d = cacheFixture();

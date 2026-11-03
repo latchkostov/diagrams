@@ -8,6 +8,7 @@ import type { createCpuPartBudget } from "../resourceWork";
 import { shareLatencyRecorder, type createLatencyBudget } from "../latency";
 import type { EngineCheckpoint, LatencyMetrics, RouteCounts, SimEvent } from "../types";
 import type { Node, Edge, Trip, EchoExpiry, Logical, Call, Message, Injection } from "./model";
+import { CacheCheckpoint } from "../cache/cacheCheckpoint";
 
 /** Named slots keep internal graph keys out of shipped code. One clone preserves all aliases.
  * Slots and object fields have identical byte charges; the oracle slot stays absent in production.
@@ -59,6 +60,7 @@ export type CheckpointClock = readonly [
   scale: number,
   capacityMultiplier: number,
   sinceFault: LatencyMetrics["sinceFault"],
+  classifies: boolean,
 ];
 
 /** Data-only engine graphs: count while copying, preserving cycles, aliases and queue
@@ -70,6 +72,7 @@ function cloneSized<T>(
   source: T,
   shared?: readonly (readonly [object, object])[],
   immutable: readonly object[] = [],
+  restore = false,
 ): [T, number] {
   const seen = new Map<object, unknown>();
   // Compiled popularity is immutable configuration, owned once by the run. All
@@ -84,6 +87,11 @@ function cloneSized<T>(
     }
     const prior = seen.get(value);
     if (prior) return prior;
+    if (restore && value instanceof CacheCheckpoint) {
+      const result = visit(value.restore());
+      seen.set(value, result);
+      return result;
+    }
     bytes += 32;
     if (value instanceof Float64Array) {
       const result = clone ? value.slice() : value;
@@ -137,24 +145,26 @@ function cloneSized<T>(
 
 export const checkpointBytes = (source: unknown): number => cloneSized(source)[1];
 
-function cloneGraph(source: CheckpointGraph): [CheckpointGraph, number] {
+function cloneGraph(source: CheckpointGraph, restore = false): [CheckpointGraph, number] {
   const shared: [object, object][] = [];
   const immutable: object[] = [];
   for (const { trace } of source[15].store.values()) if (trace) shared.push([trace, trace]);
   for (const node of source[0].values()) {
-    for (const rule of node.cache?.rules ?? []) {
+    for (const saved of node.cache?.rules ?? []) {
+      const rule = saved instanceof CacheCheckpoint ? saved.config : saved;
       if (rule.popularity) immutable.push(rule.popularity);
       // Compiled predicates and saved cache configuration never mutate during a run.
       for (const value of [rule.match, rule.types, rule.policy, node.rawProps.cache])
         if (value && typeof value === "object") immutable.push(value);
-      // Unused rings/counters are shared initial values; their first write detaches them.
-      for (const value of [rule.rate, rule.fetchMs, rule.counts]) if (Object.isFrozen(value)) immutable.push(value);
+      // The graph is opaque while retained: every alias to a rule (including in-flight
+      // work) maps to the same packed payload, then to the same restored rule.
+      if (!restore) shared.push([saved, new CacheCheckpoint(saved)]);
     }
     // Resolved configuration and its descendants are replaced on edits, never mutated.
     shared.push([node.props, node.props]);
     if (node.latency) shared.push([node.latency, shareLatencyRecorder(node.latency)]);
   }
-  return cloneSized(source, shared, immutable);
+  return cloneSized(source, shared, immutable, restore);
 }
 
 /** Positional hooks keep internal function names out of shipped object properties. */
@@ -188,7 +198,7 @@ export function createCheckpoints(
       const token = Object.freeze({ time: clock[0], bytes: bytes + 128 });
       checkpoints.set(token, () => {
         if (topology() !== clock[1]) throw new Error("Checkpoint belongs to a previous diagram");
-        const [copy] = cloneGraph(graph);
+        const [copy] = cloneGraph(graph, true);
         installGraph(copy, clock, repair);
       });
       return token;
