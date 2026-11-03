@@ -3,7 +3,15 @@ import type { CacheCounts, CacheRuleState } from "./cacheState";
 const countKeys = ["requests", "hits", "misses", "notCached", "fetches", "fills"] as const;
 type Config = Omit<
   CacheRuleState,
-  "stream" | "statisticalUntil" | "warmSince" | "counts" | "rate" | "fetchMs" | "freshUntil" | "fetching"
+  | "stream"
+  | "statisticalUntil"
+  | "statisticalCredit"
+  | "warmSince"
+  | "counts"
+  | "rate"
+  | "fetchMs"
+  | "freshUntil"
+  | "fetching"
 >;
 
 /** Lossless sparse payloads retain only written slots; every retained byte is charged.
@@ -37,7 +45,7 @@ export class CacheCheckpoint {
     };
     const { id, match, address, types, policy, popularity, tracked } = rule;
     this.config = { id, match, address, types, policy, popularity, tracked };
-    values.push(rule.stream, rule.statisticalUntil, rule.warmSince ?? -1);
+    values.push(rule.stream, rule.statisticalUntil, rule.statisticalCredit, rule.warmSince ?? -1);
     counts(rule.counts);
     values.push(rule.rate.second, rule.rate.planned);
     array(rule.rate.buckets);
@@ -115,11 +123,13 @@ export class CacheCheckpoint {
     };
     const stream = next(),
       statisticalUntil = next(),
+      statisticalCredit = next(),
       warmSince = next();
     return {
       ...this.config,
       stream,
       statisticalUntil,
+      statisticalCredit,
       ...(warmSince < 0 ? {} : { warmSince }),
       counts: counts(),
       rate: { second: next(), planned: next(), buckets: array() },

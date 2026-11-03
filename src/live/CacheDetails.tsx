@@ -27,6 +27,7 @@ export function CacheDetails({
   const planned = configuredPlanning(diagram, live?.controller.getState())?.analysis.cacheDemand?.[id];
   const w = s.cacheDetails?.window;
   const latency = s.cacheDetails?.latency;
+  const sinceFault = s.cacheDetails?.sinceFault;
   const rate = (n: number) => formatNumber(n / (w?.seconds ?? 10), { maximumFractionDigits: 1 });
   return (
     <div data-testid="cache-readout">
@@ -61,10 +62,16 @@ export function CacheDetails({
           );
         })}
       <p data-testid="cache-latency">
-        {t("cache.latency", {
-          hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
-          miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
-        })}
+        {sinceFault
+          ? t("cache.latencySinceFault", {
+              at: formatNumber(sinceFault.atMs / 1000, { maximumFractionDigits: 2 }),
+              hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
+              miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
+            })
+          : t("cache.latency", {
+              hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
+              miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
+            })}
       </p>
       {readout && readout.hit < 95 && <p className="insp-note">{t("cache.missTail", { miss: 100 - readout.hit })}</p>}
     </div>

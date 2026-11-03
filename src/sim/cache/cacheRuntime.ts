@@ -8,7 +8,7 @@ import type { CacheCounts, CacheRuleState } from "./cacheState";
 import { cachePlan } from "./planning";
 import { cacheScale } from "./cacheScale";
 import { analyzeCapacity } from "../capacity";
-import { STEP } from "../timing";
+import { cacheTrackingEligible } from "./tracking";
 import { latencyMetrics } from "../latency";
 import type { NodeCache } from "./cacheState";
 
@@ -81,9 +81,7 @@ export const cacheRuntime: CacheRuntime = {
           let tracked = 0;
           for (const band of popularity?.bands ?? []) {
             if (
-              // A tick must be at most 2% of a tracked freshness interval.
-              // Below that resolution use the shared statistical model instead.
-              (planned > 0 && rule.policy.ttlMs! < 50 * STEP) ||
+              !cacheTrackingEligible(planned, rule.policy.ttlMs!) ||
               band.first >= CACHE_LIMITS.tracked ||
               band.count !== 1 ||
               !remaining.value ||
@@ -112,6 +110,7 @@ export const cacheRuntime: CacheRuntime = {
             stream: streamSeed(seed, node, `cache:${rule.id}`),
             tracked,
             statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) : 0,
+            statisticalCredit: drawStream(streamSeed(seed, node, `cache-credit:${rule.id}`)).value * scale,
             freshUntil,
             fetching: new Float64Array(tracked),
             rate: initialRate(planned),
@@ -178,11 +177,20 @@ export const cacheRuntime: CacheRuntime = {
         ? steady
         : Math.min(steady, 1 - expNeg((itemRate * Math.max(0, now - rule.warmSince - mean)) / 1000));
     const available = now < Math.abs(rule.statisticalUntil);
-    const hit = item >= 0 ? now < rule.freshUntil[item] : draw(rule) < (available ? share : 0);
-    // Item expiry is already in the statistical formula. Keep availability while
-    // traffic is active; idle gaps still cool it. A failed fetch freezes the
-    // deadline (negative), so lookups cannot keep a failed origin warm.
-    if (item < 0 && rule.statisticalUntil > 0 && available) rule.statisticalUntil = now + rule.policy.ttlMs!;
+    // Stratify statistical outcomes: the shared formula already includes item
+    // expiry. Independent whole-dot draws can leave artificial gaps between
+    // successful fills at coarse scales and charge that expiry a second time.
+    // Carry at most one dot of credit; availability still gates every hit.
+    const stratified = !cacheTrackingEligible(rule.rate.planned, rule.policy.ttlMs!);
+    if (item < 0 && stratified) rule.statisticalCredit += share * size;
+    const sample = item < 0 ? draw(rule) : 0;
+    const hit =
+      item >= 0
+        ? now < rule.freshUntil[item]
+        : available && (stratified ? rule.statisticalCredit >= size : sample < share);
+    if (item < 0 && stratified) rule.statisticalCredit = Math.min(size, rule.statisticalCredit - (hit ? size : 0));
+    // Only successful fills renew availability, including when an origin pauses
+    // indefinitely and its pending fetches never settle.
     add(hit ? "hits" : "misses");
     cache.window!.buckets[bucket + (hit ? 1 : 2)] += size;
     return {
@@ -242,7 +250,7 @@ export const cacheRuntime: CacheRuntime = {
       rules: Object.fromEntries(cache.rules.map((r) => [r.id, { ...r.counts }])),
     };
   },
-  details(cache, now) {
+  details(cache, now, sinceFault) {
     const totals = [0, 0, 0, 0];
     if (cache.window) {
       const second = Math.floor(now / 1000);
@@ -251,6 +259,7 @@ export const cacheRuntime: CacheRuntime = {
     }
     const latency = cache.latency && latencyMetrics(cache.latency);
     return {
+      ...(sinceFault ? { sinceFault } : {}),
       expected: cache.expected,
       ...(cache.window
         ? {

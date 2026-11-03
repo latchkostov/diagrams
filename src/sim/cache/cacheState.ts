@@ -16,6 +16,7 @@ export interface CacheReadout extends CacheCounts {
   rules: Record<string, CacheCounts>;
 }
 export interface CacheDetails {
+  sinceFault?: import("../types").LatencyMetrics["sinceFault"];
   expected?: number;
   window?: { requests: number; hits: number; misses: number; fetches: number; seconds: number };
   latency?: {
@@ -34,6 +35,7 @@ export interface CacheRuleState {
   stream: number;
   tracked: number;
   statisticalUntil: number;
+  statisticalCredit: number;
   freshUntil: Float64Array;
   fetching: Float64Array;
   rate: { buckets: Float64Array; second: number; planned: number };

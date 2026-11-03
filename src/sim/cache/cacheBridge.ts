@@ -23,7 +23,7 @@ export interface CacheRuntime {
   start(cache: NodeCache, lookup: CacheLookup, size: number, now?: number): void;
   settle(cache: NodeCache, lookup: CacheLookup, now: number, size: number, ok: boolean): void;
   read(cache: NodeCache): CacheReadout;
-  details(cache: NodeCache, now: number): CacheDetails;
+  details(cache: NodeCache, now: number, sinceFault?: CacheDetails["sinceFault"]): CacheDetails;
   updateExpected(cache: NodeCache, rates: Record<string, { rate: number; fetchMs: number }>): void;
   plan(
     diagram: DiagramFile,

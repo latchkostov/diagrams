@@ -258,6 +258,41 @@ it("automatic scale keeps the hottest item above the 50-dots-per-TTL tracking th
   expect(coarse.rules[0].tracked).toBe(0);
 });
 
+it("automatic scale preserves the dot budget for short-TTL statistical rules", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 2000;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 20, popularity: "even" } };
+  const simulation = {
+    id: "short-ttl",
+    title: "Short TTL",
+    traffic: [{ id: "load", node: "source", shape: { kind: "constant" as const, ratePerSec: 2000, durationMs: 1000 } }],
+  };
+  const rates = cacheRuntime.plan(d, simulation);
+  expect(rates.cache[""].rate).toBe(2000);
+  expect(autoScale(simulation, d, rates)).toBe(50);
+  expect(autoScale(simulation, d)).toBe(50);
+  const cache = cacheRuntime.compile(d.nodes[1].props!.cache, "cache", 7, 50, { value: 4096 }, rates.cache);
+  expect(cache.rules[0].tracked).toBe(0);
+});
+
+it("warm statistical hits expire after the last successful fill when the origin pauses without a deadline", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 20, popularity: "even" } };
+  const e = createEngine({ seed: 7, scale: 1, maxParticles: 0 });
+  e.load(d, cacheRuntime.plan(d));
+  e.setTraffic(true);
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBeGreaterThan(0);
+  e.setNodeStatus("origin", "paused");
+  // Allow replies already returning at the pause to fill, then expire their TTL.
+  e.step(200);
+  const hits = e.snapshot().nodes.cache.cache!.hits;
+  const fetches = e.snapshot().nodes.cache.cache!.fetches;
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.fetches).toBeGreaterThan(fetches);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBe(hits);
+});
+
 it("cold statistical cache never hits when every fetch fails", () => {
   const d = cacheFixture();
   d.nodes[2].stencil = "generic.service";
