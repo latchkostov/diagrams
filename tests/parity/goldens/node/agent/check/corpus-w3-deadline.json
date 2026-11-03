@@ -1,0 +1,16 @@
+{
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "dropped:source", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Readers are lost", "message": "Readers fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["source"], "evidence": ["1,502 dropped in “Steady requests”"] },
+        { "id": "dropped:cache", "rule": "dropped", "severity": "suggestion", "title": "Failed requests to Edge cache are lost", "message": "Edge cache fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["cache"], "evidence": ["1,502 dropped in “Steady requests”"] }
+      ],
+      "summary": "0 warnings, 2 suggestions.",
+      "simulations": "Played 1 saved simulation (at most 60 s each)."
+    }
+  }
+}

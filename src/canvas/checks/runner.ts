@@ -76,6 +76,7 @@ export async function requestChecksOffThread(diagram: DiagramFile): Promise<Find
       // Fall through: the worker failed; the main thread works them out.
     }
   }
+  await import("../../sim/cache/cacheBridge").then((m) => m.ensureCacheRuntime(diagram));
   const { executeRequestChecks } = await import("../../checks/execute");
   const { requests, plans } = executeRequestChecks(diagram);
   if (plans) rememberPlans(diagram, plans);
@@ -143,6 +144,7 @@ async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: C
   }
   // No worker (an old browser, a blocked script): this thread does all the checking, scenario sizing included.
   // The worker's own path (one context, scenario sizing only when a check reads it), then its plans remembered.
+  await import("../../sim/cache/cacheBridge").then((m) => m.ensureCacheRuntime(diagram));
   const { executeChecks } = await import("../../checks/execute");
   const { result, requests, plans } = executeChecks(diagram);
   if (plans) rememberPlans(diagram, plans);

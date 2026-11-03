@@ -21,7 +21,9 @@ for (const { name, diagram } of [
 ]) {
   it(`w3-noop: ${name}, analysis, free play and all saved simulations`, () => {
     const old = structuredClone(diagram);
-    old.planning = { ...old.planning, revision: "p3-w2" };
+    // Keep the W1/W2 corpus as authored. Older public examples also exercise
+    // their W2 interpretation; their original revisions remain pinned by parity.
+    old.planning = { ...old.planning, revision: old.planning?.revision === "p3-w1" ? "p3-w1" : "p3-w2" };
     const next = structuredClone(old);
     next.planning!.revision = "p3-w3";
     const a = analyzeCapacity(old),
@@ -29,8 +31,9 @@ for (const { name, diagram } of [
     expect(b.nodes).toEqual(a.nodes);
     expect(b.connections).toEqual(a.connections);
     expect(b.routeDemand).toEqual(a.routeDemand);
-    const x = createEngine({ seed: 17, maxParticles: 0 }),
-      y = createEngine({ seed: 17, maxParticles: 0 });
+    // Retain a visible drawing sample in every free-play tick comparison.
+    const x = createEngine({ seed: 17, maxParticles: 8 }),
+      y = createEngine({ seed: 17, maxParticles: 8 });
     x.load(old);
     y.load(next);
     x.setTraffic(true);
@@ -45,6 +48,10 @@ for (const { name, diagram } of [
       const first = createSimulationRun(old, simulation),
         second = createSimulationRun(next, simulation);
       while (!first.state().done) {
+        if (first.state().waiting) {
+          first.resume();
+          second.resume();
+        }
         first.step(10);
         second.step(10);
         expect(JSON.stringify(second.engine.snapshot())).toBe(JSON.stringify(first.engine.snapshot()));

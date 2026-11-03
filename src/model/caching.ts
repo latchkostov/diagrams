@@ -37,7 +37,11 @@ export const cacheEnabled = (
   stencil: string,
   role: SimRole,
   value: unknown,
-): value is CacheTable => revisionAtLeast(planning?.revision, "p3-w3") && cacheCapable(stencil, role) && !!value;
+): value is CacheTable =>
+  revisionAtLeast(planning?.revision, "p3-w3") && cacheCapable(stencil, role) && configured(value);
+
+const configured = (value: unknown): value is CacheTable =>
+  !!value && (!!(value as CacheTable).rules?.length || !!(value as CacheTable).default);
 
 const policySchema: JsonSchema = {
   type: "object",
@@ -117,11 +121,11 @@ export function cacheProblem(value: unknown): string | undefined {
 /** Includes dormant saved patches: a later run must never start before its runtime is ready. */
 export function hasCacheRules(d: Pick<DiagramFile, "nodes" | "simulations">): boolean {
   return (
-    d.nodes.some((n) => n.props?.cache !== undefined) ||
+    d.nodes.some((n) => configured(n.props?.cache)) ||
     (d.simulations ?? []).some(
       (s) =>
-        Object.values(s.setup?.props ?? {}).some((p) => p.cache !== undefined) ||
-        (s.timeline ?? []).some((e) => e.action.do === "props" && e.action.props.cache !== undefined),
+        Object.values(s.setup?.props ?? {}).some((p) => configured(p.cache)) ||
+        (s.timeline ?? []).some((e) => e.action.do === "props" && configured(e.action.props.cache)),
     )
   );
 }

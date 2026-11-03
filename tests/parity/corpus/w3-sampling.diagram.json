@@ -80,7 +80,8 @@
             "kind": "constant",
             "ratePerSec": 200,
             "durationMs": 8000
-          }
+          },
+          "id": "readers"
         }
       ]
     },
@@ -97,7 +98,8 @@
             "kind": "constant",
             "ratePerSec": 200,
             "durationMs": 8000
-          }
+          },
+          "id": "readers"
         }
       ]
     },
@@ -114,7 +116,8 @@
             "kind": "constant",
             "ratePerSec": 200,
             "durationMs": 8000
-          }
+          },
+          "id": "readers"
         }
       ]
     }

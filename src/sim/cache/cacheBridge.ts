@@ -40,3 +40,7 @@ export function requireCacheRuntime(): CacheRuntime {
 export function startingCacheRates(diagram: DiagramFile, simulation?: Simulation) {
   return hasCacheRules(diagram) ? requireCacheRuntime().plan(diagram, simulation) : undefined;
 }
+/** Non-Live browser entry points (the main-thread Checks fallback) share the same runtime. */
+export async function ensureCacheRuntime(diagram: DiagramFile): Promise<void> {
+  if (hasCacheRules(diagram) && !installed) await import("./cacheRuntime");
+}

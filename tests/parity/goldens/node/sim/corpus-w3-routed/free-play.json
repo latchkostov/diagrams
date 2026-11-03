@@ -1,0 +1,303 @@
+{
+  "run": { "time": 60000, "scale": 1.9722998682671105, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "cache": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": { "page": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 } }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 507, "failed": 507, "dropped": 507, "throughput": 51.270913875835745, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 507,
+          "rejected": 507,
+          "throughput": 51.270913875835745,
+          "rejectionReasons": { "route-not-found": 507 },
+          "cache": {
+            "requests": 999.9560332114207,
+            "hits": 952.6208363730103,
+            "misses": 47.33519683841064,
+            "notCached": 0,
+            "fetches": 47.33519683841064,
+            "fills": 2,
+            "hitRatio": 0.952662721893491,
+            "originOffload": 0.9526627218934909,
+            "rules": {
+              "page": { "requests": 999.9560332114207, "hits": 952.6208363730103, "misses": 47.33519683841064, "notCached": 0, "fetches": 47.33519683841064, "fills": 2 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 24, "throughput": 1.1899769048608102, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 1014, "failed": 1014, "dropped": 1014, "throughput": 51.31313118431295, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 1014,
+          "rejected": 1014,
+          "throughput": 51.31313118431295,
+          "rejectionReasons": { "route-not-found": 1014 },
+          "cache": {
+            "requests": 1999.9120664228408,
+            "hits": 1911.1585723508213,
+            "misses": 88.75349407201999,
+            "notCached": 0,
+            "fetches": 88.75349407201999,
+            "fills": 4,
+            "hitRatio": 0.9556213017751477,
+            "originOffload": 0.9556213017751477,
+            "rules": {
+              "page": { "requests": 1999.9120664228408, "hits": 1911.1585723508213, "misses": 88.75349407201999, "notCached": 0, "fetches": 88.75349407201999, "fills": 4 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 45, "throughput": 2.508838431130083, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 1521, "failed": 1521, "dropped": 1521, "throughput": 51.3446436755647, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 1521,
+          "rejected": 1521,
+          "throughput": 51.3446436755647,
+          "rejectionReasons": { "route-not-found": 1521 },
+          "cache": {
+            "requests": 2999.8680996343705,
+            "hits": 2859.8348089873903,
+            "misses": 140.03329064696487,
+            "notCached": 0,
+            "fetches": 140.03329064696487,
+            "fills": 6,
+            "hitRatio": 0.9533201840894161,
+            "originOffload": 0.9533201840894163,
+            "rules": {
+              "page": { "requests": 2999.8680996343705, "hits": 2859.8348089873903, "misses": 140.03329064696487, "notCached": 0, "fetches": 140.03329064696487, "fills": 6 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 71, "throughput": 3.3976069570133016, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2028, "failed": 2028, "dropped": 2028, "throughput": 51.298443398000316, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 2028,
+          "rejected": 2028,
+          "throughput": 51.298443398000316,
+          "rejectionReasons": { "route-not-found": 2028 },
+          "cache": {
+            "requests": 3999.8241328459058,
+            "hits": 3806.5387457557076,
+            "misses": 193.28538709017658,
+            "notCached": 0,
+            "fetches": 193.28538709017658,
+            "fills": 8,
+            "hitRatio": 0.9516765285996077,
+            "originOffload": 0.951676528599608,
+            "rules": {
+              "page": { "requests": 3999.8241328459058, "hits": 3806.5387457557076, "misses": 193.28538709017658, "notCached": 0, "fetches": 193.28538709017658, "fills": 8 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 98, "throughput": 3.1752001961956897, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2535, "failed": 2535, "dropped": 2535, "throughput": 51.27658354459366, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 2535,
+          "rejected": 2535,
+          "throughput": 51.27658354459366,
+          "rejectionReasons": { "route-not-found": 2535 },
+          "cache": {
+            "requests": 4999.7801660574405,
+            "hits": 4761.131881997094,
+            "misses": 238.6482840603199,
+            "notCached": 0,
+            "fetches": 238.6482840603199,
+            "fills": 10,
+            "hitRatio": 0.9522682445759396,
+            "originOffload": 0.95226824457594,
+            "rules": {
+              "page": { "requests": 4999.7801660574405, "hits": 4761.131881997094, "misses": 238.6482840603199, "notCached": 0, "fetches": 238.6482840603199, "fills": 10 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 121, "throughput": 3.233083701249275, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 3042, "failed": 3042, "dropped": 3042, "throughput": 51.11713716279878, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 3042,
+          "rejected": 3042,
+          "throughput": 51.11713716279878,
+          "rejectionReasons": { "route-not-found": 3042 },
+          "cache": {
+            "requests": 5999.736199268976,
+            "hits": 5703.891219028877,
+            "misses": 295.8449802400658,
+            "notCached": 0,
+            "fetches": 295.8449802400658,
+            "fills": 12,
+            "hitRatio": 0.9506903353057233,
+            "originOffload": 0.9506903353057236,
+            "rules": {
+              "page": { "requests": 5999.736199268976, "hits": 5703.891219028877, "misses": 295.8449802400658, "notCached": 0, "fetches": 295.8449802400658, "fills": 12 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 150, "throughput": 0.9314349974053054, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 5999.73619926855, "failed": 5999.73619926855, "dropped": 5999.73619926855, "throughput": 100.81832289237984, "replicas": [1, 1, 0] },
+      "cache": {
+        "processed": 5999.73619926855,
+        "rejected": 5999.73619926855,
+        "throughput": 100.81832289237984,
+        "rejectionReasons": { "route-not-found": 5999.73619926855 },
+        "cache": {
+          "requests": 5999.736199268976,
+          "hits": 5703.891219028877,
+          "misses": 295.8449802400658,
+          "notCached": 0,
+          "fetches": 295.8449802400658,
+          "fills": 12,
+          "hitRatio": 0.9506903353057233,
+          "originOffload": 0.9506903353057236,
+          "rules": {
+            "page": { "requests": 5999.736199268976, "hits": 5703.891219028877, "misses": 295.8449802400658, "notCached": 0, "fetches": 295.8449802400658, "fills": 12 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 295.84498024006655, "throughput": 1.8370691226818603, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 6084, "fetch": 150 }
+  },
+  "events": {
+    "total": 21594,
+    "byKind": { "deliver": 6234, "reject": 3042, "fail": 3042, "drop": 3042, "process": 6234 },
+    "byNode": {
+      "cache": { "deliver": 6084, "reject": 3042, "process": 3042 },
+      "source": { "fail": 3042, "drop": 3042, "process": 3042 },
+      "origin": { "deliver": 150, "process": 150 }
+    },
+    "perSecond": [
+      "2d7290d14e80",
+      "cc8613ef0c2b",
+      "a7be421180f8",
+      "7cfc0d5dbb64",
+      "d865b05591f5",
+      "873a9fb794da",
+      "a7970e44f1ed",
+      "68a85a178d73",
+      "91eb7ec050a3",
+      "2e120488f9b7",
+      "69d78d578060",
+      "41ec043ab73b",
+      "ed97a4e1339a",
+      "d97d0d4d4a77",
+      "bb09c963a64f",
+      "ae2c53360f8b",
+      "06d357a47091",
+      "d1e02d23f5f1",
+      "4c7ed678be7f",
+      "8ea4351ed5a6",
+      "9b663d9995c9",
+      "53fdf36f2994",
+      "417bb78fbddc",
+      "abc7566e6d88",
+      "327666e4d310",
+      "0d4cd5a98592",
+      "764c247b781b",
+      "5d6a903c4bf5",
+      "4b519d1adea2",
+      "602bfb3aa271",
+      "c0edce10aac6",
+      "f4bf0100ca85",
+      "d87f7e2b2009",
+      "b7608527a02b",
+      "8bb3cbc9ab49",
+      "b4d5398bb18a",
+      "d2fcadca65e4",
+      "2936dce87b63",
+      "c4ebf2dd865b",
+      "6e86ef01b488",
+      "dbf3426e7271",
+      "ba99465266c8",
+      "9f5974a35160",
+      "7769b38ce384",
+      "3856c14eea08",
+      "a2e8e7ab61b0",
+      "7cd1a91c5f55",
+      "1561fdc1f714",
+      "25ab96d53e73",
+      "973fafa7d2b0",
+      "3dd2e0d9a0b8",
+      "114c8d477930",
+      "433cdce3c491",
+      "eb806f0e8b88",
+      "54e50ad52f9d",
+      "6b15dc55eb4f",
+      "3950d1a47372",
+      "52856909f638",
+      "bcbada686db0",
+      "175d6de83d8f",
+      "6f34533a051e"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 6084, "retried": 0, "deadLettered": 0, "dropped": 3042, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 3042 },
+    "endToEndMs": { "count": 6084, "min": 0, "mean": 1.4792899408284024, "p50": 0, "p90": 0, "max": 60 },
+    "waitMs": { "origin": { "count": 150, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 } },
+    "processMs": { "origin": { "count": 150, "min": 50, "mean": 50, "p50": 50, "p90": 50, "max": 50 } }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "source": [40, 40], "cache": [400, 40], "origin": [760, 40] },
+    "TB": { "source": [40, 40], "cache": [40, 200], "origin": [40, 360] }
+  },
+  "tidy": { "source": [0, 100], "cache": [320, 100], "origin": [640, 100] },
+  "arrange": {
+    "alignLeft": { "source": [0, 100], "cache": [0, 100], "origin": [0, 100] },
+    "alignMiddle": { "source": [0, 100], "cache": [320, 100], "origin": [640, 100] },
+    "distributeH": { "source": [0, 100], "cache": [320, 100], "origin": [640, 100] },
+    "distributeV": { "source": [0, 100], "cache": [320, 100], "origin": [640, 100] },
+    "spreadH": { "source": [0, 100], "cache": [320, 100], "origin": [640, 100] },
+    "boundaryAround": { "x": -40, "y": 36, "width": 940, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "source": [40, 40], "cache": [400, 40], "origin": [760, 40] },
+    "groups": {}
+  }
+}

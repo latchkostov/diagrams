@@ -1,9 +1,13 @@
+import { watchCheckpoints } from "../test/checkpointProbe";
 import fc from "fast-check";
 import { expect, it } from "vitest";
 import { cacheFixture } from "../lab/cacheFixture";
 import { propertyRuns } from "../test/fastCheck";
 import { createEngine, randomDraws } from "./engine";
 import { cacheRuntime } from "./cache/cacheRuntime";
+import { arbCacheDiagram } from "../test/cacheScenarios";
+import { assertCacheInvariants } from "./cacheInvariants";
+import { recoveryWorkMs } from "../test/resilienceRecovery";
 
 it("C1/C2/C5/C7/C8: random cache runs conserve, drain and replay independently of global draws", () => {
   fc.assert(
@@ -71,5 +75,40 @@ it("C4: random tracked lookups never hit an expired item", () => {
       },
     ),
     { numRuns: propertyRuns(100) },
+  );
+});
+
+it("C1/C2/C5/C7/C8: inherited resilience scenarios preserve cache ownership through faults and replay", () => {
+  fc.assert(
+    fc.property(arbCacheDiagram, fc.integer(), ({ diagram, scale }, seed) => {
+      const watch = watchCheckpoints();
+      try {
+        const e = createEngine({ seed, scale, maxParticles: 0 });
+        e.load(diagram);
+        e.inject("source", 12, { spreadMs: 400 });
+        const token = e.checkpoint();
+        const suffix = () => {
+          for (let tick = 0; tick < 100; tick++) {
+            if (tick === 10) e.setFault({ kind: "slow", node: "tier0", factor: 2 });
+            if (tick === 30) e.setFault({ kind: "slow", node: "tier0", factor: 1 });
+            e.step(50);
+            for (const node of watch.sources[0][0].values())
+              if (node.cache) assertCacheInvariants(node.cache, !e.snapshot().inSystem);
+          }
+          return e.snapshot();
+        };
+        const expected = suffix();
+        e.restore(token);
+        expect(suffix()).toEqual(expected);
+        for (const node of diagram.nodes) if (node.id.startsWith("tier")) e.setNodeProps(node.id, { failureRate: 0 });
+        const steps = Math.ceil(recoveryWorkMs(diagram, scale, 12) / 1000);
+        for (let tick = 0; tick < steps && e.metrics().inSystem; tick++) e.step(1000);
+        expect(e.snapshot().inSystem).toBe(0);
+        for (const node of watch.sources[0][0].values()) if (node.cache) assertCacheInvariants(node.cache, true);
+      } finally {
+        watch.stop();
+      }
+    }),
+    { numRuns: propertyRuns(20) },
   );
 });

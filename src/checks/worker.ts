@@ -3,6 +3,7 @@
 // so typing and dragging never wait on them. Same engine, same result as the main-thread fallback.
 
 import type { DiagramFile } from "../model/types";
+import "../sim/cache/cacheRuntime";
 import type { CheckResult, Finding } from "./types";
 import { executeChecks, executeRequestChecks } from "./execute";
 import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";

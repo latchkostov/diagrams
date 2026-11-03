@@ -47,6 +47,7 @@ function counters(node: NodeSimState): Record<string, unknown> {
     out.rejectionReasons = { ...node.rejectionReasons };
   if (node.noConsumer) out.noConsumer = true;
   if (node.failingOver) out.failingOver = true;
+  if (node.cache) out.cache = node.cache;
   if (node.replicas !== undefined)
     out.replicas = [node.replicas, node.activeReplicas ?? null, node.idleReplicas ?? null];
   return out;

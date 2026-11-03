@@ -149,3 +149,14 @@ VALID <repo>/tests/parity/corpus/w2-fixed.diagram.json: 4 nodes, 3 edges, 1 simu
 VALID <repo>/tests/parity/corpus/w2-jitter.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w2-pool-deadline.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w2-sampling.diagram.json: 4 nodes, 3 edges, 3 simulations
+VALID <repo>/tests/parity/corpus/w3-deadline.diagram.json: 3 nodes, 2 edges, 1 simulation
+  warning: simulations[0] "Steady requests": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/w3-methods.diagram.json: 3 nodes, 2 edges, 1 simulation
+  warning: simulations[0] "Steady requests": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/w3-read-through.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w3-routed.diagram.json: 3 nodes, 2 edges, 1 simulation
+  warning: simulations[0] "Steady requests": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/w3-sampling.diagram.json: 3 nodes, 2 edges, 3 simulations
+  warning: simulations[0] "Scale 1": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/w3-ttl-warm.diagram.json: 3 nodes, 2 edges, 1 simulation
+  warning: simulations[0] "Steady requests": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).

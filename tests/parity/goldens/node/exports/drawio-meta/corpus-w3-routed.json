@@ -1,0 +1,96 @@
+{
+  "withIcons": {
+    "sha256": "e44dbc7ac39d5db52b4c99f50dd1879571d5ef90229c4e57852aaba162ac826a",
+    "bytes": 5385,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.cdn": "generic-cdn 6b4780f7c80bf9cd", "generic.database": "generic-database e85b3d97d2e8de44" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": {
+          "revision": "p3-w3",
+          "requestRoutes": [
+            { "id": "page", "address": { "method": "GET", "path": "/pages/a" } },
+            { "id": "refused", "address": { "method": "GET", "path": "/blocked" } }
+          ]
+        },
+        "title": "routed",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Readers",
+            "x": 0,
+            "y": 100,
+            "props": {
+              "ratePerSec": 200,
+              "trafficMix": {
+                "mode": "shares",
+                "entries": [{ "routeId": "page", "share": 0.5 }, { "routeId": "refused", "share": 0.5 }]
+              }
+            }
+          },
+          {
+            "id": "cache",
+            "stencil": "generic.cdn",
+            "label": "Edge cache",
+            "x": 320,
+            "y": 100,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "cache": {
+                "rules": [
+                  {
+                    "id": "page",
+                    "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/pages/{id}" } },
+                    "policy": { "ttlMs": 5000, "keys": 20 }
+                  }
+                ]
+              },
+              "routeTable": {
+                "rules": [
+                  {
+                    "id": "pages",
+                    "match": { "path": { "kind": "prefix", "value": "/pages/" } },
+                    "targets": [{ "edgeId": "fetch", "weight": 1 }]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "origin",
+            "stencil": "generic.database",
+            "label": "Origin",
+            "x": 640,
+            "y": 100,
+            "props": { "latencyMs": 50, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "input", "from": "source", "to": "cache", "kind": "sync", "props": { "travelMs": 10 } },
+          { "id": "fetch", "from": "cache", "to": "origin", "kind": "sync", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "steady",
+            "title": "Steady requests",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 10000,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+                "id": "readers"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"routed\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Readers\" props={\"ratePerSec\":200,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"page\",\"share\":0.5},{\"routeId\":\"refused\",\"share\":0.5}]}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"input\",\"peer\":\"cache\"}] explanation=undefined\n  \"cache\" \"generic.cdn\" (\"CDN\") \"Edge cache\" props={\"latencyMs\":0,\"jitter\":0,\"cache\":{\"rules\":[{\"id\":\"page\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"template\",\"value\":\"/pages/{id}\"}},\"policy\":{\"ttlMs\":5000,\"keys\":20}}]},\"routeTable\":{\"rules\":[{\"id\":\"pages\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/pages/\"}},\"targets\":[{\"edgeId\":\"fetch\",\"weight\":1}]}]}} arrivingTypes=[\"Readers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"origin\"}] explanation=undefined cache={\"rules\":[{\"id\":\"page\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"template\",\"value\":\"/pages/{id}\"}},\"policy\":{\"ttlMs\":5000,\"keys\":20},\"expected\":{\"rate\":100,\"fetchMs\":60,\"hitRatio\":0.9511518748875086}}],\"origin\":[\"fetch\"]}\n  \"origin\" \"generic.database\" (\"Database\") \"Origin\" props={\"latencyMs\":50,\"jitter\":0} arrivingTypes=[\"Readers\"] capabilities=[] explanation=undefined\nconnections:\n  \"input\" \"source\" -> \"cache\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\n  \"fetch\" \"cache\" -> \"origin\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nrequest routes (2):\n  \"page\" GET \"/pages/a\"\n  \"refused\" GET \"/blocked\"\nroute demand \"cache\" \"page\": offered 100 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\nroute demand \"cache\" \"refused\": offered 100 req/s, refused 404 100 req/s, rate-limited 429 0 req/s\nsimulation \"steady\" \"Steady requests\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":8000} from \"source\"; timeline=[]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "routed",
+      "direction": "LR",
+      "planning": {
+        "revision": "p3-w3",
+        "requestRoutes": [
+          { "id": "page", "address": { "method": "GET", "path": "/pages/a" } },
+          { "id": "refused", "address": { "method": "GET", "path": "/blocked" } }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Readers",
+          "x": 0,
+          "y": 100,
+          "props": {
+            "ratePerSec": 200,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [{ "routeId": "page", "share": 0.5 }, { "routeId": "refused", "share": 0.5 }]
+            }
+          },
+          "arrivingTypes": [],
+          "capabilities": [{ "kind": "calls", "edge": "input", "peer": "cache" }]
+        },
+        {
+          "id": "cache",
+          "stencil": "generic.cdn",
+          "label": "Edge cache",
+          "x": 320,
+          "y": 100,
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "cache": {
+              "rules": [
+                {
+                  "id": "page",
+                  "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/pages/{id}" } },
+                  "policy": { "ttlMs": 5000, "keys": 20 }
+                }
+              ]
+            },
+            "routeTable": {
+              "rules": [
+                {
+                  "id": "pages",
+                  "match": { "path": { "kind": "prefix", "value": "/pages/" } },
+                  "targets": [{ "edgeId": "fetch", "weight": 1 }]
+                }
+              ]
+            }
+          },
+          "arrivingTypes": ["Readers"],
+          "capabilities": [{ "kind": "calls", "edge": "fetch", "peer": "origin" }],
+          "cache": {
+            "rules": [
+              {
+                "id": "page",
+                "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/pages/{id}" } },
+                "policy": { "ttlMs": 5000, "keys": 20 },
+                "expected": { "rate": 100, "fetchMs": 60, "hitRatio": 0.9511518748875086 }
+              }
+            ],
+            "origin": ["fetch"]
+          }
+        },
+        {
+          "id": "origin",
+          "stencil": "generic.database",
+          "label": "Origin",
+          "x": 640,
+          "y": 100,
+          "props": { "latencyMs": 50, "jitter": 0 },
+          "arrivingTypes": ["Readers"],
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "input",
+          "from": "source",
+          "to": "cache",
+          "kind": "sync",
+          "props": { "travelMs": 10 },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        },
+        {
+          "id": "fetch",
+          "from": "cache",
+          "to": "origin",
+          "kind": "sync",
+          "props": { "travelMs": 10 },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        }
+      ],
+      "messageTypesComplete": true,
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "steady",
+          "title": "Steady requests",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 10000,
+          "traffic": [
+            {
+              "node": "source",
+              "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+              "id": "readers"
+            }
+          ]
+        }
+      ],
+      "routeDemand": {
+        "source": {
+          "page": { "offered": 100, "rejected": 0, "throttled": 0 },
+          "refused": { "offered": 100, "rejected": 0, "throttled": 0 }
+        },
+        "cache": {
+          "page": { "offered": 100, "rejected": 0, "throttled": 0, "servedFromCache": 95.11518748875086 },
+          "refused": { "offered": 100, "rejected": 100, "throttled": 0 }
+        },
+        "origin": { "page": { "offered": 4.884812511249137, "rejected": 0, "throttled": 0 } }
+      },
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"routed\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Readers\" props={\"ratePerSec\":200,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"page\",\"share\":0.5},{\"routeId\":\"refused\",\"share\":0.5}]}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"input\",\"peer\":\"cache\"}] explanation=undefined\n  \"cache\" \"generic.cdn\" (\"CDN\") \"Edge cache\" props={\"latencyMs\":0,\"jitter\":0,\"cache\":{\"rules\":[{\"id\":\"page\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"template\",\"value\":\"/pages/{id}\"}},\"policy\":{\"ttlMs\":5000,\"keys\":20}}]},\"routeTable\":{\"rules\":[{\"id\":\"pages\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/pages/\"}},\"targets\":[{\"edgeId\":\"fetch\",\"weight\":1}]}]}} arrivingTypes=[\"Readers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"origin\"}] explanation=undefined cache={\"rules\":[{\"id\":\"page\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"template\",\"value\":\"/pages/{id}\"}},\"policy\":{\"ttlMs\":5000,\"keys\":20},\"expected\":{\"rate\":100,\"fetchMs\":60,\"hitRatio\":0.9511518748875086}}],\"origin\":[\"fetch\"]}\nconnections:\n  \"input\" \"source\" -> \"cache\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nrequest routes (2):\n  \"page\" GET \"/pages/a\"\n  \"refused\" GET \"/blocked\"\n… 3 lines omitted"
+  }
+}

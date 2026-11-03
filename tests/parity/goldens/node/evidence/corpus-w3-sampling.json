@@ -1,0 +1,17 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "scale-1", "title": "Scale 1", "playedMs": 10000, "capped": false },
+      { "id": "scale-2", "title": "Scale 2", "playedMs": 10000, "capped": false },
+      { "id": "scale-10", "title": "Scale 10", "playedMs": 10000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 21 checks ran.", "simulations": "Played 3 saved simulations (at most 60 s each)." }
+}
