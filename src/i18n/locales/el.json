@@ -2838,5 +2838,6 @@
   "selection.fallback": "Χρησιμοποιήστε το μενού επιλογής αν το σύστημα ή ο αναγνώστης οθόνης δεσμεύει αυτά τα πλήκτρα.",
   "selection.extendKeys": "Επέκταση επιλογής",
   "menu.selectionAddedBoundary": "Προστέθηκαν στο {name}: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Αφαιρέθηκαν από τα όρια: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}."
+  "menu.selectionRemovedBoundary": "Αφαιρέθηκαν από τα όρια: {count, plural, other {# κόμβοι} one {# κόμβος}}. {selection}.",
+  "cache.addRules": "Προσθήκη κανόνων κρυφής μνήμης…"
 }

@@ -2853,5 +2853,6 @@
   "selection.fallback": "Használja a kijelölési menüt, ha a rendszer vagy a képernyőolvasó lefoglalja ezeket a billentyűket.",
   "selection.extendKeys": "Kijelölés bővítése",
   "menu.selectionAddedBoundary": "Hozzáadva ehhez: {name}: {count, plural, other {# csomópont} one {# csomópont}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Eltávolítva a határokból: {count, plural, other {# csomópont} one {# csomópont}}. {selection}."
+  "menu.selectionRemovedBoundary": "Eltávolítva a határokból: {count, plural, other {# csomópont} one {# csomópont}}. {selection}.",
+  "cache.addRules": "Gyorsítótár-szabályok hozzáadása…"
 }

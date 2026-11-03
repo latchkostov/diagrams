@@ -16,6 +16,7 @@ type Recent = {
   succeeded: number;
   growing: boolean;
   breaker: boolean;
+  cache?: NodeSimState["cacheDetails"];
 };
 const neutral: Recent = {
   failed: 0,
@@ -39,7 +40,7 @@ export function callsSucceeding(calls: EdgeSimState["calls"]): boolean {
 type Frame = {
   time: number;
   scale?: number;
-  nodes: Record<string, Pick<NodeSimState, "failed" | "dropped" | "rejected" | "backlog" | "shed">>;
+  nodes: Record<string, Pick<NodeSimState, "failed" | "dropped" | "rejected" | "backlog" | "shed" | "cacheDetails">>;
   edges: Record<string, Pick<EdgeSimState, "calls" | "breaker">>;
 };
 type Sample = { time: number; nodes: Record<string, number[]>; edges: Record<string, number[]> };
@@ -90,6 +91,7 @@ export class HealthWindow {
         rejected: delta(n.rejected ?? 0, before?.[2]),
         shed: delta(n.shed ?? 0, before?.[4]),
         growing,
+        ...(n.cacheDetails ? { cache: n.cacheDetails } : {}),
       });
     }
     for (const [id, e] of Object.entries(frame.edges)) {

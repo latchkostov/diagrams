@@ -47,7 +47,7 @@ export function sameBadge(a: BadgeProps, b: BadgeProps): boolean {
 }
 
 const FIELDS =
-  "role status processed throughput backlog inFlight blocked shed queueDepth queueLimit replicas idleReplicas failingOver noConsumer failed dropped deadLettered".split(
+  "role status processed throughput backlog inFlight blocked shed queueDepth queueLimit replicas idleReplicas failingOver noConsumer failed dropped deadLettered cacheDetails".split(
     " ",
   ) as (keyof BadgeProps["s"])[];
 const THREADS = "slots working waiting inFlight".split(" ") as (keyof NonNullable<BadgeProps["s"]["threads"]>)[];

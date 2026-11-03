@@ -58,6 +58,7 @@ export interface Particle {
 export interface NodeSimState {
   /** Cache counters are real requests, independently of dot scale. */
   cache?: import("./cache/cacheState").CacheReadout;
+  cacheDetails?: import("./cache/cacheState").CacheDetails;
   threads?: {
     slots: number;
     working: number;
@@ -172,6 +173,7 @@ export type SimEventKind =
   "inject" | "deliver" | "process" | "fail" | "retry" | "deadletter" | "drop" | "block" | "reject" | "status";
 
 export interface SimEvent {
+  cache?: CacheTrace;
   /** Simulation time in ms. */
   time: number;
   kind: SimEventKind;
@@ -345,6 +347,7 @@ export interface InjectOptions {
 // followed message and a bounded history of recent ones, so memory stays capped.
 
 export type TraceStepKind =
+  | "cache"
   | "emit" // the root message was created (injection or source traffic) at `node`
   | "copy" // a fan-out copy `id` of `parent` was made at `node` (it leaves on its own edge)
   | "send" // left `node` along `edge` as a `via` particle, arriving at `until`
@@ -361,6 +364,7 @@ export type TraceStepKind =
   | "end"; // consumed at `node` (a sink, a store, a final worker)
 
 export interface TraceStep {
+  cache?: CacheTrace;
   /** Call retry beat; broker delivery attempts keep their existing fields. */
   backoffMs?: number;
   maxAttempts?: number;
@@ -389,6 +393,15 @@ export interface TraceStep {
   rule?: string;
   /** The chosen target's share of its rule's eligible weights, 0..1 (on a router's send). */
   weight?: number;
+}
+
+export interface CacheTrace {
+  outcome: "hit" | "miss" | "not-cached";
+  rule?: string;
+  item?: number;
+  freshMs?: number;
+  origin?: string;
+  reason?: "no-store" | "method" | "no-match";
 }
 
 export interface MessageTrace {

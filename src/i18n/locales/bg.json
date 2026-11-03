@@ -2837,5 +2837,6 @@
   "selection.fallback": "Използвайте менюто за избор, ако системата или екранният четец прихваща тези клавиши.",
   "selection.extendKeys": "Разширяване на избора",
   "menu.selectionAddedBoundary": "Добавени към {name}: {count, plural, other {# възела} one {# възел}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Премахнати от рамките: {count, plural, other {# възела} one {# възел}}. {selection}."
+  "menu.selectionRemovedBoundary": "Премахнати от рамките: {count, plural, other {# възела} one {# възел}}. {selection}.",
+  "cache.addRules": "Добавяне на правила за кеширане…"
 }

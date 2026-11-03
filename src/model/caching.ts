@@ -49,8 +49,8 @@ const policySchema: JsonSchema = {
   allOf: [
     {
       anyOf: [
-        { required: ["ttlMs"], properties: { noStore: { type: "null" } } },
-        { required: ["noStore"], properties: { ttlMs: { type: "null" } } },
+        { additionalProperties: true, required: ["ttlMs"], properties: { noStore: { type: "null" } } },
+        { additionalProperties: true, required: ["noStore"], properties: { ttlMs: { type: "null" } } },
       ],
     },
   ],

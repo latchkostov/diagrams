@@ -16,6 +16,7 @@ import { nodeOutcome } from "./nodeOutcome";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 import { ReadoutFacts } from "./ReadoutFacts";
+import { CacheDetails } from "./CacheDetails";
 
 const doneLabel: Record<SimRole, () => string> = {
   source: () => t("hover.sent"),
@@ -64,8 +65,10 @@ export function NodeDetailSections({
   const unread = !!s.noConsumer;
   const blocked = s.blocked ?? 0;
   const rejected = s.rejected ?? 0;
+  const latency = s.cacheDetails?.latency?.total ?? s.latency;
   return (
     <div className="hover-rail-body" data-testid={`node-sections-${node.id}`}>
+      {section === "cache" && <CacheDetails diagram={diagram} id={node.id} s={s} properties={configuration[node.id]} />}
       {section === "threads" && (
         <>
           {s.queueLimit !== undefined && (
@@ -140,10 +143,10 @@ export function NodeDetailSections({
       )}
       {section === "latency" && (
         <>
-          {s.latency && (
+          {latency && (
             <LatencyReadout
               id={docked ? `${node.id}-properties` : node.id}
-              latency={s.latency}
+              latency={latency}
               diagram={diagram}
               compact={!docked}
             />

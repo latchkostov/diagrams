@@ -2835,5 +2835,6 @@
   "selection.fallback": "Użyj menu zaznaczenia, jeśli system lub czytnik ekranu przechwytuje te klawisze.",
   "selection.extendKeys": "Rozszerz zaznaczenie",
   "menu.selectionAddedBoundary": "Dodano do {name}: {count, plural, many {# węzłów} one {# węzeł} few {# węzłów} other {# węzłów}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Usunięto z granic: {count, plural, many {# węzłów} one {# węzeł} few {# węzłów} other {# węzłów}}. {selection}."
+  "menu.selectionRemovedBoundary": "Usunięto z granic: {count, plural, many {# węzłów} one {# węzeł} few {# węzłów} other {# węzłów}}. {selection}.",
+  "cache.addRules": "Dodaj reguły pamięci podręcznej…"
 }

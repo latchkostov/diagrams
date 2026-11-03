@@ -37,6 +37,15 @@ export const examples: Named[] = currentExamples.map((e) =>
       }
     : e,
 );
+/** The released A1 Black Friday input remains a separate compatibility cohort. */
+export const frozenCachingShowcases: Named[] = [
+  {
+    slug: "black-friday-commerce-a1",
+    diagram: JSON.parse(
+      readFileSync(join(ROOT, "tests/parity/fixtures/black-friday-commerce-a1.json"), "utf8"),
+    ) as DiagramFile,
+  },
+];
 export const resilienceShowcases = currentExamples
   .filter((e) => e.slug === "slow-payment-provider")
   .map((e) => ({ ...e, slug: "w2-slow-payment-provider" }));
@@ -56,11 +65,17 @@ const prefixed = (c: Named): Named => ({ ...c, slug: `corpus-${c.slug}` });
 export const allDiagrams: Named[] = [
   ...examples,
   ...resilienceShowcases,
+  ...frozenCachingShowcases,
   ...corpus.filter((c) => !BUDGET_ONLY.has(c.slug)).map(prefixed),
 ];
 
 /** allDiagrams and the budget-only ones: for planning and checks. */
-export const planningDiagrams: Named[] = [...examples, ...resilienceShowcases, ...corpus.map(prefixed)];
+export const planningDiagrams: Named[] = [
+  ...examples,
+  ...resilienceShowcases,
+  ...frozenCachingShowcases,
+  ...corpus.map(prefixed),
+];
 
 /** Reads a fixture file under the repository root. */
 export function fixture(path: string): string {

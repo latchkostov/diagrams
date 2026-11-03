@@ -2852,5 +2852,6 @@
   "selection.fallback": "Usa il menu di selezione se il sistema o il lettore di schermo intercetta questi tasti.",
   "selection.extendKeys": "Estendi selezione",
   "menu.selectionAddedBoundary": "Aggiunti a {name}: {count, plural, other {# nodi} one {# nodo}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Rimossi dai confini: {count, plural, other {# nodi} one {# nodo}}. {selection}."
+  "menu.selectionRemovedBoundary": "Rimossi dai confini: {count, plural, other {# nodi} one {# nodo}}. {selection}.",
+  "cache.addRules": "Aggiungi regole della cache…"
 }

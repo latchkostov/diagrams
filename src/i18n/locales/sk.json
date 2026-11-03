@@ -2826,5 +2826,6 @@
   "selection.fallback": "Ak tieto klávesy zachytí systém alebo čítačka obrazovky, použite ponuku výberu.",
   "selection.extendKeys": "Rozšíriť výber",
   "menu.selectionAddedBoundary": "Pridané do {name}: {count, plural, other {# uzlov} one {# uzol} few {# uzlov}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Odobraté z hranice: {count, plural, other {# uzlov} one {# uzol} few {# uzlov}}. {selection}."
+  "menu.selectionRemovedBoundary": "Odobraté z hranice: {count, plural, other {# uzlov} one {# uzol} few {# uzlov}}. {selection}.",
+  "cache.addRules": "Pridať pravidlá vyrovnávacej pamäte…"
 }

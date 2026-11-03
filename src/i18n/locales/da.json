@@ -2855,5 +2855,6 @@
   "selection.fallback": "Brug markeringsmenuen, hvis systemet eller skærmlæseren opfanger disse taster.",
   "selection.extendKeys": "Udvid markering",
   "menu.selectionAddedBoundary": "Føjet til {name}: {count, plural, other {# noder} one {# node}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Fjernet fra afgrænsninger: {count, plural, other {# noder} one {# node}}. {selection}."
+  "menu.selectionRemovedBoundary": "Fjernet fra afgrænsninger: {count, plural, other {# noder} one {# node}}. {selection}.",
+  "cache.addRules": "Tilføj cacheregler…"
 }

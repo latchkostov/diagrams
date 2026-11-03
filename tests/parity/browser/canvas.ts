@@ -9,6 +9,7 @@ import { ROOT } from "../lib/golden";
 import { readyFonts } from "../../../src/canvas/fonts";
 import type { DiagramFile } from "../../../src/model/types";
 import { runChecks } from "../../../src/checks/run";
+import { ensureCacheRuntime } from "../../../src/sim/cache/cacheBridge";
 
 export interface Drawn {
   viewport: string;
@@ -174,7 +175,9 @@ const nodeBoxes = (drawn: Drawn) =>
 
 /** Background warnings add a row to the title card. Layout commands must see that final footprint. */
 export async function checksChrome(page: Page, slug: string): Promise<void> {
-  const warnings = runChecks(exampleFile(slug)).findings.filter((f) => f.severity === "warning").length;
+  const diagram = exampleFile(slug);
+  await ensureCacheRuntime(diagram);
+  const warnings = runChecks(diagram).findings.filter((f) => f.severity === "warning").length;
   // Zero warnings adds no chrome, so there is no footprint change to wait for.
   if (warnings)
     await expect(page.getByTestId("checks-warning-text")).toHaveText(`${warnings} warning${warnings === 1 ? "" : "s"}`);

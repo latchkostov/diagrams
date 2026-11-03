@@ -1,6 +1,7 @@
 import { msg } from "../i18n";
 
 export const exampleFeatures = [
+  { id: "caching", label: msg("examples.caching") },
   { id: "roundedRegions", label: msg("examples.roundedRegions") },
   { id: "vendorStencils", label: msg("examples.vendorStencils") },
   { id: "brandedClients", label: msg("examples.brandedClients") },

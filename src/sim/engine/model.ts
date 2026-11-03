@@ -92,6 +92,8 @@ export interface Delivery {
 }
 export interface Work extends ExecutionWork<Group> {
   cache?: import("../cache/cacheState").CacheLookup;
+  /** Cache response latency includes local queue/service time before an origin fetch starts. */
+  cacheAt?: number;
   priority?: import("../types").QueuePriority;
   queueProtected?: boolean;
   queueSize?: number;

@@ -276,6 +276,19 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
     expect(numbered.has("stencil.genericDatabaseName")).toBe(false);
   });
 
+  it("keeps the shared cache-authoring action compact in every core catalog", () => {
+    const numbered = numberedKeys([]);
+    const id = ids.indexOf("cache.addRules");
+    expect(rewriteCalls(`${uses}${call("t", "cache.addRules")};`, numbered, fail)).toContain(
+      `t(${id},${JSON.stringify(en["cache.addRules"])})`,
+    );
+    for (const code of catalogLocales()) {
+      const source = compileCatalog(code, numbered, undefined, "", false, "core");
+      expect(source).toContain(`${id}:${JSON.stringify(readCatalog(code)["cache.addRules"])}`);
+      expect(source).not.toContain(`${JSON.stringify(en["cache.addRules"])}:`);
+    }
+  });
+
   it("English and every catalog agree on each message's placeholders", () => {
     // What the runtime relies on: a plain English message is plain in every language (by text), one with arguments
     // is a function in every language (by number).

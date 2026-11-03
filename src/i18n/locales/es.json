@@ -2827,5 +2827,6 @@
   "selection.fallback": "Usa el menú de selección si el sistema o el lector de pantalla captura estas teclas.",
   "selection.extendKeys": "Ampliar selección",
   "menu.selectionAddedBoundary": "Añadidos a {name}: {count, plural, other {# nodos} one {# nodo}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Quitados de los límites: {count, plural, other {# nodos} one {# nodo}}. {selection}."
+  "menu.selectionRemovedBoundary": "Quitados de los límites: {count, plural, other {# nodos} one {# nodo}}. {selection}.",
+  "cache.addRules": "Añadir reglas de caché…"
 }

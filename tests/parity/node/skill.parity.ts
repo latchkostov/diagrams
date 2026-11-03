@@ -40,9 +40,11 @@ it("retains every original aggregate input", () => {
   expect(originals.map((e) => e.slug)).toEqual(ORIGINAL_EXAMPLES);
 });
 const exampleFile = (slug: string) =>
-  slug === "slow-payment-provider"
-    ? join(ROOT, "tests/parity/fixtures/slow-payment-provider-w1.json")
-    : join(ROOT, "src/examples", `${slug === "w2-slow-payment-provider" ? "slow-payment-provider" : slug}.json`);
+  slug === "black-friday-commerce-a1"
+    ? join(ROOT, "tests/parity/fixtures/black-friday-commerce-a1.json")
+    : slug === "slow-payment-provider"
+      ? join(ROOT, "tests/parity/fixtures/slow-payment-provider-w1.json")
+      : join(ROOT, "src/examples", `${slug === "w2-slow-payment-provider" ? "slow-payment-provider" : slug}.json`);
 const diagramFile = (slug: string) =>
   slug === "w2-slow-payment-provider"
     ? exampleFile(slug)

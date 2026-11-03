@@ -90,7 +90,15 @@ describe("problem-first summaries", () => {
     ];
     observe(s, calls);
     expect(nodeSummary(s, calls).problems.map((p) => p.key)).toEqual(["down", "timeout", "threads", "retry", "loss"]);
-    expect(PROBLEM_PRIORITY.slice(0, 5)).toEqual(["down", "timeout", "threads", "breaker", "retry"]);
+    expect(PROBLEM_PRIORITY.slice(0, 7)).toEqual([
+      "down",
+      "timeout",
+      "threads",
+      "breaker",
+      "stampede",
+      "cold",
+      "retry",
+    ]);
   });
   it("reserves exactly four vitals and three summary sections as values change", () => {
     for (const role of ["source", "processor", "queue", "topic", "stream", "store", "sink", "gateway"] as const) {

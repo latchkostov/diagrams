@@ -2818,5 +2818,6 @@
   "selection.fallback": "Naudokite pasirinkimo meniu, jei sistema arba ekrano skaitytuvas perima šiuos klavišus.",
   "selection.extendKeys": "Išplėsti pasirinkimą",
   "menu.selectionAddedBoundary": "Pridėta prie {name}: {count, plural, other {# mazgų} one {# mazgas} few {# mazgų}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Pašalinta iš ribų: {count, plural, other {# mazgų} one {# mazgas} few {# mazgų}}. {selection}."
+  "menu.selectionRemovedBoundary": "Pašalinta iš ribų: {count, plural, other {# mazgų} one {# mazgas} few {# mazgų}}. {selection}.",
+  "cache.addRules": "Pridėti talpyklos taisykles…"
 }

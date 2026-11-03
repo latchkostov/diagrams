@@ -6,6 +6,7 @@ import { LiveContext } from "../live/context";
 import { addConsumer } from "../live/addConsumer";
 import { configuredPlanning, planningRunStats } from "./cache";
 import { ExplanationView } from "./ExplanationView";
+import { CacheDerivations } from "./CacheDerivations";
 import { planningHost } from "./host";
 import { t, useLocale } from "../i18n";
 import { PlanningConnections } from "./PlanningConnections";
@@ -211,6 +212,7 @@ export function NodePlanning({
         </section>
       )}
       <PlanningConnections configured={configured} id={id} />
+      {d && <CacheDerivations diagram={d} state={state} id={id} />}
       {!configuredOnly && observed && d && (
         <LiveDetails
           key={id}

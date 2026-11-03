@@ -59,6 +59,22 @@ export function NodeDetails(props: BadgeProps & { topology: CompiledTopology }) 
     groups,
   };
   const summary = nodeSummary(s, calls);
+  for (const e of diagram.edges) {
+    if (e.to !== node.id || e.kind !== "sync") continue;
+    const w = snapshot.nodes[e.from]?.cacheDetails?.window;
+    if (!w?.requests || diagram.edges.filter((out) => out.from === e.from && out.kind === "sync").length !== 1)
+      continue;
+    summary.facts.push({
+      key: `cache-origin-${e.from}`,
+      label: t("cache.originLine", {
+        node: diagram.nodes.find((n) => n.id === e.from)?.label ?? e.from,
+        fetch: Math.round(w.fetches / w.seconds),
+        rate: Math.round(w.requests / w.seconds),
+        hit: Math.round(100 * (1 - w.fetches / w.requests)),
+      }),
+      value: "",
+    });
+  }
   const waitingEdge = diagram.edges.find((e) => e.id === s.threads?.waitingOn[0]?.[0]);
   if (waitingEdge && s.threads?.waiting)
     summary.facts.splice(summary.problems.length, 0, {

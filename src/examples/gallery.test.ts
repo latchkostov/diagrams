@@ -114,7 +114,13 @@ describe("example gallery", () => {
       filterExamples(publicItems, "", "requestsWait")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["blocking-call", "retry-storm", "slow-payment-provider", "scale-on-busy-threads"]);
+    ).toEqual([
+      "black-friday-commerce",
+      "blocking-call",
+      "retry-storm",
+      "slow-payment-provider",
+      "scale-on-busy-threads",
+    ]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
@@ -131,7 +137,7 @@ describe("example gallery", () => {
       "contoso-dmz": ["networkDevices"],
       "api-route-table": ["routing"],
       // The large showcases: each tag is backed by a configured node.
-      "black-friday-commerce": ["partitions", "rateLimits", "autoscaling", "routing"],
+      "black-friday-commerce": ["caching", "requestsWait", "partitions", "rateLimits", "autoscaling", "routing"],
       "delivery-dispatch": ["partitions", "rateLimits", "autoscaling", "routing"],
       "payments-ledger": ["messageTypes", "partitions", "rateLimits", "routing"],
       "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],

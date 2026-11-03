@@ -2833,5 +2833,6 @@
   "selection.fallback": "Kasuta valikumenüüd, kui süsteem või ekraanilugeja kasutab neid klahve.",
   "selection.extendKeys": "Laienda valikut",
   "menu.selectionAddedBoundary": "Lisatud piiridesse {name}: {count, plural, other {# sõlme} one {# sõlm}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Piiridest eemaldatud: {count, plural, other {# sõlme} one {# sõlm}}. {selection}."
+  "menu.selectionRemovedBoundary": "Piiridest eemaldatud: {count, plural, other {# sõlme} one {# sõlm}}. {selection}.",
+  "cache.addRules": "Lisa vahemälureeglid…"
 }

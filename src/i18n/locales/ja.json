@@ -2855,5 +2855,6 @@
   "selection.fallback": "OS やスクリーンリーダーがこれらのキーを使用する場合は、選択メニューを使用してください。",
   "selection.extendKeys": "選択を拡張",
   "menu.selectionAddedBoundary": "{name} に追加: {count, plural, other {# ノード}}. {selection}.",
-  "menu.selectionRemovedBoundary": "境界から削除: {count, plural, other {# ノード}}. {selection}."
+  "menu.selectionRemovedBoundary": "境界から削除: {count, plural, other {# ノード}}. {selection}.",
+  "cache.addRules": "キャッシュルールを追加…"
 }

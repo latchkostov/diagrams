@@ -2838,5 +2838,6 @@
   "selection.fallback": "Dùng menu chọn nếu hệ thống hoặc trình đọc màn hình sử dụng các phím này.",
   "selection.extendKeys": "Mở rộng vùng chọn",
   "menu.selectionAddedBoundary": "Đã thêm vào {name}: {count, plural, other {# nút}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Đã xóa khỏi ranh giới: {count, plural, other {# nút}}. {selection}."
+  "menu.selectionRemovedBoundary": "Đã xóa khỏi ranh giới: {count, plural, other {# nút}}. {selection}.",
+  "cache.addRules": "Thêm quy tắc bộ nhớ đệm…"
 }

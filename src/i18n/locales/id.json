@@ -2833,5 +2833,6 @@
   "selection.fallback": "Gunakan menu pilihan jika sistem atau pembaca layar mengambil alih tombol ini.",
   "selection.extendKeys": "Perluas pilihan",
   "menu.selectionAddedBoundary": "Ditambahkan ke {name}: {count, plural, other {# node}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Dihapus dari batas: {count, plural, other {# node}}. {selection}."
+  "menu.selectionRemovedBoundary": "Dihapus dari batas: {count, plural, other {# node}}. {selection}.",
+  "cache.addRules": "Tambahkan aturan cache…"
 }

@@ -13,6 +13,7 @@ import type {
   SimSnapshot,
   TraceStep,
   TraceStepKind,
+  CacheTrace,
 } from "../types";
 import { type Node, type Edge, type Message } from "./model";
 import type { Lineage } from "../lineage";
@@ -48,13 +49,14 @@ export function createAccounting(
    */
   const EWMA_ALPHA = 0.009950166250831893;
 
-  function log(kind: SimEventKind, node: Node, message?: Message, detail = ""): void {
+  function log(kind: SimEventKind, node: Node, message?: Message, detail = "", cache?: CacheTrace): void {
     const event: SimEvent = {
       time: time(),
       kind,
       nodeId: node.id,
       ...(message && { messageId: message.id }),
       text: `${node.label} ${kind}${message ? ` ${message.type} #${message.id}` : ""}${detail ? ` (${detail})` : ""}`,
+      ...(cache ? { cache } : {}),
     };
     recordEvent(event);
   }
@@ -124,11 +126,11 @@ export function createAccounting(
       for (let i = 1; i < routes; i++) out.push(copy(node, message));
       return out;
     },
-    function processed(node: Node, message: Message): void {
+    function processed(node: Node, message: Message, cache?: CacheTrace): void {
       const units = dotsOf(message);
       node.processed += units;
       node.completedThisStep += units;
-      log("process", node, message);
+      log("process", node, message, "", cache);
       if (message.family.trace) step(message, "done", node.id);
       // Each node reports the root-to-here path on successful handling, including terminal arrivals.
       // This also lets an intermediate worker explain its queue without composing hop percentiles.

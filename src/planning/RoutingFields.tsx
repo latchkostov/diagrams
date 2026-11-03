@@ -434,7 +434,7 @@ function NewRoute({
 // ---------------------------------------------------------------- route table
 
 /** The editor for one rule's match: methods, path, and Advanced host, header and query conditions. */
-function MatchEditor({
+export function MatchEditor({
   match,
   onChange,
   testId,

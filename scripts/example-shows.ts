@@ -1,4 +1,5 @@
 import { revisionAtLeast } from "../src/model/revisions";
+import { hasCacheRules } from "../src/model/caching";
 import type { ApiBehaviour } from "../src/model/admission";
 import type { AutoscalingConfig } from "../src/model/autoscaling";
 import type { DiagramFile } from "../src/model/types";
@@ -43,6 +44,7 @@ function showsLatency(d: DiagramFile): boolean {
 /** Metadata only: never modifies the diagram, simulation or exported content. */
 export function exampleShows(d: DiagramFile): string[] {
   return [
+    ...(hasCacheRules(d) ? ["caching"] : []),
     ...(d.groups?.some((g) => typeof g.borderRadius === "number") &&
     d.annotations?.some((a) => a.kind === "zone" && typeof a.borderRadius === "number")
       ? ["roundedRegions"]

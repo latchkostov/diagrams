@@ -10,6 +10,7 @@ import { messageColor } from "../../sim/colors";
 import type { MessageTrace, TraceStep } from "../../sim/types";
 import { buildJourney, formatDuration, type DiagramLike } from "../../trace/journey";
 import { routeWords } from "../../trace/routeWords";
+import { cacheTraceWords } from "../../trace/cacheWords";
 
 import { PACING } from "./pacing";
 export { PACING };
@@ -506,6 +507,11 @@ export function buildScript(input: ScriptInput): SlowScript {
           });
         tr.startReal = r;
         tr.real = r;
+        break;
+      }
+      case "cache": {
+        if (s.cache)
+          atNode(tr, "process", processDwell(0), r, r, { caption: cacheTraceWords(s.cache, s.node!, diagram) });
         break;
       }
       case "done": {

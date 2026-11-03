@@ -2842,5 +2842,6 @@
   "selection.fallback": "Bruk utvalgsmenyen hvis systemet eller skjermleseren fanger opp disse tastene.",
   "selection.extendKeys": "Utvid utvalg",
   "menu.selectionAddedBoundary": "Lagt til i {name}: {count, plural, other {# noder} one {# node}}. {selection}.",
-  "menu.selectionRemovedBoundary": "Fjernet fra avgrensninger: {count, plural, other {# noder} one {# node}}. {selection}."
+  "menu.selectionRemovedBoundary": "Fjernet fra avgrensninger: {count, plural, other {# noder} one {# node}}. {selection}.",
+  "cache.addRules": "Legg til hurtigbufferregler…"
 }

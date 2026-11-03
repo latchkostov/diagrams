@@ -38,7 +38,7 @@ export class CacheCheckpoint {
     const bytes: number[] = [];
     const scratch = new DataView(new ArrayBuffer(8));
     for (const value of values) {
-      if (Number.isSafeInteger(value) && Math.abs(value) < 2 ** 51 && !Object.is(value, -0)) {
+      if (Number.isSafeInteger(value) && Math.abs(value) < 2_251_799_813_685_248 && !Object.is(value, -0)) {
         let encoded = (value < 0 ? -value * 2 - 1 : value * 2) + 1;
         while (encoded >= 128) {
           bytes.push((encoded % 128) + 128);

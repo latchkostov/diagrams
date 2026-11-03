@@ -5,6 +5,7 @@ import type { LiveState } from "./controller";
 import { currentHealth } from "./healthWindow";
 import { formatCount, formatRate } from "./format";
 import { latencyLabel } from "./latencyFormat";
+import { cacheReadout } from "./cacheReadout";
 
 const families = new WeakMap<DiagramFile, Map<string, string>>();
 const hidden = new WeakMap<HTMLElement, Map<Element, string | null>>();
@@ -92,6 +93,7 @@ export function refresh(
       s.shed ? t("resilience.shedCount", { count: s.shed }) : "",
       s.queueLimit !== undefined ? t("resilience.queueOf", { count: s.queueDepth ?? 0, limit: s.queueLimit }) : "",
       s.latency ? latencyLabel(s.latency) : "",
+      cacheReadout(s)?.label ?? "",
       s.failingOver ? t("hover.failoverVerdict") : "",
       s.fleet ? t("hover.readyDesired", s.fleet) : "",
       s.fleet?.starting ? t("autoscaling.startingBadge", s.fleet) : "",

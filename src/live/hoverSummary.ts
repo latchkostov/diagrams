@@ -9,6 +9,7 @@ import type { NodeSimState, EdgeSimState } from "../sim/types";
 import { formatCount, formatRate } from "./format";
 import { currentHealth, retryPressure, callsSucceeding } from "./healthWindow";
 import { latencyDuration } from "./latencyFormat";
+import { cacheReadout } from "./cacheReadout";
 
 export interface HoverFact {
   key: string;
@@ -31,6 +32,7 @@ export interface HoverSummary {
 
 /** The dock's stable four readings, independent of which detail section is open. */
 export function dockedNodeVitals(s: NodeSimState): HoverFact[] {
+  const latency = s.cacheDetails?.latency?.total ?? s.latency;
   const growing = currentHealth(s).growing && !s.noConsumer;
   return [
     { key: "rate", label: t("hover.throughput"), value: formatRate(s.throughput) },
@@ -41,7 +43,7 @@ export function dockedNodeVitals(s: NodeSimState): HoverFact[] {
       bad: growing,
     },
     { key: "inFlight", label: t("hover.inFlight"), value: formatCount(s.inFlight) },
-    { key: "latency", label: t("hover.p95"), value: s.latency?.samples ? latencyDuration(s.latency.p95) : "—" },
+    { key: "latency", label: t("hover.p95"), value: latency?.samples ? latencyDuration(latency.p95) : "—" },
   ];
 }
 
@@ -51,6 +53,8 @@ export const PROBLEM_PRIORITY = [
   "timeout",
   "threads",
   "breaker",
+  "stampede",
+  "cold",
   "retry",
   "lag",
   "loss",
@@ -68,6 +72,7 @@ export function nodeSummary(
   calls: NonNullable<EdgeSimState["calls"]>[],
   growing = currentHealth(s).growing,
 ): HoverSummary {
+  const latency = s.cacheDetails?.latency?.total ?? s.latency;
   const busy = s.threads ? s.threads.working + s.threads.waiting : 0;
   const exhausted = !!s.threads && busy > 0 && Number.isFinite(s.threads.slots) && busy >= s.threads.slots;
   const recent = currentHealth(s);
@@ -80,6 +85,7 @@ export function nodeSummary(
   const lost = recent.dropped;
   const broker = ["queue", "topic", "stream"].includes(s.role);
   const candidates: Partial<Record<(typeof PROBLEM_PRIORITY)[number], HoverProblem>> = {
+    ...(cacheReadout(s)?.warming && { cold: { key: "cold", text: cacheReadout(s)!.text } }),
     ...(s.status === "down" && { down: { key: "down", text: t("hover.downVerdict"), severe: true } }),
     ...(timeouts > 0 && {
       timeout: { key: "timeout", text: t("hover.timeoutVerdict", { count: timeouts }), severe: true },
@@ -136,7 +142,7 @@ export function nodeSummary(
       ]
     : [
         rate,
-        { key: "latency", label: t("hover.p95"), value: s.latency?.samples ? latencyDuration(s.latency.p95) : "—" },
+        { key: "latency", label: t("hover.p95"), value: latency?.samples ? latencyDuration(latency.p95) : "—" },
         s.threads
           ? {
               key: "threads",
@@ -181,7 +187,7 @@ export function nodeSummary(
         {
           key: "latency",
           label: t("hover.latency"),
-          summary: s.latency?.samples ? latencyDuration(s.latency.p95) : t("hover.noSamples"),
+          summary: latency?.samples ? latencyDuration(latency.p95) : t("hover.noSamples"),
         },
         { key: "planning", label: t("hover.details"), summary: "" },
       ]
@@ -189,7 +195,7 @@ export function nodeSummary(
         {
           key: "latency",
           label: t("hover.latency"),
-          summary: s.latency?.samples ? latencyDuration(s.latency.p95) : t("hover.noSamples"),
+          summary: latency?.samples ? latencyDuration(latency.p95) : t("hover.noSamples"),
         },
         {
           key: "threads",
@@ -204,6 +210,12 @@ export function nodeSummary(
           summary: s.fleet ? t("hover.readyDesired", s.fleet) : t("hover.unknown"),
         },
       ];
+  if (s.cache)
+    sections.unshift({
+      key: "cache",
+      label: t("cache.heading"),
+      summary: cacheReadout(s) ? t("cache.summary", cacheReadout(s)!) : t("cache.noCacheable"),
+    });
   return { problems, vitals, facts, sections };
 }
 

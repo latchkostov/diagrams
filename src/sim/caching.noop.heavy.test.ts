@@ -4,6 +4,7 @@ import type { DiagramFile } from "../model/types";
 import { analyzeCapacity } from "./capacity";
 import { createEngine, randomDraws } from "./engine";
 import { createSimulationRun } from "./simulation";
+import frozenBlackFriday from "../../tests/parity/fixtures/black-friday-commerce-a1.json";
 
 const inputs = (dir: string, suffix: string) =>
   readdirSync(dir, { withFileTypes: true })
@@ -18,8 +19,16 @@ for (const { name, diagram } of [
     ({ diagram }) => diagram.planning?.revision === "p3-w1" || diagram.planning?.revision === "p3-w2",
   ),
   ...inputs("src/examples", ".json"),
+  { name: "black-friday-commerce-a1.json", diagram: frozenBlackFriday as DiagramFile },
 ]) {
   const old = structuredClone(diagram);
+  // W3's no-cache contract also covers new caching showcases with their policies
+  // removed. The frozen pre-cache cohort above keeps every original tick covered.
+  for (const node of old.nodes) delete node.props?.cache;
+  for (const simulation of old.simulations ?? []) {
+    for (const props of Object.values(simulation.setup?.props ?? {})) delete props.cache;
+    for (const step of simulation.timeline ?? []) if (step.action.do === "props") delete step.action.props.cache;
+  }
   // Keep the W1/W2 corpus as authored. Older public examples also exercise
   // their W2 interpretation; their original revisions remain pinned by parity.
   old.planning = { ...old.planning, revision: old.planning?.revision === "p3-w1" ? "p3-w1" : "p3-w2" };

@@ -2838,5 +2838,6 @@
   "selection.fallback": "如果系统或屏幕阅读器占用了这些按键，请使用选择菜单。",
   "selection.extendKeys": "扩展选择",
   "menu.selectionAddedBoundary": "已添加到 {name}: {count, plural, other {# 节点}}. {selection}.",
-  "menu.selectionRemovedBoundary": "已从边界移除: {count, plural, other {# 节点}}. {selection}."
+  "menu.selectionRemovedBoundary": "已从边界移除: {count, plural, other {# 节点}}. {selection}.",
+  "cache.addRules": "添加缓存规则…"
 }

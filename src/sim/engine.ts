@@ -2143,14 +2143,51 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     settleWork(node, work, "success");
   }
 
+  function cacheTrace(node: Node, work: Work): import("./types").CacheTrace {
+    const lookup = work.cache!;
+    return {
+      outcome: lookup.outcome,
+      ...(lookup.rule ? { rule: lookup.rule.id } : {}),
+      ...(lookup.item >= 0 ? { item: lookup.item + 1 } : {}),
+      ...(lookup.freshUntil !== undefined ? { freshMs: Math.max(0, lookup.freshUntil - time) } : {}),
+      origin: work.route?.edge.to.id ?? node.outgoing.find((e) => e.sync)?.to.id,
+      ...(lookup.outcome === "not-cached"
+        ? {
+            reason: lookup.rule?.policy.noStore
+              ? "no-store"
+              : work.message.request && !["GET", "HEAD"].includes(work.message.request.method)
+                ? "method"
+                : "no-match",
+          }
+        : {}),
+    };
+  }
+
   function complete(node: Node, work: Work): void {
+    if (node.cache && work.cache && work.cache.outcome !== "not-cached") {
+      const recorder =
+        node.cache.latency ??
+        (latencyBudget.remaining > 0 ? (node.cache.latency = createLatencyRecorder()) : undefined);
+      if (recorder)
+        recordLatency(
+          recorder,
+          work.cache.outcome,
+          time - work.cacheAt!,
+          0,
+          0,
+          latencyBudget,
+          undefined,
+          undefined,
+          dotsOf(work.message),
+        );
+    }
     acknowledge(node, work);
     answer(work, true);
     if (isBroker(node)) {
       publish(node, work.message);
       return;
     }
-    processed(node, work.message);
+    processed(node, work.message, work.cache ? cacheTrace(node, work) : undefined);
     if (work.cache?.outcome === "hit") {
       gone(node, work.message, "end", "cached");
       return;
@@ -2463,7 +2500,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // A router with a table matches the address first: a refusal or a deny rule ends the request here, before any
     // admission bucket or service time is spent.
     if (node.table && !work.route && !routeOnArrival(node, work)) return;
-    if (node.cache && !work.cache)
+    if (node.cache && !work.cache) {
+      work.cacheAt = time;
       work.cache = cacheRuntime!.lookup(
         node.cache,
         work.message.type,
@@ -2472,6 +2510,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         time,
         sizeOf(work.message),
       );
+      if (work.message.family.trace) step(work.message, "cache", node.id, { cache: cacheTrace(node, work) });
+    }
     if (node.props.admission) {
       const group = work.delivery?.group;
       if (group && !work.held && !hold(group, node, work)) {
@@ -3490,6 +3530,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if ("system" in metric) return inSystem;
       const node = nodes.get(metric.node);
       if (!node) return undefined;
+      if (metric.field === "p95") {
+        const recorder = node.cache?.latency ?? node.latency;
+        return recorder ? latencyMetrics(recorder).p95 : 0;
+      }
+      if (metric.field === "originFetches") return (node.cache?.counts.fetches ?? 0) / scale;
+      if (metric.field === "hitRatio" || metric.field === "originOffload") {
+        const window = node.cache && cacheRuntime!.details(node.cache, time).window;
+        return metric.field === "hitRatio"
+          ? window && window.hits + window.misses
+            ? (100 * window.hits) / (window.hits + window.misses)
+            : 0
+          : window?.requests
+            ? 100 * (1 - window.fetches / window.requests)
+            : 0;
+      }
       if (metric.field === "inFlight") return threadOccupancy(node);
       // Counters read as reports do, to 1e-9 dots, so a partial dot's exact total meets an expectation.
       if (metric.field === "timedOut")
@@ -3758,7 +3813,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                   : latencyMetrics(node.latency),
               }
             : {}),
-          ...(node.cache ? { cache: cacheRuntime!.read(node.cache) } : {}),
+          ...(node.cache
+            ? { cache: cacheRuntime!.read(node.cache), cacheDetails: cacheRuntime!.details(node.cache, time) }
+            : {}),
           id: node.id,
           role: node.role,
           status: node.status,
@@ -3900,7 +3957,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (latencySinceFault) {
         latencyBudget = createLatencyBudget();
         sinceFault = Object.freeze({ atMs: time, fault: Object.freeze(structuredClone(fault)) });
-        for (const node of nodes.values()) node.latency = undefined;
+        for (const node of nodes.values()) {
+          node.latency = undefined;
+          if (node.cache) node.cache.latency = undefined;
+        }
       }
       if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));
       else faults.delete(faultKey(fault));
