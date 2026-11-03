@@ -3154,11 +3154,12 @@ const en = {
     "{hit}% of cacheable requests answered from the cache{state, select, warming {; warming up} other {}}",
   "cache.heading": "Cache",
   "cache.summary": "Recent window (up to 10 s): {hit}% hits · origin offload {offload}%",
-  "cache.originLine": "{node} sends {fetch} of {rate} requests/s here ({hit}% answered at the edge).",
+  "cache.originLine":
+    "Recent window (up to 10 s): {node} sends {fetch} of {rate} requests/s here ({hit}% answered at the edge).",
   "cache.counts": "Recent window: {hits} hits/s · {misses} misses/s · {notCached} not cached/s",
   "cache.ruleMeasured":
     "{name}: {policy} → {hit}% hits since restart{expected, select, unavailable {} other { (expected {expected}%)}}",
-  "cache.latency": "Hits p95 {hit} · Misses p95 {miss}",
+  "cache.latency": "Since restart: Hits p95 {hit} · Misses p95 {miss}",
   "cache.missTail": "{miss}% of cacheable requests miss",
   "cache.derivation":
     "{name}: {rate} requests/s, kept {ttl}, over {count, plural, one {# item} other {# items}} ({popularity}) → {hit}% hits. {fetch}/s reach {origin}.",

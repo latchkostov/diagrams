@@ -4,7 +4,7 @@ Expected and Inputs retain the configured response time when estimating cache hi
 
 The expanded agreement gate keeps the original assertions and adds popularity, item count, TTL, fetch duration and rate coverage at scales 1 and 10. It found two further simulation cases: short freshness intervals below the clock's useful resolution now use the statistical formula when a starting rate is available, and duplicate replies cannot refill a later expiry cycle. Healthy statistical availability is renewed by active traffic, cools across idle gaps, and stops renewing after a failed fetch. No checkpoint field or budget changes.
 
-Black Friday's four-second note describes the caching benefit qualitatively while its traffic changes. Cache details explicitly distinguish the recent window (up to ten seconds) from rule totals since restart. The run-end lesson identifies its cumulative hit ratio and average rates since restart.
+Black Friday's four-second note describes the caching benefit qualitatively while its traffic changes. Cache details explicitly distinguish the recent window (up to ten seconds) from rule totals and latency since restart; incoming cache rates on the database hover also name the recent window. The run-end lesson identifies its cumulative hit ratio and average rates since restart.
 
 ## Output parity
 
