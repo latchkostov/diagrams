@@ -9,6 +9,8 @@ Cache explanations and capacity analysis share the effective simulation policy, 
 and a Default policy introduced by simulation setup (R-7e73679f04). Changing a saved run's Traffic
 or Capacity multiplier refreshes its expected-hit baseline without clearing entries, counters or
 random streams (R-e466534e7f).
+Baseline edits before the first request also preserve the independence of shared initial rate
+and fetch-sample rings; their first write cannot affect another rule or a later run.
 
 Completed cache responses now have one aggregate latency distribution that includes no-store
 requests. Node p95 expectations, hover, dock and badge data use that response distribution; hit

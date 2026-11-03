@@ -128,8 +128,9 @@ export const cacheRuntime: CacheRuntime = {
       const planned = rates[rule.id]?.rate ?? 0;
       const fetchMs = rates[rule.id]?.fetchMs ?? 0;
       // Keep contents, observations and random streams; only configured inputs change.
-      if (rule.rate.planned !== planned) rule.rate = { ...rule.rate, planned };
-      if (rule.fetchMs.planned !== fetchMs) rule.fetchMs = { ...rule.fetchMs, planned: fetchMs };
+      if (rule.rate.planned !== planned) rule.rate = { ...rule.rate, buckets: rule.rate.buckets.slice(), planned };
+      if (rule.fetchMs.planned !== fetchMs)
+        rule.fetchMs = { ...rule.fetchMs, samples: rule.fetchMs.samples.slice(), planned: fetchMs };
       if (!rule.policy.noStore) {
         total += planned;
         expected += planned * cacheHitShare(rule.policy, planned, fetchMs);

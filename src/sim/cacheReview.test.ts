@@ -140,6 +140,23 @@ it("computes expected hit shares only when configuration changes, including afte
   }
 });
 
+it("keeps untouched rate and fetch rings independent after a baseline edit before the first request", () => {
+  const table = { rules: [], default: { ttlMs: 1000, keys: 20 } };
+  const rates = { "": { rate: 100, fetchMs: 30 } };
+  const compile = () => cacheRuntime.compile(table, "cache", 7, 1, { value: 4096 }, rates);
+  const first = compile(),
+    second = compile();
+  const before = structuredClone(second.rules[0]);
+  cacheRuntime.updateExpected(first, { "": { rate: 10, fetchMs: 50 } });
+  const lookup = cacheRuntime.lookup(first, "Page", undefined, true, 100_000, 1);
+  expect(lookup.outcome).toBe("miss");
+  cacheRuntime.start(first, lookup, 1);
+  cacheRuntime.settle(first, lookup, 100_070, 1, true);
+  expect(second.rules[0]).toEqual(before);
+  expect(compile().rules[0]).toEqual(before);
+  expect(first.rules[0].fetchMs.count).toBe(1);
+});
+
 it("reuses cache derivations and compiled topology across Inputs and Properties renders", () => {
   const d = cacheFixture();
   d.title = "Cached cache derivations";
