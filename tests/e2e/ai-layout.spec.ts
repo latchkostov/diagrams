@@ -37,6 +37,7 @@ async function showToast(page: Page) {
   await goToNode(page, "payments");
   await waitForStableViewport(page);
   await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-family").click();
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toBeVisible();
 }

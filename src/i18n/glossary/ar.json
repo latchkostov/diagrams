@@ -110,6 +110,8 @@
       "use": "وصلة",
       "match": ["وصلة", "وصلات"],
       "except": [
+        "examples.blackFridaySummary",
+        "cache.originLine",
         "shortcuts.mouse.boundary",
         "menu.leftEdges",
         "menu.rightEdges",

@@ -21,6 +21,7 @@ export function filterExamples(items: readonly EnrichedExample[], query: string,
         gallerySummary(e),
         e.description,
         ...(e.slug === "retry-storm" ? ["circuit breaker"] : []),
+        ...(e.shows?.includes("caching") ? ["cache edge cache"] : []),
         ...(e.shows ?? []).map((id) => exampleFeatures.find((f) => f.id === id)?.label() ?? id),
       ]
         .join(" ")

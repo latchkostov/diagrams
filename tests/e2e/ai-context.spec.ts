@@ -74,6 +74,7 @@ test("Copy for AI puts the selection's ids and labels on the clipboard, for the 
   await fitDiagram(page);
   await page.getByTestId("node-payment-db").click({ modifiers: ["ControlOrMeta"] });
   await page.getByTestId("node-payment-db").click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-family").click();
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toContainText("Copied 2 elements for your AI");
   const text = await clipboard(page);
@@ -83,6 +84,7 @@ test("Copy for AI puts the selection's ids and labels on the clipboard, for the 
 
   // One node by right-click: its own name in the toast.
   await page.getByTestId("node-inventory").click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-family").click();
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toContainText(/Copied “Inventory/i);
   expect(await clipboard(page)).toMatch(/- node "inventory"/);

@@ -1,5 +1,5 @@
 import "../../styles/inspector-layout.css";
-import { useLayoutEffect, useMemo, type CSSProperties } from "react";
+import { useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { t, useLocale } from "../../i18n";
 import { stencilLabel, vendorLabel } from "../../i18n/stencils";
@@ -11,6 +11,7 @@ import { useInteraction } from "../interaction/useInteraction";
 import type { DiagramFlowNode } from "../types";
 import { Section, CopyId, Field } from "./fields";
 import { PairedFields } from "./Layout";
+import { ReadoutDisclosure } from "../../live/ReadoutDisclosure";
 import type { InspectorProps } from "./types";
 import type { useNameFields } from "./useNameFields";
 
@@ -23,6 +24,20 @@ type NodeIdentityProps = Pick<InspectorProps, "editor" | "groups" | "connection"
   onDescriptionBlur: () => void;
   setPicker: (anchor: { x: number; y: number }) => void;
 };
+
+function Description({ filled, children }: { filled: boolean; children: ReactNode }) {
+  // Native disclosure owns subsequent toggles. Typing or clearing must never close the editor.
+  const [initialOpen] = useState(filled);
+  return (
+    <ReadoutDisclosure
+      title={filled ? t("inspector.description") : t("inspector.addDescription")}
+      testId="inspector-node-description"
+      open={initialOpen}
+    >
+      {children}
+    </ReadoutDisclosure>
+  );
+}
 
 export function NodeIdentity({
   node,
@@ -173,7 +188,9 @@ export function NodeIdentity({
           />
         </Field>
       )}
-      {descriptionField}
+      <Description key={node.id} filled={!!node.data.description}>
+        {descriptionField}
+      </Description>
       {placementField}
     </Section>
   );

@@ -113,6 +113,8 @@ test("One fetch per item is off by default, behind the expiry fold, and undoable
   await gotoCanvas(page, "cache-stampede");
   await page.getByTestId("node-cdn").click();
   await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-cache").click();
+  await page.getByTestId("cache-rule-launch").click();
   await expect(page.getByTestId("cache-rule-launch-coalesce")).toBeHidden();
   await page.getByTestId("cache-rule-launch-expires-toggle").click();
   const toggle = page.getByTestId("cache-rule-launch-coalesce");

@@ -1436,6 +1436,7 @@ test.describe("annotations", () => {
     // 6. Node documentation starts in Edit mode when empty, renders Preview & top-right badge when populated, and previews in tooltip
     await expect(page.getByTestId("doc-badge-api")).toHaveCount(0);
     await page.getByTestId("node-api").click();
+    await page.getByTestId("inspector-node-description-toggle").click();
     const nodeDoc = page.getByTestId("inspector-field-node-description");
     await expect(nodeDoc).toBeVisible();
     await expect(page.getByTestId("inspector-field-node-description-rendered")).toHaveCount(0);
@@ -1728,6 +1729,7 @@ test("node documentation survives reload and stays cleared", async ({ page }) =>
   await expect.poll(async () => (await savedDiagram(page, SLUG))?.nodes[0].description).toBeUndefined();
   await page.reload();
   await page.getByTestId("node-api").click();
+  await page.getByTestId("inspector-node-description-toggle").click();
   await expect(page.getByTestId("inspector-field-node-description")).toHaveValue("");
   await expect(page.getByTestId("doc-badge-api")).toHaveCount(0);
 });
@@ -1735,6 +1737,7 @@ test("node documentation survives reload and stays cleared", async ({ page }) =>
 test("node documentation remains copyable at the length limit", async ({ page }) => {
   await documentedNode(page, "");
   await page.getByTestId("node-api").click();
+  await page.getByTestId("inspector-node-description-toggle").click();
   const field = page.getByTestId("inspector-field-node-description");
   const source = "a".repeat(49_996) + "TAIL";
   await field.fill(source + "overflow");

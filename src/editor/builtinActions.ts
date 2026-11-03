@@ -14,7 +14,7 @@ import { categoryLabel, toneLabel, kindLabel, shapeLabel, colorLabel } from "../
 export { fileActions } from "../interop/fileActions";
 import { fileActions } from "../interop/fileActions";
 import type { InteropApi } from "../interop/useInterop";
-import { actionRegistry } from "./actions";
+import { actionRegistry, copyMenu } from "./actions";
 
 /** Registration belongs to the canvas module, alongside the actions it registers. */
 export function registerCanvasActions(get: () => InteropApi): () => void {
@@ -47,6 +47,13 @@ import type { EdgeEnd } from "./edgeEdits";
 // Built-in context-menu actions. Each reads the target from ctx and mutates through ctx.editor.
 
 const TONES = Object.keys(toneColor) as GroupTone[];
+const simulationMenu = {
+  id: "node.simulation",
+  get label() {
+    return t("inspector.simulation");
+  },
+  icon: "sliders" as const,
+};
 const SIDE_LABEL: Record<Side, string> = {
   get top() {
     return t("chrome.top");
@@ -710,6 +717,7 @@ export function builtinActions(): Action[] {
       // Request routing: a router's first table (its Default keeps today's connections) and a source's mix. Offered
       // only where they apply, and only until there is one; the inspector edits them after that.
       id: "node.add-routes",
+      menuGroup: simulationMenu,
       section: "edit",
       targets: ["node"],
       get label() {
@@ -763,6 +771,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "node.add-cache-rules",
+      menuGroup: simulationMenu,
       section: "edit",
       targets: ["node"],
       modes: ["edit"],
@@ -809,6 +818,13 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.copy",
+      menuGroup: {
+        ...copyMenu,
+        get label() {
+          return copyMenu.label;
+        },
+        single: "direct",
+      },
       paletteLabel: (ctx) =>
         ctx.target === "node"
           ? t("chrome.copyNode")

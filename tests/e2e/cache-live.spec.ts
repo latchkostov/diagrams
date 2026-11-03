@@ -29,7 +29,10 @@ test("Live shows the hit chip, cache hover, split latency and Inputs derivation"
   await page.clock.resume();
   await openLiveNodeDetails(page, "cache", "cache");
 
-  await expect(page.getByTestId("cache-readout")).toContainText("origin offload");
+  await expect(page.getByTestId("cache-readout")).toContainText("Requests kept away from \u2068Origin\u2069");
+  await expect(page.getByTestId("cache-readout")).not.toContainText("hits over 10 s");
+  await expect(page.getByTestId("cache-latency")).toContainText("At this cache");
+  await expect(page.getByTestId("cache-latency")).toContainText("0 ms modelled lookup");
   await expect(page.getByTestId("cache-latency")).toContainText("Misses p95");
   await expect(page.getByTestId("cache-live-rule-pages")).toContainText("expected");
   if (process.env.CDN_SHOTS) {

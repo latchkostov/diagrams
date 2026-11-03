@@ -17,6 +17,8 @@ import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simKeys";
 import { loadNodeSimulation } from "./simulationLoaders";
 import { CacheFields } from "./lazyCacheFields";
 import { cacheCapable } from "../../model/caching";
+import type { CacheTable } from "../../model/caching";
+import type { RouteTable } from "../../model/requestRouting";
 
 const EMPTY_PROPS: Record<string, unknown> = {};
 const NodeSimulation = defineLazySurface({
@@ -103,10 +105,12 @@ export function NodeSettings({
   // stable reader keeps bindings and validation on the current graph without a new closure per key.
   const planningRevision = revision;
   const planningRead = readDiagram;
+  const cacheConfigured = props.cache !== undefined && cacheCapable(stencilId, role);
   const planning = useMemo(
     () => (
       <NodePlanning
         configuredOnly={liveMode}
+        cacheConfigured={cacheConfigured}
         id={nodeId}
         editor={editor}
         revision={planningRevision}
@@ -115,7 +119,7 @@ export function NodeSettings({
         counts={counts}
       />
     ),
-    [nodeId, editor, planningRevision, planningRead, namingActive, counts, liveMode],
+    [nodeId, editor, planningRevision, planningRead, namingActive, counts, liveMode, cacheConfigured],
   );
   const simulation = useMemo(
     () => (
@@ -156,22 +160,40 @@ export function NodeSettings({
 
   return (
     <>
-      {routed && (
-        <Section title={router ? t("routing.tableHeading") : t("routing.mixHeading")}>
+      {routed && router && (
+        <Disclosure
+          id="node-routes"
+          title={t("routing.tableHeading")}
+          summary={t("planning.routeCount", { count: (props.routeTable as RouteTable | undefined)?.rules.length ?? 0 })}
+          reveal={intended ? intentSerial : undefined}
+        >
+          <div data-testid="inspector-routing">{routing}</div>
+        </Disclosure>
+      )}
+      {routed && mixer && (
+        <Section title={t("routing.mixHeading")}>
           <div data-testid="inspector-routing">{routing}</div>
         </Section>
       )}
 
       {props.cache !== undefined && cacheCapable(stencilId, role) && (
-        <CacheFields
-          editor={editor}
-          nodeId={nodeId}
-          props={props}
-          counts={counts}
-          readDiagram={readDiagram}
-          planning={meta.planning}
-          simulations={meta.simulations}
-        />
+        <Disclosure
+          id="node-cache"
+          title={t("cache.rules")}
+          summary={t("cache.ruleCount", { count: (props.cache as CacheTable).rules.length })}
+          reveal={focus?.name === "cache-add-rule" ? focus.seq : undefined}
+        >
+          <CacheFields
+            editor={editor}
+            nodeId={nodeId}
+            props={props}
+            counts={counts}
+            readDiagram={readDiagram}
+            planning={meta.planning}
+            simulations={meta.simulations}
+            initiallyOpen={focus?.name === "cache-add-rule"}
+          />
+        </Disclosure>
       )}
       {planning}
       {simulation}

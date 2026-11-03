@@ -1,8 +1,16 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { coreCatalogs, surfaceCatalogs, catalogs } from "virtual:i18n/catalogs";
-import { catalogBucket, catalogBuckets, lintCatalogBuckets } from "../../scripts/i18n-plugin";
+import { catalogBucket, catalogBuckets, lintCatalogBuckets, numberedKeys } from "../../scripts/i18n-plugin";
 import en from "./en";
+
+it("keeps rule summaries optional and gives gallery copy numeric lookups without changing readiness", () => {
+  expect(catalogBucket("planning.routeCount")).toBe("simulation");
+  expect(catalogBucket("examples.blackFridaySummary")).toBe("core");
+  const numbered = numberedKeys([]);
+  for (const key of ["examples.blackFridaySummary", "examples.intro", "examples.run"] as const)
+    expect(numbered.has(key)).toBe(true);
+});
 
 it("assigns every key exactly once and rejects missing or overlapping prefixes", () => {
   expect(() => lintCatalogBuckets()).not.toThrow();

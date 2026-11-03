@@ -204,7 +204,7 @@ function inspector(id: string, routed: boolean) {
     collapsed: false,
     onToggle: () => {},
   };
-  const open = vi.spyOn(safeStorage, "getItem").mockReturnValue('{"node-simulation":true}');
+  const open = vi.spyOn(safeStorage, "getItem").mockReturnValue('{"node-simulation":true,"node-routes":true}');
   try {
     const html = renderToStaticMarkup(createElement(Inspector, props));
     return [...html.matchAll(/data-testid="([^"]+)"/g)].map((m) => m[1]);
