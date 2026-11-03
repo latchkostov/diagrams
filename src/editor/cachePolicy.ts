@@ -11,12 +11,17 @@ type CachePolicyLive = {
   slowmo: Pick<LiveUi["slowmo"], "active">;
 };
 
+type CachePolicyDocument = {
+  nodes: readonly Pick<DiagramFile["nodes"][number], "id" | "props">[];
+  simulations?: DiagramFile["simulations"];
+};
+
 /** One owner and writer for the inspector, origin menu and verified fix. */
 export function nodeCachePolicy(
   editor: Pick<EditorApi, "getDiagram" | "setNodeProps" | "updateMeta">,
   nodeId: string,
   live: CachePolicyLive | null = planningHost.get(),
-  rendered?: DiagramFile,
+  rendered?: CachePolicyDocument,
 ) {
   const d = rendered ?? editor.getDiagram(),
     node = d.nodes.find((n) => n.id === nodeId);

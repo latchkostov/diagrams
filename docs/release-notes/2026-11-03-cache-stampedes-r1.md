@@ -20,7 +20,7 @@ expectation bands, checkpoint bound and bundle limits stay fixed.
 
 ## Verification
 
-All 56 focused unit regressions pass. Eight deliberate mutations covering the seven
+All 58 focused unit regressions pass. Nine deliberate mutations covering the seven
 findings fail their assertions before the fixes are restored. Output parity compares
 3,342 goldens with zero changed, added, missing or stale records.
 
@@ -32,3 +32,5 @@ scale 1 and 95,243 B at scales 10 and 50, below the unchanged 130 KiB bound.
 The Linux repetitions also exposed a controlled Undo update arriving before the editor's
 imperative revision counter. The ownership snapshot follows the changed controlled
 reader immediately, preserving restored rules and the running checkbox value.
+Above the analysis size limit, ownership uses the inspector's existing node and saved-run
+metadata without copying the graph, including when the document changes.

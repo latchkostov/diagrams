@@ -201,6 +201,7 @@ export function CacheFields({
   counts,
   readDiagram,
   planning,
+  simulations,
 }: {
   editor: EditorApi;
   nodeId: string;
@@ -208,6 +209,7 @@ export function CacheFields({
   counts: { nodes: number; edges: number };
   readDiagram?: () => DiagramFile;
   planning?: DiagramFile["planning"];
+  simulations?: DiagramFile["simulations"];
 }) {
   useLocale();
   const [open, setOpen] = useState<string | null>((props.cache as CacheTable).rules[0]?.id ?? null);
@@ -220,7 +222,12 @@ export function CacheFields({
   const state = useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
   const version = editor.getDocumentVersion();
   const limited = counts.nodes > 256 || counts.edges > 512;
-  const read = () => ({ ...version, limited, reader: readDiagram, document: readDiagram?.() ?? editor.getDiagram() });
+  const read = () => ({
+    ...version,
+    limited,
+    reader: readDiagram,
+    document: limited ? undefined : (readDiagram?.() ?? editor.getDiagram()),
+  });
   const [snapshot, setSnapshot] = useState(read);
   let current = snapshot;
   if (
@@ -233,7 +240,12 @@ export function CacheFields({
     setSnapshot(current);
   }
   const doc = limited ? undefined : current.document;
-  const policy = nodeCachePolicy(editor, nodeId, live, current.document);
+  const policy = nodeCachePolicy(
+    editor,
+    nodeId,
+    live,
+    current.document ?? { nodes: [{ id: nodeId, props }], simulations },
+  );
   const table = policy?.table ?? (props.cache as CacheTable);
   const configured = doc && configuredPlanning(doc, state);
   const demand = configured?.analysis.cacheDemand?.[nodeId];
