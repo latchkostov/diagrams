@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, waitForCameraIdle, pauseClock } from "./fixtures";
+import { test, expect, waitForCameraIdle, waitForStableBox, pauseClock } from "./fixtures";
 import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
+import { tutorialInspectorReady } from "./tutorial-inspector-ready";
 
 const boundaryChunk = chunk("boundaryPlacement", "src/editor/boundaryPlacement.ts");
 async function begin(page: Page, id = "lab-tutorial-recovery") {
@@ -93,6 +94,8 @@ test("RTL coach chooses a visible field, then its disclosure, and stays beside t
   await page.getByTestId("node-c").click({ position: { x: 20, y: 35 } });
   await waitForCameraIdle(page);
   const coach = page.getByTestId("tutorial-coach");
+  await tutorialInspectorReady(page);
+  await waitForStableBox(page.getByTestId("inspector-section-node-simulation"));
   await page.getByTestId("inspector-section-node-simulation").scrollIntoViewIfNeeded();
   await expect(coach).toHaveAttribute("data-target", "inspector-section-node-simulation");
   await page.getByTestId("inspector-section-node-simulation").click();

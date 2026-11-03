@@ -13,6 +13,7 @@ import { calibrationWork } from "../calibration";
 import { gate, Recorder, round, stats, type Stats, type WorkloadInfo } from "../results";
 import { workloadFile } from "../workloadCache";
 import { OBSERVERS, RENDER_HOOK, type AppHooks } from "./instrument";
+import { canvasSample } from "./canvasSample";
 
 export const MODE = (process.env.BENCH_MODE ?? "full") as "full" | "gates" | "quick";
 export const CPU_THROTTLE = Number(process.env.BENCH_CPU ?? 2);
@@ -196,8 +197,8 @@ export class Bench {
   async viewport(): Promise<{ x: number; y: number; k: number }> {
     const t = await this.page.evaluate(
       () =>
-        document.querySelector('[data-testid="canvas-wrap"]')?.querySelector<HTMLElement>(".react-flow__viewport")
-          ?.style.transform ?? "",
+        document.querySelector<HTMLElement>('[data-testid^="rf__node-"]')?.parentElement?.parentElement?.style
+          .transform ?? "",
     );
     const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/.exec(t);
     if (!m) throw new Error(`no viewport transform: "${t}"`);
@@ -206,16 +207,11 @@ export class Bench {
 
   /** Wait for both the flex pane (which excludes the Inspector) and its camera to hold still. */
   async canvasSettled() {
-    await expect(this.page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
     let last = "";
     await expect
       .poll(
         async () => {
-          const [box, viewport] = await Promise.all([
-            this.page.getByTestId("canvas-wrap").boundingBox(),
-            this.viewport(),
-          ]);
-          const now = box ? JSON.stringify([box, viewport]) : "";
+          const now = await this.page.evaluate(canvasSample);
           const stable = now !== "" && now === last;
           last = now;
           return stable;
@@ -234,6 +230,11 @@ export class Bench {
   /** Use the editor's fit action: a transformed canvas cannot be brought into view by DOM scrolling. */
   async fitDiagram() {
     await this.canvasSettled();
+    await this.fitSettledDiagram();
+  }
+
+  /** Callers that just sampled an idle camera need only wait for the new Fit to finish. */
+  private async fitSettledDiagram() {
     await this.page.getByTestId("fit-view-button").click();
     await this.canvasSettled();
   }
@@ -420,7 +421,7 @@ export class Bench {
     if (found) return found;
     if (fallback) found = await this.findClickable(fallback);
     if (found) return found;
-    await this.fitDiagram();
+    await this.fitSettledDiagram();
     found = await this.findClickable(ids);
     if (!found && fallback) found = await this.findClickable(fallback);
     if (found) return found;
@@ -498,7 +499,7 @@ export class Bench {
     await this.canvasSettled();
     let found = await this.findClickable([testId.slice(5)]);
     if (!found && o.fit !== false) {
-      await this.fitDiagram();
+      await this.fitSettledDiagram();
       found = await this.findClickable([testId.slice(5)]);
     }
     if (!found) throw new Error(`no clickable point on ${testId} in the visible canvas pane`);
