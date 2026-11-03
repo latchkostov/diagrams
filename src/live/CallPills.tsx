@@ -10,6 +10,7 @@ import { t, useLocale } from "../i18n";
 export { ThreadMeter } from "./ThreadMeter";
 
 export interface ActiveCall {
+  herd?: { item: number; fetches: number; waiting: number; seconds: number };
   breaker?: import("../sim/breaker").BreakerView;
   windowRequests?: number;
   windowAttempts?: number;
@@ -79,7 +80,7 @@ export const CallPills = memo(
       ]);
     }, [nodes, routes, style, direction, captions, hideDependencies, readoutScale, presenting]);
     const labels = calls.map(
-      ({ id, held, inFlight, timedOut, queued = 0, pool, from = "", to = "", breaker, ...retry }) => {
+      ({ id, held, inFlight, timedOut, queued = 0, pool, from = "", to = "", breaker, herd, ...retry }) => {
         const amplification = (retry.windowRequests ?? 0) > 0 ? (retry.windowAttempts ?? 0) / retry.windowRequests! : 1;
         const failures = callFailureRate(retry);
         const percent = failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—";
@@ -101,6 +102,24 @@ export const CallPills = memo(
                     ? t("threads.pillHeld", { count: held })
                     : t("threads.pillFlight", { count: inFlight }),
         };
+        if (herd)
+          return {
+            ...label,
+            timedOut: 0,
+            herd: true,
+            herdWarning: herd.fetches > 1,
+            text: t("cache.pill", {
+              mode: herd.fetches > 1 ? "fetching" : "held",
+              count: herd.fetches > 1 ? herd.fetches : herd.waiting,
+            }),
+            title: t("cache.pillTitle", {
+              mode: herd.fetches > 1 ? "fetching" : "held",
+              count: herd.fetches > 1 ? herd.fetches : herd.waiting,
+              item: herd.item,
+              seconds: herd.seconds.toFixed(1),
+              origin: to,
+            }),
+          };
         if (breaker && breaker.state !== "closed")
           return {
             ...label,
@@ -146,13 +165,16 @@ export const CallPills = memo(
         }),
       [dimensions, routes, obstacles, tx, ty, zoom, viewWidth, viewHeight],
     );
-    return labels.map(({ id, text, title, timedOut }) => {
+    return labels.map((label) => {
+      const { id, text, title, timedOut } = label;
+      const herd = "herd" in label && label.herd;
+      const warning = "herdWarning" in label && label.herdWarning;
       const box = placements.get(id);
       if (!box) return null;
       return (
         <span
           key={id}
-          className={`lv-call-pill${timedOut ? " is-timeout" : ""}`}
+          className={`lv-call-pill${warning ? " is-herd" : timedOut ? " is-timeout" : ""}`}
           style={{ left: box.x, top: box.y, transform: `scale(${readoutScale})`, transformOrigin: "top left" }}
           data-call-edge={id}
           data-detail-measure={text.length}
@@ -160,11 +182,11 @@ export const CallPills = memo(
           data-testid={`call-pill-${id}`}
         >
           <span className={`lv-pill-glyph${timedOut ? " is-loss" : ""}`} aria-hidden>
-            {timedOut ? "✕" : "↗"}
+            {herd ? "⚡" : timedOut ? "✕" : "↗"}
           </span>{" "}
           <bdi>
             {text
-              .replace(/^[↗✕]\s*/, "")
+              .replace(/^[↗✕⚡]\s*/, "")
               .split(/(↻)/)
               .map((part, index) =>
                 part === "↻" ? (
@@ -187,6 +209,7 @@ export const CallPills = memo(
     a.calls.every(
       (c, i) =>
         JSON.stringify(c.breaker) === JSON.stringify(b.calls[i].breaker) &&
+        JSON.stringify(c.herd) === JSON.stringify(b.calls[i].herd) &&
         c.windowRequests === b.calls[i].windowRequests &&
         c.windowAttempts === b.calls[i].windowAttempts &&
         c.windowRetried === b.calls[i].windowRetried &&

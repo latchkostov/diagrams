@@ -1,5 +1,7 @@
 import { t } from "../i18n";
 import { effectiveCallerPolicy } from "../editor/callerPolicy";
+import { nodeCachePolicy } from "../editor/cachePolicy";
+import { planningHost } from "./planningHost";
 import { notify } from "../interop/ui/toast";
 import type { EditorApi } from "../editor/types";
 import type { InteractionController } from "../canvas/interaction/controller";
@@ -12,7 +14,7 @@ import type { TroubleAction } from "./observedTrouble";
 
 export type ThreadFixAction = Extract<
   TroubleAction,
-  { kind: "free-thread" | "add-timeout" | "scale-threads" | "resilience" }
+  { kind: "free-thread" | "add-timeout" | "scale-threads" | "resilience" | "cache" }
 >;
 
 export interface ThreadFixContext {
@@ -33,7 +35,14 @@ export const applyThreadFix: ApplyThreadFix = ({ editor, controller, interaction
     editor.undo();
     interaction?.dispatch({ type: "callout.closed", hadFocus, undo: true });
   };
-  if (action.kind === "resilience") {
+  if (action.kind === "cache") {
+    const policy = nodeCachePolicy(editor, action.node, {
+      controller,
+      slowmo: planningHost.get()?.slowmo ?? { active: false },
+    });
+    if (!policy?.set(action.cache)) return;
+    sayThreadFix(undo, label, policy.simulation);
+  } else if (action.kind === "resilience") {
     const effective = effectiveCallerPolicy(editor, action.edge);
     if (!effective?.editable) return;
     if (action.queue) {

@@ -1,0 +1,4 @@
+exit 0
+VALID <repo>/src/examples/cache-stampede.json: 4 nodes, 3 edges, 2 simulations
+  warning: simulations[0] "TTL only": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+  warning: simulations[1] "One fetch per item": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).

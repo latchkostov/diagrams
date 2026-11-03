@@ -13,6 +13,7 @@ import inlineRateLimit from "../examples/inline-rate-limit.json";
 import recommendations from "../examples/recommendations-feature-store.json";
 import { waitingFixture } from "./waitingFixture";
 import { cacheFixture } from "./cacheFixture";
+import stampede from "../examples/cache-stampede.json";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
@@ -416,6 +417,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "Cache hits, misses and their measured latency on the same read-through path.",
     diagram: cacheFixture,
+  },
+  {
+    kind: "diagram",
+    id: "cache-stampede",
+    title: "Cache stampede",
+    group: "Diagrams",
+    description: "TTL herds and the same-seed one-fetch comparison.",
+    diagram: () => structuredClone(stampede) as DiagramFile,
   },
   {
     kind: "diagram",

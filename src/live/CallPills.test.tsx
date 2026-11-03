@@ -1,4 +1,7 @@
+// @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { intersects } from "../canvas/geometry/rect";
 import { CallPills } from "./CallPills";
@@ -24,6 +27,54 @@ vi.mock("../canvas/edges/useEdgeRoute", () => ({
     ]),
   routeInputFromStore: () => ({ nodes: [{ rect: { x: 330, y: 0, width: 220, height: 72 } }] }),
 }));
+
+it("reuses the placed origin pill for herds and held waiters", () => {
+  for (const [fetches, waiting, expected] of [
+    [60, 0, "60 fetches for one item"],
+    [1, 59, "1 fetch · 59 waiting"],
+  ] as const) {
+    const markup = renderToStaticMarkup(
+      <CallPills
+        calls={[{ id: "call", held: 0, inFlight: fetches, herd: { item: 1, fetches, waiting, seconds: 0.2 } }]}
+      />,
+    );
+    expect(markup).toContain(expected);
+    expect(markup.includes("is-herd")).toBe(fetches > 1);
+    expect(markup).not.toContain("is-timeout");
+  }
+});
+
+it("updates waiter counts and herd visibility while the single call's other metrics stay unchanged", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  const render = (waiting?: number) =>
+    act(() =>
+      root.render(
+        <CallPills
+          calls={[
+            {
+              id: "call",
+              held: 0,
+              inFlight: 1,
+              ...(waiting === undefined ? {} : { herd: { item: 1, fetches: 1, waiting, seconds: 0.2 } }),
+            },
+          ]}
+        />,
+      ),
+    );
+  try {
+    await render(20);
+    expect(host.textContent).toContain("20 waiting");
+    await render(80);
+    expect(host.textContent).toContain("80 waiting");
+    await render();
+    expect(host.textContent).not.toContain("waiting");
+  } finally {
+    await act(() => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
 
 it.each([1, 1.6])("reserves live node readouts at counter-scale %s", (readoutScale) => {
   const markup = renderToStaticMarkup(

@@ -2725,6 +2725,9 @@ details[open] > summary .lv-disclosure-chevron {
 .lv-call-pill.is-timeout {
   color: var(--danger);
 }
+.lv-call-pill.is-herd {
+  color: var(--warning-ink);
+}
 [data-theme="light"] {
   --hover-danger-ink: #b82330;
 }

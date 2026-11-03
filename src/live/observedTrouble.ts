@@ -17,6 +17,9 @@ import { callFailureRate } from "./callFailureRate";
 import { isolate } from "./bidi";
 import { HEALTH_WINDOW_MS, HEALTH_SAMPLE_MS, queueGrowthThreshold } from "./healthWindow";
 import { requestResponseMs } from "../sim/timing";
+import type { CacheTable } from "../model/caching";
+import { coalesceRule } from "../sim/cachePresets";
+import { cacheHerd } from "./cacheHerd";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
 // that's down, a node losing messages, a broker whose lag keeps rising. The live callout reports it on its own, with
@@ -26,8 +29,9 @@ import { requestResponseMs } from "../sim/timing";
 export const WINDOW_MS = HEALTH_WINDOW_MS;
 const SAMPLE_MS = HEALTH_SAMPLE_MS;
 
-export type TroubleKind = "down" | "retry-storm" | "dropping" | "threads-exhausted" | "lag";
+export type TroubleKind = "down" | "retry-storm" | "cache-stampede" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
+  | { kind: "cache"; node: string; rule: string; item?: number; edge?: string; step: "coalesce"; cache: CacheTable }
   | {
       kind: "resilience";
       edge: string;
@@ -67,6 +71,8 @@ export interface Trouble {
 
 /** What the watcher reads of a node: a real-unit snapshot's node (RealSimSnapshot["nodes"][id]). */
 export interface WatchedNode {
+  cacheDetails?: NodeSimState["cacheDetails"];
+  latency?: Pick<NonNullable<NodeSimState["latency"]>, "p95">;
   threads?: NodeSimState["threads"];
   backlog?: number;
   status: NodeStatus;
@@ -99,6 +105,7 @@ export interface WatchedFrame {
 }
 
 interface Sample {
+  p95: Map<string, number>;
   failedCalls: Map<string, number>;
   fault: boolean;
   exhausted: Map<string, { edge: string; count: number }>;
@@ -114,9 +121,10 @@ const maxLag = (n: WatchedNode) => Math.max(n.backlog ?? 0, ...Object.values(n.l
 const KIND_ORDER: Record<TroubleKind, number> = {
   down: 0,
   "retry-storm": 1,
-  "threads-exhausted": 2,
-  dropping: 3,
-  lag: 4,
+  "cache-stampede": 2,
+  "threads-exhausted": 3,
+  dropping: 4,
+  lag: 5,
 };
 
 /**
@@ -175,6 +183,7 @@ export class TroubleWatcher {
           arrivals.set(id, n.processed + (n.failed ?? 0) + (n.inFlight ?? 0) + (n.backlog ?? 0));
       }
       this.samples.push({
+        p95: new Map(Object.entries(frame.nodes).map(([id, n]) => [id, n.latency?.p95 ?? 0])),
         time: frame.time,
         lag,
         dropped,
@@ -198,6 +207,7 @@ export class TroubleWatcher {
       if (n.status !== "up") statuses += `${id}:${n.status};`;
       if (n.threads) statuses += `${id}:${n.threads.waiting}:${n.threads.working};`;
       if (n.dropped) losses += `${id}:${n.dropped}:${n.outageDropped ?? 0};`;
+      if (n.cacheDetails) statuses += `${id}:${JSON.stringify(n.cacheDetails.herd)}:${n.backlog ?? 0};`;
     }
     const cached = this.last;
     if (!sampled && cached && cached.statuses === statuses && cached.losses === losses && cached.diagram === diagram)
@@ -210,6 +220,8 @@ export class TroubleWatcher {
 
 /** What the watcher needs of a diagram, built once per diagram (a new object after every edit). */
 interface Shape {
+  cacheSources: (id: string) => ReadonlySet<string>;
+  caches: Map<string, CacheTable>;
   order: Map<string, number>;
   name: (id: string) => string;
   role: Map<string, SimRole>;
@@ -294,7 +306,32 @@ function shapeOf(d: DiagramFile): Shape {
         list.push({ broker, group: group.name });
         memberships.set(member, list);
       }
+  const upstream = new Map<string, string[]>(),
+    sourceCache = new Map<string, ReadonlySet<string>>();
+  for (const edge of d.edges)
+    if (!edge.relation || edge.relation === "flow") {
+      const list = upstream.get(edge.to) ?? [];
+      list.push(edge.from);
+      upstream.set(edge.to, list);
+    }
   const shape: Shape = {
+    cacheSources(id) {
+      const known = sourceCache.get(id);
+      if (known) return known;
+      const seen = new Set([id]),
+        sources = new Set<string>(),
+        pending = [id];
+      while (pending.length)
+        for (const parent of upstream.get(pending.pop()!) ?? [])
+          if (!seen.has(parent)) {
+            seen.add(parent);
+            pending.push(parent);
+            if (role.get(parent) === "source") sources.add(parent);
+          }
+      sourceCache.set(id, sources);
+      return sources;
+    },
+    caches: new Map(d.nodes.filter((n) => n.props?.cache).map((n) => [n.id, n.props!.cache as CacheTable])),
     resilience: revisionAtLeast(d.planning?.revision, "p3-w2"),
     order: new Map(d.nodes.map((n, i) => [n.id, i])),
     name: (id) => labels.get(id) ?? id,
@@ -331,6 +368,48 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
   const spanned = oldest && frame.time - oldest.time >= WINDOW_MS - SAMPLE_MS;
   // Lag must rise by more than noise: a few dots at this scale, and a fifth of what was there.
   const threshold = (before: number) => queueGrowthThreshold(before, frame.scale);
+
+  for (const [id, table] of d.caches) {
+    const n = frame.nodes[id];
+    const herd = n && cacheHerd(n, frame.scale);
+    if (!herd || herd.fetches <= 1) continue;
+    const origin = d.targets.get(herd.edge ?? d.outgoingCalls.get(id)?.[0] ?? "");
+    if (!origin) continue;
+    const before = [...samples]
+      .reverse()
+      .find((sample) => sample.time <= frame.time - 1000 && sample.time >= frame.time - 2000);
+    if (!before) continue;
+    const rising = (frame.nodes[origin]?.backlog ?? 0) > (before.lag.get(origin) ?? 0);
+    const slowing = [...d.cacheSources(id)].some(
+      (source) =>
+        (before.p95.get(source) ?? 0) > 0 && (frame.nodes[source]?.latency?.p95 ?? 0) > 2 * before.p95.get(source)!,
+    );
+    if (!rising && !slowing) continue;
+    const headline = t("cache.stampedeHeadline", { origin: name(origin) });
+    out.push({
+      key: `cache-stampede:${id}:${herd.rule}`,
+      kind: "cache-stampede",
+      node: id,
+      headline,
+      announce: headline,
+      detail: t("cache.stampedeDetail", {
+        node: name(id),
+        rule: table.rules.find((r) => r.id === herd.rule)?.label || herd.rule || t("cache.everythingElse"),
+        count: herd.fetches,
+        origin: name(origin),
+      }),
+      action: {
+        kind: "cache",
+        node: id,
+        rule: herd.rule,
+        item: herd.item,
+        edge: herd.edge,
+        step: "coalesce",
+        cache: coalesceRule(table, herd.rule),
+      },
+      related: [origin],
+    });
+  }
 
   if (d.resilience)
     for (const [edge, value] of Object.entries(frame.edges ?? {})) {

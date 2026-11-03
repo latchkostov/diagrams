@@ -96,6 +96,8 @@ export interface Work extends ExecutionWork<Group> {
   cache?: import("../cache/cacheState").CacheLookup;
   /** Cache response latency includes local queue/service time before an origin fetch starts. */
   cacheAt?: number;
+  cacheOwner?: import("../cache/cacheState").NodeCache;
+  cacheFlight?: { key: string; waiters: Work[]; waiting: number };
   priority?: import("../types").QueuePriority;
   queueProtected?: boolean;
   queueSize?: number;

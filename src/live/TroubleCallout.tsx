@@ -9,6 +9,7 @@ import { useFloatingPlacement } from "./useFloatingPlacement";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
+  cache: { label: () => t("cache.coalescingAction", { mode: "coalesce" }) },
   resilience: { label: msg("resilience.addBreaker") },
   "scale-threads": { label: msg("autoscaling.scaleBusy") },
   "add-timeout": {

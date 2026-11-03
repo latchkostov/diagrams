@@ -11,6 +11,7 @@ import type { DiagramFlowNode } from "../types";
 import type { InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 import { NodeIdentity } from "./lazyNodeIdentity";
+import { cacheCapable } from "../../model/caching";
 
 export function NodePanel({
   node,
@@ -36,10 +37,11 @@ export function NodePanel({
         .byElement.get(node.id)
         ?.filter((f) => f.severity === "warning").length ?? 0,
   );
-  const [editing, setEditing] = useState({ live: liveMode, seq: focus?.seq, open: !liveMode });
+  const stencil = getStencil(node.data.stencil);
+  const cacheFocus = focus?.name === "cache-add-rule" && cacheCapable(node.data.stencil, stencil.simRole);
+  const [editing, setEditing] = useState({ live: liveMode, seq: focus?.seq, open: !liveMode || cacheFocus });
   if (editing.live !== liveMode) setEditing({ live: liveMode, seq: focus?.seq, open: !liveMode });
   else if (focus?.seq !== editing.seq) setEditing({ ...editing, seq: focus?.seq, open: true });
-  const stencil = getStencil(node.data.stencil);
   // A new node keeps its creation step while these name fields are focused.
   const [textActive, setTextActive] = useState<"name" | "description" | null>(null);
   const namingActive = textActive !== null;

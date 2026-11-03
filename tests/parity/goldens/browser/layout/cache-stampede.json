@@ -1,0 +1,24 @@
+{
+  "autoLayout": {
+    "viewport": "translate(-6.95444px, 349.987px) scale(0.973861)",
+    "nodes": {
+      "shoppers": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Shoppers Web Browser" },
+      "cdn": { "kind": "node", "box": "translate(400px, 40px) 220×72", "text": "Edge CDN CDN" },
+      "origin": { "kind": "node", "box": "translate(760px, 40px) 232×72", "text": "Product API 4 threads · 60 ms · blocking" },
+      "db": { "kind": "node", "box": "translate(1159px, 40px) 220×72", "text": "Catalog DB Database" }
+    },
+    "edges": { "requests": "M260,76 L400,76", "fetch": "M620,76 L760,76", "read": "M992,76 L1159,76" },
+    "labels": {}
+  },
+  "tidy": {
+    "viewport": "translate(-91.186px, 349.987px) scale(0.973861)",
+    "nodes": {
+      "shoppers": { "kind": "node", "box": "translate(0px, 160px) 220×72", "text": "Shoppers Web Browser" },
+      "cdn": { "kind": "node", "box": "translate(330px, 160px) 220×72", "text": "Edge CDN CDN" },
+      "origin": { "kind": "node", "box": "translate(650px, 160px) 232×72", "text": "Product API 4 threads · 60 ms · blocking" },
+      "db": { "kind": "node", "box": "translate(990px, 160px) 220×72", "text": "Catalog DB Database" }
+    },
+    "edges": { "requests": "M220,196 L330,196", "fetch": "M550,196 L650,196", "read": "M882,196 L990,196" },
+    "labels": {}
+  }
+}

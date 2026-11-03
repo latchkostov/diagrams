@@ -6,16 +6,31 @@ export interface CacheCounts {
   requests: number;
   hits: number;
   misses: number;
+  coalesced: number;
   notCached: number;
   fetches: number;
   fills: number;
 }
-export interface CacheReadout extends CacheCounts {
+export interface CacheReadout extends Omit<CacheCounts, "coalesced"> {
+  coalesced?: number;
   hitRatio: number;
   originOffload: number;
-  rules: Record<string, CacheCounts>;
+  rules: Record<string, Omit<CacheCounts, "coalesced"> & { coalesced?: number }>;
+}
+/** A detached real-unit observation of one tracked item, whether or not it wins the display summary. */
+export interface CacheItemObservation {
+  rule: string;
+  item: number;
+  fetches: number;
+  waiting: number;
+  expiredAt: number;
+  edge?: string;
 }
 export interface CacheDetails {
+  herdThreshold?: number;
+  itemFetches?: number;
+  peakHerd?: { rule: string; item: number; fetches: number; edge?: string };
+  herd?: CacheItemObservation;
   expected?: number;
   window?: { requests: number; hits: number; misses: number; fetches: number; seconds: number };
   latency?: {
@@ -42,6 +57,10 @@ export interface CacheRuleState {
   warmSince?: number;
 }
 export interface NodeCache {
+  herds?: Map<string, { expiredAt: number; edge?: string }>;
+  herdThreshold: number;
+  peakHerd?: { rule: string; item: number; fetches: number; edge?: string };
+  flights?: Map<string, import("../engine/model").Work>;
   expected: number;
   rules: CacheRuleState[];
   counts: CacheCounts;
@@ -49,9 +68,10 @@ export interface NodeCache {
   latency?: import("../latency").LatencyRecorder;
 }
 export interface CacheLookup {
+  origin?: string;
   rule?: CacheRuleState;
   item: number;
-  outcome: "hit" | "miss" | "not-cached";
+  outcome: "hit" | "miss" | "coalesced" | "not-cached";
   at: number;
   freshUntil?: number;
   fetching?: true;

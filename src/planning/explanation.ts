@@ -47,6 +47,7 @@ export interface Explanation {
     policy: import("../model/caching").CachePolicy;
     rate: number;
     hitRatio: number;
+    fetchShare?: number;
     origin: string;
     fetchMs: number;
   }[];

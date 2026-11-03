@@ -119,8 +119,12 @@ export class TroubleTracker {
         return trouble.kind === "dropping" ? recent.dropped > 0 : trouble.kind === "lag" ? recent.growing : true;
       })
       .map((trouble) => {
-        if (trouble.kind !== "threads-exhausted" && trouble.kind !== "retry-storm") return trouble;
-        const key = `${trouble.key}:${JSON.stringify(trouble.action)}`;
+        if (trouble.kind !== "threads-exhausted" && trouble.kind !== "retry-storm" && trouble.kind !== "cache-stampede")
+          return trouble;
+        // A later expiry supplies new baseline evidence if an earlier herd began before replies were measurable.
+        const expiry =
+          trouble.kind === "cache-stampede" ? st.snapshot.nodes[trouble.node]?.cacheDetails?.herd?.expiredAt : "";
+        const key = `${trouble.key}:${JSON.stringify(trouble.action)}:${expiry ?? ""}`;
         if (!this.fixes.has(key)) this.request(key, trouble, st);
         return { ...trouble, action: this.fixes.get(key) ?? { kind: "events" as const, node: trouble.node } };
       });

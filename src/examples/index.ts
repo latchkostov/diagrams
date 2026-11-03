@@ -111,6 +111,12 @@ const publicExamples: PublicExample[] = (
       summary: msg("examples.blockingSummary"),
     },
     {
+      slug: "cache-stampede",
+      theme: "reliability",
+      omitShows: ["routing"],
+      summary: msg("examples.cacheStampedeSummary"),
+    },
+    {
       slug: "retry-storm",
       theme: "reliability",
       summary: msg("examples.retryStormSummary"),

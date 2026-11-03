@@ -1,0 +1,337 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shoppers": { "replicas": [1, 1, 0] },
+        "cdn": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": {
+              "launch": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 },
+              "products": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] },
+        "db": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 102,
+      "nodes": {
+        "shoppers": { "processed": 3946, "failed": 11, "dropped": 11, "throughput": 412.15663591113287, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 3953,
+          "failed": 11,
+          "dropped": 11,
+          "inFlight": 4,
+          "throughput": 410.93080234772447,
+          "cache": {
+            "requests": 3991,
+            "hits": 3576,
+            "misses": 415,
+            "notCached": 0,
+            "fetches": 414,
+            "fills": 6,
+            "hitRatio": 0.8960160360811826,
+            "originOffload": 0.8962665998496617,
+            "rules": {
+              "launch": { "requests": 3193, "hits": 3049, "misses": 144, "notCached": 0, "fetches": 144, "fills": 2 },
+              "products": { "requests": 798, "hits": 527, "misses": 271, "notCached": 0, "fetches": 270, "fills": 4 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 393, "backlog": 16, "inFlight": 4, "throughput": 39.60387021253846, "replicas": [1, 1, 0] },
+        "db": { "processed": 393, "inFlight": 2, "throughput": 39.60387021253846, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2757,
+      "nodes": {
+        "shoppers": { "processed": 6348, "failed": 938, "dropped": 938, "throughput": 56.994554422300794, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 6349,
+          "failed": 944,
+          "dropped": 944,
+          "inFlight": 4,
+          "throughput": 56.8610032555321,
+          "cache": {
+            "requests": 7991,
+            "hits": 5861,
+            "misses": 2130,
+            "notCached": 0,
+            "fetches": 2127,
+            "fills": 8,
+            "hitRatio": 0.7334501313978226,
+            "originOffload": 0.7338255537479665,
+            "rules": {
+              "launch": { "requests": 6393, "hits": 4815, "misses": 1578, "notCached": 0, "fetches": 1575, "fills": 3 },
+              "products": { "requests": 1598, "hits": 1046, "misses": 552, "notCached": 0, "fetches": 552, "fills": 5 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 793, "backlog": 1313, "inFlight": 4, "throughput": 39.60601170575173, "replicas": [1, 1, 0] },
+        "db": { "processed": 793, "inFlight": 2, "throughput": 39.60601170575173, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 5846,
+      "nodes": {
+        "shoppers": { "processed": 6879, "failed": 4398, "dropped": 4398, "throughput": 50.537054933871666, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 6879,
+          "failed": 4404,
+          "dropped": 4404,
+          "inFlight": 4,
+          "throughput": 49.536354199011626,
+          "cache": {
+            "requests": 11991,
+            "hits": 6391,
+            "misses": 5600,
+            "notCached": 0,
+            "fetches": 5597,
+            "fills": 8,
+            "hitRatio": 0.5329830706363106,
+            "originOffload": 0.5332332582770412,
+            "rules": {
+              "launch": { "requests": 9593, "hits": 4815, "misses": 4778, "notCached": 0, "fetches": 4775, "fills": 3 },
+              "products": { "requests": 2398, "hits": 1576, "misses": 822, "notCached": 0, "fetches": 822, "fills": 5 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1193, "backlog": 4383, "inFlight": 4, "throughput": 39.60601180297538, "replicas": [1, 1, 0] },
+        "db": { "processed": 1193, "inFlight": 2, "throughput": 39.60601180297538, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 8933,
+      "nodes": {
+        "shoppers": { "processed": 7384, "failed": 7897, "dropped": 7897, "throughput": 47.74994749914516, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 7384,
+          "failed": 7903,
+          "dropped": 7903,
+          "inFlight": 4,
+          "throughput": 46.8044351891293,
+          "cache": {
+            "requests": 15991,
+            "hits": 6896,
+            "misses": 9095,
+            "notCached": 0,
+            "fetches": 9092,
+            "fills": 8,
+            "hitRatio": 0.43124257394784565,
+            "originOffload": 0.4314301794759552,
+            "rules": {
+              "launch": { "requests": 12793, "hits": 4815, "misses": 7978, "notCached": 0, "fetches": 7975, "fills": 3 },
+              "products": { "requests": 3198, "hits": 2081, "misses": 1117, "notCached": 0, "fetches": 1117, "fills": 5 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1593, "backlog": 7476, "inFlight": 4, "throughput": 39.60601180297969, "replicas": [1, 1, 0] },
+        "db": { "processed": 1593, "inFlight": 2, "throughput": 39.60601180297969, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 12028,
+      "nodes": {
+        "shoppers": { "processed": 7891, "failed": 11388, "dropped": 11388, "throughput": 49.32025691260102, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 7892,
+          "failed": 11394,
+          "dropped": 11394,
+          "inFlight": 4,
+          "throughput": 49.33866701796304,
+          "cache": {
+            "requests": 19991,
+            "hits": 7404,
+            "misses": 12587,
+            "notCached": 0,
+            "fetches": 12584,
+            "fills": 8,
+            "hitRatio": 0.37036666499924964,
+            "originOffload": 0.37051673252963835,
+            "rules": {
+              "launch": { "requests": 15993, "hits": 4815, "misses": 11178, "notCached": 0, "fetches": 11175, "fills": 3 },
+              "products": { "requests": 3998, "hits": 2589, "misses": 1409, "notCached": 0, "fetches": 1409, "fills": 5 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1993, "backlog": 10569, "inFlight": 4, "throughput": 39.60601180297969, "replicas": [1, 1, 0] },
+        "db": { "processed": 1993, "inFlight": 2, "throughput": 39.60601180297969, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 15148,
+      "nodes": {
+        "shoppers": { "processed": 8373, "failed": 14906, "dropped": 14906, "throughput": 51.91701020699778, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 8373,
+          "failed": 14912,
+          "dropped": 14912,
+          "inFlight": 4,
+          "throughput": 50.888984526952505,
+          "cache": {
+            "requests": 23991,
+            "hits": 7885,
+            "misses": 16106,
+            "notCached": 0,
+            "fetches": 16103,
+            "fills": 8,
+            "hitRatio": 0.3286649160101705,
+            "originOffload": 0.3287899629027552,
+            "rules": {
+              "launch": { "requests": 19193, "hits": 4815, "misses": 14378, "notCached": 0, "fetches": 14375, "fills": 3 },
+              "products": { "requests": 4798, "hits": 3070, "misses": 1728, "notCached": 0, "fetches": 1728, "fills": 5 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 2393, "backlog": 13688, "inFlight": 4, "throughput": 39.60601180297969, "replicas": [1, 1, 0] },
+        "db": { "processed": 2393, "inFlight": 2, "throughput": 39.60601180297969, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 15148,
+    "real": {
+      "shoppers": { "processed": 8373, "failed": 14906, "dropped": 14906, "throughput": 51.91701020699778, "replicas": [1, 1, 0] },
+      "cdn": {
+        "processed": 8373,
+        "failed": 14912,
+        "dropped": 14912,
+        "inFlight": 4,
+        "throughput": 50.888984526952505,
+        "cache": {
+          "requests": 23991,
+          "hits": 7885,
+          "misses": 16106,
+          "notCached": 0,
+          "fetches": 16103,
+          "fills": 8,
+          "hitRatio": 0.3286649160101705,
+          "originOffload": 0.3287899629027552,
+          "rules": {
+            "launch": { "requests": 19193, "hits": 4815, "misses": 14378, "notCached": 0, "fetches": 14375, "fills": 3 },
+            "products": { "requests": 4798, "hits": 3070, "misses": 1728, "notCached": 0, "fetches": 1728, "fills": 5 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 2393, "backlog": 13688, "inFlight": 4, "throughput": 39.60601180297969, "replicas": [1, 1, 0] },
+      "db": { "processed": 2393, "inFlight": 2, "throughput": 39.60601180297969, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 23991, "fetch": 16085, "read": 2395 }
+  },
+  "events": {
+    "total": 123643,
+    "byKind": { "deliver": 42471, "process": 21532, "status": 4, "fail": 29818, "drop": 29818 },
+    "byNode": {
+      "cdn": { "deliver": 23991, "process": 8373, "status": 4, "fail": 14912, "drop": 14912 },
+      "shoppers": { "process": 8373, "fail": 14906, "drop": 14906 },
+      "origin": { "deliver": 16085, "process": 2393 },
+      "db": { "deliver": 2395, "process": 2393 }
+    },
+    "perSecond": [
+      "b90bf5d3093f",
+      "991d301573fb",
+      "c2ba7bf36127",
+      "e4ffec6610ca",
+      "dcc1d1b42cde",
+      "cfd70b718a26",
+      "7ebcaee1ea7f",
+      "3f473277ee4f",
+      "9a947d4baf7b",
+      "9f1f4c4ebc9f",
+      "b335c3ebe6f8",
+      "689913019e94",
+      "cd4397855f6b",
+      "50c22f4aee8d",
+      "65fa981ef1ff",
+      "7f8de98e2c60",
+      "c208349c8ce3",
+      "6fd3d72679e4",
+      "a7019de2278e",
+      "7b8c289285f0",
+      "8f0737b1db7e",
+      "cbf16cff598d",
+      "a7a3c1fd64ab",
+      "9eda5619dc3c",
+      "4e5f1b10e938",
+      "2c18c0cd7277",
+      "c8522d0de909",
+      "20f5e0a1db19",
+      "793d728b5ffd",
+      "e7232e88ca0c",
+      "e42c8be3f928",
+      "8aad2b47c8e8",
+      "74e6e9b46590",
+      "69f18667b068",
+      "72bb6e4b5c7c",
+      "f77797fc70b7",
+      "880748ef6be4",
+      "6d987990c897",
+      "10a354594341",
+      "15169bb40651",
+      "af2a2c7912c2",
+      "53adde75a050",
+      "1182e318947f",
+      "2b727407a2ff",
+      "0468fb73e4f1",
+      "e85268170fa2",
+      "77b22d234062",
+      "463d09ebf4e5",
+      "824f4a02f080",
+      "de727efbd114",
+      "8839d70aeacc",
+      "0dc62ccceafd",
+      "fdaab828e124",
+      "6ef0a6c6452b",
+      "736f588602d1",
+      "612240f6f3b4",
+      "84674eae36ae",
+      "abec9637aa7c",
+      "bae795ebceca",
+      "d84b427a2eac",
+      "08b6fff985a5"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 4927, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 4927, "min": 50, "mean": 51.44915770245586, "p50": 50, "p90": 50, "max": 380 },
+    "waitMs": {
+      "cdn": { "count": 4927, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "origin": { "count": 30, "min": 0, "mean": 48, "p50": 50, "p90": 70, "max": 140 },
+      "db": { "count": 30, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "cdn": { "count": 4927, "min": 10, "mean": 11.449157702455855, "p50": 10, "p90": 10, "max": 340 },
+      "origin": { "count": 30, "min": 90, "mean": 90, "p50": 90, "p90": 90, "max": 90 },
+      "db": { "count": 30, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

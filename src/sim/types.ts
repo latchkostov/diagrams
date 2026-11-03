@@ -396,7 +396,8 @@ export interface TraceStep {
 }
 
 export interface CacheTrace {
-  outcome: "hit" | "miss" | "not-cached";
+  fetches?: number;
+  outcome: "hit" | "miss" | "coalesced" | "not-cached";
   rule?: string;
   item?: number;
   freshMs?: number;
@@ -500,6 +501,12 @@ export interface SimEngine {
   metrics(): { time: number; inSystem: number; pendingInjections: number };
   /** Read a sampled metric without copying node or rendering state. Runner expectations convert it. */
   measure(metric: Expectation["metric"]): number | undefined;
+  /** Bounded real-unit read of one tracked item, independent of display herd selection. */
+  observeCacheItem(
+    nodeId: string,
+    rule: string,
+    item: number,
+  ): import("./cache/cacheState").CacheItemObservation | undefined;
   /** Replace the diagram being simulated. Resets all state. */
   load(diagram: DiagramFile, cacheRates?: Record<string, Record<string, { rate: number; fetchMs: number }>>): void;
   /** Advance the simulation by dtMs of wall time (multiplied by speed). Internally fixed-step. */

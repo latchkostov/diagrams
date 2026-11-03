@@ -1,0 +1,285 @@
+{
+  "autoScale": { "freePlay": 1, "ttl-only": 1, "one-fetch": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "origin",
+      "suggestion": "Product API: 57% utilized",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [66.66666666666667, 37.8364701371455, 0.5675470520571824, 1, 1, 0], "db": ["Infinity", 37.8364701371455, 0, 1, 1, 0] },
+      "connections": { "requests": 400, "fetch": 37.8364701371455, "read": 37.8364701371455 },
+      "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
+    },
+    "explanations": {
+      "origin": {
+        "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 60, "slots": 4, "ceiling": 66.66666666666667 },
+        "id": "origin",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 66.66666666666667,
+        "offered": 37.8364701371455,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.06,
+        "utilization": 0.5675470520571824,
+        "growth": 0,
+        "contributors": [
+          { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 37.8364701371455, "via": "Edge CDN" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true,
+        "routes": [
+          { "route": "products", "address": "GET /products/example", "offered": 27.127275984674775, "rejected": 0, "throttled": 0 },
+          { "route": "launch", "address": "GET /launch", "offered": 10.709194152470722, "rejected": 0, "throttled": 0 }
+        ]
+      }
+    },
+    "capabilities": {
+      "shoppers": [{ "kind": "calls", "edge": "requests", "peer": "cdn" }],
+      "cdn": [{ "kind": "calls", "edge": "fetch", "peer": "origin" }],
+      "origin": [{ "kind": "calls", "edge": "read", "peer": "db" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "shoppers": {
+        "profile": { "family": "client", "revision": "p3-w3", "evidence": [], "units": "real" },
+        "ratePerSec": 400,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Shoppers",
+        "healthChecks": false
+      },
+      "cdn": {
+        "profile": { "family": "edge", "revision": "p3-w3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Edge CDN",
+        "healthChecks": false
+      },
+      "origin": {
+        "profile": { "family": "service", "revision": "p3-w3", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 60,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Product API",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Catalog DB",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "ttl-only": { "configured": "(same as edit)", "simulation": "ttl-only", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "one-fetch": {
+      "configured": "(same as edit)",
+      "simulation": "one-fetch",
+      "analysis": {
+        "bottleneck": "origin",
+        "suggestion": "Product API: 41% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [66.66666666666667, 27.32058273832948, 0.4098087410749422, 1, 1, 0], "db": ["Infinity", 27.32058273832948, 0, 1, 1, 0] },
+        "connections": { "requests": 400, "fetch": 27.32058273832948, "read": 27.32058273832948 },
+        "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
+      },
+      "explanations": {
+        "origin": {
+          "waits": { "workMs": 59.99999999999999, "callMs": 0, "threadHoldMs": 59.99999999999999, "memoryResidenceMs": 60, "slots": 4, "ceiling": 66.66666666666667 },
+          "id": "origin",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 66.66666666666667,
+          "offered": 27.32058273832948,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.05999999999999999,
+          "utilization": 0.4098087410749422,
+          "growth": 0,
+          "contributors": [
+            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 27.32058273832948, "via": "Edge CDN" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "products", "address": "GET /products/example", "offered": 27.127275984674775, "rejected": 0, "throttled": 0 },
+            { "route": "launch", "address": "GET /launch", "offered": 0.1933067536547058, "rejected": 0, "throttled": 0 }
+          ]
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "origin",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+            "origin": ["ok", "57% · 38/s of 67/s"],
+            "db": ["idle", "38/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "origin",
+          "headline": "Product API is over capacity",
+          "detail": "155% · 103/s of 67/s",
+          "fix": {
+            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 3, "label": "Product API" }],
+            "label": "Product API 1 → 3 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "2k/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "2k/s · no limit", { "modeled": false }],
+            "origin": ["over", "155% · 103/s of 67/s"],
+            "db": ["idle", "103/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "origin",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+            "origin": ["ok", "57% · 38/s of 67/s"],
+            "db": ["idle", "38/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "origin",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+            "origin": ["ok", "57% · 38/s of 67/s"],
+            "db": ["idle", "38/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "ttl-only": {
+      "tone": "ok",
+      "top": "origin",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["ok", "57% · 38/s of 67/s"],
+        "db": ["idle", "38/s · no limit", { "modeled": false }]
+      }
+    },
+    "one-fetch": {
+      "tone": "ok",
+      "top": "origin",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Product API at 41% · 27/s of 67/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["ok", "41% · 27/s of 67/s"],
+        "db": ["idle", "27/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

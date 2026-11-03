@@ -2,6 +2,12 @@
   display: grid;
   gap: 10px;
 }
+.cache-edit-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
 /* Native focus must not snap the long rules section under a held pointer. */
 .inspector .insp-body:has(.cache-fields:focus-within) {
   scroll-snap-type: none;

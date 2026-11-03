@@ -170,6 +170,7 @@ export function NodeSettings({
           counts={counts}
           readDiagram={readDiagram}
           planning={meta.planning}
+          simulations={meta.simulations}
         />
       )}
       {planning}

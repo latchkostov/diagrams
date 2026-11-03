@@ -19,6 +19,8 @@ export function badgeAttributes(s: NodeSimState, rejected: number) {
     "cache-hits": s.cacheDetails?.window?.hits,
     "cache-misses": s.cacheDetails?.window?.misses,
     "cache-fetches": s.cache?.fetches,
+    "cache-item-fetches": s.cacheDetails?.itemFetches,
+    "cache-waiting": s.cacheDetails?.herd?.waiting,
   };
   return Object.fromEntries(Object.entries(values).map(([name, value]) => [`data-${name}`, value]));
 }

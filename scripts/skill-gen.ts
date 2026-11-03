@@ -40,7 +40,7 @@ const METRICS = METRIC_FIELDS;
 /** One line per simulation property. A new property fails generation until it's described here. */
 const NODE_PROP_NOTES: Record<string, string> = {
   cache:
-    "p3-w3 edge and cache nodes: ordered {rules:[{id,label?,match,policy}],default?}. GET/HEAD Requests only; policy has exactly one of ttlMs (100..86400000) and noStore:true, with keys (1..1000000, default 1000) and popularity (even/gentle/typical/steep, default typical). No coalescing, stale windows or cache-aside in this revision. Older models keep rules dormant.",
+    "p3-w3 edge and cache nodes: ordered {rules:[{id,label?,match,policy}],default?}. GET/HEAD Requests only; policy has exactly one of ttlMs (100..86400000) and noStore:true, with keys (1..1000000, default 1000), popularity (even/gentle/typical/steep, default typical), and coalesce (boolean, default false: one origin fetch per tracked item, other requests wait). No stale windows or cache-aside yet. Older models keep rules dormant.",
   queue:
     "p3-w2 processors without admission only: {limit? (1..1000000 waiting real requests), whenFull? (reject-new or drop-oldest), order? (fifo or lifo), maxWaitMs?}. Pushed arrivals only; active work and broker-fed deliveries are exempt. Refusals return 503 throttled and count as rejected and shed. Earlier revisions keep the policy dormant.",
   api: "P3 admission: typed token buckets, concurrent calls, scoped account sharing, duration/errors and per-request token/cost sizes. Unknown budgets stay unknown. Every applicable bucket is charged atomically in real units.",

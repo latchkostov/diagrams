@@ -1,0 +1,475 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "shoppers", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["bunny.cdn", "azure.functions", "azure.app-service"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "shoppers",
+            "to": "cdn"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "cdn" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "origin",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "shoppers", "label": "Shoppers", "stencil": "client.browser" },
+          { "id": "cdn", "label": "Renamed by parity", "stencil": "generic.cdn" },
+          { "id": "origin", "label": "Product API", "stencil": "aws.lambda" },
+          { "id": "db", "label": "Catalog DB", "stencil": "generic.database" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["bunny.cdn", "azure.functions", "azure.app-service"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 600,
+            "y": 272,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["cdn"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["origin"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "shoppers", "cdn"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["shoppers"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "title": "Parity edit",
+    "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting about two seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.",
+    "planning": {
+      "revision": "p3-w3",
+      "requestRoutes": [
+        { "id": "launch", "label": "Launch page", "address": { "method": "GET", "path": "/launch" } },
+        { "id": "products", "label": "Other products", "address": { "method": "GET", "path": "/products/example" } }
+      ]
+    },
+    "nodes": [
+      {
+        "id": "shoppers",
+        "stencil": "client.browser",
+        "label": "Shoppers",
+        "x": 0,
+        "y": 160,
+        "props": {
+          "ratePerSec": 400,
+          "trafficMix": {
+            "mode": "shares",
+            "entries": [{ "routeId": "launch", "share": 0.8 }, { "routeId": "products", "share": 0.2 }]
+          }
+        },
+        "group": "boundary-1"
+      },
+      {
+        "id": "cdn",
+        "stencil": "generic.cdn",
+        "label": "Renamed by parity",
+        "x": 330,
+        "y": 160,
+        "props": {
+          "latencyMs": 120,
+          "jitter": 0,
+          "cache": {
+            "rules": [
+              {
+                "id": "launch",
+                "label": "Launch page",
+                "match": { "path": { "kind": "exact", "value": "/launch" } },
+                "policy": { "ttlMs": 5000, "keys": 1 }
+              },
+              {
+                "id": "products",
+                "label": "Other products",
+                "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+              }
+            ]
+          }
+        },
+        "group": "boundary-1"
+      },
+      {
+        "id": "origin",
+        "stencil": "aws.lambda",
+        "label": "Product API",
+        "x": 660,
+        "y": 160,
+        "sublabel": "4 threads · 60 ms · blocking",
+        "props": { "replicas": 1, "concurrency": 4, "latencyMs": 60, "jitter": 0 }
+      },
+      {
+        "id": "db",
+        "stencil": "generic.database",
+        "label": "Catalog DB",
+        "x": 990,
+        "y": 160,
+        "props": { "latencyMs": 20, "jitter": 0 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 300, "y": 272 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 24 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 300, "y": 384 }
+    ],
+    "edges": [
+      {
+        "id": "fetch",
+        "from": "cdn",
+        "to": "origin",
+        "kind": "sync",
+        "props": { "networkDelayMs": 50, "caller": { "deadlineMs": 2000 } }
+      },
+      { "id": "read", "from": "origin", "to": "db", "kind": "sync", "props": { "caller": { "wait": "blocking" } } },
+      { "id": "e-1", "from": "shoppers", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "shoppers", "to": "queue-1", "kind": "sync", "props": { "networkDelayMs": 15 } },
+      { "id": "e-5", "from": "queue-1", "to": "cdn", "kind": "sync", "props": { "networkDelayMs": 15 } }
+    ],
+    "simulations": [
+      {
+        "id": "ttl-only",
+        "title": "TTL only",
+        "seed": 7,
+        "scale": 1,
+        "durationMs": 40000,
+        "traffic": [
+          {
+            "id": "shoppers",
+            "node": "shoppers",
+            "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] }
+          },
+          {
+            "atMs": 12000,
+            "action": { "do": "note", "text": "Each miss fetches the same item. Queuing makes the next reply slower, so more requests join the herd.", "focus": ["cdn", "origin"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "backlog",
+            "label": "Product API backlog < 50, always",
+            "metric": { "node": "origin", "field": "backlog" },
+            "op": "<",
+            "value": 50,
+            "when": "always"
+          },
+          {
+            "id": "latency",
+            "label": "Shoppers p95 < 300 ms at the end",
+            "metric": { "node": "shoppers", "field": "p95" },
+            "op": "<",
+            "value": 300,
+            "when": "end"
+          },
+          {
+            "id": "fetches",
+            "label": "Launch page fetches in flight < 5, always",
+            "metric": { "node": "cdn", "field": "itemFetches" },
+            "op": "<",
+            "value": 5,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "one-fetch",
+        "title": "One fetch per item",
+        "seed": 7,
+        "scale": 1,
+        "durationMs": 40000,
+        "traffic": [
+          {
+            "id": "shoppers",
+            "node": "shoppers",
+            "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] }
+          },
+          {
+            "atMs": 12000,
+            "action": { "do": "note", "text": "One origin fetch serves everyone waiting for the same item.", "focus": ["cdn", "origin"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "backlog",
+            "label": "Product API backlog < 50, always",
+            "metric": { "node": "origin", "field": "backlog" },
+            "op": "<",
+            "value": 50,
+            "when": "always"
+          },
+          {
+            "id": "latency",
+            "label": "Shoppers p95 < 300 ms at the end",
+            "metric": { "node": "shoppers", "field": "p95" },
+            "op": "<",
+            "value": 300,
+            "when": "end"
+          },
+          {
+            "id": "fetches",
+            "label": "Launch page fetches in flight < 5, always",
+            "metric": { "node": "cdn", "field": "itemFetches" },
+            "op": "<",
+            "value": 5,
+            "when": "always"
+          }
+        ],
+        "setup": {
+          "props": {
+            "cdn": {
+              "cache": {
+                "rules": [
+                  {
+                    "id": "launch",
+                    "label": "Launch page",
+                    "match": { "path": { "kind": "exact", "value": "/launch" } },
+                    "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                  },
+                  {
+                    "id": "products",
+                    "label": "Other products",
+                    "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                    "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "shoppers",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "shoppers",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "shoppers",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "shoppers",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "origin", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["origin"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "origin", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": -40, "y": 96, "width": 630, "height": 176 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 0, "y": 280, "width": 240, "height": 160 }
+    ],
+    "direction": "TB"
+  }
+}

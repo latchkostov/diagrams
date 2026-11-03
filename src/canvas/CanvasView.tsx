@@ -372,7 +372,12 @@ function CanvasInner({
   const takeInspectorFocus = useCallback((seq: number) => {
     if (inspectorFocusDone.current === seq) return false;
     inspectorFocusDone.current = seq;
-    setInspectorFocus((f) => (f?.seq === seq && f.name === "autoscaling-upgrade-preview" ? { ...f, name: "" } : f));
+    // Keep explicit cache reveals consumed across remounts, like the upgrade preview.
+    setInspectorFocus((f) =>
+      f?.seq === seq && (f.name === "autoscaling-upgrade-preview" || f.name === "cache-add-rule")
+        ? { ...f, name: "" }
+        : f,
+    );
     return true;
   }, []);
   const [inspectorRequest, requestInspector] = useState(0);

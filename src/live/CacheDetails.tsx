@@ -31,6 +31,9 @@ export function CacheDetails({
   return (
     <div data-testid="cache-readout">
       <p>{readout ? t("cache.summary", readout) : t("cache.noCacheable")}</p>
+      {!!s.cache?.coalesced && (
+        <p data-testid="cache-coalesced">{t("cache.coalesced", { mode: "count", count: s.cache.coalesced })}</p>
+      )}
       {w && (
         <p data-testid="cache-window-counts">
           {t("cache.counts", {
@@ -46,7 +49,7 @@ export function CacheDetails({
           ...(table.default ? [{ id: "", label: t("cache.everythingElse"), policy: table.default }] : []),
         ].map((rule) => {
           const counts = s.cache?.rules[rule.id];
-          const total = (counts?.hits ?? 0) + (counts?.misses ?? 0);
+          const total = (counts?.hits ?? 0) + (counts?.misses ?? 0) + (counts?.coalesced ?? 0);
           return (
             <p key={rule.id} data-testid={`cache-live-rule-${rule.id}`}>
               {rule.policy.noStore
