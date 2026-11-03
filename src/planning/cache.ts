@@ -1,7 +1,6 @@
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "../live/controller";
-import { analyzeCapacity } from "../sim/capacity";
-import { planningSimulation } from "../sim/capacityPlanning";
+import { analyzePlanningCapacity, planningSimulation } from "../sim/capacityPlanning";
 import { compileTopology } from "../sim/topology";
 import { cacheExplanation, explainNode } from "./explanation";
 import { capabilities } from "./capabilities";
@@ -17,7 +16,7 @@ function compute(d: DiagramFile, state?: LiveState | null) {
   planningRunStats.analyses++;
   const sim = planningRun(d, state);
   const status = Object.fromEntries(Object.entries(state?.snapshot.nodes ?? {}).map(([id, n]) => [id, n.status]));
-  const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status });
+  const analysis = analyzePlanningCapacity(d, sim, { status });
   const topology = compileTopology(d);
   const rows = new Map<string, ReturnType<typeof capabilities>>();
   const explanations = new Map<string, ReturnType<typeof explainNode>>();

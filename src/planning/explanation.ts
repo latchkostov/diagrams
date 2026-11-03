@@ -1,6 +1,12 @@
 import type { DiagramFile, Simulation } from "../model/types";
-import { analyzeCapacity, type CapacityAnalysis } from "../sim/capacity";
-import { planningSimulation, sourceTraffic, sizingFix, type SizingChange } from "../sim/capacityPlanning";
+import { type CapacityAnalysis } from "../sim/capacity";
+import {
+  analyzePlanningCapacity,
+  planningSimulation,
+  sourceTraffic,
+  sizingFix,
+  type SizingChange,
+} from "../sim/capacityPlanning";
 import { compileTopology, brokerRole, type CompiledTopology } from "../sim/topology";
 import { stencilRole } from "../stencils/roles";
 import { resolveMultiplier } from "../sim/units";
@@ -100,7 +106,7 @@ export function explainNode(
   } = {},
 ): Explanation | undefined {
   const sim = options.sim ?? explanationSimulation(d);
-  const analysis = options.analysis ?? analyzeCapacity(d, planningSimulation(d, sim));
+  const analysis = options.analysis ?? analyzePlanningCapacity(d, sim);
   const topology = options.topology ?? compileTopology(d);
   const node = d.nodes.find((n) => n.id === id);
   const n = analysis.nodes[id];

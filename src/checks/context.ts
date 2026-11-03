@@ -8,8 +8,8 @@ import {
   type CompiledEdge,
   type CompiledTopology,
 } from "../sim/topology";
-import { analyzeCapacity, type CapacityAnalysis } from "../sim/capacity";
-import { planningSimulation, sourceTraffic } from "../sim/capacityPlanning";
+import { type CapacityAnalysis } from "../sim/capacity";
+import { analyzePlanningCapacity, sourceTraffic } from "../sim/capacityPlanning";
 import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import { readingOrder } from "../canvas/keyboardNav";
 import { estimateCardSize } from "../canvas/nodes/size";
@@ -122,11 +122,11 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   const otherIds = () =>
     (others ??= new Set([...(diagram.groups ?? []), ...(diagram.annotations ?? [])].map((x) => x.id)));
   const plan = () =>
-    (planning ??= planningSimulation(diagram, {
+    (planning ??= {
       id: "free-play",
       title: "Free play",
       traffic: sourceTraffic(diagram),
-    }));
+    });
   return {
     diagram,
     nodes,
@@ -168,7 +168,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     },
     isBoundary: (id) => (boundaries ??= new Set((diagram.groups ?? []).map((g) => g.id))).has(id),
     planning: plan,
-    capacity: () => (capacity ??= analyzeCapacity(diagram, plan(), { topology })),
+    capacity: () => (capacity ??= analyzePlanningCapacity(diagram, plan(), { topology })),
     plans: () => (scenario === null ? (scenario = scenarioPlans(diagram)) : scenario),
   };
 }

@@ -99,6 +99,7 @@ interface Entry {
   up: boolean;
   /** Down (not just paused): a gateway's health checks route around it. */
   down: boolean;
+  unlimitedService?: boolean;
   /** Request routing, compiled once per analysis as playback compiles it. */
   table?: CompiledTable;
   mix?: CompiledMix;
@@ -139,6 +140,7 @@ const uncappedServiceRate = (entry: Entry, replicas: number, endpointId?: string
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
   const device = entry.role === "gateway" ? entry.props.device : undefined;
   if (device) return device.perUnit * activeUnits(device.ha, replicas);
+  if (entry.unlimitedService && (entry.role === "gateway" || entry.role === "store")) return Infinity;
   if (entry.role === "gateway" || entry.role === "store")
     return entry.props.latencyMs ? 1000 / entry.props.latencyMs : Infinity;
   return Infinity;
@@ -218,6 +220,8 @@ function compatibleScale(demand: { rate: number; consumers: string[] }[], capaci
 }
 
 export interface CapacityOptions {
+  /** Planning keeps gateway/store capacity unlimited without erasing cache fetch time. */
+  unlimitedService?: boolean;
   /** Already compiled for this effective diagram (Checks share their one static graph). */
   topology?: import("./topology").CompiledTopology;
   /** Current eligible fleet, only for resource-enabled live nodes. Omitted means configured initial capacity. */
@@ -258,6 +262,7 @@ export function analyzeCapacity(
       active: replicas,
       up: status !== "down" && status !== "paused",
       down: status === "down",
+      unlimitedService: options.unlimitedService,
       ...(routes && raw.routeTable !== undefined && routeTableCapable(input.stencil, role)
         ? { table: compileTable(raw.routeTable) }
         : {}),

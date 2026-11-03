@@ -121,6 +121,49 @@ it("only the first successful reply fills; failed and no-store fetches never fil
   expect(n.counts).toMatchObject({ hits: 0, misses: 0, fills: 0, notCached: 1 });
 });
 
+it("discards an old cycle's duplicate even after its first fill has expired", () => {
+  const c = cacheRuntime.compile({ rules: [], default: { ttlMs: 1000, keys: 1 } }, "edge", 7, 1, { value: 4096 });
+  const first = cacheRuntime.lookup(c, "Page", undefined, true, 0, 1);
+  const duplicate = cacheRuntime.lookup(c, "Page", undefined, true, 500, 1);
+  cacheRuntime.start(c, first, 1);
+  cacheRuntime.start(c, duplicate, 1);
+  cacheRuntime.settle(c, first, 1500, 1, true);
+  cacheRuntime.settle(c, duplicate, 2600, 1, true);
+  expect(c.rules[0].freshUntil[0]).toBe(2500);
+  expect(c.counts.fills).toBe(1);
+  const next = cacheRuntime.lookup(c, "Page", undefined, true, 2600, 1);
+  expect(next.outcome).toBe("miss");
+  cacheRuntime.start(c, next, 1);
+  cacheRuntime.settle(c, next, 4100, 1, true);
+  expect(c.rules[0].freshUntil[0]).toBe(5100);
+  expect(c.counts.fills).toBe(2);
+});
+
+it("statistical availability survives sampled gaps but expires after failed fetches", () => {
+  const c = cacheRuntime.compile(
+    { rules: [], default: { ttlMs: 100, keys: 20, popularity: "even" } },
+    "edge",
+    7,
+    10,
+    { value: 4096 },
+    { "": { rate: 200, fetchMs: 10 } },
+  );
+  const arrive = (at: number, ok: boolean) => {
+    const lookup = cacheRuntime.lookup(c, "Page", undefined, true, at, 10);
+    if (lookup.outcome === "miss") {
+      cacheRuntime.start(c, lookup, 10);
+      cacheRuntime.settle(c, lookup, at + 10, 10, ok);
+    }
+  };
+  for (let i = 0; i < 100; i++) arrive(1000 + 50 * i, true);
+  expect(c.counts.hits).toBeGreaterThan(0);
+  for (let i = 100; i < 200; i++) arrive(1000 + 50 * i, false);
+  const hits = c.counts.hits;
+  for (let i = 200; i < 300; i++) arrive(1000 + 50 * i, false);
+  expect(c.counts.hits).toBe(hits);
+  expect(c.counts.fetches).toBe(c.counts.misses);
+});
+
 it("analysis reduces origin demand by the derived hit share", () => {
   const a = analyzeCapacity(cacheFixture());
   const rule = a.cacheDemand!.cache[""];

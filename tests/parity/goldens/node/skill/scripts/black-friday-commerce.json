@@ -81,7 +81,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "b116f2e2e4c574cdf952da3de373af430d6d62e8efc5fd3da6fbca7b93e46e7a", "bytes": 36005 },
+    "decoded": { "sha256": "59d03051598a34c8a0bba0057872f498a54026baecd1e3d3baa80daf803e5d1e", "bytes": 36046 },
     "sameAsFile": true,
     "warned": true
   },
@@ -1462,7 +1462,7 @@
               },
               {
                 "atMs": 4000,
-                "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers 87% of product pages and 65% of searches; the origin sees about 300 of 1,460 a second. Larkspur sized its origin for what the edge lets through." }
+                "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers repeat product pages and searches, so fewer requests reach the services behind it. Watch the cache readouts as traffic rises. Larkspur sized its services for what the edge lets through." }
               },
               {
                 "atMs": 6000,

@@ -5,8 +5,8 @@ import { SIM_LIMITS } from "../interop/native";
 import { t } from "../i18n/core";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import { stencilRole } from "../stencils/roles";
-import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
-import { planningSimulation, sizingFix } from "../sim/capacityPlanning";
+import { type NodeCapacity } from "../sim/capacity";
+import { analyzePlanningCapacity, sizingFix } from "../sim/capacityPlanning";
 import { brokerFeeds, compileTopology } from "../sim/topology";
 import { formatRate } from "./format";
 import {
@@ -116,7 +116,7 @@ export function capacityView(
   status?: RunStatus,
   readyReplicas?: Readonly<Record<string, number>>,
 ): CapacityView {
-  const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status, readyReplicas });
+  const analysis = analyzePlanningCapacity(d, sim, { status, readyReplicas });
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const compiled = compileTopology(d);
   const routes = compiled.outgoing;
