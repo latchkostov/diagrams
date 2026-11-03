@@ -29,7 +29,7 @@ test("Live shows the hit chip, cache hover, split latency and Inputs derivation"
   await page.clock.resume();
   await openLiveNodeDetails(page, "cache", "cache");
 
-  const summary = page.getByTestId("hover-section-summary-cache");
+  const summary = page.getByTestId("hover-summary-cache");
   await expect(summary).toHaveText(/\d+% hits · \d+% offload · recent ≤10s/);
   await expect.poll(() => summary.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 
