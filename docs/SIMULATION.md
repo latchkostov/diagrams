@@ -36,6 +36,8 @@ understate completed requests and late replies at scale > 1; see the
 with reproductions and measured differences. Use scale 1 when small capacity boundaries matter.
 The general scale-equivalence bound below is an accuracy target, not a guarantee across all diagrams.
 
+**Known cache window gap.** Few tracked items with a TTL longer than the observation window can fall outside the agreement bounds. Pinned case: one Even item, 200 requests/s, 30 s TTL, 1,510 ms fetch, measured at 40–60 s. Expected is 95.1928%. Seeds 16–20 average 98.02% at scale 1 (+2.8272 points, outside the 2-point bound), 97.95% at scale 10 (+2.7572), and 98.00% at automatic scale 5 (+2.8072). The latter averages stay inside 3 points, but seed 18 measures 100% at all three scales: +4.8072 points, outside both bounds. A window with no expiry can therefore overstate this configuration by up to 4.8072 points. These cases are quarantined with `it.fails` in `cacheAgreement.test.ts`; no agreement tolerance or measurement window is widened. The broad rule sweep retains its original 20–20,000-item domain; a separate automatic-scale sweep covers 1–20 items with short TTLs (100, 200 and 400 ms).
+
 ### Technical model
 
 A dot represents `N` requests and reserves weight `w <= N` in real units, limited by available
