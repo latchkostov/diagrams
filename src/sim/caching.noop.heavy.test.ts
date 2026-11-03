@@ -19,13 +19,13 @@ for (const { name, diagram } of [
   ),
   ...inputs("src/examples", ".json"),
 ]) {
-  it(`w3-noop: ${name}, analysis, free play and all saved simulations`, () => {
-    const old = structuredClone(diagram);
-    // Keep the W1/W2 corpus as authored. Older public examples also exercise
-    // their W2 interpretation; their original revisions remain pinned by parity.
-    old.planning = { ...old.planning, revision: old.planning?.revision === "p3-w1" ? "p3-w1" : "p3-w2" };
-    const next = structuredClone(old);
-    next.planning!.revision = "p3-w3";
+  const old = structuredClone(diagram);
+  // Keep the W1/W2 corpus as authored. Older public examples also exercise
+  // their W2 interpretation; their original revisions remain pinned by parity.
+  old.planning = { ...old.planning, revision: old.planning?.revision === "p3-w1" ? "p3-w1" : "p3-w2" };
+  const next = structuredClone(old);
+  next.planning!.revision = "p3-w3";
+  it(`w3-noop: ${name}, analysis and free play`, () => {
     const a = analyzeCapacity(old),
       b = analyzeCapacity(next);
     expect(b.nodes).toEqual(a.nodes);
@@ -44,7 +44,10 @@ for (const { name, diagram } of [
       expect(JSON.stringify(y.snapshot())).toBe(JSON.stringify(x.snapshot()));
       expect(randomDraws(y)).toBe(randomDraws(x));
     }
-    for (const simulation of old.simulations ?? []) {
+  });
+  // Every saved run retains every tick and field comparison, with its own hang backstop.
+  for (const simulation of old.simulations ?? []) {
+    it(`w3-noop: ${name}, saved simulation ${simulation.id}`, () => {
       const first = createSimulationRun(old, simulation),
         second = createSimulationRun(next, simulation);
       while (!first.state().done) {
@@ -57,6 +60,6 @@ for (const { name, diagram } of [
         expect(JSON.stringify(second.engine.snapshot())).toBe(JSON.stringify(first.engine.snapshot()));
         expect(randomDraws(second.engine)).toBe(randomDraws(first.engine));
       }
-    }
-  });
+    });
+  }
 }

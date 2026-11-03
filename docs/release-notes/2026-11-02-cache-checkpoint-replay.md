@@ -15,3 +15,7 @@ for 256 initially loaded rules, and 107,344 bytes after all 256 rules handle a s
 miss and drain (also tracking 4,096 items). The last fixture previously needed 285,344 bytes.
 The existing 130 KiB bound remains unchanged. Both review regressions fail when their fixes
 are temporarily removed. No parity golden changes are intended or recorded.
+
+No-cache replay checks retain every fixture, simulation, tick and assertion, with separate tests per
+saved simulation. CI runs this workload in its build lane so the serial heavy lane retains its
+existing deadline; test backstops and CI deadlines are unchanged.

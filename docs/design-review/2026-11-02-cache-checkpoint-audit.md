@@ -31,3 +31,16 @@ negative zero, optional warm-up state and independent repeated restores.
 Rejected raising the 130 KiB bound, excluding mutable payloads from accounting, float32 rounding,
 and changing simulation behavior to fit storage. The compact checkpoint representation changes
 storage only. No new public example is needed for these internal replay and memory fixes.
+
+## Verification follow-up
+
+The first pushed CI run exceeded the heavy job's unchanged 15-minute deadline. Before cancellation,
+the combined retry-storm no-cache comparison also exceeded the unchanged 40-second CI test backstop;
+isolating the original test reproduced a timeout with the native backstop. Each fixture's analysis
+and free play, and each saved simulation, now have separate tests. Every 10 ms snapshot/string and
+random-draw comparison, every simulation duration and every fixture remains intact.
+
+The W3 no-cache suite runs in CI's build lane, beside the existing ZIP check, and is excluded only
+from the serial heavy lane. Both lanes are required by the existing aggregate check. This partitions
+the added work without raising deadlines, changing assertions or dropping coverage. Local full gates
+continue to run the complete heavy project.
