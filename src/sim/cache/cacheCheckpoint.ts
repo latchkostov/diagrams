@@ -11,7 +11,7 @@ type Config = Omit<
  */
 export class CacheCheckpoint {
   config: Config;
-  values: Float64Array;
+  values: Uint8Array;
 
   constructor(rule: CacheRuleState) {
     const values: number[] = [];
@@ -33,12 +33,44 @@ export class CacheCheckpoint {
     array(rule.fetchMs.samples);
     array(rule.freshUntil);
     array(rule.fetching);
-    this.values = new Float64Array(values);
+    // Simulation clocks/counts are usually small integers. Varints keep full sample
+    // rings compact; an IEEE-754 escape preserves fractional values and signed zero.
+    const bytes: number[] = [];
+    const scratch = new DataView(new ArrayBuffer(8));
+    for (const value of values) {
+      if (Number.isSafeInteger(value) && Math.abs(value) < 2 ** 51 && !Object.is(value, -0)) {
+        let encoded = (value < 0 ? -value * 2 - 1 : value * 2) + 1;
+        while (encoded >= 128) {
+          bytes.push((encoded % 128) + 128);
+          encoded = Math.floor(encoded / 128);
+        }
+        bytes.push(encoded);
+      } else {
+        bytes.push(0);
+        scratch.setFloat64(0, value, true);
+        for (let i = 0; i < 8; i++) bytes.push(scratch.getUint8(i));
+      }
+    }
+    this.values = new Uint8Array(bytes);
   }
 
   restore(): CacheRuleState {
     let at = 0;
-    const next = () => this.values[at++];
+    const next = () => {
+      let byte = this.values[at++];
+      if (byte === 0) {
+        const value = new DataView(this.values.buffer, this.values.byteOffset + at, 8).getFloat64(0, true);
+        at += 8;
+        return value;
+      }
+      let encoded = byte % 128;
+      for (let factor = 128; byte >= 128; factor *= 128) {
+        byte = this.values[at++];
+        encoded += (byte % 128) * factor;
+      }
+      encoded--;
+      return encoded % 2 ? -(encoded + 1) / 2 : encoded / 2;
+    };
     const counts = (): CacheCounts => ({
       requests: next(),
       hits: next(),
@@ -50,8 +82,8 @@ export class CacheCheckpoint {
     const array = () => {
       const length = next();
       if (length < 0) {
-        const result = this.values.slice(at, at - length);
-        at -= length;
+        const result = new Float64Array(-length);
+        for (let i = 0; i < result.length; i++) result[i] = next();
         return result;
       }
       const result = new Float64Array(length),

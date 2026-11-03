@@ -93,7 +93,7 @@ function cloneSized<T>(
       return result;
     }
     bytes += 32;
-    if (value instanceof Float64Array) {
+    if (value instanceof Float64Array || value instanceof Uint8Array) {
       const result = clone ? value.slice() : value;
       seen.set(value, result);
       bytes += value.byteLength;

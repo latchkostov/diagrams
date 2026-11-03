@@ -133,6 +133,57 @@ it("bounds checkpoints after every cache rule handles a successful miss", () => 
   expect(token.bytes - e.checkpoint().bytes).toBeLessThanOrEqual(130 * 1024);
 });
 
+it("bounds checkpoints when every rule's fetch samples are full", () => {
+  const d = cacheFixture();
+  for (let i = 1; i < 8; i++) {
+    d.nodes.push({ ...structuredClone(d.nodes[1]), id: `cache${i}` });
+    d.edges.push({ ...structuredClone(d.edges[0]), id: `input${i}`, to: `cache${i}` });
+    d.edges.push({ ...structuredClone(d.edges[1]), id: `fetch${i}`, from: `cache${i}` });
+  }
+  const caches = d.nodes.filter((n) => n.stencil === "generic.cdn");
+  for (const node of caches)
+    node.props!.cache = {
+      rules: Array.from({ length: 32 }, (_, i) => ({
+        id: `r${i}`,
+        match: { types: [`Page${i}`] },
+        policy: { ttlMs: 1000, keys: 1000 },
+      })),
+    };
+  const e = createEngine({ seed: 7 });
+  const exercise = () => {
+    for (let i = 0; i < 32; i++) e.inject("source", 1, { type: `Page${i}` });
+    e.step(2000);
+    expect(e.snapshot().inSystem).toBe(0);
+  };
+  e.load(d);
+  for (let round = 0; round < 32; round++) exercise();
+  for (const node of caches) {
+    const rules = Object.values(e.snapshot().nodes[node.id].cache!.rules);
+    expect(rules).toHaveLength(32);
+    for (const rule of rules) expect(rule).toMatchObject({ requests: 32, misses: 32, fetches: 32 });
+  }
+  const watch = watchCheckpoints();
+  const token = e.checkpoint();
+  const rules = [...watch.sources[0][0].values()].flatMap((n) => n.cache?.rules ?? []);
+  watch.stop();
+  expect(rules).toHaveLength(256);
+  expect(rules.reduce((sum, r) => sum + r.tracked, 0)).toBe(4096);
+  for (const rule of rules) expect(rule.fetchMs.count).toBe(32);
+  const snapshot = e.snapshot();
+  exercise();
+  const expected = e.snapshot();
+  e.restore(token);
+  expect(e.snapshot()).toEqual(snapshot);
+  exercise();
+  expect(e.snapshot()).toEqual(expected);
+  for (const node of caches) delete node.props!.cache;
+  e.load(d);
+  for (let round = 0; round < 32; round++) exercise();
+  const baseline = e.checkpoint().bytes;
+  console.info({ checkpoint: token.bytes, baseline, increment: token.bytes - baseline });
+  expect(token.bytes - baseline).toBeLessThanOrEqual(130 * 1024);
+});
+
 it("restores activation capabilities and in-flight rule aliases across cache patches", () => {
   const d = cacheFixture();
   d.nodes[1].stencil = "generic.cache";
