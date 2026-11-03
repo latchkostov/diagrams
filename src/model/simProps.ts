@@ -1,3 +1,4 @@
+import { checkCache, cacheSchema } from "./caching";
 import { resourcesSchema, autoscalingSchema, checkAutoscaling } from "./autoscalingSchema";
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { NodeSimProps, EdgeSimProps } from "../sim/types";
@@ -48,6 +49,7 @@ export const queueSchema: JsonSchema = {
   },
 };
 export const nodeProperties = {
+  cache: cacheSchema,
   queue: queueSchema,
   resources: resourcesSchema,
   autoscaling: autoscalingSchema,
@@ -161,7 +163,8 @@ export function propsProblem(value: unknown): string | undefined {
     if (field === undefined || !Object.hasOwn(nodeProperties, key)) continue;
     const schema: JsonSchema = nodeProperties[key as keyof typeof nodeProperties];
     try {
-      if (key === "endpoints") checkEndpoints(field);
+      if (key === "cache") checkCache(field);
+      else if (key === "endpoints") checkEndpoints(field);
       else if (key === "api") checkApi(field);
       else if (key === "trafficMix" || key === "routeTable") {
         // Routing records have their own grammar; their messages name the field and the bound.
@@ -170,7 +173,8 @@ export function propsProblem(value: unknown): string | undefined {
         continue;
       } else checkJsonSchema(field, schema, key);
     } catch (error) {
-      if (key === "trafficMix" || key === "routeTable") return error instanceof Error ? error.message : String(error);
+      if (key === "cache" || key === "trafficMix" || key === "routeTable")
+        return error instanceof Error ? error.message : String(error);
       if (error instanceof Error && error.message.includes("ids must be unique")) return error.message;
       if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum)
         return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;

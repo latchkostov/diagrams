@@ -1,3 +1,4 @@
+import { validateCacheDocument } from "./cacheValidation";
 import { isDlqEdge } from "./brokerRoutes";
 import { stencilRole } from "../stencils/roles";
 import { routingProblem, type RoutingContext, type RoutingDocument } from "./requestRouting";
@@ -7,7 +8,7 @@ export const ROUTING_CONTEXT: RoutingContext = { roleOf: stencilRole, isDlq: isD
 
 /** Request routing's one validation path (src/model/requestRouting.ts), bound to the stencil catalogue. */
 export const validateRouting = (diagram: RoutingDocument): string | undefined =>
-  routingProblem(diagram, ROUTING_CONTEXT);
+  validateCacheDocument(diagram) ?? routingProblem(diagram, ROUTING_CONTEXT);
 
 /** Calls of the full check, for the editor's per-edit cost tests. */
 export const routingValidations = { count: 0 };
@@ -57,8 +58,8 @@ function routingInputs(d: RoutingDocument): unknown[] {
   const labels = new Map<string, unknown[]>();
   for (const n of d.nodes) {
     const p = n.props;
-    if (p && (p.trafficMix !== undefined || p.routeTable !== undefined)) {
-      out.push(n.id, n.stencil, p.trafficMix, p.routeTable);
+    if (p && (p.cache !== undefined || p.trafficMix !== undefined || p.routeTable !== undefined)) {
+      out.push(n.id, n.stencil, p.trafficMix, p.routeTable, p.cache);
       if (p.routeTable !== undefined) routers.set(n.id, n.stencil);
     }
   }

@@ -64,7 +64,7 @@ export interface FamilySpec {
 }
 export interface ResolutionEvidence {
   family?: FamilyId;
-  revision: "legacy" | "p1" | "p2" | "p3" | "p3-a1" | "p3-w1" | "p3-w2";
+  revision: "legacy" | "p1" | "p2" | "p3" | "p3-a1" | "p3-w1" | "p3-w2" | "p3-w3";
   preset?: string;
   presetRevision?: string;
   evidence: Preset["sources"];

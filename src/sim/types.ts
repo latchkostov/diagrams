@@ -56,6 +56,8 @@ export interface Particle {
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
+  /** Cache counters are real requests, independently of dot scale. */
+  cache?: import("./cache/cacheState").CacheReadout;
   threads?: {
     slots: number;
     working: number;
@@ -226,6 +228,7 @@ export interface RouteCounts {
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
 export interface NodeSimProps {
+  cache?: import("../model/caching").CacheTable;
   queue?: QueuePolicy;
   resources?: import("../model/autoscaling").ComputeResources;
   autoscaling?: import("../model/autoscaling").AutoscalingConfig;
