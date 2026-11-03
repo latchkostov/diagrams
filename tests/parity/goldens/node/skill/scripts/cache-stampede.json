@@ -8,7 +8,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "47d7d8de3de4679ea3d54acc75745a7b64006dfb6229ac582b53181d024d7ee1", "bytes": 4340 },
+    "decoded": { "sha256": "c5cb2ab353803265af2a269bc9dbf2c6b17872a55588458015ccf4e0ac436aa1", "bytes": 4345 },
     "sameAsFile": true,
     "warned": false
   },
@@ -21,7 +21,7 @@
       "diagram": {
         "format": "diagrams/v2",
         "title": "A cache stampede",
-        "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting five seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.",
+        "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting about two seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.",
         "planning": {
           "revision": "p3-w3",
           "requestRoutes": [

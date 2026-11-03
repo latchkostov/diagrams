@@ -183,7 +183,7 @@ function CachePolicyFields({
                 checked={!!p.coalesce}
                 onChange={(e) => set(e.currentTarget.checked ? oneFetchPerItem(p) : { ...p, coalesce: false })}
               />
-              {t("cache.oneFetch")}
+              {t("cache.coalescingAction", { mode: "coalesce" })}
             </label>
             <p className="insp-note">{t("cache.coalesceHint")}</p>
           </ReadoutDisclosure>

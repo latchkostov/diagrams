@@ -36,7 +36,7 @@ export function NodePanel({
         .byElement.get(node.id)
         ?.filter((f) => f.severity === "warning").length ?? 0,
   );
-  const [editing, setEditing] = useState({ live: liveMode, seq: focus?.seq, open: !liveMode });
+  const [editing, setEditing] = useState({ live: liveMode, seq: focus?.seq, open: !liveMode || !!focus?.name });
   if (editing.live !== liveMode) setEditing({ live: liveMode, seq: focus?.seq, open: !liveMode });
   else if (focus?.seq !== editing.seq) setEditing({ ...editing, seq: focus?.seq, open: true });
   const stencil = getStencil(node.data.stencil);

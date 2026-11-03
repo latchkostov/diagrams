@@ -8,6 +8,10 @@ The designer-agent review found four issues: memo equality omitted herd data; su
 
 Coalescing-only edits keep current fetches and waiters visible while they drain. Confirmation counts two later expiries of the same tracked item; it cannot certify two different items as two expiries. Events remains the action when evidence is insufficient, including an expiry too early to have a measured latency baseline.
 
+The final origin-menu review keeps the toggle inside the existing Simulation submenu. A single storing rule shares the confirmed preset; multiple rules open the existing inspector. A routed connection must be the unambiguous origin target; otherwise the node's Properties → Cache rules remains available. This resolves the reviewer's unrelated-beacon finding without extra chrome or a misleading connection-scoped edit.
+
+The production browser regression also caught the initial Live inspector hiding fields despite an explicit named-focus request. A fresh node panel now opens Edit properties for that request, as it already did for later requests. The test fails with the former behavior and passes with the fix; the designer approved this correction.
+
 ## Disposition
 
 Designer-agent review approved the corrected diff, subject to the required gates. Public screenshots are stored under `C:/Users/latch/bin/codex-tasks/cdn-3-shots/`. The new example shows expiry trouble within its first ten seconds and offers a same-seed comparison with unchanged expectation thresholds. The next ladder step remains PR 4.

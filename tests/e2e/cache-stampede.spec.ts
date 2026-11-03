@@ -6,12 +6,21 @@ import {
   pauseClock,
   savedDiagram,
   waitForSelectionSettled,
+  waitForStableViewport,
+  edgePoint,
   STORAGE_KEYS,
 } from "./fixtures";
 import stampede from "../../src/examples/cache-stampede.json" with { type: "json" };
 import { installThreadVerification, waitForThreadVerification } from "./thread-verification";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import type { Page } from "@playwright/test";
+
+async function originMenu(page: Page) {
+  const at = await edgePoint(page, "fetch");
+  await page.mouse.click(at.x, at.y, { button: "right" });
+  await page.getByTestId("context-menu-item-edge.simulation").hover();
+}
 
 test("a confirmed stampede action edits only its saved simulation; keyboard Undo restores it", async ({ page }) => {
   await installThreadVerification(page);
@@ -55,6 +64,45 @@ test("a confirmed stampede action edits only its saved simulation; keyboard Undo
   await page.keyboard.press("Enter");
   await page.clock.runFor(400);
   await expect.poll(async () => (await savedDiagram(page)).simulations?.[0].setup).toBeUndefined();
+});
+
+test("the origin Simulation menu toggles its single storing rule in the saved run and supports Undo", async ({
+  page,
+}) => {
+  const diagram = structuredClone(stampede);
+  const cdn = diagram.nodes.find((n) => n.id === "cdn");
+  if (!cdn?.props?.cache) throw new Error("Expected the public example's cache rules");
+  cdn.props.cache.rules.splice(1);
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "cache-stampede",
+    diagram,
+  });
+  await gotoLive(page, "./?view=canvas&example=cache-stampede&live=1&paused=1&sim=ttl-only");
+  await waitForStableViewport(page);
+  const before = await savedDiagram(page);
+  await originMenu(page);
+  await page.getByTestId("context-menu-item-edge.coalesce").click();
+  await expect
+    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.props?.cdn.cache)
+    .toMatchObject({ rules: [{ id: "launch", policy: { ttlMs: 5000, coalesce: true } }] });
+  expect((await savedDiagram(page)).nodes).toEqual(before.nodes);
+  await originMenu(page);
+  await expect(page.getByTestId("context-menu-item-edge.coalesce")).toHaveText("Fetch per request");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect.poll(async () => (await savedDiagram(page)).simulations?.[0].setup).toBeUndefined();
+});
+
+test("an origin with several storing rules opens the cache inspector instead of guessing a rule", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=cache-stampede&live=1&paused=1");
+  await waitForStableViewport(page);
+  await originMenu(page);
+  await expect(page.getByTestId("context-menu-item-edge.coalesce")).toHaveCount(0);
+  await page.getByTestId("context-menu-item-edge.cache-rules").click();
+  await expect(page.getByTestId("cache-add-rule")).toBeFocused();
+  await expect(page.getByTestId("cache-rule-launch")).toBeVisible();
+  await expect(page.getByTestId("cache-rule-products")).toBeVisible();
 });
 
 test("One fetch per item is off by default, behind the expiry fold, and undoable", async ({ page }) => {

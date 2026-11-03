@@ -3126,7 +3126,7 @@ const en = {
   "autoscaling.planBusy":
     "In “{simulation}”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
   "cache.rules": "Cache rules",
-  "cache.oneFetch": "One fetch per item",
+  "cache.coalescingAction": "{mode, select, perRequest {Fetch per request} other {One fetch per item}}",
   "cache.herdEvent": "{node}: {count, plural, one {# fetch} other {# fetches}} in flight for one {rule} item",
   "cache.expires": "When an item expires",
   "cache.coalesceHint": "Many CDNs collapse requests like this by default.",
