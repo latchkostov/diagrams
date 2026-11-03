@@ -23,6 +23,7 @@ throttled replies, at most six attempts, with full jitter, 1 s exponential backo
 4 s, a 50% retry budget and a 20 s deadline. This keeps excess 429s and makes the story's
 existing retry claim true without losing requests. The earlier evidence difference was real:
 waiting calls propagated the unretried 429s to their callers. Checks and evidence now agree.
+The configured retry policy also gives Black Friday the existing resilience gallery tag.
 All three authored expectation lists and existing large-showcase assertions remain unchanged.
 The existing bounded retry-storm probe reports one call not checked on this large example;
 its ceiling is unchanged, and no partial result is presented as a successful analysis.

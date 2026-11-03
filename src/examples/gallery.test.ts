@@ -137,7 +137,15 @@ describe("example gallery", () => {
       "contoso-dmz": ["networkDevices"],
       "api-route-table": ["routing"],
       // The large showcases: each tag is backed by a configured node.
-      "black-friday-commerce": ["caching", "requestsWait", "partitions", "rateLimits", "autoscaling", "routing"],
+      "black-friday-commerce": [
+        "caching",
+        "requestsWait",
+        "resilience",
+        "partitions",
+        "rateLimits",
+        "autoscaling",
+        "routing",
+      ],
       "delivery-dispatch": ["partitions", "rateLimits", "autoscaling", "routing"],
       "payments-ledger": ["messageTypes", "partitions", "rateLimits", "routing"],
       "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],
