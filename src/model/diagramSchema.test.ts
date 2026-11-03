@@ -42,6 +42,17 @@ const check = (value: unknown, def?: string) =>
       : defs,
   );
 
+it("keeps complete cache policies valid when published property objects are closed", () => {
+  const policy = (value: Record<string, unknown>) => check({ cache: { rules: [], default: value } }, "NodeProps");
+  for (const value of [{ ttlMs: 300_000, keys: 50_000, popularity: "typical" }, { noStore: true }])
+    expect(() => policy(value)).not.toThrow();
+  for (const value of [
+    { ttlMs: 300_000, noStore: true },
+    { ttlMs: 300_000, invented: true },
+  ])
+    expect(() => policy(value)).toThrow();
+});
+
 const node: Required<DiagramNode> = {
   id: "api",
   stencil: "service.dotnet",

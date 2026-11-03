@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "ae2a42e4a078c391bc03e69cd906b85832a78ade66a024f569abf6957ab53843",
-    "bytes": 318063,
+    "sha256": "12deca92e084cb62fbb6a8a7003887dcd6fe3f99e5744de204e93eaa93fd2bfa",
+    "bytes": 324508,
     "inlined": {
       "airflow": "airflow bb347b1c98e3b7d4",
       "argocd": "argo f05272f641716862",
@@ -41,7 +41,7 @@
       "diagram": {
         "format": "diagrams/v2",
         "planning": {
-          "revision": "p3-a1",
+          "revision": "p3-w3",
           "requestRoutes": [
             {
               "id": "browse",
@@ -84,6 +84,11 @@
               "label": "Carrier scan",
               "address": { "method": "POST", "path": "/hooks/carriers/scan" },
               "appearance": { "paletteSlot": 6, "marker": "square" }
+            },
+            {
+              "id": "doorbuster",
+              "address": { "path": "/products/doorbuster-tv", "method": "GET" },
+              "label": "Doorbuster"
             }
           ]
         },
@@ -182,6 +187,34 @@
                   }
                 ],
                 "default": { "targets": [{ "edgeId": "cdn--gateway", "weight": 1 }] }
+              },
+              "cache": {
+                "rules": [
+                  {
+                    "id": "doorbuster",
+                    "policy": { "ttlMs": 10000, "keys": 1 },
+                    "label": "Doorbuster",
+                    "match": { "path": { "kind": "exact", "value": "/products/doorbuster-tv" }, "methods": ["GET"] }
+                  },
+                  {
+                    "id": "products",
+                    "policy": { "keys": 50000, "ttlMs": 300000, "popularity": "typical" },
+                    "label": "Product pages",
+                    "match": { "path": { "kind": "template", "value": "/products/{id}" }, "methods": ["GET"] }
+                  },
+                  {
+                    "id": "search",
+                    "policy": { "keys": 200000, "ttlMs": 60000, "popularity": "steep" },
+                    "label": "Search",
+                    "match": { "path": { "kind": "prefix", "value": "/search/" }, "methods": ["GET"] }
+                  },
+                  {
+                    "id": "orders",
+                    "policy": { "noStore": true },
+                    "label": "Order status",
+                    "match": { "path": { "kind": "template", "value": "/orders/{id}" }, "methods": ["GET"] }
+                  }
+                ]
               }
             },
             "group": "edge"
@@ -224,7 +257,7 @@
                     "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/checkout" } },
                     "targets": [{ "edgeId": "gateway--checkout-api", "weight": 1 }],
                     "quotas": [
-                      { "id": "checkout-rps", "unit": "requests", "amount": 150, "windowMs": 1000, "algorithm": "token-bucket", "burst": 150 }
+                      { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 180 }
                     ]
                   },
                   {
@@ -251,7 +284,7 @@
             "sublabel": "product pages",
             "x": 1360,
             "y": 440,
-            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 8, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
             "group": "storefront"
           },
           {
@@ -260,7 +293,7 @@
             "label": "Search API",
             "x": 1360,
             "y": 620,
-            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 9, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
             "group": "storefront"
           },
           {
@@ -572,7 +605,7 @@
               "preset": "processor-lesson",
               "presetRevision": "1",
               "replicas": 2,
-              "concurrency": 4,
+              "concurrency": 8,
               "latencyMs": 100,
               "jitter": 0.1,
               "failureRate": 0,
@@ -583,7 +616,7 @@
                 "baselineMemoryMiB": 192,
                 "memoryMiBPerMessage": 1,
                 "cpuRequestMilli": 250,
-                "cpuLimitMilli": 500,
+                "cpuLimitMilli": 2000,
                 "memoryRequestMiB": 256,
                 "memoryLimitMiB": 512,
                 "startup": { "delayMs": 1000, "jitterFraction": 0 },
@@ -861,25 +894,124 @@
           { "id": "tableau", "stencil": "tableau", "label": "Merch dashboards", "sublabel": "Tableau", "x": 3700, "y": 2280, "group": "saas-data" }
         ],
         "edges": [
-          { "id": "web--cdn", "from": "web", "to": "cdn", "label": "HTTPS", "kind": "sync" },
-          { "id": "app--cdn", "from": "app", "to": "cdn", "label": "HTTPS", "kind": "sync" },
-          { "id": "carriers--cdn", "from": "carriers", "to": "cdn", "label": "Webhook", "kind": "sync" },
-          { "id": "cdn--gateway", "from": "cdn", "to": "gateway", "label": "API calls", "kind": "sync" },
-          { "id": "cdn--collector", "from": "cdn", "to": "collector", "label": "Beacons", "kind": "sync" },
-          { "id": "gateway--catalog-bff", "from": "gateway", "to": "catalog-bff", "label": "Products", "kind": "sync" },
-          { "id": "gateway--search-api", "from": "gateway", "to": "search-api", "label": "Search", "kind": "sync" },
-          { "id": "gateway--cart-api", "from": "gateway", "to": "cart-api", "label": "Cart", "kind": "sync" },
-          { "id": "gateway--checkout-api", "from": "gateway", "to": "checkout-api", "label": "Checkout", "kind": "sync" },
-          { "id": "gateway--order-status", "from": "gateway", "to": "order-status", "label": "Status", "kind": "sync" },
-          { "id": "gateway--tracking", "from": "gateway", "to": "tracking", "label": "Scans", "kind": "sync" },
-          { "id": "catalog-bff--product-cache", "from": "catalog-bff", "to": "product-cache", "kind": "sync" },
+          {
+            "id": "web--cdn",
+            "from": "web",
+            "to": "cdn",
+            "label": "HTTPS",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 }, "networkDelayMs": 15 }
+          },
+          {
+            "id": "app--cdn",
+            "from": "app",
+            "to": "cdn",
+            "label": "HTTPS",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 }, "networkDelayMs": 25 }
+          },
+          {
+            "id": "carriers--cdn",
+            "from": "carriers",
+            "to": "cdn",
+            "label": "Webhook",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "cdn--gateway",
+            "from": "cdn",
+            "to": "gateway",
+            "label": "API calls",
+            "kind": "sync",
+            "props": {
+              "caller": {
+                "wait": "non-blocking",
+                "replyMs": 0,
+                "deadlineMs": 20000,
+                "retry": {
+                  "maxAttempts": 6,
+                  "backoffMs": 1000,
+                  "strategy": "exponential",
+                  "maxBackoffMs": 4000,
+                  "jitter": 1,
+                  "retryOn": ["throttled"],
+                  "budget": { "percent": 50, "minPerSec": 10 }
+                }
+              },
+              "networkDelayMs": 50
+            }
+          },
+          {
+            "id": "cdn--collector",
+            "from": "cdn",
+            "to": "collector",
+            "label": "Beacons",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "gateway--catalog-bff",
+            "from": "gateway",
+            "to": "catalog-bff",
+            "label": "Products",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "gateway--search-api",
+            "from": "gateway",
+            "to": "search-api",
+            "label": "Search",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "gateway--cart-api",
+            "from": "gateway",
+            "to": "cart-api",
+            "label": "Cart",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "gateway--checkout-api",
+            "from": "gateway",
+            "to": "checkout-api",
+            "label": "Checkout",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "gateway--order-status",
+            "from": "gateway",
+            "to": "order-status",
+            "label": "Status",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "gateway--tracking",
+            "from": "gateway",
+            "to": "tracking",
+            "label": "Scans",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "catalog-bff--product-cache",
+            "from": "catalog-bff",
+            "to": "product-cache",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
           {
             "id": "catalog-bff--catalog-db",
             "from": "catalog-bff",
             "to": "catalog-db",
             "label": "Cache miss",
             "kind": "sync",
-            "props": { "share": 0.1 }
+            "props": { "share": 0.1, "caller": { "wait": "non-blocking", "replyMs": 0 } }
           },
           {
             "id": "catalog-bff--reco",
@@ -887,23 +1019,121 @@
             "to": "reco",
             "label": "Similar",
             "kind": "sync",
-            "props": { "share": 0.5 }
+            "props": { "share": 0.5, "caller": { "wait": "non-blocking", "replyMs": 0 } }
           },
-          { "id": "reco--features", "from": "reco", "to": "features", "kind": "sync" },
-          { "id": "search-api--search-index", "from": "search-api", "to": "search-index", "kind": "sync" },
-          { "id": "cart-api--carts", "from": "cart-api", "to": "carts", "kind": "sync" },
-          { "id": "cart-api--pricing", "from": "cart-api", "to": "pricing", "label": "Price", "kind": "sync" },
-          { "id": "pricing--promotions", "from": "pricing", "to": "promotions", "kind": "sync" },
-          { "id": "checkout-api--pricing", "from": "checkout-api", "to": "pricing", "label": "Reprice", "kind": "sync" },
-          { "id": "checkout-api--tax", "from": "checkout-api", "to": "tax", "label": "Tax quote", "kind": "sync" },
-          { "id": "checkout-api--inventory", "from": "checkout-api", "to": "inventory", "label": "Reserve", "kind": "sync" },
-          { "id": "checkout-api--risk", "from": "checkout-api", "to": "risk", "label": "Score", "kind": "sync" },
-          { "id": "checkout-api--payments", "from": "checkout-api", "to": "payments", "label": "Authorize", "kind": "sync" },
-          { "id": "checkout-api--orders-db", "from": "checkout-api", "to": "orders-db", "label": "Order + outbox", "kind": "sync" },
-          { "id": "risk--features", "from": "risk", "to": "features", "kind": "sync" },
-          { "id": "inventory--inventory-db", "from": "inventory", "to": "inventory-db", "kind": "sync" },
-          { "id": "payments--stripe", "from": "payments", "to": "stripe", "label": "PaymentIntent", "kind": "sync" },
-          { "id": "order-status--status-cache", "from": "order-status", "to": "status-cache", "kind": "sync" },
+          {
+            "id": "reco--features",
+            "from": "reco",
+            "to": "features",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "search-api--search-index",
+            "from": "search-api",
+            "to": "search-index",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "cart-api--carts",
+            "from": "cart-api",
+            "to": "carts",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "cart-api--pricing",
+            "from": "cart-api",
+            "to": "pricing",
+            "label": "Price",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "pricing--promotions",
+            "from": "pricing",
+            "to": "promotions",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "checkout-api--pricing",
+            "from": "checkout-api",
+            "to": "pricing",
+            "label": "Reprice",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "checkout-api--tax",
+            "from": "checkout-api",
+            "to": "tax",
+            "label": "Tax quote",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0, "deadlineMs": 2000 } }
+          },
+          {
+            "id": "checkout-api--inventory",
+            "from": "checkout-api",
+            "to": "inventory",
+            "label": "Reserve",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "checkout-api--risk",
+            "from": "checkout-api",
+            "to": "risk",
+            "label": "Score",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0, "deadlineMs": 2000 } }
+          },
+          {
+            "id": "checkout-api--payments",
+            "from": "checkout-api",
+            "to": "payments",
+            "label": "Authorize",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "checkout-api--orders-db",
+            "from": "checkout-api",
+            "to": "orders-db",
+            "label": "Order + outbox",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "risk--features",
+            "from": "risk",
+            "to": "features",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "inventory--inventory-db",
+            "from": "inventory",
+            "to": "inventory-db",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "payments--stripe",
+            "from": "payments",
+            "to": "stripe",
+            "label": "PaymentIntent",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0, "deadlineMs": 2000 } }
+          },
+          {
+            "id": "order-status--status-cache",
+            "from": "order-status",
+            "to": "status-cache",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
           { "id": "orders-db--outbox-relay", "from": "orders-db", "to": "outbox-relay", "label": "CDC", "kind": "async" },
           {
             "id": "outbox-relay--orders",
@@ -972,8 +1202,22 @@
             "props": { "group": "triage" }
           },
           { "id": "notify-dlq--dlq-triage", "from": "notify-dlq", "to": "dlq-triage", "kind": "async" },
-          { "id": "dlq-triage--loyalty", "from": "dlq-triage", "to": "loyalty", "label": "Replay", "kind": "sync" },
-          { "id": "fulfilment--wms", "from": "fulfilment", "to": "wms", "label": "Pick request", "kind": "sync" },
+          {
+            "id": "dlq-triage--loyalty",
+            "from": "dlq-triage",
+            "to": "loyalty",
+            "label": "Replay",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "fulfilment--wms",
+            "from": "fulfilment",
+            "to": "wms",
+            "label": "Pick request",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0, "deadlineMs": 2000 } }
+          },
           {
             "id": "fulfilment--shipments",
             "from": "fulfilment",
@@ -982,8 +1226,22 @@
             "kind": "async",
             "props": { "emits": "ShipmentCreated" }
           },
-          { "id": "loyalty--loyalty-db", "from": "loyalty", "to": "loyalty-db", "label": "Points", "kind": "sync" },
-          { "id": "status-projector--status-cache", "from": "status-projector", "to": "status-cache", "label": "Upsert", "kind": "sync" },
+          {
+            "id": "loyalty--loyalty-db",
+            "from": "loyalty",
+            "to": "loyalty-db",
+            "label": "Points",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "status-projector--status-cache",
+            "from": "status-projector",
+            "to": "status-cache",
+            "label": "Upsert",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
           {
             "id": "inventory-events--search-indexer",
             "from": "inventory-events",
@@ -991,7 +1249,14 @@
             "kind": "async",
             "props": { "group": "search" }
           },
-          { "id": "search-indexer--search-index", "from": "search-indexer", "to": "search-index", "label": "Reindex", "kind": "sync" },
+          {
+            "id": "search-indexer--search-index",
+            "from": "search-indexer",
+            "to": "search-index",
+            "label": "Reindex",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
           {
             "id": "tracking--shipments",
             "from": "tracking",
@@ -1025,8 +1290,22 @@
             "kind": "async",
             "props": { "dlq": true }
           },
-          { "id": "email--sendgrid", "from": "email", "to": "sendgrid", "label": "Mail send", "kind": "sync" },
-          { "id": "push--apns", "from": "push", "to": "apns", "label": "Send", "kind": "sync" },
+          {
+            "id": "email--sendgrid",
+            "from": "email",
+            "to": "sendgrid",
+            "label": "Mail send",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0, "deadlineMs": 2000 } }
+          },
+          {
+            "id": "push--apns",
+            "from": "push",
+            "to": "apns",
+            "label": "Send",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0, "deadlineMs": 2000 } }
+          },
           {
             "id": "collector--clickstream",
             "from": "collector",
@@ -1042,12 +1321,46 @@
             "kind": "async",
             "props": { "group": "sessions" }
           },
-          { "id": "sessionizer--features", "from": "sessionizer", "to": "features", "label": "Update features", "kind": "sync" },
-          { "id": "sessionizer--lake", "from": "sessionizer", "to": "lake", "label": "Sessions", "kind": "sync" },
-          { "id": "lake-sink--lake", "from": "lake-sink", "to": "lake", "label": "Parquet", "kind": "sync" },
+          {
+            "id": "sessionizer--features",
+            "from": "sessionizer",
+            "to": "features",
+            "label": "Update features",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "sessionizer--lake",
+            "from": "sessionizer",
+            "to": "lake",
+            "label": "Sessions",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "lake-sink--lake",
+            "from": "lake-sink",
+            "to": "lake",
+            "label": "Parquet",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
           { "id": "airflow--dbt", "from": "airflow", "to": "dbt", "label": "Nightly run", "kind": "async" },
-          { "id": "dbt--snowflake", "from": "dbt", "to": "snowflake", "label": "Build marts", "kind": "sync" },
-          { "id": "snowflake--tableau", "from": "snowflake", "to": "tableau", "kind": "sync" },
+          {
+            "id": "dbt--snowflake",
+            "from": "dbt",
+            "to": "snowflake",
+            "label": "Build marts",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
+          {
+            "id": "snowflake--tableau",
+            "from": "snowflake",
+            "to": "tableau",
+            "kind": "sync",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 0 } }
+          },
           { "id": "payments--secrets", "from": "payments", "to": "secrets", "label": "Stripe key", "kind": "async", "relation": "secret" },
           { "id": "payments--roles", "from": "payments", "to": "roles", "kind": "async", "relation": "identity" },
           { "id": "checkout-api--flags", "from": "checkout-api", "to": "flags", "label": "Flags", "kind": "async", "relation": "config" },
@@ -1062,7 +1375,7 @@
           {
             "id": "doors-open",
             "title": "Black Friday: doors open",
-            "description": "Storefront traffic jumps five times in three seconds. The gateway caps checkout at 150 requests a second (429 for the rest), Checkout's HPA adds pods on CPU, and KEDA scales fulfilment on order lag.",
+            "description": "Storefront traffic jumps five times in three seconds. The gateway caps checkout at 180 requests a second (429 for the rest), Checkout's HPA adds pods on CPU, and KEDA scales fulfilment on order lag.",
             "seed": 11,
             "scale": 50,
             "traffic": [
@@ -1092,7 +1405,11 @@
               },
               {
                 "atMs": 4000,
-                "action": { "do": "note", "text": "Doors open: 2,500 requests a second. The checkout route is capped at 150 a second; the rest get 429 and retry.", "focus": ["gateway", "checkout-api"] }
+                "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers 87% of product pages and 65% of searches; the origin sees about 300 of 1,460 a second. Larkspur sized its origin for what the edge lets through." }
+              },
+              {
+                "atMs": 6000,
+                "action": { "do": "note", "text": "Doors open: 2,500 requests a second. The checkout route is capped at 180 a second; the rest get 429 and retry.", "focus": ["gateway", "checkout-api"] }
               },
               {
                 "atMs": 8000,
@@ -1270,7 +1587,7 @@
           }
         ],
         "annotations": [
-          { "id": "note-routes", "kind": "note", "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 150 a second.", "x": 0, "y": 360, "width": 260, "height": 150 },
+          { "id": "note-routes", "kind": "note", "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 180 a second.", "x": 0, "y": 360, "width": 260, "height": 150 },
           { "id": "note-outbox", "kind": "note", "text": "Outbox: the order and its event commit in one transaction. The relay publishes it; every consumer is idempotent.", "x": 2860, "y": 60, "width": 300, "height": 150 }
         ]
       }

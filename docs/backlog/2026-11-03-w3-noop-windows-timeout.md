@@ -10,3 +10,14 @@ Both clean-master runs reported `Test Files 1 failed (1)` and
 Durations were 8.45 s and 6.34 s. The feature run reported one timeout and 182 other no-op cases
 passed; it additionally retains the frozen A1 Black Friday cohort. No assertion or backstop was
 changed. Revisit the fixture's retained comparison work separately.
+
+The isolated reproduction command was:
+
+```sh
+pnpm exec vitest run src/sim/caching.noop.heavy.test.ts -t "w3-noop: blocking-call.json, saved simulation free-thread" --maxWorkers=1
+```
+
+A resumed run of the full no-op cohort alongside production-bundle work reported the known
+free-thread timeout plus `three-quick-retries` and `jittered-backoff` from the retry-storm example
+(180 passed, three timed out). Those two retry cases passed together when rerun in isolation
+with the unchanged 5 s backstop: two passed, 181 skipped, 8.35 s overall. No assertion changed.

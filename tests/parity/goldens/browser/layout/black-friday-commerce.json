@@ -279,7 +279,7 @@
       "apns": { "kind": "node", "box": "translate(5180px, 1580px) 220×72", "text": "" },
       "snowflake": { "kind": "node", "box": "translate(3280px, 2280px) 220×72", "text": "" },
       "tableau": { "kind": "node", "box": "translate(3700px, 2280px) 220×72", "text": "" },
-      "note-routes": { "kind": "annotation", "box": "translate(0px, 360px) 260×150", "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 150 a second." },
+      "note-routes": { "kind": "annotation", "box": "translate(0px, 360px) 260×150", "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 180 a second." },
       "note-outbox": { "kind": "annotation", "box": "translate(2860px, 60px) 300×150", "text": "Outbox: the order and its event commit in one transaction. The relay publishes it; every consumer is idempotent." }
     },
     "edges": {

@@ -23,9 +23,14 @@ latency includes the cache's own queue and service time. When the existing plann
 prevents an Expected calculation, the Inspector reports that limit and the hover omits Expected;
 neither claims zero traffic or zero expected hits.
 
-## Outstanding review
+## Final review
 
-The Black Friday upgrade exposes additional capacity, timeout and propagated-loss findings.
-Its three authored story expectations and existing showcase assertions pass, but clean Checks
-does not. Further preservation changes and the necessary schema/skill parity changes await the
-owner's clarification. This batch is not ready to publish.
+A separate designer-agent review inspected the public Inspector, chip and hover screenshots,
+the controls and keyboard tests, and accepted the batch with no blocking findings. No bar
+control was added. Black Friday honestly explains the existing analysis ceiling.
+
+The approved preservation edits give the six outside calls explicit timeouts and size
+Fulfilment for reply work. Checkout retains excess 429 responses at a tuned 180 requests/s;
+bounded, jittered retries make the existing story's retry claim true. Configured Checks and
+simulation evidence are clean. All three authored expectation lists and the existing showcase
+assertions remain unchanged. The clean-profile regression fails without the preservation edits.

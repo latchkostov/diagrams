@@ -1,9 +1,28 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
+  "all": {
+    "isError": false,
+    "output": {
+      "notChecked": { "retryStorm": 1 },
+      "findings": [],
+      "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "notChecked": { "retryStorm": 1 },
+      "findings": [],
+      "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms."
+    }
+  },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 21 checks ran.", "simulations": "Played 3 saved simulations (at most 60 s each)." }
+    "output": {
+      "notChecked": { "retryStorm": 1 },
+      "findings": [],
+      "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms.",
+      "simulations": "Played 3 saved simulations (at most 60 s each)."
+    }
   }
 }

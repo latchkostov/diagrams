@@ -501,10 +501,10 @@
                 {
                   "id": "checkout-rps",
                   "unit": "requests",
-                  "amount": 150,
+                  "amount": 180,
                   "windowMs": 1000,
                   "algorithm": "token-bucket",
-                  "burst": 150
+                  "burst": 180
                 }
               ]
             },
@@ -1021,7 +1021,7 @@
         "preset": "processor-lesson",
         "presetRevision": "1",
         "replicas": 2,
-        "concurrency": 4,
+        "concurrency": 8,
         "latencyMs": 100,
         "jitter": 0.1,
         "failureRate": 0,
@@ -1032,7 +1032,7 @@
           "baselineMemoryMiB": 192,
           "memoryMiBPerMessage": 1,
           "cpuRequestMilli": 250,
-          "cpuLimitMilli": 500,
+          "cpuLimitMilli": 2000,
           "memoryRequestMiB": 256,
           "memoryLimitMiB": 512,
           "startup": {
@@ -1559,7 +1559,20 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 20000,
+          "retry": {
+            "maxAttempts": 6,
+            "backoffMs": 1000,
+            "strategy": "exponential",
+            "maxBackoffMs": 4000,
+            "jitter": 1,
+            "retryOn": ["throttled"],
+            "budget": {
+              "percent": 50,
+              "minPerSec": 10
+            }
+          }
         },
         "networkDelayMs": 50
       }
@@ -1778,7 +1791,8 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 2000
         }
       }
     },
@@ -1804,7 +1818,8 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 2000
         }
       }
     },
@@ -1867,7 +1882,8 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 2000
         }
       }
     },
@@ -2002,7 +2018,8 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 2000
         }
       }
     },
@@ -2130,7 +2147,8 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 2000
         }
       }
     },
@@ -2143,7 +2161,8 @@
       "props": {
         "caller": {
           "wait": "non-blocking",
-          "replyMs": 0
+          "replyMs": 0,
+          "deadlineMs": 2000
         }
       }
     },
@@ -2308,7 +2327,7 @@
     {
       "id": "note-routes",
       "kind": "note",
-      "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 150 a second.",
+      "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 180 a second.",
       "x": 0,
       "y": 360,
       "width": 260,
@@ -2328,7 +2347,7 @@
     {
       "id": "doors-open",
       "title": "Black Friday: doors open",
-      "description": "Storefront traffic jumps five times in three seconds. The gateway caps checkout at 150 requests a second (429 for the rest), Checkout's HPA adds pods on CPU, and KEDA scales fulfilment on order lag.",
+      "description": "Storefront traffic jumps five times in three seconds. The gateway caps checkout at 180 requests a second (429 for the rest), Checkout's HPA adds pods on CPU, and KEDA scales fulfilment on order lag.",
       "seed": 11,
       "scale": 50,
       "traffic": [
@@ -2390,7 +2409,7 @@
           "atMs": 6000,
           "action": {
             "do": "note",
-            "text": "Doors open: 2,500 requests a second. The checkout route is capped at 150 a second; the rest get 429 and retry.",
+            "text": "Doors open: 2,500 requests a second. The checkout route is capped at 180 a second; the rest get 429 and retry.",
             "focus": ["gateway", "checkout-api"]
           }
         },
