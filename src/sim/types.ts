@@ -488,7 +488,7 @@ export interface SimEngine {
   /** Read a sampled metric without copying node or rendering state. Runner expectations convert it. */
   measure(metric: Expectation["metric"]): number | undefined;
   /** Replace the diagram being simulated. Resets all state. */
-  load(diagram: DiagramFile): void;
+  load(diagram: DiagramFile, cacheRates?: Record<string, Record<string, { rate: number; fetchMs: number }>>): void;
   /** Advance the simulation by dtMs of wall time (multiplied by speed). Internally fixed-step. */
   step(dtMs: number): void;
   /** Full inspection state, including a detached copy of the recent event log. */

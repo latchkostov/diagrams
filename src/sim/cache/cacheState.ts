@@ -29,6 +29,7 @@ export interface CacheRuleState {
   rate: { buckets: Float64Array; second: number; planned: number };
   fetchMs: { samples: Float64Array; cursor: number; count: number; sum: number; planned: number };
   counts: CacheCounts;
+  warmSince?: number;
 }
 export interface NodeCache {
   rules: CacheRuleState[];

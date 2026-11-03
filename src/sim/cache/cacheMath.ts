@@ -20,6 +20,7 @@ export function expNeg(x: number): number {
   return sum;
 }
 export function itemHitShare(rate: number, ttlMs: number, fetchMs: number): number {
+  if (!(rate > 0) || !Number.isFinite(fetchMs)) return 0;
   const fresh = (rate * ttlMs) / 1000;
   return fresh / (1 + (rate * fetchMs) / 1000 + fresh);
 }

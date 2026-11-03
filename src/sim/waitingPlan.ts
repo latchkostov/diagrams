@@ -1,4 +1,5 @@
 import { resolveApiBehaviour } from "./admissionPolicy";
+import { cacheEnabled } from "../model/caching";
 import { classifyOutcome, expectedRetries } from "./retryPolicy";
 import type { RetryPolicy } from "../model/admission";
 import { revisionAtLeast } from "../model/revisions";
@@ -25,6 +26,11 @@ export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopol
   const inputs = new Map(diagram.edges.map((e) => [e.id, e]));
   const stencils = new Map(diagram.nodes.map((n) => [n.id, n.stencil]));
   const roles = new Map(diagram.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
+  const caching = new Set(
+    diagram.nodes
+      .filter((n) => cacheEnabled(diagram.planning, n.stencil, roles.get(n.id)!, n.props?.cache))
+      .map((n) => n.id),
+  );
   const remaining = new Map<string, number>();
   const parents = new Map<
     string,
@@ -32,7 +38,7 @@ export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopol
   >();
   for (const node of diagram.nodes) remaining.set(node.id, 0);
   for (const edge of topology.edges) {
-    if (!activeCall(roles.get(edge.from)!, edge)) continue;
+    if (!activeCall(roles.get(edge.from)!, edge, caching.has(edge.from))) continue;
     const props = inputs.get(edge.id)?.props;
     const caller = props?.caller as EdgeSimProps["caller"];
     const delay = typeof props?.networkDelayMs === "number" ? props.networkDelayMs : 0;

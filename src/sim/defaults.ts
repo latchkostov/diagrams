@@ -66,6 +66,7 @@ export type ResolvedProps = Required<
   Omit<
     NodeSimProps,
     | "queue"
+    | "cache"
     | "resources"
     | "autoscaling"
     | "resumeAutoscaling"

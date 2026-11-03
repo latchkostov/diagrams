@@ -1,0 +1,151 @@
+{
+  "format": "diagrams/v2",
+  "title": "methods",
+  "planning": {
+    "revision": "p3-w3",
+    "requestRoutes": [
+      {
+        "id": "get",
+        "address": {
+          "method": "GET",
+          "path": "/pages/a"
+        }
+      },
+      {
+        "id": "head",
+        "address": {
+          "method": "HEAD",
+          "path": "/pages/a"
+        }
+      },
+      {
+        "id": "post",
+        "address": {
+          "method": "POST",
+          "path": "/pages/a"
+        }
+      },
+      {
+        "id": "personal",
+        "address": {
+          "method": "GET",
+          "path": "/personal/a"
+        }
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Readers",
+      "x": 0,
+      "y": 100,
+      "props": {
+        "ratePerSec": 200,
+        "trafficMix": {
+          "mode": "shares",
+          "entries": [
+            {
+              "routeId": "get",
+              "share": 1
+            },
+            {
+              "routeId": "head",
+              "share": 1
+            },
+            {
+              "routeId": "post",
+              "share": 1
+            },
+            {
+              "routeId": "personal",
+              "share": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cache",
+      "stencil": "generic.cdn",
+      "label": "Edge cache",
+      "x": 320,
+      "y": 100,
+      "props": {
+        "latencyMs": 0,
+        "jitter": 0,
+        "cache": {
+          "rules": [
+            {
+              "id": "personal",
+              "match": {
+                "path": {
+                  "kind": "prefix",
+                  "value": "/personal/"
+                }
+              },
+              "policy": {
+                "noStore": true
+              }
+            }
+          ],
+          "default": {
+            "ttlMs": 1000,
+            "keys": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "origin",
+      "stencil": "generic.database",
+      "label": "Origin",
+      "x": 640,
+      "y": 100,
+      "props": {
+        "latencyMs": 50,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input",
+      "from": "source",
+      "to": "cache",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "fetch",
+      "from": "cache",
+      "to": "origin",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "steady",
+      "title": "Steady requests",
+      "seed": 7,
+      "scale": 1,
+      "durationMs": 10000,
+      "traffic": [
+        {
+          "node": "source",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 200,
+            "durationMs": 8000
+          }
+        }
+      ]
+    }
+  ]
+}

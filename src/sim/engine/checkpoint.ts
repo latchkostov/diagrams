@@ -66,8 +66,15 @@ export type CheckpointClock = readonly [
  * strings plus their 16 B header. Shared/COW payloads are charged in full per token.
  * An explicit shared list requests a copy; omission only measures the graph.
  */
-function cloneSized<T>(source: T, shared?: readonly (readonly [object, object])[]): [T, number] {
+function cloneSized<T>(
+  source: T,
+  shared?: readonly (readonly [object, object])[],
+  immutable: readonly object[] = [],
+): [T, number] {
   const seen = new Map<object, unknown>();
+  // Compiled popularity is immutable configuration, owned once by the run. All
+  // 24 tokens retain that same table; none allocates another table's payload.
+  for (const value of immutable) seen.set(value, value);
   let bytes = 0;
   let clone = false;
   function visit(value: unknown): unknown {
@@ -78,6 +85,12 @@ function cloneSized<T>(source: T, shared?: readonly (readonly [object, object])[
     const prior = seen.get(value);
     if (prior) return prior;
     bytes += 32;
+    if (value instanceof Float64Array) {
+      const result = clone ? value.slice() : value;
+      seen.set(value, result);
+      bytes += value.byteLength;
+      return result;
+    }
     if (value instanceof Map) {
       const result = clone ? new Map<unknown, unknown>() : value;
       seen.set(value, result);
@@ -126,13 +139,15 @@ export const checkpointBytes = (source: unknown): number => cloneSized(source)[1
 
 function cloneGraph(source: CheckpointGraph): [CheckpointGraph, number] {
   const shared: [object, object][] = [];
+  const immutable: object[] = [];
   for (const { trace } of source[15].store.values()) if (trace) shared.push([trace, trace]);
   for (const node of source[0].values()) {
+    for (const rule of node.cache?.rules ?? []) if (rule.popularity) immutable.push(rule.popularity);
     // Resolved configuration and its descendants are replaced on edits, never mutated.
     shared.push([node.props, node.props]);
     if (node.latency) shared.push([node.latency, shareLatencyRecorder(node.latency)]);
   }
-  return cloneSized(source, shared);
+  return cloneSized(source, shared, immutable);
 }
 
 /** Positional hooks keep internal function names out of shipped object properties. */

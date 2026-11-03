@@ -43,6 +43,7 @@ export const lazySurfaces = [
   ["live.edge-details", names ? "NodeDetails" : "", names ? "live/NodeDetails" : "", "skip"],
   ["live.history", names ? "HoverHistory" : "", names ? "live/HoverHistory" : "", "skip"],
   ["live.session", names ? "LiveSession" : "", names ? "live/LiveSession" : "", "await"],
+  ["live.cache", names ? "CacheSession" : "", names ? "live/CacheSession" : "", "await"],
   ["live.edit-capacity", names ? "EditCapacity" : "", names ? "live/session/EditCapacity" : "", "skip"],
   ["live.trouble", names ? "TroubleCallout" : "", names ? "live/TroubleCallout" : "", "skip"],
   ["live.events", names ? "EventLog" : "", names ? "live/EventLog" : "", "skip"],

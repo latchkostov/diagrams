@@ -1,4 +1,5 @@
 import { narrationSubject } from "./narrationSubject";
+import { hasCacheRules } from "../model/caching";
 import { defineLazySurface } from "../lib/lazySurface";
 import { createPortal } from "react-dom";
 import { activateDock } from "../canvas/inspector/dockActions";
@@ -111,7 +112,21 @@ export interface SessionProps extends LiveViewProps {
   onSession?: (session: LiveSessionHandle | null) => void;
 }
 
-export function LiveSession({
+const CacheSession = defineLazySurface<SessionProps>({
+  id: "live.cache",
+  load: () => import("./CacheSession").then((m) => m.CacheSession),
+  placeholder: {},
+  focus: {},
+  export: "await",
+  retryToast: true,
+});
+
+export function LiveSession(props: SessionProps) {
+  const diagram = props.editor?.getDiagram() ?? props.diagram;
+  return diagram && hasCacheRules(diagram) ? <CacheSession {...props} /> : <RunningLiveSession {...props} />;
+}
+
+export function RunningLiveSession({
   caption,
   transport,
   editor,

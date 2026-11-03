@@ -5,6 +5,14 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 
 ## Replicas, real units and sampling
 
+### Caching sampling gaps (W3)
+
+Cache outcomes apply to whole awaited dots. At scale N, pass-through origin misses arrive in lumps of N real requests, so windows are noisier and pools smaller than a dot quantise. Only the hottest 256 items per rule (4,096 per diagram) can be tracked. At scale greater than one, an item also needs at least 50 planned dots per TTL. Automatic scale preserves that threshold for each rule's hottest item where possible.
+
+Untracked items use the same renewal formula as analysis with a measured request rate and fetch time. They show average misses rather than individual expiry herds. An item with a real herd can still be statistical at coarse scales. The statistical tail assumes steady random arrivals; cold warm-up is an approximation. During traffic changes its ten-second rate window lags. Analysis assumes Poisson arrivals, while Live uses regular arrivals with seeded item draws. Agreement is promised in steady state, not during ramps.
+
+Expiry and fills resolve on ten-millisecond ticks. All replicas share one cache; there are no per-location caches. Stores still accept unlimited parallel work, so an origin store's load appears as request rate rather than queueing pain. Coalescing, stale responses, purges and cache-aside are not enabled by cache core.
+
 Replicas multiply a service's available parallel slots; they do not multiply an API account's
 shared limit. Live can represent several real requests with one animated dot to keep large runs
 responsive. The dot's first request follows the logical timeline: local work, calls, replies and

@@ -29,6 +29,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
 import { createEngine, randomDraws, WorkBudgetError } from "../sim/engine";
+import { startingCacheRates } from "../sim/cache/cacheBridge";
 import {
   applyDue,
   deepFreeze,
@@ -1652,7 +1653,7 @@ export class LiveController {
     } else {
       this.runner = null;
       this.engine = createEngine({ ...engineOpts, seed: this.#opts.seed ?? DEFAULT_SEED });
-      this.engine.load(this.#diagram);
+      this.engine.load(this.#diagram, startingCacheRates(this.#diagram));
       // Free play's inputs: overrides, rates × traffic, Capacity × and an automatic dot scale.
       this.#freeScale = freePlayScale(this.#diagram, this.#inputs);
       this.engine.setScale(this.#freeScale);

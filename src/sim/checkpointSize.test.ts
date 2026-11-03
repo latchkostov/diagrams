@@ -1,5 +1,7 @@
 import { expect, it } from "vitest";
 import { checkpointBytes } from "./engine/checkpoint";
+import { createEngine } from "./engine";
+import { cacheFixture } from "../lab/cacheFixture";
 
 it("sizes cycles and aliases once and includes Map/Set payloads", () => {
   const item = { text: "x".repeat(1000) };
@@ -17,4 +19,21 @@ it("sizes cycles and aliases once and includes Map/Set payloads", () => {
 it("charges two bytes per UTF-16 code unit, including Unicode configuration", () => {
   const source = { text: "order ✈ 東京" };
   expect(checkpointBytes(source)).toBe(56 + source.text.length * 2);
+});
+
+it("bounds the W3 checkpoint increment at the 4096 tracked-item limit", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = {
+    rules: Array.from({ length: 16 }, (_, id) => ({
+      id: String(id),
+      match: { types: [`Page${id}`] },
+      policy: { ttlMs: 1000, keys: 1000 + id },
+    })),
+  };
+  const e = createEngine({ seed: 7 });
+  e.load(d);
+  const withCache = e.checkpoint().bytes;
+  delete d.nodes[1].props!.cache;
+  e.load(d);
+  expect(withCache - e.checkpoint().bytes).toBeLessThanOrEqual(130 * 1024);
 });

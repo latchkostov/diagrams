@@ -171,9 +171,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let planning: DiagramFile["planning"];
   let cacheRuntime: CacheRuntime | undefined;
   let cacheRates: ReturnType<CacheRuntime["plan"]> | undefined;
-  function compileCaches(): void {
-    const remaining = { value: CACHE_LIMITS.totalTracked as number };
+  function compileCaches(only?: string): void {
+    const retained = only
+      ? [...nodes.values()]
+          .filter((n) => n.id !== only)
+          .reduce((sum, n) => sum + (n.cache?.rules.reduce((s, r) => s + r.tracked, 0) ?? 0), 0)
+      : 0;
+    const remaining = { value: CACHE_LIMITS.totalTracked - retained };
     for (const node of nodes.values()) {
+      if (only && node.id !== only) continue;
       if (
         cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache) &&
         node.outgoing.some((e) => e.sync && !e.dlq)
@@ -181,6 +187,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         cacheRuntime ??= requireCacheRuntime();
         node.cache = cacheRuntime.compile(node.rawProps.cache, node.id, seed, scale, remaining, cacheRates?.[node.id]);
       } else node.cache = undefined;
+      if (node.role === "store") node.waits = !!node.cache;
+      if (node.cache)
+        node.frees = node.outgoing.filter((e) => callEligible(node.role, e, true)).every((e) => !e.policy?.blocking);
     }
   }
   /** Retries execute in this diagram (p3-w2 and a call with a retry policy). Only then are attempts classified
@@ -918,7 +927,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         admissionChanges.push({ id, policy: node.props.admission });
       // A setup or timeline patch replaces a mix or table whole (never a deep merge of rows or rules).
       if ("trafficMix" in patch || "routeTable" in patch) compileNodeRouting(node);
-      if ("cache" in patch) compileCaches();
+      if ("cache" in patch) compileCaches(id);
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
@@ -1221,7 +1230,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       settleWork(node, work, "call-limit");
       return true;
     }
-    if (node.cache && work.cache) cacheRuntime!.start(node.cache, work.cache, sizeOf(work.message));
+    if (node.cache && work.cache) cacheRuntime!.start(node.cache, work.cache, sizeOf(work.message), time);
     const call: Call = {
       attempt: attempt(node, work),
       id: nextCall++,
@@ -2132,7 +2141,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     else if (node.role === "sink") gone(node, work.message, "end", "received");
     else if (node.role === "store") {
       // Outgoing async edges from a store model change feeds / CDC: each gets a copy.
-      const feeds = node.outgoing.filter((edge) => accepts(edge, work.message, true, false));
+      const feeds = node.outgoing.filter(
+        (edge) => (!node.cache || !edge.sync) && accepts(edge, work.message, true, false),
+      );
       if (!feeds.length) {
         gone(node, work.message, "end", "stored");
         return;
@@ -3495,16 +3506,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       return metric.field === "throughput" ? node.throughput : roundDots(node[metric.field]);
     },
-    load(diagram: DiagramFile): void {
+    load(diagram: DiagramFile, startingCacheRates): void {
       if (resourceBudgetExceeded(diagram)) throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
       faultIndex = faultTopology(diagram);
       faults = new Map();
       faultEdges.clear();
       planning = diagram.planning;
-      cacheRates = undefined;
+      cacheRates = startingCacheRates;
       if (diagram.nodes.some((n) => cacheEnabled(planning, n.stencil, roleOf(n.stencil), n.props?.cache))) {
         cacheRuntime = requireCacheRuntime();
-        cacheRates = cacheRuntime.plan(diagram);
       }
       waitsEnabled = revisionAtLeast(planning?.revision, "p3-w1");
       classifies = false;
@@ -3939,6 +3949,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const next = resolveScale(value);
       if (next === scale) return;
       scale = next;
+      if (time === 0) compileCaches();
       recountUnits();
       // A processor's time per sampled dot follows the scale, and so does what may be on the way to it.
       for (const node of nodes.values()) for (const group of node.groups) refreshGroupLimit(group);

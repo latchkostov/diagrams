@@ -1,10 +1,12 @@
 import { checkCache, CACHE_LIMITS, type CacheTable } from "../../model/caching";
 import { compileMatch, matchesRequest, drawStream, streamSeed } from "../routeMatching";
 import { acceptsType } from "../topology";
-import { itemHitShare } from "./cacheMath";
+import { itemHitShare, expNeg } from "./cacheMath";
 import { popularityTable } from "./popularity";
 import { installCacheRuntime, type CacheRuntime } from "./cacheBridge";
 import type { CacheCounts, CacheRuleState } from "./cacheState";
+import { cacheEnabled } from "../../model/caching";
+import { stencilRole } from "../../stencils/roles";
 import { cachePlan } from "./planning";
 
 const counts = (): CacheCounts => ({ requests: 0, hits: 0, misses: 0, notCached: 0, fetches: 0, fills: 0 });
@@ -20,7 +22,10 @@ function rate(rule: CacheRuleState, now: number, size: number): number {
   else for (let s = ring.second + 1; s <= second; s++) ring.buckets[s % 10] = 0;
   ring.second = second;
   ring.buckets[second % 10] += size;
-  return ring.buckets.reduce((a, b) => a + b, 0) / 10;
+  // Nine complete buckets plus this partial second. Dividing by ten here biases
+  // every statistical band's rate downward at every second boundary.
+  const span = 9 + (now % 1000) / 1000;
+  return ring.buckets.reduce((a, b) => a + b, 0) / Math.max(0.01, ring.planned > 0 ? span : Math.min(span, now / 1000));
 }
 export const cacheRuntime: CacheRuntime = {
   compile(value, node, seed, scale, remaining, rates) {
@@ -73,6 +78,7 @@ export const cacheRuntime: CacheRuntime = {
             rate: { buckets, second: 0, planned },
             fetchMs: { samples: new Float64Array(32), cursor: 0, count: 0, sum: 0, planned: fetchMs },
             counts: counts(),
+            ...(rates ? {} : { warmSince: 0 }),
           };
         },
       ),
@@ -104,10 +110,13 @@ export const cacheRuntime: CacheRuntime = {
     const band = bands[low],
       item = band.first < rule.tracked ? band.first : -1;
     const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
-    const hit =
-      item >= 0
-        ? now < rule.freshUntil[item]
-        : draw(rule) < itemHitShare((currentRate * band.share) / band.count, rule.policy.ttlMs!, mean);
+    const itemRate = (currentRate * band.share) / band.count;
+    const steady = itemHitShare(itemRate, rule.policy.ttlMs!, mean);
+    const share =
+      rule.warmSince === undefined
+        ? steady
+        : Math.min(steady, 1 - expNeg((itemRate * Math.max(0, now - rule.warmSince - mean)) / 1000));
+    const hit = item >= 0 ? now < rule.freshUntil[item] : draw(rule) < share;
     add(hit ? "hits" : "misses");
     return {
       rule,
@@ -117,9 +126,10 @@ export const cacheRuntime: CacheRuntime = {
       ...(item >= 0 ? { freshUntil: rule.freshUntil[item] } : {}),
     };
   },
-  start(cache, lookup, size) {
+  start(cache, lookup, size, now) {
     if (lookup.fetching || lookup.outcome === "hit") return;
     lookup.fetching = true;
+    if (now !== undefined) lookup.at = now;
     cache.counts.fetches += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
     if (lookup.rule && lookup.item >= 0) lookup.rule.fetching[lookup.item] += size;
@@ -155,5 +165,21 @@ export const cacheRuntime: CacheRuntime = {
     };
   },
   plan: cachePlan,
+  scale(diagram, simulation, scale) {
+    const rates = cachePlan(diagram, simulation);
+    for (const node of diagram.nodes) {
+      const table = simulation.setup?.props?.[node.id]?.cache ?? node.props?.cache;
+      if (!cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), table)) continue;
+      for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
+        if (rule.policy.noStore) continue;
+        const hottest = popularityTable(rule.policy.keys, rule.policy.popularity).hottestShare;
+        scale = Math.min(
+          scale,
+          Math.max(1, ((rates[node.id]?.[rule.id]?.rate ?? 0) * hottest * rule.policy.ttlMs!) / 1000 / 50),
+        );
+      }
+    }
+    return scale;
+  },
 };
 installCacheRuntime(cacheRuntime);

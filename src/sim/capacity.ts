@@ -351,7 +351,7 @@ export function analyzeCapacity(
     forwardingShare(entries.get(edge.from)!.role, edge, c.type, "routed", requestFilter.get(edge.id), c.route) > 0;
   /** The class leaving along an edge into `to`: an unaddressed Request into a router remembers it was a Request. */
   const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
-    classKey(type, route, !route && edge.sync && (!!entries.get(edge.to)?.table || cacheMatchers.has(edge.to)));
+    classKey(type, route, hasCaches ? edge.sync : !route && edge.sync && !!entries.get(edge.to)?.table);
   const demand = new Map<string, Map<string, RouteDemand>>();
   // A router's decision for a traffic class never changes with rates: decided once per analysis (not per iteration),
   // with its eligible targets, the share they forward (deny targets block theirs before admission, as in playback)
@@ -545,13 +545,13 @@ export function analyzeCapacity(
       send(next, edge, type, rate * fraction, route);
     });
   }
-  function cachedRate(id: string, c: TrafficClass, value: number): number {
-    const rule = cacheMatchers.get(id)?.(c.type, c.route, !!c.route || !!c.sync);
+  function cachedRate(id: string, c: TrafficClass, value: number, admitted = 1): number {
+    const rule = cacheMatchers.get(id)?.(c.type, c.route, !!c.sync);
     if (!rule) return value;
     const hit = cacheDemand[id]?.[rule.id]?.hitRatio ?? 0;
     if (hit && routes) {
       const demand = routeDemandAt(id, c.route);
-      demand.servedFromCache = (demand.servedFromCache ?? 0) + value * hit;
+      demand.servedFromCache = (demand.servedFromCache ?? 0) + value * admitted * hit;
     }
     return value * (1 - hit);
   }
@@ -590,7 +590,7 @@ export function analyzeCapacity(
               },
             });
         }
-        const forwarded = cachedRate(id, c, rate);
+        const forwarded = cachedRate(id, c, rate, decision.forwarded);
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
           send(next, edge, type, (forwarded * decision.weights[i]) / decision.sum, route);
@@ -652,7 +652,7 @@ export function analyzeCapacity(
     routed.clear();
     arrivals.clear();
     if (hasCaches) {
-      cacheDemand = {};
+      cacheDemand = Object.create(null);
       for (const [id, matcher] of cacheMatchers) {
         const fetchMs = Math.max(
           0,
@@ -662,25 +662,30 @@ export function analyzeCapacity(
               const target = entries.get(e.to)!;
               const delay = diagram.edges.find((input) => input.id === e.id)?.props?.networkDelayMs;
               return (
-                resolvedTiming(target.props).workMs +
-                (waiting.nodes.get(e.to)?.memoryResidenceMs ?? 0) +
+                10 +
+                (waiting.nodes.get(e.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
                 2 * (typeof delay === "number" ? delay : 0)
               );
             }),
         );
-        const byRule: NonNullable<CapacityAnalysis["cacheDemand"]>[string] = {};
+        const byRule: NonNullable<CapacityAnalysis["cacheDemand"]>[string] = Object.create(null);
+        const policies = new Map<string, import("../model/caching").CachePolicy>();
         for (const [key, rate] of rates.get(id) ?? []) {
           const c = classOf(key),
-            rule = matcher(c.type, c.route, !!c.route || !!c.sync);
+            rule = matcher(c.type, c.route, !!c.sync);
           if (!rule) continue;
+          const entry = entries.get(id)!;
+          const decision =
+            entry.table && entry.role === "gateway"
+              ? decide(id, entry.table, key, outputType(entry.role, entry.props.emits, c.type), c.route, !!c.sync)
+              : "legacy";
+          const admitted = decision === "legacy" ? 1 : decision.forwarded;
+          if (!admitted) continue;
           const item = (byRule[rule.id] ??= { rate: 0, fetchMs, hitRatio: 0 });
-          item.rate += rate;
+          item.rate += rate * admitted;
+          policies.set(rule.id, rule.policy);
         }
-        for (const [key] of rates.get(id) ?? []) {
-          const c = classOf(key),
-            rule = matcher(c.type, c.route, !!c.route || !!c.sync);
-          if (rule) byRule[rule.id].hitRatio = cacheHitShare(rule.policy, byRule[rule.id].rate, fetchMs);
-        }
+        for (const [id, policy] of policies) byRule[id].hitRatio = cacheHitShare(policy, byRule[id].rate, fetchMs);
         cacheDemand[id] = byRule;
       }
     }

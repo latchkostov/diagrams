@@ -42,6 +42,14 @@ export const cacheEnabled = (
 const policySchema: JsonSchema = {
   type: "object",
   additionalProperties: false,
+  allOf: [
+    {
+      anyOf: [
+        { required: ["ttlMs"], properties: { noStore: { type: "null" } } },
+        { required: ["noStore"], properties: { ttlMs: { type: "null" } } },
+      ],
+    },
+  ],
   properties: {
     ttlMs: { type: "number", minimum: 100, maximum: 86_400_000 },
     noStore: { enum: [true] },

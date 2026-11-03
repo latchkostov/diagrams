@@ -7,9 +7,9 @@ export interface PopularityBand {
   cumulative: number;
 }
 export interface PopularityTable {
-  bands: PopularityBand[];
-  hottestShare: number;
-  topPercent: number;
+  readonly bands: readonly Readonly<PopularityBand>[];
+  readonly hottestShare: number;
+  readonly topPercent: number;
 }
 const memo = new Map<string, PopularityTable>();
 /** Exact total mass, bounded representation: 256 singletons then quarter-octave bands. */
@@ -21,7 +21,7 @@ export function popularityTable(keys = 1000, popularity: Popularity = "typical")
   let total = 0,
     top = 0,
     end = 0;
-  const growth = Math.sqrt(Math.sqrt(Math.sqrt(2)));
+  const growth = Math.sqrt(Math.sqrt(2));
   for (let rank = 1; rank <= keys; rank++) {
     if (rank > end) {
       end = rank <= 256 ? rank : Math.min(keys, Math.max(rank, Math.floor(rank * growth)));

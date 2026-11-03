@@ -53,6 +53,8 @@ if (!files.length) {
     "src/sim/waits.sampling.heavy.test.ts",
     "src/sim/scaleEquivalence.heavy.test.ts",
     "src/sim/resilience.invariants.heavy.test.ts",
+    "src/sim/caching.invariants.test.ts",
+    "src/sim/cacheAgreement.test.ts",
   );
 }
 const used = new Set(seeds);

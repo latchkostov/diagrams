@@ -12,6 +12,7 @@ import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram
 import inlineRateLimit from "../examples/inline-rate-limit.json";
 import recommendations from "../examples/recommendations-feature-store.json";
 import { waitingFixture } from "./waitingFixture";
+import { cacheFixture } from "./cacheFixture";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
@@ -391,6 +392,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "Blocking caller slots and logical reply timing.",
     diagram: () => waitingFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "cache-core",
+    title: "Read-through cache",
+    group: "Diagrams",
+    description: "TTL hits, origin fetches and warm playback.",
+    diagram: cacheFixture,
   },
   {
     kind: "diagram",

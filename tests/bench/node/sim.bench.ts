@@ -1,4 +1,6 @@
 import { waitingFixture } from "../../../src/lab/waitingFixture";
+import "../../../src/sim/cache/cacheRuntime";
+import { cacheFixture } from "../../../src/lab/cacheFixture";
 import { resilienceFixture } from "../../../src/lab/resilienceFixture";
 // The simulation, without the browser (docs/BENCHMARKS.md § Metrics): loading a diagram into the engine, the live
 // view's per-frame main-thread work (LiveController.advance and snapshot, as LiveSession's tick does them, with a
@@ -34,6 +36,36 @@ import {
 } from "./harness";
 
 const s = suite("sim");
+
+s.gating("w3 cache: four bounded popularity tables", () => {
+  const make = (rate: number) => {
+    const d = cacheFixture();
+    d.nodes[0].props = { ratePerSec: rate / 4, messageType: "Page" };
+    for (const type of ["Product", "Image", "Other"]) {
+      d.nodes.push({ ...d.nodes[0], id: type, props: { ratePerSec: rate / 4, messageType: type } });
+      d.edges.push({ ...d.edges[0], id: `input-${type}`, from: type });
+    }
+    (d.nodes[1].props ??= {}).cache = {
+      rules: [
+        { id: "hot", match: { types: ["Page"] }, policy: { ttlMs: 1000, keys: 1 } },
+        { id: "typical", match: { types: ["Product"] }, policy: { ttlMs: 300_000, keys: 50_000 } },
+        { id: "steep", match: { types: ["Image"] }, policy: { ttlMs: 300_000, keys: 1_000_000, popularity: "steep" } },
+      ],
+      default: { ttlMs: 300_000, keys: 1_000_000 },
+    };
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    const run = () => {
+      e.load(d);
+      e.setTraffic(true);
+      e.step(60_000);
+    };
+    return { d, e, run };
+  };
+  const small = make(375),
+    large = make(3000);
+  s.time("engineStep", measure(large.run, { samples: 3, warmup: 1 }), workloadInfo("pipeline", 3, large.d), "w3-cache");
+  s.growth("w3Cache", small.run, large.run, LINEAR_LIMIT, "8× requests with bounded tables stays below 24× work");
+});
 
 /** 60 frames a second, as requestAnimationFrame runs them. */
 const FRAME_MS = 1000 / 60;

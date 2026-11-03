@@ -6,6 +6,8 @@ import {
   upgradeAutoscaling,
   upgradeWaits,
   upgradeResilience,
+  upgradeCaching,
+  cacheUpgradeNodes,
   resilienceUpgradeCalls,
   legacyExport,
 } from "./migration";
@@ -31,26 +33,31 @@ export function PlanningUpgrade({
 }) {
   useLocale();
   const previewButton = useRef<HTMLButtonElement>(null);
-  const [preview, setPreview] = useState<"a1" | "waits" | "retries" | "legacy" | null>(initialPreview ? "a1" : null);
+  const [preview, setPreview] = useState<"a1" | "waits" | "retries" | "cache" | "legacy" | null>(
+    initialPreview ? "a1" : null,
+  );
   const upgradeButton = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
     if (initialPreview && (takePreviewFocus?.() ?? true)) upgradeButton.current?.focus();
   }, [initialPreview, takePreviewFocus]);
   const resilience = preview === "retries";
+  const caching = preview === "cache";
   const a1 = preview === "a1";
   const waits = preview === "waits";
   const d = preview ? editor.getDiagram() : undefined;
   const retryCalls = d && resilience ? resilienceUpgradeCalls(d) : [];
   const next =
-    d && resilience
-      ? upgradeResilience(d)
-      : d && waits
-        ? upgradeWaits(d)
-        : d && a1
-          ? upgradeAutoscaling(d)
-          : d && !revisionAtLeast(d.planning?.revision, "p3")
-            ? upgradePlanning(d)
-            : undefined;
+    d && caching
+      ? upgradeCaching(d)
+      : d && resilience
+        ? upgradeResilience(d)
+        : d && waits
+          ? upgradeWaits(d)
+          : d && a1
+            ? upgradeAutoscaling(d)
+            : d && !revisionAtLeast(d.planning?.revision, "p3")
+              ? upgradePlanning(d)
+              : undefined;
   const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
   const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
   const legacy = preview === "legacy" && d?.planning ? legacyExport(d) : undefined;
@@ -58,13 +65,24 @@ export function PlanningUpgrade({
   const upgradeContent = d && next && before && after && (
     <div data-testid="planning-upgrade-preview">
       <p>
-        {resilience
-          ? t("resilience.upgradeHint")
-          : waits
-            ? t("threads.upgradeHint")
-            : a1
-              ? t("autoscaling.upgradeHint")
-              : t("admission.model")}
+        {caching
+          ? t("cache.upgradeHint", {
+              nodes:
+                formatList(
+                  cacheUpgradeNodes(d).map((row) =>
+                    row.simulation
+                      ? t("cache.upgradeSimulation", { node: row.node, simulation: row.simulation })
+                      : row.node,
+                  ),
+                ) || t("cache.none"),
+            })
+          : resilience
+            ? t("resilience.upgradeHint")
+            : waits
+              ? t("threads.upgradeHint")
+              : a1
+                ? t("autoscaling.upgradeHint")
+                : t("admission.model")}
       </p>
       {resilience && (
         <>
@@ -108,13 +126,15 @@ export function PlanningUpgrade({
         data-testid="planning-upgrade"
         onClick={() => {
           editor.applyDiagram(
-            resilience
-              ? upgradeResilience(editor.getDiagram())
-              : waits
-                ? upgradeWaits(editor.getDiagram())
-                : a1
-                  ? upgradeAutoscaling(editor.getDiagram())
-                  : upgradePlanning(editor.getDiagram()),
+            caching
+              ? upgradeCaching(editor.getDiagram())
+              : resilience
+                ? upgradeResilience(editor.getDiagram())
+                : waits
+                  ? upgradeWaits(editor.getDiagram())
+                  : a1
+                    ? upgradeAutoscaling(editor.getDiagram())
+                    : upgradePlanning(editor.getDiagram()),
           );
           setPreview(null);
           previewButton.current?.focus();
@@ -128,20 +148,35 @@ export function PlanningUpgrade({
     <section className="insp-section" data-testid="planning-model">
       <h3 className="insp-section-title">{t("planning.model")}</h3>
       <p className="insp-note">
-        {planning?.revision === "p3-w2"
-          ? t("resilience.model")
-          : planning?.revision === "p3-w1"
-            ? t("threads.model")
-            : planning?.revision === "p3-a1"
-              ? t("autoscaling.model")
-              : planning?.revision === "p3"
-                ? t("admission.model")
-                : planning?.revision === "p2"
-                  ? t("broker.current")
-                  : planning
-                    ? t("planning.current")
-                    : t("planning.legacy")}
+        {planning?.revision === "p3-w3"
+          ? t("cache.model")
+          : planning?.revision === "p3-w2"
+            ? t("resilience.model")
+            : planning?.revision === "p3-w1"
+              ? t("threads.model")
+              : planning?.revision === "p3-a1"
+                ? t("autoscaling.model")
+                : planning?.revision === "p3"
+                  ? t("admission.model")
+                  : planning?.revision === "p2"
+                    ? t("broker.current")
+                    : planning
+                      ? t("planning.current")
+                      : t("planning.legacy")}
       </p>
+      {revisionAtLeast(planning?.revision, "p3-w2") && !revisionAtLeast(planning?.revision, "p3-w3") && (
+        <>
+          <button
+            className="link-btn"
+            data-testid="cache-upgrade-preview"
+            aria-expanded={caching}
+            onClick={() => setPreview(caching ? null : "cache")}
+          >
+            {t("cache.upgrade")}
+          </button>
+          {caching && upgradeContent}
+        </>
+      )}
       {!revisionAtLeast(planning?.revision, "p3-w1") && (
         <button
           className="link-btn"
@@ -202,6 +237,7 @@ export function PlanningUpgrade({
         {preview === "legacy" && upgradeContent}
         {legacy && (
           <div data-testid="planning-legacy-preview">
+            {revisionAtLeast(d?.planning?.revision, "p3-w3") && <p>{t("cache.exportLoss")}</p>}
             {revisionAtLeast(d?.planning?.revision, "p3-w2") && <p>{t("resilience.exportLoss")}</p>}
             {revisionAtLeast(d?.planning?.revision, "p3-w1") && <p>{t("threads.exportLoss")}</p>}
             <p>

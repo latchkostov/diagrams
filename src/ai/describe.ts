@@ -13,6 +13,8 @@ import { scenarioPlans } from "../sim/scalingPlanner";
 import { planMessage } from "../checks/scalingFindings";
 import { messageTypesAt } from "../model/messageTypes";
 import { describeResilience } from "./resilience";
+import { cacheEnabled } from "../model/caching";
+import { stencilRole } from "../stencils/roles";
 
 const quote = (s: string) => JSON.stringify(s);
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -54,6 +56,17 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
   const resilience = describeResilience(d, topology, analysis);
+  const cache = (node: DiagramFile["nodes"][number]) =>
+    cacheEnabled(d.planning, node.stencil, stencilRole(node.stencil), node.props?.cache)
+      ? {
+          rules: node.props.cache.rules.map((rule) => ({
+            ...rule,
+            expected: analysis?.cacheDemand?.[node.id]?.[rule.id] ?? null,
+          })),
+          ...(node.props.cache.default ? { default: node.props.cache.default } : {}),
+          origin: topology.edges.filter((e) => e.from === node.id && e.sync && !e.dlq).map((e) => e.id),
+        }
+      : undefined;
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
   const threads = (id: string) => {
     const w = analysis?.nodes[id]?.waits;
@@ -108,6 +121,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
         explanation: resolved(n.id),
         ...(threads(n.id) ? { requestsWait: threads(n.id) } : {}),
         ...(resilience.processor(n.id) ? { queue: resilience.processor(n.id) } : {}),
+        ...(cache(n) ? { cache: cache(n) } : {}),
       })),
       edges: take(edges).map((edge) => ({
         ...edge,
@@ -142,6 +156,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""}${typeText("arrivingTypes", types.arriving.get(n.id))} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
     );
     if (resilience.processor(n.id)) lines[lines.length - 1] += ` queue=${JSON.stringify(resilience.processor(n.id))}`;
+    if (cache(n)) lines[lines.length - 1] += ` cache=${JSON.stringify(cache(n))}`;
   }
   // Past the limit a line is only counted: omitted connections, routes and simulations are never built.
   let skipped = 0;

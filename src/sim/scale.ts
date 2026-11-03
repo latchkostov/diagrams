@@ -1,4 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
+import { hasCacheRules } from "../model/caching";
+import { requireCacheRuntime } from "./cache/cacheBridge";
 import { replicaRange } from "../model/resourceRuntime";
 import { resolveProps } from "./defaults";
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
@@ -80,5 +82,7 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
   // Circuit breakers never lower the scale: their windows and test calls count real requests, and a
   // half-open breaker narrows a dot to its remaining test calls (breaker.ts), so no breaker needs
   // more dots than the entry-rate budget allows, on its own branch or anyone else's.
-  return scale;
+  return revisionAtLeast(diagram.planning?.revision, "p3-w3") && hasCacheRules(diagram)
+    ? requireCacheRuntime().scale(diagram, simulation, scale)
+    : scale;
 }
