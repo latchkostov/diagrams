@@ -245,7 +245,7 @@ export default defineConfig({
             // across manual groups creates a dependency cycle and wastes compression headroom.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\](?:native|codec)|lib[/\\]thumbnail|canvas[/\\](?:membership|nodes[/\\]size)|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:annotations|borderRadius|colors|groupHierarchy|requestRouting|quotaSchema|simLimits|edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\](?:native|codec)|lib[/\\]thumbnail|canvas[/\\](?:membership|nodes[/\\]size)|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:annotations|borderRadius|colors|groupHierarchy|requestRouting|quotaSchema|simLimits|edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|caching|cacheValidation|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // Pure playback grammar/resolution helpers: shared by Live, checks and planning. Keep the engine

@@ -1,3 +1,5 @@
+import { analysisCache } from "./cache/cacheAnalysis";
+import { cacheHitShare } from "./cache/cacheMath";
 import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
 import { compileWaitingPlan, waitingPlan, type WaitCapacity } from "./waitingPlan";
@@ -43,6 +45,7 @@ import { routeTableCapable } from "../model/requestRouting";
 
 /** Configured demand for one request route at one node, real requests/s ("" is requests without an address). */
 export interface RouteDemand {
+  servedFromCache?: number;
   offered: number;
   /** Refused by this router's table: no matching rule and no Default, or no eligible target (404). */
   rejected: number;
@@ -70,6 +73,7 @@ export interface NodeCapacity {
   device?: boolean;
 }
 export interface CapacityAnalysis {
+  cacheDemand?: Record<string, Record<string, { rate: number; fetchMs: number; hitRatio: number }>>;
   /** Per-connection configured demand in real msg/s, computed by the same routing pass. */
   connections: Record<string, number>;
   /** The very same resolver metadata playback uses. */
@@ -260,6 +264,18 @@ export function analyzeCapacity(
       ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
+  const cacheMatchers = new Map(
+    diagram.nodes.flatMap((node) => {
+      const input = { ...node, props: { ...node.props, ...simulation?.setup?.props?.[node.id] } };
+      const match = analysisCache(diagram, input);
+      return match && compiledCacheOrigin(node.id) ? [[node.id, match] as const] : [];
+    }),
+  );
+  function compiledCacheOrigin(id: string) {
+    return diagram.edges.some((e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow"));
+  }
+  const hasCaches = cacheMatchers.size > 0;
+  let cacheDemand: NonNullable<CapacityAnalysis["cacheDemand"]> = {};
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
   const compiled = options.topology ?? compileTopology(diagram);
   const waitGraph = compileWaitingPlan(diagram, compiled);
@@ -285,7 +301,7 @@ export function analyzeCapacity(
   // A budget's per-second floor depends on aggregate logical demand on the
   // connection, shared by every traffic class. Allow its next-pass feedback.
   const hasRetryBudget = [...waiting.amplification.values()].some((r) => r.policy.budget);
-  const iterationCap = hasRetryBudget ? Math.min(256, baseIterationCap * 2) : baseIterationCap;
+  const iterationCap = hasCaches ? 256 : hasRetryBudget ? Math.min(256, baseIterationCap * 2) : baseIterationCap;
   const outgoing = compiled.outgoing;
   // Request routing on connections, compiled as playback compiles it: a caller's address on its Request, a filter.
   const callerRoute = new Map<string, CompiledRoute>();
@@ -317,7 +333,7 @@ export function analyzeCapacity(
   // Interned by type, route and sync flag: each distinct class is serialized once per analysis, not per traversal.
   const interned = new Map<string, Map<CompiledRoute | undefined, [string?, string?]>>();
   const classKey = (type: string, route?: CompiledRoute, sync?: boolean): string => {
-    if (!routes) return type;
+    if (!routes && !hasCaches) return type;
     let byRoute = interned.get(type);
     if (!byRoute) interned.set(type, (byRoute = new Map()));
     let pair = byRoute.get(route);
@@ -335,7 +351,7 @@ export function analyzeCapacity(
     forwardingShare(entries.get(edge.from)!.role, edge, c.type, "routed", requestFilter.get(edge.id), c.route) > 0;
   /** The class leaving along an edge into `to`: an unaddressed Request into a router remembers it was a Request. */
   const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
-    classKey(type, route, !route && edge.sync && !!entries.get(edge.to)?.table);
+    classKey(type, route, hasCaches ? edge.sync : !route && edge.sync && !!entries.get(edge.to)?.table);
   const demand = new Map<string, Map<string, RouteDemand>>();
   // A router's decision for a traffic class never changes with rates: decided once per analysis (not per iteration),
   // with its eligible targets, the share they forward (deny targets block theirs before admission, as in playback)
@@ -529,6 +545,16 @@ export function analyzeCapacity(
       send(next, edge, type, rate * fraction, route);
     });
   }
+  function cachedRate(id: string, c: TrafficClass, value: number, admitted = 1): number {
+    const rule = cacheMatchers.get(id)?.(c.type, c.route, !!c.sync);
+    if (!rule) return value;
+    const hit = cacheDemand[id]?.[rule.id]?.hitRatio ?? 0;
+    if (hit && routes) {
+      const demand = routeDemandAt(id, c.route);
+      demand.servedFromCache = (demand.servedFromCache ?? 0) + value * admitted * hit;
+    }
+    return value * (1 - hit);
+  }
   function propagate(next: Rates, entry: Entry, key: string, rate: number, injected: boolean): void {
     if (!rate) return;
     const id = entry.input.id;
@@ -564,13 +590,15 @@ export function analyzeCapacity(
               },
             });
         }
+        const forwarded = cachedRate(id, c, rate, decision.forwarded);
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
-          send(next, edge, type, (rate * decision.weights[i]) / decision.sum, route);
+          send(next, edge, type, (forwarded * decision.weights[i]) / decision.sum, route);
         });
         return;
       }
     }
+    rate = cachedRate(id, c, rate);
     const routesOut = (outgoing.get(id) ?? []).filter((edge) => takes(edge, { type, route: branchRoute(edge, route) }));
     if (brokerRole(entry.role)) {
       for (const group of groups.get(id) ?? []) {
@@ -596,7 +624,15 @@ export function analyzeCapacity(
     } else {
       for (const edge of routesOut) {
         if (edge.deny) continue;
-        const share = forwardingShare(entry.role, edge, type, injected ? "injected" : "output");
+        const share = forwardingShare(
+          entry.role,
+          edge,
+          type,
+          injected ? "injected" : "output",
+          undefined,
+          undefined,
+          cacheMatchers.has(id),
+        );
         if (!share) continue;
         send(next, edge, type, rate * share, branchRoute(edge, route));
       }
@@ -606,6 +642,7 @@ export function analyzeCapacity(
   function branchRoute(edge: CompiledEdge, route: CompiledRoute | undefined): CompiledRoute | undefined {
     return callerRoute.get(edge.id) ?? route;
   }
+  const edgeInputs = new Map(diagram.edges.map((edge) => [edge.id, edge]));
   let rates = external,
     converged = false,
     iterations = 0;
@@ -615,6 +652,62 @@ export function analyzeCapacity(
     demand.clear();
     routed.clear();
     arrivals.clear();
+    if (hasCaches) {
+      cacheDemand = Object.create(null);
+      for (const [id, matcher] of cacheMatchers) {
+        const byRule: NonNullable<CapacityAnalysis["cacheDemand"]>[string] = Object.create(null);
+        const policies = new Map<string, import("../model/caching").CachePolicy>();
+        for (const [key, rate] of rates.get(id) ?? []) {
+          const c = classOf(key),
+            rule = matcher(c.type, c.route, !!c.sync);
+          if (!rule) continue;
+          const entry = entries.get(id)!;
+          const decision =
+            entry.table && entry.role === "gateway"
+              ? decide(id, entry.table, key, outputType(entry.role, entry.props.emits, c.type), c.route, !!c.sync)
+              : "legacy";
+          const admitted = decision === "legacy" ? 1 : decision.forwarded;
+          if (!admitted) continue;
+          const origins =
+            decision === "legacy"
+              ? (outgoing.get(id) ?? []).filter(
+                  (edge) =>
+                    edge.sync &&
+                    !edge.deny &&
+                    !edge.dlq &&
+                    takes(edge, { type: c.type, route: branchRoute(edge, c.route) }),
+                )
+              : decision.eligible;
+          let fetchMs = 0;
+          origins.forEach((edge, index) => {
+            if (edge.deny) return;
+            const target = entries.get(edge.to)!;
+            const delay = edgeInputs.get(edge.id)?.props?.networkDelayMs;
+            const response =
+              10 +
+              (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
+              2 * (typeof delay === "number" ? delay : 0);
+            if (entry.role === "gateway")
+              fetchMs +=
+                response *
+                (decision === "legacy"
+                  ? 1 / origins.length
+                  : decision.weights[index] / decision.forwarded / decision.sum);
+            else fetchMs = Math.max(fetchMs, response);
+          });
+          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0 });
+          item.rate += rate * admitted;
+          item.fetchMs += rate * admitted * fetchMs;
+          policies.set(rule.id, rule.policy);
+        }
+        for (const [id, policy] of policies) {
+          const item = byRule[id];
+          item.fetchMs /= item.rate;
+          item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
+        }
+        cacheDemand[id] = byRule;
+      }
+    }
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
@@ -873,6 +966,7 @@ export function analyzeCapacity(
   for (const [id, types] of rates)
     offeredTypes[id] = [...new Set([...types].filter(([, rate]) => rate > 0).map(([key]) => classOf(key).type))];
   return {
+    ...(hasCaches ? { cacheDemand } : {}),
     ...(routes
       ? {
           routeDemand: Object.fromEntries(

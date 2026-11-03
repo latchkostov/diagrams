@@ -1,0 +1,125 @@
+{
+  "run": {
+    "time": 10000,
+    "totalMs": 10000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "readers" },
+      { "atMs": 8000, "kind": "traffic", "label": "readers ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "cache": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": {
+              "personal": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 },
+              "": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 1600, "throughput": 28.248147795839635, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 1600,
+          "throughput": 28.248147795839635,
+          "cache": {
+            "requests": 1600,
+            "hits": 736,
+            "misses": 64,
+            "notCached": 800,
+            "fetches": 864,
+            "fills": 8,
+            "hitRatio": 0.92,
+            "originOffload": 0.45999999999999996,
+            "rules": {
+              "personal": { "requests": 400, "hits": 0, "misses": 0, "notCached": 400, "fetches": 400, "fills": 0 },
+              "": { "requests": 1200, "hits": 736, "misses": 64, "notCached": 400, "fetches": 464, "fills": 8 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 864, "throughput": 15.767607002708825, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 1600, "throughput": 28.248147795839635, "replicas": [1, 1, 0] },
+      "cache": {
+        "processed": 1600,
+        "throughput": 28.248147795839635,
+        "cache": {
+          "requests": 1600,
+          "hits": 736,
+          "misses": 64,
+          "notCached": 800,
+          "fetches": 864,
+          "fills": 8,
+          "hitRatio": 0.92,
+          "originOffload": 0.45999999999999996,
+          "rules": {
+            "personal": { "requests": 400, "hits": 0, "misses": 0, "notCached": 400, "fetches": 400, "fills": 0 },
+            "": { "requests": 1200, "hits": 736, "misses": 64, "notCached": 400, "fetches": 464, "fills": 8 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 864, "throughput": 15.767607002708825, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 1600, "fetch": 864 }
+  },
+  "events": {
+    "total": 8128,
+    "byKind": { "inject": 1600, "deliver": 2464, "process": 4064 },
+    "byNode": {
+      "source": { "inject": 1600, "process": 1600 },
+      "cache": { "deliver": 1600, "process": 1600 },
+      "origin": { "deliver": 864, "process": 864 }
+    },
+    "perSecond": [
+      "e26ac53c4a2e",
+      "7d978f308c0e",
+      "8d7339daa9e8",
+      "07e050d201ea",
+      "8b7887092caf",
+      "4460242c3345",
+      "041828b0d963",
+      "37c9a36dfd13",
+      "3db7e6da22fe",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1600, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1600, "min": 10, "mean": 42.4, "p50": 70, "p90": 70, "max": 70 },
+    "waitMs": { "origin": { "count": 864, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 } },
+    "processMs": { "origin": { "count": 864, "min": 50, "mean": 50, "p50": 50, "p90": 50, "max": 50 } }
+  }
+}

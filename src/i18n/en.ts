@@ -3125,6 +3125,14 @@ const en = {
   "autoscaling.scaleBusy": "Scale on busy threads",
   "autoscaling.planBusy":
     "In “{simulation}”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
+  "cache.model": "Cache rules answer fresh requests before fetching from the origin.",
+  "cache.upgrade": "Upgrade to caching…",
+  "cache.upgradeHint": "Caches that will start answering: {nodes}.",
+  "cache.none": "none",
+  "cache.upgradeSimulation": "{node} in “{simulation}”",
+  "cache.exportLoss": "Cache rules stop running.",
+  "cache.noOrigin": "This node has nowhere to fetch from, so these rules don't change the run.",
+  "cache.dormant": "Cache rules are kept in the file. Upgrade the model to start using them.",
   "threads.modelRequired": "Busy-thread scaling needs the Requests that wait model.",
   "autoscaling.busyHint":
     "Not built into Kubernetes: your service would publish it (for example through Prometheus). Here the simulator counts threads that are working or waiting on a call.",

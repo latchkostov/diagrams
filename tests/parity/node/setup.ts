@@ -2,6 +2,7 @@
 // language left over from one test would change another's validation messages. After each test, every golden it
 // changed is reported at once (tests/parity/lib/golden.ts).
 import { afterEach, beforeEach } from "vitest";
+import "../../../src/sim/cache/cacheRuntime";
 import { state } from "../../../src/i18n";
 import { assertGoldens } from "../lib/golden";
 

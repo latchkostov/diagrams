@@ -68,8 +68,9 @@ export function forwardingShare(
   mode: ForwardingMode = "output",
   requestFilter?: CompiledMatch,
   route?: CompiledRoute,
+  caching = false,
 ): number {
-  if (mode === "output" && (role === "sink" || (role === "store" && edge.sync))) return 0;
+  if (mode === "output" && (role === "sink" || (role === "store" && edge.sync && !caching))) return 0;
   if (!acceptsType(edge.filter, type) || (requestFilter && !matchesRequest(requestFilter, route))) return 0;
   return mode === "routed" || role === "gateway" || brokerRole(role) ? 1 : (edge.share ?? 1);
 }
@@ -112,12 +113,24 @@ export interface CompiledEdge {
 }
 
 /** Terminals finish locally; brokers deliver through their consumer groups, never as callers. */
-export function callEligible(role: SimRole, edge: Pick<CompiledEdge, "sync" | "dlq">): boolean {
-  return (role === "processor" || role === "source" || role === "gateway" || role === "none") && edge.sync && !edge.dlq;
+export function callEligible(role: SimRole, edge: Pick<CompiledEdge, "sync" | "dlq">, caching = false): boolean {
+  return (
+    (role === "processor" ||
+      role === "source" ||
+      role === "gateway" ||
+      role === "none" ||
+      (role === "store" && caching)) &&
+    edge.sync &&
+    !edge.dlq
+  );
 }
 /** A call waiting plans and Checks count: eligible, not denied at its source, and forwarding some share. */
-export function activeCall(role: SimRole, edge: Pick<CompiledEdge, "sync" | "dlq" | "deny" | "share">): boolean {
-  return callEligible(role, edge) && !edge.deny && edge.share !== 0;
+export function activeCall(
+  role: SimRole,
+  edge: Pick<CompiledEdge, "sync" | "dlq" | "deny" | "share">,
+  caching = false,
+): boolean {
+  return callEligible(role, edge, caching) && !edge.deny && edge.share !== 0;
 }
 export interface CompiledGroup {
   broker: string;

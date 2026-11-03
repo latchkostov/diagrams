@@ -1,3 +1,5 @@
+import { cacheEnabled, CACHE_LIMITS } from "../model/caching";
+import { requireCacheRuntime, type CacheRuntime } from "./cache/cacheBridge";
 import { createResources } from "./engine/resources";
 import { createBroker } from "./engine/broker";
 import { createExecutionReservations } from "./executionReservations";
@@ -167,6 +169,47 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   };
   const nodes = new Map<string, Node>();
   let planning: DiagramFile["planning"];
+  let cacheRuntime: CacheRuntime | undefined;
+  let callSettings = new Map<string, import("./types").EdgeSimProps["caller"]>();
+  let cacheRates: ReturnType<CacheRuntime["plan"]> | undefined;
+  function compileCaches(only?: string): void {
+    const retained = only
+      ? [...nodes.values()]
+          .filter((n) => n.id !== only)
+          .reduce((sum, n) => sum + (n.cache?.rules.reduce((s, r) => s + r.tracked, 0) ?? 0), 0)
+      : 0;
+    const remaining = { value: CACHE_LIMITS.totalTracked - retained };
+    for (const node of nodes.values()) {
+      if (only && node.id !== only) continue;
+      if (
+        cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache) &&
+        node.outgoing.some((e) => e.sync && !e.dlq)
+      ) {
+        cacheRuntime ??= requireCacheRuntime();
+        node.cache = cacheRuntime.compile(node.rawProps.cache, node.id, seed, scale, remaining, cacheRates?.[node.id]);
+      } else node.cache = undefined;
+      if (node.role === "store") node.waits = !!node.cache;
+      for (const edge of node.outgoing) initializeCall(edge, !!node.cache);
+      if (node.cache)
+        node.frees = node.outgoing.filter((e) => callEligible(node.role, e, true)).every((e) => !e.policy?.blocking);
+    }
+  }
+  /** Load and cache activation share the same capabilities, preserving live retry/breaker state. */
+  function initializeCall(edge: Edge, cache: boolean): void {
+    if (!waits() || !callEligible(edge.from.role, edge, cache)) return;
+    edge.from.waits = true;
+    if (edge.to.role === "processor") edge.to.callTarget = true;
+    const { retry, breaker } = callSettings.get(edge.id) ?? {};
+    if (retries() && (retry || breaker) && !edge.retry) {
+      classifies = true;
+      edge.retry = {
+        policy: structuredClone(retry ?? { maxAttempts: 1, backoffMs: 0, strategy: "fixed", retryOn: [] }),
+        window: createRetryWindow(),
+      };
+      if (breaker) edge.breaker = { policy: structuredClone(breaker), state: createBreaker() };
+      Object.assign(edge.calls, emptyRetryCounts());
+    }
+  }
   /** Retries execute in this diagram (p3-w2 and a call with a retry policy). Only then are attempts classified
    * and replies carry w2 codes; elsewhere outcome tracking costs nothing and codes stay as they were. */
   let classifies = false;
@@ -546,6 +589,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       !fanout ? "routed" : injected ? "injected" : "output",
       edge.requestFilter,
       message.request,
+      !!edge.from.cache,
     );
     return share >= 1 || (share > 0 && random() < share);
   }
@@ -901,6 +945,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         admissionChanges.push({ id, policy: node.props.admission });
       // A setup or timeline patch replaces a mix or table whole (never a deep merge of rows or rules).
       if ("trafficMix" in patch || "routeTable" in patch) compileNodeRouting(node);
+      if ("cache" in patch) compileCaches(id);
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
@@ -1203,6 +1248,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       settleWork(node, work, "call-limit");
       return true;
     }
+    if (node.cache && work.cache) cacheRuntime!.start(node.cache, work.cache, sizeOf(work.message), time);
     const call: Call = {
       attempt: attempt(node, work),
       id: nextCall++,
@@ -1698,6 +1744,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (node.status === "paused") return;
     let ok = a.outcome!.ok;
+    if (node.cache && work.cache) cacheRuntime!.settle(node.cache, work.cache, time, sizeOf(work.message), ok);
     const retry =
       !ok || ((call.replies ?? 0) > 0 && (node.status === "down" || releaseNow))
         ? retryFor(node, work, !releaseNow)
@@ -2088,6 +2135,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       settleWork(node, work, "error");
       return;
     }
+    if (work.cache?.outcome === "hit") {
+      settleWork(node, work, "success");
+      return;
+    }
     if (waits() && beginCall(node, work)) return;
     settleWork(node, work, "success");
   }
@@ -2100,11 +2151,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     processed(node, work.message);
+    if (work.cache?.outcome === "hit") {
+      gone(node, work.message, "end", "cached");
+      return;
+    }
     if (work.injected && (node.role === "sink" || node.role === "store")) forward(node, work.message);
     else if (node.role === "sink") gone(node, work.message, "end", "received");
     else if (node.role === "store") {
       // Outgoing async edges from a store model change feeds / CDC: each gets a copy.
-      const feeds = node.outgoing.filter((edge) => accepts(edge, work.message, true, false));
+      const feeds = node.outgoing.filter(
+        (edge) => (!node.cache || !edge.sync) && accepts(edge, work.message, true, false),
+      );
       if (!feeds.length) {
         gone(node, work.message, "end", "stored");
         return;
@@ -2406,6 +2463,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // A router with a table matches the address first: a refusal or a deny rule ends the request here, before any
     // admission bucket or service time is spent.
     if (node.table && !work.route && !routeOnArrival(node, work)) return;
+    if (node.cache && !work.cache)
+      work.cache = cacheRuntime!.lookup(
+        node.cache,
+        work.message.type,
+        work.message.request,
+        !!work.via?.sync,
+        time,
+        sizeOf(work.message),
+      );
     if (node.props.admission) {
       const group = work.delivery?.group;
       if (group && !work.held && !hold(group, node, work)) {
@@ -3084,6 +3150,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       0,
     );
     refreshSourceRate();
+    compileCaches();
     time = 0;
     incomingAt = undefined;
     incomingBeforeReleases = false;
@@ -3331,6 +3398,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       scale,
       capacityMultiplier,
       sinceFault,
+      classifies,
     ],
     (copy, clock, repair) => {
       partBudget = copy[1];
@@ -3382,6 +3450,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         scale,
         capacityMultiplier,
         sinceFault,
+        classifies,
       ] = clock;
       randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
       configuration = undefined;
@@ -3457,14 +3526,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       return metric.field === "throughput" ? node.throughput : roundDots(node[metric.field]);
     },
-    load(diagram: DiagramFile): void {
+    load(diagram: DiagramFile, startingCacheRates): void {
       if (resourceBudgetExceeded(diagram)) throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
       faultIndex = faultTopology(diagram);
       faults = new Map();
       faultEdges.clear();
       planning = diagram.planning;
+      cacheRates = startingCacheRates;
+      if (diagram.nodes.some((n) => cacheEnabled(planning, n.stencil, roleOf(n.stencil), n.props?.cache))) {
+        cacheRuntime = requireCacheRuntime();
+      }
       waitsEnabled = revisionAtLeast(planning?.revision, "p3-w1");
       classifies = false;
+      callSettings = new Map();
       configuration = undefined;
       topology++;
       nodes.clear();
@@ -3576,22 +3650,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           edge.policy = callPolicy(from.stencil, props?.caller as import("./types").EdgeSimProps["caller"]);
           const delay = props?.networkDelayMs;
           edge.networkDelayMs = typeof delay === "number" && Number.isFinite(delay) ? Math.max(0, delay) : 0;
-          if (callEligible(from.role, edge)) {
-            from.waits = true;
-            if (to.role === "processor") to.callTarget = true;
-          }
         }
-        const breaker = (props?.caller as import("./types").EdgeSimProps["caller"])?.breaker;
-        const retry = (props?.caller as import("./types").EdgeSimProps["caller"])?.retry;
-        if (retries() && callEligible(from.role, edge) && (retry || breaker)) {
-          classifies = true;
-          edge.retry = {
-            policy: structuredClone(retry ?? { maxAttempts: 1, backoffMs: 0, strategy: "fixed", retryOn: [] }),
-            window: createRetryWindow(),
-          };
-          if (breaker) edge.breaker = { policy: structuredClone(breaker), state: createBreaker() };
-          Object.assign(edge.calls, emptyRetryCounts());
-        }
+        callSettings.set(edge.id, props?.caller as import("./types").EdgeSimProps["caller"]);
+        initializeCall(edge, cacheEnabled(planning, from.stencil, from.role, from.rawProps.cache));
         if (props && routes) {
           // A caller's address belongs to a Request out of a source or service; on a router's edges it's dormant.
           const caller = from.role === "source" || from.role === "processor" || from.role === "none";
@@ -3615,7 +3676,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       for (const node of nodes.values()) {
         node.frees =
-          node.waits && node.outgoing.filter((e) => callEligible(node.role, e)).every((e) => !e.policy?.blocking);
+          node.waits &&
+          node.outgoing.filter((e) => callEligible(node.role, e, !!node.cache)).every((e) => !e.policy?.blocking);
         compileNodeRouting(node);
       }
       for (const [id, groups] of compiled.groups) {
@@ -3696,6 +3758,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                   : latencyMetrics(node.latency),
               }
             : {}),
+          ...(node.cache ? { cache: cacheRuntime!.read(node.cache) } : {}),
           id: node.id,
           role: node.role,
           status: node.status,
@@ -3890,6 +3953,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const next = resolveScale(value);
       if (next === scale) return;
       scale = next;
+      if (time === 0) compileCaches();
       recountUnits();
       // A processor's time per sampled dot follows the scale, and so does what may be on the way to it.
       for (const node of nodes.values()) for (const group of node.groups) refreshGroupLimit(group);

@@ -222,6 +222,17 @@ export function NodeSimulation({
         !resolveProps(role, "", props, stencil, meta.planning).admission &&
         revisionAtLeast(meta.planning?.revision, "p3-w2") && <NodeQueueFields editor={editor} nodeId={nodeId} />}
       {!routed && routing}
+      {props.cache !== undefined &&
+        (!revisionAtLeast(meta.planning?.revision, "p3-w3") ||
+          !(readDiagram?.() ?? editor.getDiagram()).edges.some(
+            (e) => e.from === nodeId && e.kind === "sync" && (!e.relation || e.relation === "flow"),
+          )) && (
+          <InertNote
+            name="cache"
+            text={revisionAtLeast(meta.planning?.revision, "p3-w3") ? t("cache.noOrigin") : t("cache.dormant")}
+            onRemove={() => editor.setNodeProps(nodeId, { cache: undefined })}
+          />
+        )}
       {!router && props.routeTable !== undefined && (
         <InertNote
           name="routeTable"

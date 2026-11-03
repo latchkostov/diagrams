@@ -4,6 +4,7 @@ import { resolveProps } from "../sim/defaults";
 import { stencilRole } from "../stencils/roles";
 import { profileOf, FAMILIES, PROCESSOR_LESSON } from "../stencils/profiles";
 import { revisionAtLeast } from "../model/revisions";
+import { cacheCapable, type CacheTable } from "../model/caching";
 import type { EdgeSimProps } from "../sim/types";
 import { simulationEdges } from "../sim/topology";
 import { activeCall, compileTopology } from "../sim/topology";
@@ -131,6 +132,45 @@ export function upgradeResilience(d: DiagramFile, keepOff = false): DiagramFile 
   return next;
 }
 
+/** W3 leaves every no-cache path unchanged; earlier upgrades retain their explicit alternatives. */
+export function upgradeCaching(d: DiagramFile): DiagramFile {
+  const next = revisionAtLeast(d.planning?.revision, "p3-w2") ? structuredClone(d) : upgradeResilience(d);
+  next.planning = { ...next.planning!, revision: "p3-w3" };
+  return next;
+}
+
+/** Preview executable storing policies, including saved overrides that become active after upgrading. */
+export function cacheUpgradeNodes(d: DiagramFile) {
+  const rows: { node: string; simulation?: string }[] = [];
+  const eligible = new Set(
+    d.nodes
+      .filter(
+        (n) =>
+          cacheCapable(n.stencil, stencilRole(n.stencil)) &&
+          d.edges.some((e) => e.from === n.id && e.kind === "sync" && (!e.relation || e.relation === "flow")),
+      )
+      .map((n) => n.id),
+  );
+  const storing = (value: unknown) => {
+    const table = value as CacheTable | undefined;
+    return !!table && (!!table.default?.ttlMs || table.rules.some((r) => !!r.policy.ttlMs));
+  };
+  for (const node of d.nodes) if (eligible.has(node.id) && storing(node.props?.cache)) rows.push({ node: node.label });
+  for (const sim of d.simulations ?? []) {
+    for (const node of d.nodes) {
+      if (!eligible.has(node.id) || storing(node.props?.cache)) continue;
+      if (
+        storing(sim.setup?.props?.[node.id]?.cache) ||
+        sim.timeline?.some(
+          (step) => step.action.do === "props" && step.action.node === node.id && storing(step.action.props.cache),
+        )
+      )
+        rows.push({ node: node.label, simulation: sim.title });
+    }
+  }
+  return rows;
+}
+
 /** Preview every context that will start executing a saved retry policy. */
 export function resilienceUpgradeCalls(d: DiagramFile) {
   const enabled = { ...d, planning: { ...d.planning, revision: "p3-w2" as const } };
@@ -189,6 +229,7 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
       "maxConcurrency",
       "trafficMix",
       "routeTable",
+      "cache",
     ])
       if (props && key in props) {
         losses.push(`${path}.${key}`);

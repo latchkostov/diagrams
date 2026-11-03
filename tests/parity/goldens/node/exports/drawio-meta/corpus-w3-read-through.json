@@ -1,0 +1,67 @@
+{
+  "withIcons": {
+    "sha256": "72ff3cc326d3bbd01ec137c5c55735ffd0206e0cf856d59e3e24736aca63a1b8",
+    "bytes": 4557,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.cache": "generic-cache da1ea7485f4f757b", "generic.database": "generic-database e85b3d97d2e8de44" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-w3" },
+        "title": "read-through",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Readers",
+            "x": 0,
+            "y": 100,
+            "props": { "ratePerSec": 200 }
+          },
+          {
+            "id": "cache",
+            "stencil": "generic.cache",
+            "label": "Edge cache",
+            "x": 320,
+            "y": 100,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 20, "popularity": "even" } }
+            }
+          },
+          {
+            "id": "origin",
+            "stencil": "generic.database",
+            "label": "Origin",
+            "x": 640,
+            "y": 100,
+            "props": { "latencyMs": 50, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "input", "from": "source", "to": "cache", "kind": "sync", "props": { "travelMs": 10 } },
+          { "id": "fetch", "from": "cache", "to": "origin", "kind": "sync", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "steady",
+            "title": "Steady requests",
+            "seed": 7,
+            "scale": 2,
+            "durationMs": 10000,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+                "id": "readers"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

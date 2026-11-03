@@ -1,0 +1,114 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"deadline\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Readers\" props={\"ratePerSec\":200} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"input\",\"peer\":\"cache\"}] explanation=undefined\n  \"cache\" \"generic.cdn\" (\"CDN\") \"Edge cache\" props={\"latencyMs\":0,\"jitter\":0,\"cache\":{\"rules\":[],\"default\":{\"ttlMs\":1000,\"keys\":20,\"popularity\":\"even\"}}} arrivingTypes=[\"Readers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"origin\"}] explanation=undefined requestsWait={\"threads\":null,\"holdMs\":0,\"ceilingPerSec\":null} cache={\"rules\":[],\"default\":{\"ttlMs\":1000,\"keys\":20,\"popularity\":\"even\"},\"origin\":[\"fetch\"]}\n  \"origin\" \"generic.database\" (\"Database\") \"Origin\" props={\"latencyMs\":50,\"jitter\":0} arrivingTypes=[\"Readers\"] capabilities=[] explanation=undefined\nconnections:\n  \"input\" \"source\" -> \"cache\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\n  \"fetch\" \"cache\" -> \"origin\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nsimulation \"steady\" \"Steady requests\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":8000} from \"source\"; timeline=[]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "deadline",
+      "direction": "LR",
+      "planning": { "revision": "p3-w3" },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Readers",
+          "x": 0,
+          "y": 100,
+          "props": { "ratePerSec": 200 },
+          "arrivingTypes": [],
+          "capabilities": [{ "kind": "calls", "edge": "input", "peer": "cache" }]
+        },
+        {
+          "id": "cache",
+          "stencil": "generic.cdn",
+          "label": "Edge cache",
+          "x": 320,
+          "y": 100,
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 20, "popularity": "even" } }
+          },
+          "arrivingTypes": ["Readers"],
+          "capabilities": [{ "kind": "calls", "edge": "fetch", "peer": "origin" }],
+          "requestsWait": { "threads": null, "holdMs": 0, "ceilingPerSec": null },
+          "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 20, "popularity": "even" }, "origin": ["fetch"] }
+        },
+        {
+          "id": "origin",
+          "stencil": "generic.database",
+          "label": "Origin",
+          "x": 640,
+          "y": 100,
+          "props": { "latencyMs": 50, "jitter": 0 },
+          "arrivingTypes": ["Readers"],
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "input",
+          "from": "source",
+          "to": "cache",
+          "kind": "sync",
+          "props": { "travelMs": 10 },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        },
+        {
+          "id": "fetch",
+          "from": "cache",
+          "to": "origin",
+          "kind": "sync",
+          "props": { "travelMs": 10, "networkDelayMs": 20, "caller": { "deadlineMs": 30, "poolConnections": 2 } },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        }
+      ],
+      "messageTypesComplete": true,
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "steady",
+          "title": "Steady requests",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 10000,
+          "traffic": [
+            {
+              "node": "source",
+              "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+              "id": "readers"
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"deadline\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Readers\" props={\"ratePerSec\":200} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"input\",\"peer\":\"cache\"}] explanation=undefined\n  \"cache\" \"generic.cdn\" (\"CDN\") \"Edge cache\" props={\"latencyMs\":0,\"jitter\":0,\"cache\":{\"rules\":[],\"default\":{\"ttlMs\":1000,\"keys\":20,\"popularity\":\"even\"}}} arrivingTypes=[\"Readers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"origin\"}] explanation=undefined requestsWait={\"threads\":null,\"holdMs\":0,\"ceilingPerSec\":null} cache={\"rules\":[],\"default\":{\"ttlMs\":1000,\"keys\":20,\"popularity\":\"even\"},\"origin\":[\"fetch\"]}\nconnections:\n  \"input\" \"source\" -> \"cache\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nsimulation \"steady\" \"Steady requests\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":8000} from \"source\"; timeline=[]; expectations=[]"
+  }
+}

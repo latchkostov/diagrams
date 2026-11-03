@@ -1,0 +1,95 @@
+{
+  "withIcons": {
+    "sha256": "eb885bb7685822200b9d133a6cd67e10a6d6e8053a9be9b0b8ba3d0b7e73b323",
+    "bytes": 5171,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.cdn": "generic-cdn 6b4780f7c80bf9cd", "generic.database": "generic-database e85b3d97d2e8de44" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-w3" },
+        "title": "sampling",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Readers",
+            "x": 0,
+            "y": 100,
+            "props": { "ratePerSec": 200 }
+          },
+          {
+            "id": "cache",
+            "stencil": "generic.cdn",
+            "label": "Edge cache",
+            "x": 320,
+            "y": 100,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "cache": { "rules": [], "default": { "ttlMs": 5000, "keys": 10000, "popularity": "typical" } }
+            }
+          },
+          {
+            "id": "origin",
+            "stencil": "generic.database",
+            "label": "Origin",
+            "x": 640,
+            "y": 100,
+            "props": { "latencyMs": 50, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "input", "from": "source", "to": "cache", "kind": "sync", "props": { "travelMs": 10 } },
+          { "id": "fetch", "from": "cache", "to": "origin", "kind": "sync", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "scale-1",
+            "title": "Scale 1",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 10000,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+                "id": "readers"
+              }
+            ]
+          },
+          {
+            "id": "scale-2",
+            "title": "Scale 2",
+            "seed": 7,
+            "scale": 2,
+            "durationMs": 10000,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+                "id": "readers"
+              }
+            ]
+          },
+          {
+            "id": "scale-10",
+            "title": "Scale 10",
+            "seed": 7,
+            "scale": 10,
+            "durationMs": 10000,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 },
+                "id": "readers"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

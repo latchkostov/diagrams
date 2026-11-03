@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { lazySurfaces, type LazySurfaceId } from "../../src/lib/lazySurfaces";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
+import { cacheFixture } from "../../src/lab/cacheFixture";
 import { existsSync, readFileSync } from "node:fs";
 import { chunk } from "./chunk";
 import type { DiagramFile } from "../../src/model/types";
@@ -36,7 +37,7 @@ export function surfaceChunk(id: LazySurfaceId) {
 
 /** Real entry points, rather than test-only component replacements. Every registration must supply one. */
 export async function openSurface(page: Page, id: LazySurfaceId) {
-  const d = lazySurfacesFixture();
+  const d = id === "live.cache" ? cacheFixture() : lazySurfacesFixture();
   await page.addInitScript(
     ({ diagrams, prefix }) => {
       for (const [slug, diagram] of diagrams) localStorage.setItem(prefix + slug, JSON.stringify(diagram));
@@ -156,6 +157,7 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
   }
   switch (id) {
     case "live.session":
+    case "live.cache":
       await page.goto(`./?view=canvas&example=${SLUG}&live=1&paused=1`);
       await expect(page.getByTestId("canvas-view")).toBeVisible();
       return;

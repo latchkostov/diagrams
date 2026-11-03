@@ -1,0 +1,94 @@
+{
+  "format": "diagrams/v2",
+  "title": "deadline",
+  "planning": {
+    "revision": "p3-w3"
+  },
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Readers",
+      "x": 0,
+      "y": 100,
+      "props": {
+        "ratePerSec": 200
+      }
+    },
+    {
+      "id": "cache",
+      "stencil": "generic.cdn",
+      "label": "Edge cache",
+      "x": 320,
+      "y": 100,
+      "props": {
+        "latencyMs": 0,
+        "jitter": 0,
+        "cache": {
+          "rules": [],
+          "default": {
+            "ttlMs": 1000,
+            "keys": 20,
+            "popularity": "even"
+          }
+        }
+      }
+    },
+    {
+      "id": "origin",
+      "stencil": "generic.database",
+      "label": "Origin",
+      "x": 640,
+      "y": 100,
+      "props": {
+        "latencyMs": 50,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input",
+      "from": "source",
+      "to": "cache",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "fetch",
+      "from": "cache",
+      "to": "origin",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10,
+        "networkDelayMs": 20,
+        "caller": {
+          "deadlineMs": 30,
+          "poolConnections": 2
+        }
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "steady",
+      "title": "Steady requests",
+      "seed": 7,
+      "scale": 1,
+      "durationMs": 10000,
+      "traffic": [
+        {
+          "node": "source",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 200,
+            "durationMs": 8000
+          },
+          "id": "readers"
+        }
+      ]
+    }
+  ]
+}

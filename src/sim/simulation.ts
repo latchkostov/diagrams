@@ -1,4 +1,5 @@
 import { faultLabel } from "../model/faultWords";
+import { startingCacheRates } from "./cache/cacheBridge";
 import { simulationSetup } from "./topology";
 import { faultTimelineProblem, FaultTimelineError } from "../model/faultRuntime";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
@@ -319,7 +320,7 @@ export function createSimulationRun(
     seedEngine(engine, seed);
     // The same configuration static message analysis and loop-fix verification read (configuredDiagram).
     const setup = simulationSetup(diagram, simulation);
-    engine.load(setup.diagram);
+    engine.load(setup.diagram, startingCacheRates(diagram, simulation));
     multipliers = {
       traffic: resolveMultiplier(simulation.multipliers?.traffic),
       capacity: resolveMultiplier(simulation.multipliers?.capacity),

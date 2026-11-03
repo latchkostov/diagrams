@@ -1,0 +1,10 @@
+---
+title: sampling
+---
+flowchart LR
+  source(["Readers"])
+  cache["Edge cache"]
+  origin[("Origin")]
+  source --> cache
+  cache --> origin
+%% diagrams:{"v":1,"nodes":{"source":["source","client.browser"],"cache":["cache","generic.cdn"],"origin":["origin","generic.database"]},"edges":["input","fetch"],"relations":{}}

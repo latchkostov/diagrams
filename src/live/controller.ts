@@ -29,6 +29,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
 import { createEngine, randomDraws, WorkBudgetError } from "../sim/engine";
+import { startingCacheRates } from "../sim/cache/cacheBridge";
 import {
   applyDue,
   deepFreeze,
@@ -57,7 +58,15 @@ import type {
 import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
 import { t } from "../i18n";
 import { autoScale } from "../sim/scale";
-import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./playbackInputs";
+import {
+  effectiveSimulation,
+  emptyInputs,
+  freePlayProps,
+  freePlayScale,
+  freePlaySimulation,
+  type LiveInputs,
+} from "./playbackInputs";
+import { hasCacheRules } from "../model/caching";
 import { DEFAULT_SEED } from "./storm";
 import { snapshotContinuity } from "./snapshotContinuity";
 import { HealthWindow } from "./healthWindow";
@@ -1652,7 +1661,12 @@ export class LiveController {
     } else {
       this.runner = null;
       this.engine = createEngine({ ...engineOpts, seed: this.#opts.seed ?? DEFAULT_SEED });
-      this.engine.load(this.#diagram);
+      this.engine.load(
+        this.#diagram,
+        hasCacheRules(this.#diagram)
+          ? startingCacheRates(this.#diagram, freePlaySimulation(this.#diagram, this.#inputs))
+          : undefined,
+      );
       // Free play's inputs: overrides, rates × traffic, Capacity × and an automatic dot scale.
       this.#freeScale = freePlayScale(this.#diagram, this.#inputs);
       this.engine.setScale(this.#freeScale);

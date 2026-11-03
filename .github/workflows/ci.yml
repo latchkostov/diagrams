@@ -179,6 +179,18 @@ jobs:
       - run: pnpm build
       - name: Entry chunk size budget
         run: pnpm size
+      # No-cache replays keep their own lane capacity instead of extending the serial heavy job.
+      - name: No-cache replay
+        run: >-
+          pnpm exec vitest run --project heavy src/sim/caching.noop.heavy.test.ts
+          --reporter=default --reporter=./scripts/ci/vitest-json.mjs
+          --outputFile=tests/.output/noop-results.json
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: noop-results
+          path: tests/.output/noop-results.json
+          retention-days: 14
       - name: Skill ZIP
         run: >-
           pnpm exec vitest run --project heavy src/ai/skill/skill.heavy.test.ts
@@ -198,10 +210,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
-      # ZIP determinism belongs to the build lane. Every other heavy assertion runs here, serially.
+      # ZIP determinism and W3 no-cache replay belong to the build lane; all other heavy assertions run serially here.
       - name: Heavy tests
         run: >-
           pnpm test:heavy --testNamePattern='^(?!.*zips the skill folder)'
+          --exclude=src/sim/caching.noop.heavy.test.ts
           --reporter=default --reporter=./scripts/ci/vitest-json.mjs --outputFile=tests/.output/heavy-results.json
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

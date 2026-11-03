@@ -1,3 +1,4 @@
+import "../sim/cache/cacheRuntime";
 import fc from "fast-check";
 import process from "node:process";
 import { fastCheckConfig } from "./fastCheck";

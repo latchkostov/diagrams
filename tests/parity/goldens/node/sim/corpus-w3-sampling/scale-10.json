@@ -1,0 +1,120 @@
+{
+  "run": {
+    "time": 10000,
+    "totalMs": 10000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "readers" },
+      { "atMs": 8000, "kind": "traffic", "label": "readers ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "cache": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": { "": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 } }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 160, "throughput": 2.8959280014907605, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 160,
+          "throughput": 2.8959280014907605,
+          "cache": {
+            "requests": 1600,
+            "hits": 480,
+            "misses": 1120,
+            "notCached": 0,
+            "fetches": 1120,
+            "fills": 0,
+            "hitRatio": 0.3,
+            "originOffload": 0.30000000000000004,
+            "rules": {
+              "": { "requests": 1600, "hits": 480, "misses": 1120, "notCached": 0, "fetches": 1120, "fills": 0 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 112, "throughput": 1.8546314689822705, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 1600, "throughput": 28.959280014907606, "replicas": [1, 1, 0] },
+      "cache": {
+        "processed": 1600,
+        "throughput": 28.959280014907606,
+        "cache": {
+          "requests": 1600,
+          "hits": 480,
+          "misses": 1120,
+          "notCached": 0,
+          "fetches": 1120,
+          "fills": 0,
+          "hitRatio": 0.3,
+          "originOffload": 0.30000000000000004,
+          "rules": {
+            "": { "requests": 1600, "hits": 480, "misses": 1120, "notCached": 0, "fetches": 1120, "fills": 0 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 1120, "throughput": 18.546314689822704, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 160, "fetch": 112 }
+  },
+  "events": {
+    "total": 864,
+    "byKind": { "inject": 160, "deliver": 272, "process": 432 },
+    "byNode": {
+      "source": { "inject": 160, "process": 160 },
+      "cache": { "deliver": 160, "process": 160 },
+      "origin": { "deliver": 112, "process": 112 }
+    },
+    "perSecond": [
+      "6a62fc976710",
+      "9d475179ac0b",
+      "797fbaefaa0d",
+      "7943e6032de4",
+      "30c6e82bca6e",
+      "45556c67f7b2",
+      "5cce6545cfdd",
+      "c9611cb76d7b",
+      "ba272bfa57f3",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 160, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 160, "min": 10, "mean": 52, "p50": 70, "p90": 70, "max": 70 },
+    "waitMs": { "origin": { "count": 112, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 } },
+    "processMs": { "origin": { "count": 112, "min": 50, "mean": 50, "p50": 50, "p90": 50, "max": 50 } }
+  }
+}

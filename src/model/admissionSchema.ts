@@ -109,7 +109,7 @@ export const planningSchema: JsonSchema = {
   required: ["revision"],
   additionalProperties: false,
   properties: {
-    revision: { enum: ["p1", "p2", "p3", "p3-a1", "p3-w1", "p3-w2"] },
+    revision: { enum: ["p1", "p2", "p3", "p3-a1", "p3-w1", "p3-w2", "p3-w3"] },
     requestRoutes: requestRoutesSchema,
     sharedQuotas: { type: "array", maxItems: 128, items: quotaSchema },
     sharedAllocations: { type: "array", maxItems: 128, items: allocationSchema },

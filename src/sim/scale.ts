@@ -1,4 +1,7 @@
 import { revisionAtLeast } from "../model/revisions";
+import { hasCacheRules } from "../model/caching";
+import { cacheScale, type CacheScaleRates } from "./cache/cacheScale";
+import { requireCacheRuntime } from "./cache/cacheBridge";
 import { replicaRange } from "../model/resourceRuntime";
 import { resolveProps } from "./defaults";
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
@@ -24,7 +27,7 @@ export function peakRate(shape: TrafficShape): number {
   }
 }
 /** Conservative sum of entry peaks, rounded upward to the 1/2/5 series. Does not mutate the input. */
-export function autoScale(simulation: Simulation, diagram: DiagramFile): number {
+export function autoScale(simulation: Simulation, diagram: DiagramFile, cacheRates?: CacheScaleRates): number {
   const ids = new Set(diagram.nodes.map((node) => node.id));
   const rate = simulation.traffic.length
     ? simulation.traffic.reduce((sum, profile) => sum + (ids.has(profile.node) ? peakRate(profile.shape) : 0), 0)
@@ -80,5 +83,9 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
   // Circuit breakers never lower the scale: their windows and test calls count real requests, and a
   // half-open breaker narrows a dot to its remaining test calls (breaker.ts), so no breaker needs
   // more dots than the entry-rate budget allows, on its own branch or anyone else's.
-  return scale;
+  return revisionAtLeast(diagram.planning?.revision, "p3-w3") && hasCacheRules(diagram)
+    ? cacheRates
+      ? cacheScale(diagram, simulation, scale, cacheRates)
+      : requireCacheRuntime().scale(diagram, simulation, scale)
+    : scale;
 }

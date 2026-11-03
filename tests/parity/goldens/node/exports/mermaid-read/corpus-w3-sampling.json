@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "sampling",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Readers", "x": 40, "y": 40 },
+      { "id": "cache", "stencil": "generic.service", "label": "Edge cache", "x": 400, "y": 40 },
+      { "id": "origin", "stencil": "generic.database", "label": "Origin", "x": 760, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-source-cache", "from": "source", "to": "cache", "kind": "sync" },
+      { "id": "e2-cache-origin", "from": "cache", "to": "origin", "kind": "sync" }
+    ]
+  }
+}

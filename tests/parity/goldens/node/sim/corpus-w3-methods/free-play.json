@@ -1,0 +1,299 @@
+{
+  "run": { "time": 60000, "scale": 2, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "cache": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": {
+              "personal": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 },
+              "": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 12,
+      "nodes": {
+        "source": { "processed": 996, "throughput": 100.83251222374786, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 996,
+          "throughput": 100.83251222374786,
+          "cache": {
+            "requests": 2000,
+            "hits": 920,
+            "misses": 80,
+            "notCached": 1000,
+            "fetches": 1080,
+            "fills": 10,
+            "hitRatio": 0.92,
+            "originOffload": 0.45999999999999996,
+            "rules": {
+              "personal": { "requests": 500, "hits": 0, "misses": 0, "notCached": 500, "fetches": 500, "fills": 0 },
+              "": { "requests": 1500, "hits": 920, "misses": 80, "notCached": 500, "fetches": 580, "fills": 10 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 536, "backlog": 2, "inFlight": 2, "throughput": 55.53650770572107, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 12,
+      "nodes": {
+        "source": { "processed": 1996, "throughput": 100.75490187589362, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 1996,
+          "throughput": 100.75490187589362,
+          "cache": {
+            "requests": 4000,
+            "hits": 1848,
+            "misses": 152,
+            "notCached": 2000,
+            "fetches": 2152,
+            "fills": 19,
+            "hitRatio": 0.924,
+            "originOffload": 0.46199999999999997,
+            "rules": {
+              "personal": { "requests": 1000, "hits": 0, "misses": 0, "notCached": 1000, "fetches": 1000, "fills": 0 },
+              "": { "requests": 3000, "hits": 1848, "misses": 152, "notCached": 1000, "fetches": 1152, "fills": 19 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1072, "backlog": 2, "inFlight": 2, "throughput": 54.12467979644402, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 12,
+      "nodes": {
+        "source": { "processed": 2996, "throughput": 100.69264983914762, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 2996,
+          "throughput": 100.69264983914762,
+          "cache": {
+            "requests": 6000,
+            "hits": 2776,
+            "misses": 224,
+            "notCached": 3000,
+            "fetches": 3224,
+            "fills": 28,
+            "hitRatio": 0.9253333333333333,
+            "originOffload": 0.46266666666666667,
+            "rules": {
+              "personal": { "requests": 1500, "hits": 0, "misses": 0, "notCached": 1500, "fetches": 1500, "fills": 0 },
+              "": { "requests": 4500, "hits": 2776, "misses": 224, "notCached": 1500, "fetches": 1724, "fills": 28 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1608, "backlog": 2, "inFlight": 2, "throughput": 53.05570499834739, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 12,
+      "nodes": {
+        "source": { "processed": 3996, "throughput": 100.64560059867169, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 3996,
+          "throughput": 100.64560059867169,
+          "cache": {
+            "requests": 8000,
+            "hits": 3704,
+            "misses": 296,
+            "notCached": 4000,
+            "fetches": 4296,
+            "fills": 37,
+            "hitRatio": 0.926,
+            "originOffload": 0.46299999999999997,
+            "rules": {
+              "personal": { "requests": 2000, "hits": 0, "misses": 0, "notCached": 2000, "fetches": 2000, "fills": 0 },
+              "": { "requests": 6000, "hits": 3704, "misses": 296, "notCached": 2000, "fetches": 2296, "fills": 37 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 2144, "backlog": 2, "inFlight": 2, "throughput": 52.247791137925084, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 12,
+      "nodes": {
+        "source": { "processed": 4996, "throughput": 100.82404519792635, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 4996,
+          "throughput": 100.82404519792635,
+          "cache": {
+            "requests": 10000,
+            "hits": 4624,
+            "misses": 376,
+            "notCached": 5000,
+            "fetches": 5376,
+            "fills": 47,
+            "hitRatio": 0.9248,
+            "originOffload": 0.46240000000000003,
+            "rules": {
+              "personal": { "requests": 2500, "hits": 0, "misses": 0, "notCached": 2500, "fetches": 2500, "fills": 0 },
+              "": { "requests": 7500, "hits": 4624, "misses": 376, "notCached": 2500, "fetches": 2876, "fills": 47 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 2684, "backlog": 2, "inFlight": 2, "throughput": 55.311982261263516, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 12,
+      "nodes": {
+        "source": { "processed": 5996, "throughput": 100.744907074532, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 5996,
+          "throughput": 100.744907074532,
+          "cache": {
+            "requests": 12000,
+            "hits": 5552,
+            "misses": 448,
+            "notCached": 6000,
+            "fetches": 6448,
+            "fills": 56,
+            "hitRatio": 0.9253333333333333,
+            "originOffload": 0.46266666666666667,
+            "rules": {
+              "personal": { "requests": 3000, "hits": 0, "misses": 0, "notCached": 3000, "fetches": 3000, "fills": 0 },
+              "": { "requests": 9000, "hits": 5552, "misses": 448, "notCached": 3000, "fetches": 3448, "fills": 56 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 3220, "backlog": 2, "inFlight": 2, "throughput": 53.953048809449314, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 12,
+    "real": {
+      "source": { "processed": 11992, "throughput": 201.489814149064, "replicas": [1, 1, 0] },
+      "cache": {
+        "processed": 11992,
+        "throughput": 201.489814149064,
+        "cache": {
+          "requests": 12000,
+          "hits": 5552,
+          "misses": 448,
+          "notCached": 6000,
+          "fetches": 6448,
+          "fills": 56,
+          "hitRatio": 0.9253333333333333,
+          "originOffload": 0.46266666666666667,
+          "rules": {
+            "personal": { "requests": 3000, "hits": 0, "misses": 0, "notCached": 3000, "fetches": 3000, "fills": 0 },
+            "": { "requests": 9000, "hits": 5552, "misses": 448, "notCached": 3000, "fetches": 3448, "fills": 56 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 6440, "backlog": 4, "inFlight": 4, "throughput": 107.90609761889863, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 6000, "fetch": 3224 }
+  },
+  "events": {
+    "total": 24436,
+    "byKind": { "deliver": 9224, "process": 15212 },
+    "byNode": {
+      "cache": { "deliver": 6000, "process": 5996 },
+      "source": { "process": 5996 },
+      "origin": { "deliver": 3224, "process": 3220 }
+    },
+    "perSecond": [
+      "f9f722dfb207",
+      "d019e51f9c7a",
+      "b25769938661",
+      "8f5eb0248afd",
+      "a1d0c6b51b53",
+      "897b7d29e6e2",
+      "85e468459348",
+      "ea6f4328c26f",
+      "9403d46d06a7",
+      "8712bd6d71af",
+      "cad9a9dec611",
+      "6017eb118789",
+      "d025e1c777e9",
+      "9659538e5c1d",
+      "6e30220a6fe0",
+      "02a55db41c2f",
+      "de03929e1f40",
+      "b820f1160b7c",
+      "b5a2c2efc210",
+      "e594c1e057a7",
+      "0739280984a1",
+      "b8113a6b19d5",
+      "e75d60fc4c65",
+      "a46d311aa813",
+      "23849d3cdb0c",
+      "33283d9a0f60",
+      "954eb4568942",
+      "c5935b87aec8",
+      "c20c12d188ca",
+      "9377484dbf7a",
+      "a40f1680f561",
+      "567adca9eb1a",
+      "71d650dce50f",
+      "b8abd222141e",
+      "7f467136ff56",
+      "ef32f2902f30",
+      "f3261cb25262",
+      "adb37d1a81cf",
+      "3f993103b1eb",
+      "5aeb407a4023",
+      "183a65bbb897",
+      "7f33731db5c6",
+      "e955d77d154a",
+      "4c4695e5e42c",
+      "5a5b2fe4a5e4",
+      "30fea6032e67",
+      "7899693ed130",
+      "9a4ee04f18a2",
+      "5f62bfb33e68",
+      "aa619b0d331f",
+      "d9c8b11f56ed",
+      "8a117f4bd4e2",
+      "62e6fb3140d0",
+      "a014db4fadd3",
+      "f58f71325877",
+      "3e483b5fd4d4",
+      "350ca0b2fcc3",
+      "48c8cff6ceff",
+      "2a2b4114cf97",
+      "7b2cf451497b",
+      "e114732f391b"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 5996, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 5996, "min": 0, "mean": 32.22148098732488, "p50": 60, "p90": 60, "max": 60 },
+    "waitMs": { "origin": { "count": 3220, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 } },
+    "processMs": { "origin": { "count": 3220, "min": 50, "mean": 50, "p50": 50, "p90": 50, "max": 50 } }
+  }
+}

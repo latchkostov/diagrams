@@ -91,6 +91,7 @@ export interface Delivery {
   original: Message;
 }
 export interface Work extends ExecutionWork<Group> {
+  cache?: import("../cache/cacheState").CacheLookup;
   priority?: import("../types").QueuePriority;
   queueProtected?: boolean;
   queueSize?: number;
@@ -136,6 +137,7 @@ export interface RouteDecision {
   quotas: QuotaRequirement[];
 }
 export interface Node {
+  cache?: import("../cache/cacheState").NodeCache;
   activeMs: number;
   /** Last tick-loop admission phase completed by this node. */
   admittedAt?: number;

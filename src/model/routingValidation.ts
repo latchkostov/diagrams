@@ -1,3 +1,4 @@
+import { validateCacheDocument } from "./cacheValidation";
 import { isDlqEdge } from "./brokerRoutes";
 import { stencilRole } from "../stencils/roles";
 import { routingProblem, type RoutingContext, type RoutingDocument } from "./requestRouting";
@@ -7,7 +8,7 @@ export const ROUTING_CONTEXT: RoutingContext = { roleOf: stencilRole, isDlq: isD
 
 /** Request routing's one validation path (src/model/requestRouting.ts), bound to the stencil catalogue. */
 export const validateRouting = (diagram: RoutingDocument): string | undefined =>
-  routingProblem(diagram, ROUTING_CONTEXT);
+  validateCacheDocument(diagram) ?? routingProblem(diagram, ROUTING_CONTEXT);
 
 /** Calls of the full check, for the editor's per-edit cost tests. */
 export const routingValidations = { count: 0 };
@@ -42,9 +43,13 @@ function simulationRouters(simulations: RoutingDocument["simulations"]): string[
   const routers = new Set<string>();
   for (const sim of simulations) {
     for (const [node, patch] of Object.entries(sim.setup?.props ?? {}))
-      if (patch.routeTable !== undefined) routers.add(node);
+      if (patch.routeTable !== undefined || patch.cache !== undefined) routers.add(node);
     for (const step of sim.timeline ?? [])
-      if (step.action.do === "props" && step.action.props.routeTable !== undefined) routers.add(step.action.node);
+      if (
+        step.action.do === "props" &&
+        (step.action.props.routeTable !== undefined || step.action.props.cache !== undefined)
+      )
+        routers.add(step.action.node);
   }
   const list = [...routers];
   simulationRouterCache.set(simulations, list);
@@ -54,16 +59,17 @@ function simulationRouters(simulations: RoutingDocument["simulations"]): string[
 function routingInputs(d: RoutingDocument): unknown[] {
   const out: unknown[] = [d.planning?.revision, d.planning?.requestRoutes, d.planning?.sharedQuotas, d.simulations];
   const routers = new Map<string, string>();
+  const saved = new Set(simulationRouters(d.simulations));
   const labels = new Map<string, unknown[]>();
   for (const n of d.nodes) {
     const p = n.props;
-    if (p && (p.trafficMix !== undefined || p.routeTable !== undefined)) {
-      out.push(n.id, n.stencil, p.trafficMix, p.routeTable);
-      if (p.routeTable !== undefined) routers.set(n.id, n.stencil);
+    if (saved.has(n.id) || (p && (p.cache !== undefined || p.trafficMix !== undefined || p.routeTable !== undefined))) {
+      out.push(n.id, n.stencil, p?.trafficMix, p?.routeTable, p?.cache);
+      if (p?.routeTable !== undefined) routers.set(n.id, n.stencil);
     }
   }
   // Tables in saved simulations (setup and timeline) name connections too.
-  for (const node of simulationRouters(d.simulations)) routers.set(node, "");
+  for (const node of saved) routers.set(node, "");
   if (routers.size) for (const n of d.nodes) labels.set(n.id, [n.stencil, n.label, n.sublabel]);
   for (const e of d.edges) {
     const p = e.props;

@@ -1,0 +1,205 @@
+{
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": {
+      "revision": "p3-w3"
+    },
+    "title": "Requests that wait",
+    "nodes": [
+      {
+        "id": "source",
+        "stencil": "client.browser",
+        "label": "Applications",
+        "x": 0,
+        "y": 180,
+        "props": {
+          "ratePerSec": 0
+        }
+      },
+      {
+        "id": "tier0",
+        "stencil": "generic.service",
+        "label": "Decision service",
+        "x": 330,
+        "y": 180,
+        "props": {
+          "concurrency": 1,
+          "replicas": 1,
+          "latencyMs": 0,
+          "jitter": 0,
+          "failureRate": 0.1
+        }
+      },
+      {
+        "id": "tier1",
+        "stencil": "generic.service",
+        "label": "Decision service",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "concurrency": 3,
+          "replicas": 1,
+          "latencyMs": 21,
+          "jitter": 0,
+          "failureRate": 0.1
+        }
+      },
+      {
+        "id": "tier2",
+        "stencil": "generic.service",
+        "label": "Decision service",
+        "x": 990,
+        "y": 180,
+        "props": {
+          "concurrency": 1,
+          "replicas": 1,
+          "latencyMs": 0,
+          "jitter": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 21,
+            "baselineMemoryMiB": 128,
+            "memoryMiBPerMessage": 2,
+            "cpuRequestMilli": 500,
+            "cpuLimitMilli": 1000,
+            "memoryRequestMiB": 256,
+            "memoryLimitMiB": 512,
+            "startup": {
+              "delayMs": 0,
+              "jitterFraction": 0
+            },
+            "terminationGraceMs": 30000
+          },
+          "failureRate": 0.1
+        }
+      },
+      {
+        "id": "side",
+        "stencil": "generic.external-api",
+        "label": "Partner scoring API",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "api": {
+            "latencyMs": 20
+          },
+          "jitter": 0
+        }
+      },
+      {
+        "id": "result",
+        "stencil": "generic.database",
+        "label": "Case store",
+        "x": 660,
+        "y": 390,
+        "props": {
+          "latencyMs": 0
+        }
+      },
+      {
+        "id": "cache",
+        "stencil": "generic.cdn",
+        "label": "Cache",
+        "x": 160,
+        "y": 0,
+        "props": {
+          "latencyMs": 0,
+          "jitter": 0,
+          "cache": {
+            "rules": [],
+            "default": {
+              "ttlMs": 100,
+              "keys": 32,
+              "popularity": "even"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "input",
+        "from": "source",
+        "to": "cache",
+        "props": {
+          "travelMs": 10,
+          "priority": "sheddable"
+        },
+        "kind": "sync"
+      },
+      {
+        "id": "call0",
+        "from": "tier0",
+        "to": "tier1",
+        "kind": "sync",
+        "props": {
+          "travelMs": 10,
+          "networkDelayMs": 10,
+          "caller": {
+            "poolConnections": 1,
+            "wait": "blocking",
+            "replyMs": 0,
+            "deadlineMs": 100,
+            "retry": {
+              "maxAttempts": 9,
+              "backoffMs": 6,
+              "strategy": "exponential",
+              "jitter": 0,
+              "retryOn": ["throttled", "transient", "timeout"]
+            }
+          },
+          "priority": "sheddable"
+        }
+      },
+      {
+        "id": "call1",
+        "from": "tier1",
+        "to": "tier2",
+        "kind": "sync",
+        "props": {
+          "travelMs": 10,
+          "networkDelayMs": 10,
+          "caller": {
+            "poolConnections": 4,
+            "wait": "blocking",
+            "replyMs": 0,
+            "deadlineMs": 100,
+            "retry": {
+              "maxAttempts": 9,
+              "backoffMs": 6,
+              "strategy": "exponential",
+              "jitter": 0,
+              "retryOn": ["throttled", "transient", "timeout"]
+            }
+          },
+          "priority": "sheddable"
+        }
+      },
+      {
+        "id": "output",
+        "from": "tier0",
+        "to": "result",
+        "props": {
+          "travelMs": 10,
+          "priority": "sheddable"
+        }
+      },
+      {
+        "id": "cache-origin",
+        "from": "cache",
+        "to": "tier0",
+        "kind": "sync",
+        "props": {
+          "travelMs": 10,
+          "caller": {
+            "deadlineMs": 100
+          }
+        }
+      }
+    ]
+  },
+  "scale": 2,
+  "deadlineMs": 100,
+  "seed": -847004135
+}
