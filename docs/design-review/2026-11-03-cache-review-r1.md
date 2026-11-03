@@ -23,3 +23,10 @@ Raising planning, bundle or checkpoint limits was rejected: it would hide the re
 Rounding fractional expiries or dropping fetch samples was rejected because replay must remain
 exact. Lossless repeated-value encoding fits the warm fixture within the existing checkpoint
 limit. No golden, assertion or timing backstop is loosened.
+
+## Stress-test follow-up
+
+The annotation neighbour fixture now holds its attachment download until its first readiness
+probe. It waits for the actual triangle stroke and pointer target before measuring handles,
+then keeps the original connection and exact endpoint assertions. Checking the saved shape
+name or a stable rectangular placeholder alone did not establish readiness.

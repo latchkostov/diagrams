@@ -318,105 +318,139 @@ test.describe("annotations", () => {
 
   for (const operation of ["pasted", "resized", "height-resized", "reshaped"] as const)
     test(`${operation} handles use current connection geometry`, async ({ page }) => {
-      await seed(page, {
-        format: "diagrams/v1",
-        title: "Measured connections",
-        nodes: [],
-        edges: [],
-        annotations: [
-          { id: "source", kind: "shape", shape: "rect", text: "Source", x: 0, y: 0, width: 160, height: 90 },
-          { id: "target", kind: "shape", shape: "rect", text: "Target", x: 600, y: 120, width: 160, height: 90 },
-        ],
-      });
-      await gotoCanvas(page, SLUG);
-      await annotation(page, "source").click();
-      await waitForSelectionSettled(page);
-      let source = "source";
-      if (operation === "pasted") {
-        await page.keyboard.press(`${MOD}+c`);
-        await page.keyboard.press(`${MOD}+v`);
-        await expect(page.getByTestId(/^annotation-/).filter({ has: page.getByTestId("shape-outline") })).toHaveCount(
-          3,
+      const held = Promise.withResolvers<undefined>();
+      if (operation === "reshaped")
+        await page.route(
+          /\/(?:assets\/attachmentGeometry-[^/]+\.js|src\/canvas\/shapes\/attachmentGeometry\.ts)(?:\?|$)/,
+          async (route) => {
+            await held.promise;
+            await route.continue();
+          },
         );
-        await expect.poll(async () => (await savedDiagram(page)).annotations?.length).toBe(3);
-        const copy = (await savedDiagram(page)).annotations?.find((a) => a.id !== "source" && a.id !== "target");
-        if (!copy) throw new Error("Missing pasted shape");
-        source = copy.id;
-      } else if (operation === "reshaped") {
-        await page.getByTestId("inspector-more-shapes-btn").click();
-        await page.getByTestId("shape-picker-search").fill("triangle");
-        await page.getByTestId("context-menu-item-pick-shape:tri").click();
-        await expect(annotation(page, source)).toHaveAttribute("data-shape", "tri");
-      } else {
-        const dimension = operation === "resized" ? "width" : "height";
-        const field = page.getByTestId(`inspector-field-${dimension}`);
-        await field.fill("300");
-        await field.press("Enter");
-        await expect
-          .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === source)?.[dimension])
-          .toBe(300);
-      }
-      await waitForSelectionSettled(page);
-      // Clear the resize grips before connecting: a rectangle's border grip shares its handle's position.
-      await page.getByTestId("canvas-wrap").focus();
-      await page.keyboard.press("Escape");
-      await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
-      // Collapse publishes before the pane finishes changing. Measure handles only in its settled view.
-      await waitForStableBox(page.getByTestId("canvas-wrap"));
-      await waitForCameraIdle(page);
-      await fitDiagram(page);
-      await waitForCameraIdle(page);
-      await waitForStableBox(annotation(page, source));
-      await waitForStableBox(page.getByTestId(`handle-${source}-right`));
-      const from = await box(page.getByTestId(`handle-${source}-right`));
-      const to = await box(page.getByTestId("handle-target-left"));
-      const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
-      const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-      // Read the path in screen coordinates, the same coordinate space as the rendered handles.
-      const endpoints = (locator: Locator) =>
-        locator.evaluate((root) => {
-          const path = root.children[0];
-          if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
-          const matrix = path.getScreenCTM();
-          if (!matrix) throw new Error("Missing path transform");
-          const start = path.getPointAtLength(0).matrixTransform(matrix);
-          const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
-          return { start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
+      try {
+        await seed(page, {
+          format: "diagrams/v1",
+          title: "Measured connections",
+          nodes: [],
+          edges: [],
+          annotations: [
+            { id: "source", kind: "shape", shape: "rect", text: "Source", x: 0, y: 0, width: 160, height: 90 },
+            { id: "target", kind: "shape", shape: "rect", text: "Target", x: 600, y: 120, width: 160, height: 90 },
+          ],
         });
-      await page.mouse.move(start.x, start.y);
-      await page.mouse.down();
-      await page.mouse.move(end.x, end.y, { steps: 8 });
-      const preview = page.getByTestId("connection-line");
-      await expect(preview).toBeVisible();
-      await expect
-        .poll(async () => {
-          const point = (await endpoints(preview)).start;
-          return Math.hypot(point.x - start.x, point.y - start.y);
-        })
-        .toBeLessThan(1);
-      await page.mouse.up();
-      await expect.poll(async () => (await savedDiagram(page)).edges).toMatchObject([{ from: source, to: "target" }]);
-      const saved = await savedDiagram(page);
-      const edge = saved.edges[0];
-      // A dot fixes its own side; verify the stored choice, resolved sides and exact endpoints.
-      expect(edge.sourceSide).toBe("right");
-      expect(edge.targetSide).toBe("left");
-      const sourceBox = saved.annotations?.find((a) => a.id === source);
-      const targetBox = saved.annotations?.find((a) => a.id === "target");
-      if (!sourceBox || !targetBox) throw new Error("Missing saved connection endpoint");
-      expect(pickSides(sourceBox, targetBox, edge)).toEqual({ sourceSide: "right", targetSide: "left" });
-      // Selecting the edge can pan the canvas: remeasure both handles with the path each poll.
-      await expect
-        .poll(async () => {
-          const path = await endpoints(page.getByTestId(`edge-${edge.id}`));
-          const a = await box(page.getByTestId(`handle-${source}-right`));
-          const b = await box(page.getByTestId("handle-target-left"));
-          return Math.max(
-            Math.hypot(path.start.x - a.x - a.width / 2, path.start.y - a.y - a.height / 2),
-            Math.hypot(path.end.x - b.x - b.width / 2, path.end.y - b.y - b.height / 2),
+        await gotoCanvas(page, SLUG);
+        await annotation(page, "source").click();
+        await waitForSelectionSettled(page);
+        let source = "source";
+        if (operation === "pasted") {
+          await page.keyboard.press(`${MOD}+c`);
+          await page.keyboard.press(`${MOD}+v`);
+          await expect(page.getByTestId(/^annotation-/).filter({ has: page.getByTestId("shape-outline") })).toHaveCount(
+            3,
           );
-        })
-        .toBeLessThan(1);
+          await expect.poll(async () => (await savedDiagram(page)).annotations?.length).toBe(3);
+          const copy = (await savedDiagram(page)).annotations?.find((a) => a.id !== "source" && a.id !== "target");
+          if (!copy) throw new Error("Missing pasted shape");
+          source = copy.id;
+        } else if (operation === "reshaped") {
+          await page.getByTestId("inspector-more-shapes-btn").click();
+          await page.getByTestId("shape-picker-search").fill("triangle");
+          await page.getByTestId("context-menu-item-pick-shape:tri").click();
+          await expect(annotation(page, source)).toHaveAttribute("data-shape", "tri");
+          const strokeTag = async () => {
+            const tag = await annotation(page, source)
+              .getByTestId("shape-outline")
+              .evaluate((outline) => outline.children[0]?.tagName);
+            held.resolve(undefined);
+            return tag;
+          };
+          // The model changes before the lazy triangle stroke and its ports publish together.
+          await expect.poll(strokeTag).toBe("polygon");
+        } else {
+          const dimension = operation === "resized" ? "width" : "height";
+          const field = page.getByTestId(`inspector-field-${dimension}`);
+          await field.fill("300");
+          await field.press("Enter");
+          await expect
+            .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === source)?.[dimension])
+            .toBe(300);
+        }
+        await waitForSelectionSettled(page);
+        // Clear the resize grips before connecting: a rectangle's border grip shares its handle's position.
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+        // Collapse publishes before the pane finishes changing. Measure handles only in its settled view.
+        await waitForStableBox(page.getByTestId("canvas-wrap"));
+        await waitForCameraIdle(page);
+        await fitDiagram(page);
+        await waitForCameraIdle(page);
+        await waitForStableBox(annotation(page, source));
+        await waitForStableBox(page.getByTestId(`handle-${source}-right`));
+        const sourceHandleId = `handle-${source}-right`;
+        // A stable rectangular placeholder can still precede the shape's lazy attachment geometry.
+        // Check the real pointer target before measuring; hold the download until the first probe.
+        const handleTarget = async () => {
+          const hit = await page.getByTestId(sourceHandleId).evaluate((element) => {
+            const r = element.getBoundingClientRect();
+            return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.getAttribute("data-testid");
+          });
+          held.resolve(undefined);
+          return hit;
+        };
+        await expect.poll(handleTarget).toBe(sourceHandleId);
+        const from = await box(page.getByTestId(`handle-${source}-right`));
+        const to = await box(page.getByTestId("handle-target-left"));
+        const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+        const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+        // Read the path in screen coordinates, the same coordinate space as the rendered handles.
+        const endpoints = (locator: Locator) =>
+          locator.evaluate((root) => {
+            const path = root.children[0];
+            if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
+            const matrix = path.getScreenCTM();
+            if (!matrix) throw new Error("Missing path transform");
+            const start = path.getPointAtLength(0).matrixTransform(matrix);
+            const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
+            return { start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
+          });
+        await page.mouse.move(start.x, start.y);
+        await page.mouse.down();
+        await page.mouse.move(end.x, end.y, { steps: 8 });
+        const preview = page.getByTestId("connection-line");
+        await expect(preview).toBeVisible();
+        await expect
+          .poll(async () => {
+            const point = (await endpoints(preview)).start;
+            return Math.hypot(point.x - start.x, point.y - start.y);
+          })
+          .toBeLessThan(1);
+        await page.mouse.up();
+        await expect.poll(async () => (await savedDiagram(page)).edges).toMatchObject([{ from: source, to: "target" }]);
+        const saved = await savedDiagram(page);
+        const edge = saved.edges[0];
+        // A dot fixes its own side; verify the stored choice, resolved sides and exact endpoints.
+        expect(edge.sourceSide).toBe("right");
+        expect(edge.targetSide).toBe("left");
+        const sourceBox = saved.annotations?.find((a) => a.id === source);
+        const targetBox = saved.annotations?.find((a) => a.id === "target");
+        if (!sourceBox || !targetBox) throw new Error("Missing saved connection endpoint");
+        expect(pickSides(sourceBox, targetBox, edge)).toEqual({ sourceSide: "right", targetSide: "left" });
+        // Selecting the edge can pan the canvas: remeasure both handles with the path each poll.
+        await expect
+          .poll(async () => {
+            const path = await endpoints(page.getByTestId(`edge-${edge.id}`));
+            const a = await box(page.getByTestId(`handle-${source}-right`));
+            const b = await box(page.getByTestId("handle-target-left"));
+            return Math.max(
+              Math.hypot(path.start.x - a.x - a.width / 2, path.start.y - a.y - a.height / 2),
+              Math.hypot(path.end.x - b.x - b.width / 2, path.end.y - b.y - b.height / 2),
+            );
+          })
+          .toBeLessThan(1);
+      } finally {
+        held.resolve(undefined);
+      }
     });
 
   for (const shape of ["hourglass", "comment", "brace-r"] as const)

@@ -36,3 +36,15 @@ fixture has a 109,625 B increment. Neither numerical precision nor test limits c
 No golden has been re-recorded for this fix round. The regression covers mixed cacheable and
 no-store traffic; the existing parity corpus has no changed output, including Black Friday's
 already-approved feature changes.
+
+## Stress-test readiness
+
+The first five-repeat neighbour sweep reported 1,109 passes and one annotation-handle failure.
+Two isolated annotation runs against a clean archive of origin/master passed all 108 tests,
+so the failure was not classified as pre-existing. A held geometry download reproduced the
+fixture's race: its rectangular placeholder could be measured before the triangle stroke and
+ports appeared. The fixture now waits for the rendered triangle and its real pointer target.
+Every connection, side and endpoint assertion and every existing limit remains unchanged.
+The corrected annotation and cache-inspector specs passed all five Linux repetitions under
+12-worker/8-CPU load (305 passed, zero failed or flaky). Removing the readiness wait fails
+deterministically with the held download: the rendered stroke is still `rect`, not `polygon`.
