@@ -42,6 +42,7 @@ export interface CacheRuleState {
   warmSince?: number;
 }
 export interface NodeCache {
+  expected: number;
   rules: CacheRuleState[];
   counts: CacheCounts;
   window?: { second: number; buckets: Float64Array };

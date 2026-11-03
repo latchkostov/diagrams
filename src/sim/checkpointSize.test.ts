@@ -5,6 +5,7 @@ import { createEngine } from "./engine";
 import { cacheRuntime } from "./cache/cacheRuntime";
 import { cacheFixture } from "../lab/cacheFixture";
 import type { CacheTable } from "../model/caching";
+import { createLatencyRecorder, recordLatency } from "./latency";
 
 it("sizes cycles and aliases once and includes Map/Set payloads", () => {
   const item = { text: "x".repeat(1000) };
@@ -223,4 +224,68 @@ it("restores activation capabilities and in-flight rule aliases across cache pat
     watch.stop();
     expect(suffix()).toEqual(expected);
   }
+});
+
+it("bounds warm checkpoints with full fetch rings", () => {
+  const d = cacheFixture();
+  for (let i = 1; i < 8; i++) {
+    d.nodes.push({ ...structuredClone(d.nodes[1]), id: `cache${i}` });
+    d.edges.push({ ...structuredClone(d.edges[0]), id: `input${i}`, to: `cache${i}` });
+    d.edges.push({ ...structuredClone(d.edges[1]), id: `fetch${i}`, from: `cache${i}` });
+  }
+  const caches = d.nodes.filter((n) => n.stencil === "generic.cdn");
+  for (const node of caches)
+    node.props!.cache = {
+      rules: Array.from({ length: 32 }, (_, i) => ({
+        id: `r${i}`,
+        match: { types: [`Page${i}`] },
+        policy: { ttlMs: 1000, keys: 1000 },
+      })),
+    };
+  const rates = Object.fromEntries(
+    caches.map((n) => [
+      n.id,
+      Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`r${i}`, { rate: 1e15, fetchMs: 0 }])),
+    ]),
+  );
+  const e = createEngine({ seed: 7 });
+  e.load(d, rates);
+  const watch = watchCheckpoints();
+  e.checkpoint();
+  const rules = [...watch.sources[0][0].values()].flatMap((n) => n.cache?.rules ?? []);
+  watch.stop();
+  expect(rules).toHaveLength(256);
+  expect(rules.reduce((sum, r) => sum + r.freshUntil.filter((v) => v > 0 && !Number.isInteger(v)).length, 0)).toBe(
+    4096,
+  );
+  for (const node of watch.sources[0][0].values())
+    for (const rule of node.cache?.rules ?? []) {
+      rule.counts = { ...rule.counts };
+      // Successful tail misses populate the real runtime ring without overwriting the warm tracked items.
+      for (let i = 0; i < 32; i++) {
+        const lookup = { rule, item: -1, outcome: "miss" as const, at: 0 };
+        const cache = node.cache!;
+        cacheRuntime.start(cache, lookup, 1);
+        cacheRuntime.settle(cache, lookup, 70, 1, true);
+        recordLatency((cache.latency ??= createLatencyRecorder()), "miss", 70, 0, 0);
+      }
+      expect(rule.fetchMs.count).toBe(32);
+    }
+  e.step(80);
+  const token = e.checkpoint();
+  const snapshot = e.snapshot();
+  const play = () => {
+    for (let i = 0; i < 32; i++) e.inject("source", 1, { type: `Page${i}` });
+    e.step(2000);
+    return e.snapshot();
+  };
+  const expected = play();
+  e.restore(token);
+  expect(e.snapshot()).toEqual(snapshot);
+  expect(play()).toEqual(expected);
+  for (const node of caches) delete node.props!.cache;
+  e.load(d);
+  const baseline = e.checkpoint().bytes;
+  console.info({ warmCheckpoint: token.bytes, baseline, increment: token.bytes - baseline });
+  expect(token.bytes - baseline).toBeLessThanOrEqual(133_120);
 });

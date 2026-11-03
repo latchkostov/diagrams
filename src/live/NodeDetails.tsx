@@ -19,6 +19,7 @@ import { HoverCard } from "./HoverCard";
 import { formatCount, formatRate } from "./format";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
+import { cacheOriginIndex } from "./cacheOrigins";
 
 const History = defineLazySurface({
   id: "live.history",
@@ -59,15 +60,15 @@ export function NodeDetails(props: BadgeProps & { topology: CompiledTopology }) 
     groups,
   };
   const summary = nodeSummary(s, calls);
+  const origins = useMemo(() => cacheOriginIndex(diagram), [diagram]);
   for (const e of diagram.edges) {
     if (e.to !== node.id || e.kind !== "sync") continue;
     const w = snapshot.nodes[e.from]?.cacheDetails?.window;
-    if (!w?.requests || diagram.edges.filter((out) => out.from === e.from && out.kind === "sync").length !== 1)
-      continue;
+    if (!w?.requests || origins.outgoing.get(e.from) !== 1) continue;
     summary.facts.push({
       key: `cache-origin-${e.from}`,
       label: t("cache.originLine", {
-        node: diagram.nodes.find((n) => n.id === e.from)?.label ?? e.from,
+        node: origins.labels.get(e.from) ?? e.from,
         fetch: Math.round(w.fetches / w.seconds),
         rate: Math.round(w.requests / w.seconds),
         hit: Math.round(100 * (1 - w.fetches / w.requests)),

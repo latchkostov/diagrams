@@ -437,6 +437,13 @@ export function createSimulationRun(
         capacity: resolveMultiplier(patch.capacity, multipliers.capacity),
       };
       engine.setCapacityMultiplier(multipliers.capacity);
+      engine.setCacheRates(
+        startingCacheRates(diagram, {
+          ...simulation,
+          multipliers,
+          setup: { ...simulation.setup, props: engine.configuration() },
+        }) ?? {},
+      );
     },
     setSpeed(value) {
       speed = clampSpeed(value, speed);

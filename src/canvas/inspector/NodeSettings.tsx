@@ -163,7 +163,14 @@ export function NodeSettings({
       )}
 
       {props.cache !== undefined && cacheCapable(stencilId, role) && (
-        <CacheFields editor={editor} nodeId={nodeId} props={props} />
+        <CacheFields
+          editor={editor}
+          nodeId={nodeId}
+          props={props}
+          counts={counts}
+          readDiagram={readDiagram}
+          planning={meta.planning}
+        />
       )}
       {planning}
       {simulation}

@@ -24,6 +24,7 @@ export interface CacheRuntime {
   settle(cache: NodeCache, lookup: CacheLookup, now: number, size: number, ok: boolean): void;
   read(cache: NodeCache): CacheReadout;
   details(cache: NodeCache, now: number): CacheDetails;
+  updateExpected(cache: NodeCache, rates: Record<string, { rate: number; fetchMs: number }>): void;
   plan(
     diagram: DiagramFile,
     simulation?: Simulation,

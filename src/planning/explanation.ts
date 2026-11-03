@@ -5,6 +5,35 @@ import { compileTopology, brokerRole, type CompiledTopology } from "../sim/topol
 import { stencilRole } from "../stencils/roles";
 import { resolveMultiplier } from "../sim/units";
 import type { RealNodeMetrics, NodeStatus } from "../sim/types";
+import { effectiveCacheTable } from "../sim/cache/cacheAnalysis";
+
+/** Cache derivations share analysis precedence without building capacity/fix explanations. */
+export function cacheExplanation(
+  d: DiagramFile,
+  id: string,
+  analysis: CapacityAnalysis,
+  sim?: Simulation,
+  topology = compileTopology(d),
+): Explanation["cache"] {
+  const node = d.nodes.find((n) => n.id === id);
+  const table = node && effectiveCacheTable(d, node, sim);
+  if (!table || !analysis.cacheDemand?.[id]) return;
+  const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
+  const origin = (topology.outgoing.get(id) ?? [])
+    .filter((e) => e.sync)
+    .map((e) => labels.get(e.to) ?? e.to)
+    .join(", ")
+    .slice(0, 200);
+  return [...table.rules, ...(table.default ? [{ id: "", label: "Default policy", policy: table.default }] : [])].map(
+    (r) => ({
+      id: r.id,
+      label: (r.label ?? r.id).slice(0, 200),
+      policy: r.policy,
+      ...(analysis.cacheDemand![id][r.id] ?? { rate: 0, hitRatio: 0, fetchMs: 0 }),
+      origin,
+    }),
+  );
+}
 
 export const explanationSimulation = (d: DiagramFile): Simulation => ({
   id: "free-play",
@@ -147,17 +176,7 @@ export function explainNode(
   return {
     ...(options.includeCache && analysis.cacheDemand?.[id]
       ? {
-          cache: ((node.props?.cache as import("../model/caching").CacheTable | undefined)?.rules ?? []).map((r) => ({
-            id: r.id,
-            label: (r.label ?? r.id).slice(0, 200),
-            policy: r.policy,
-            ...(analysis.cacheDemand![id][r.id] ?? { rate: 0, hitRatio: 0, fetchMs: 0 }),
-            origin: (topology.outgoing.get(id) ?? [])
-              .filter((e) => e.sync)
-              .map((e) => d.nodes.find((n) => n.id === e.to)?.label ?? e.to)
-              .join(", ")
-              .slice(0, 200),
-          })),
+          cache: cacheExplanation(d, id, analysis, planningSimulation(d, sim), topology),
         }
       : {}),
     ...(n.managed

@@ -66,7 +66,8 @@ export const cacheRuntime: CacheRuntime = {
   compile(value, node, seed, scale, remaining, rates) {
     checkCache(value);
     const table = value as CacheTable;
-    return {
+    const cache: NodeCache = {
+      expected: 0,
       counts: counts(),
       rules: [...table.rules, ...(table.default ? [{ id: "", match: undefined, policy: table.default }] : [])].map(
         (rule) => {
@@ -117,6 +118,24 @@ export const cacheRuntime: CacheRuntime = {
         },
       ),
     };
+    cacheRuntime.updateExpected(cache, rates ?? {});
+    return cache;
+  },
+  updateExpected(cache, rates) {
+    let expected = 0,
+      total = 0;
+    for (const rule of cache.rules) {
+      const planned = rates[rule.id]?.rate ?? 0;
+      const fetchMs = rates[rule.id]?.fetchMs ?? 0;
+      // Keep contents, observations and random streams; only configured inputs change.
+      if (rule.rate.planned !== planned) rule.rate = { ...rule.rate, planned };
+      if (rule.fetchMs.planned !== fetchMs) rule.fetchMs = { ...rule.fetchMs, planned: fetchMs };
+      if (!rule.policy.noStore) {
+        total += planned;
+        expected += planned * cacheHitShare(rule.policy, planned, fetchMs);
+      }
+    }
+    cache.expected = total ? expected / total : 0;
   },
   lookup(cache, type, request, sync, now, size) {
     const rule = cache.rules.find(
@@ -215,16 +234,8 @@ export const cacheRuntime: CacheRuntime = {
         for (let i = 0; i < 4; i++) totals[i] += cache.window.buckets[(s % 10) * 4 + i];
     }
     const latency = cache.latency && latencyMetrics(cache.latency);
-    let expected = 0,
-      rate = 0;
-    for (const r of cache.rules)
-      if (!r.policy.noStore) {
-        const current = r.rate.planned;
-        rate += current;
-        expected += current * cacheHitShare(r.policy, current, r.fetchMs.planned);
-      }
     return {
-      expected: rate ? expected / rate : 0,
+      expected: cache.expected,
       ...(cache.window
         ? {
             window: {

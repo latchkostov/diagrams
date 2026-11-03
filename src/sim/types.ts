@@ -512,6 +512,8 @@ export interface SimEngine {
   setScale(scale: number): void;
   /** Capacity multiplier changes replicas without overwriting base node props. */
   setCapacityMultiplier(multiplier: number): void;
+  /** Refresh configured cache expectations without discarding live entries or observations. */
+  setCacheRates(rates: Record<string, Record<string, { rate: number; fetchMs: number }>>): void;
   /** Inject `count` sampled messages. For real counts use SimulationRun.inject. */
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
   setFault(fault: import("../model/faults").Fault): void;

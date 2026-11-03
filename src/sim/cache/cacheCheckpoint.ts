@@ -19,6 +19,18 @@ export class CacheCheckpoint {
     const array = (a: Float64Array) => {
       const entries: number[] = [];
       for (let i = 0; i < a.length; i++) if (!Object.is(a[i], 0)) entries.push(i, a[i]);
+      const runs: number[] = [];
+      for (let i = 0; i < a.length;) {
+        const start = i++;
+        while (i < a.length && Object.is(a[i], a[start])) i++;
+        runs.push(i - start, a[start]);
+      }
+      // Warm rate buckets and full fetch rings often repeat exactly. Preserve the
+      // values bit for bit, including signed zero, without repeating their payload.
+      if (runs.length + 3 < Math.min(a.length + 1, entries.length + 2)) {
+        values.push(a.length, -1, runs.length / 2, ...runs);
+        return;
+      }
       // Negative length marks dense storage; zero-length arrays have no payload.
       if (entries.length >= a.length && a.length) values.push(-a.length, ...a);
       else values.push(a.length, entries.length / 2, ...entries);
@@ -88,6 +100,16 @@ export class CacheCheckpoint {
       }
       const result = new Float64Array(length),
         count = next();
+      if (count === -1) {
+        const runs = next();
+        let offset = 0;
+        for (let i = 0; i < runs; i++) {
+          const size = next();
+          result.fill(next(), offset, offset + size);
+          offset += size;
+        }
+        return result;
+      }
       for (let i = 0; i < count; i++) result[next()] = next();
       return result;
     };

@@ -73,7 +73,7 @@ function writable(h: Histogram): Histogram {
 
 export function recordLatency(
   recorder: LatencyRecorder,
-  type: string,
+  type: string | undefined,
   wait: number,
   work: number,
   travel: number,
@@ -97,6 +97,7 @@ export function recordLatency(
     h.travelMs += travel * weight;
   };
   add((recorder.total = writable(recorder.total)));
+  if (type === undefined) return;
   let typed = recorder.types.get(type);
   if (!typed && recorder.types.size < LATENCY_TYPES && (!budget || budget.remaining > 0)) {
     typed = histogram();

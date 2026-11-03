@@ -194,6 +194,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         node.frees = node.outgoing.filter((e) => callEligible(node.role, e, true)).every((e) => !e.policy?.blocking);
     }
   }
+  /** Completed response times are authoritative for cache nodes everywhere. */
+  function responseLatency(node: Node) {
+    return node.cache?.latency ?? node.latency;
+  }
   /** Load and cache activation share the same capabilities, preserving live retry/breaker state. */
   function initializeCall(edge: Edge, cache: boolean): void {
     if (!waits() || !callEligible(edge.from.role, edge, cache)) return;
@@ -2164,14 +2168,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function complete(node: Node, work: Work): void {
-    if (node.cache && work.cache && work.cache.outcome !== "not-cached") {
+    if (node.cache && work.cache) {
       const recorder =
         node.cache.latency ??
         (latencyBudget.remaining > 0 ? (node.cache.latency = createLatencyRecorder()) : undefined);
       if (recorder)
         recordLatency(
           recorder,
-          work.cache.outcome,
+          work.cache.outcome === "not-cached" ? undefined : work.cache.outcome,
           time - work.cacheAt!,
           0,
           0,
@@ -3531,7 +3535,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const node = nodes.get(metric.node);
       if (!node) return undefined;
       if (metric.field === "p95") {
-        const recorder = node.cache?.latency ?? node.latency;
+        const recorder = responseLatency(node);
         return recorder ? latencyMetrics(recorder).p95 : 0;
       }
       if (metric.field === "originFetches") return (node.cache?.counts.fetches ?? 0) / scale;
@@ -3802,15 +3806,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
+        const latency = responseLatency(node);
         const backlog = queueBacklog(node);
         for (const group of node.groups) lag[group.name] = roundDots(group.pendingUnits);
         if (node.role === "queue" && !node.groups.length) lag.queue = backlog;
         nodeStates[node.id] = {
-          ...(node.latency
+          ...(latency
             ? {
-                latency: sinceFault
-                  ? { ...latencyMetrics(node.latency), sinceFault: sinceFault }
-                  : latencyMetrics(node.latency),
+                latency: sinceFault ? { ...latencyMetrics(latency), sinceFault: sinceFault } : latencyMetrics(latency),
               }
             : {}),
           ...(node.cache
@@ -3997,6 +4000,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       setNodePropsBatch({ [nodeId]: patch });
     },
     setNodePropsBatch,
+    setCacheRates(rates) {
+      for (const node of nodes.values()) if (node.cache) cacheRuntime!.updateExpected(node.cache, rates[node.id] ?? {});
+    },
     trafficLimit: () =>
       partBudget.blocked
         ? "resources"

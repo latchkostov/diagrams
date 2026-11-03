@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import type { EditorApi } from "../editor/types";
+import type { DiagramFile } from "../model/types";
 import { checkCache, type CachePolicy, type CacheRule, type CacheTable, type Popularity } from "../model/caching";
 import { newCacheRule } from "../model/cacheEdits";
 import { revisionAtLeast } from "../model/revisions";
@@ -20,6 +21,28 @@ const noSubscribe = () => () => {};
 const noState = () => null;
 const presets = [10_000, 60_000, 300_000, 3_600_000];
 let cacheEdit = 0;
+
+function MessagePatterns({ types, id, set }: { types?: string[]; id: string; set: (types?: string[]) => void }) {
+  const external = types?.join(", ") ?? "";
+  const [draft, setDraft] = useState({ text: external, external });
+  if (draft.external !== external) setDraft({ text: external, external });
+  return (
+    <input
+      className="insp-input"
+      data-testid={`${id}-types-input`}
+      value={draft.external === external ? draft.text : external}
+      onChange={(e) => {
+        const text = e.currentTarget.value;
+        const next = text
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+        setDraft({ text, external: next.join(", ") });
+        set(next.length ? next : undefined);
+      }}
+    />
+  );
+}
 
 function CachePolicyFields({
   id,
@@ -161,10 +184,16 @@ export function CacheFields({
   editor,
   nodeId,
   props,
+  counts,
+  readDiagram,
+  planning,
 }: {
   editor: EditorApi;
   nodeId: string;
   props: Record<string, unknown>;
+  counts: { nodes: number; edges: number };
+  readDiagram?: () => DiagramFile;
+  planning?: DiagramFile["planning"];
 }) {
   useLocale();
   const table = props.cache as CacheTable;
@@ -176,10 +205,23 @@ export function CacheFields({
   const add = useRef<HTMLButtonElement>(null);
   const live = useSyncExternalStore(planningHost.subscribe, planningHost.get);
   const state = useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
-  const doc = editor.getDiagram();
-  const configured = configuredPlanning(doc, state);
+  const version = editor.getDocumentVersion();
+  const limited = counts.nodes > 256 || counts.edges > 512;
+  const read = () => ({ ...version, limited, doc: limited ? undefined : (readDiagram?.() ?? editor.getDiagram()) });
+  const [snapshot, setSnapshot] = useState(read);
+  let current = snapshot;
+  if (
+    snapshot.identity !== version.identity ||
+    snapshot.revision !== version.revision ||
+    snapshot.limited !== limited
+  ) {
+    current = read();
+    setSnapshot(current);
+  }
+  const doc = current.doc;
+  const configured = doc && configuredPlanning(doc, state);
   const demand = configured?.analysis.cacheDemand?.[nodeId];
-  const origin = doc.edges
+  const origin = doc?.edges
     .filter((e) => e.from === nodeId && e.kind === "sync")
     .map((e) => doc.nodes.find((n) => n.id === e.to)?.label ?? e.to)
     .join(", ");
@@ -241,8 +283,10 @@ export function CacheFields({
     <Section title={t("cache.rules")}>
       <div data-testid="inspector-cache" className="cache-fields">
         <p className="insp-note">{t("cache.rulesHint")}</p>
-        {!revisionAtLeast(doc.planning?.revision, "p3-w3") && <p className="insp-note">{t("cache.dormant")}</p>}
-        {!origin && <p className="insp-note">{t("cache.noOrigin")}</p>}
+        {!revisionAtLeast((doc?.planning ?? planning)?.revision, "p3-w3") && (
+          <p className="insp-note">{t("cache.dormant")}</p>
+        )}
+        {doc && !origin && <p className="insp-note">{t("cache.noOrigin")}</p>}
         <div role="group" aria-label={t("cache.rules")}>
           <div className="cache-row cache-head" aria-hidden="true">
             <span data-testid="cache-order-heading">{t("routing.order")}</span>
@@ -303,17 +347,10 @@ export function CacheFields({
                   <ReadoutDisclosure title={t("messageTypes.messages")} testId={`cache-rule-${rule.id}-types`}>
                     <label className="insp-field">
                       <span className="insp-label">{t("messageTypes.messages")}</span>
-                      <input
-                        className="insp-input"
-                        data-testid={`cache-rule-${rule.id}-types-input`}
-                        value={rule.match.types?.join(", ") ?? ""}
-                        onChange={(e) => {
-                          const types = e.currentTarget.value
-                            .split(",")
-                            .map((x) => x.trim())
-                            .filter(Boolean);
-                          update(rule, { match: { ...rule.match, types: types.length ? types : undefined } }, "types");
-                        }}
+                      <MessagePatterns
+                        id={`cache-rule-${rule.id}`}
+                        types={rule.match.types}
+                        set={(types) => update(rule, { match: { ...rule.match, types } }, "types")}
                       />
                     </label>
                   </ReadoutDisclosure>

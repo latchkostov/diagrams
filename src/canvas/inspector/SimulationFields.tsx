@@ -149,7 +149,12 @@ export function NodeSimulation({
             type="button"
             className="btn"
             data-testid="cache-add"
-            onClick={() => editor.applyDiagram(withCacheRules(editor.getDiagram(), nodeId))}
+            onClick={() => {
+              const selection = editor.getSelection();
+              editor.applyDiagram(withCacheRules(editor.getDiagram(), nodeId));
+              editor.select(selection);
+              editor.openInspector("cache-add-rule");
+            }}
           >
             {t("cache.addRules")}
           </button>

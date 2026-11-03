@@ -22,6 +22,43 @@ async function add(page: Page) {
   await waitForSelectionSettled(page);
 }
 
+test("Properties keeps selection and focuses the cache editor after its held chunk loads", async ({ page }) => {
+  await setup(page);
+  await page.getByTestId("node-cache").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").focus();
+  await page.keyboard.press("Enter");
+  const held = await holdChunk(page, chunk("cacheRuntime", "src/sim/cache/cacheRuntime.ts"));
+  try {
+    await page.getByTestId("cache-add").focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("inspector.cache-loading")).toHaveAttribute("aria-busy", "true");
+    held.release();
+    await expect(page.getByTestId("cache-add-rule")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Edge cache");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("cache-rule-cache-2")).toBeFocused();
+  } finally {
+    held.release();
+  }
+});
+
+test("message patterns preserve separators during keyboard entry and follow Undo", async ({ page }) => {
+  await setup(page);
+  await add(page);
+  await page.getByTestId("cache-rule-cache-1-types-toggle").click();
+  const field = page.getByTestId("cache-rule-cache-1-types-input");
+  await field.focus();
+  await page.keyboard.type("Page, Invoice");
+  await expect(field).toHaveValue("Page, Invoice");
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes[1].props?.cache)
+    .toMatchObject({ rules: [{ match: { types: ["Page", "Invoice"] } }] });
+  await page.getByTestId("undo-button").click();
+  await expect(field).toHaveValue("");
+});
+
 test("Black Friday exposes the four ordered edge rules in Properties", async ({ page }) => {
   await gotoCanvas(page, "black-friday-commerce");
   await page.getByTestId("node-cdn").click();

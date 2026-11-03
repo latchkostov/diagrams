@@ -782,7 +782,7 @@ export function builtinActions(): Action[] {
       run: (ctx) => {
         ctx.editor.applyDiagram(withCacheRules(ctx.editor.getDiagram(), ctx.nodeId!));
         ctx.editor.select({ nodeIds: [ctx.nodeId!] });
-        ctx.editor.openInspector();
+        ctx.editor.openInspector("cache-add-rule");
       },
     },
     selectSimilarAction(),
