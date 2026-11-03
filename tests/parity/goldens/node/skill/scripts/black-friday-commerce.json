@@ -81,7 +81,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "7b33a1310c25cfe709365bce4a35a0f58b78aa00ddcca40cf9cc2f0433156473", "bytes": 36006 },
+    "decoded": { "sha256": "b116f2e2e4c574cdf952da3de373af430d6d62e8efc5fd3da6fbca7b93e46e7a", "bytes": 36005 },
     "sameAsFile": true,
     "warned": true
   },
@@ -309,7 +309,7 @@
                     "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/checkout" } },
                     "targets": [{ "edgeId": "gateway--checkout-api", "weight": 1 }],
                     "quotas": [
-                      { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 180 }
+                      { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 90 }
                     ]
                   },
                   {

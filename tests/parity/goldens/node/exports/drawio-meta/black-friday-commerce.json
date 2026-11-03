@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "12deca92e084cb62fbb6a8a7003887dcd6fe3f99e5744de204e93eaa93fd2bfa",
-    "bytes": 324508,
+    "sha256": "59c0aaebcf1da9f0024d14ac60e6cf6b777948d786ee25e3bd4432741533896e",
+    "bytes": 324507,
     "inlined": {
       "airflow": "airflow bb347b1c98e3b7d4",
       "argocd": "argo f05272f641716862",
@@ -257,7 +257,7 @@
                     "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/checkout" } },
                     "targets": [{ "edgeId": "gateway--checkout-api", "weight": 1 }],
                     "quotas": [
-                      { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 180 }
+                      { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 90 }
                     ]
                   },
                   {

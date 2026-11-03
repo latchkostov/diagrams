@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "d17017d2c16dbfbddbb4604f29f0bf1b8466099168ff1d23756a0b3439f44252", "bytes": 205645 },
+  "file": { "sha256": "cf6af69a758f55346fd0ecf1806213ab9db1431f988e149d99dd7da4d44b0e39", "bytes": 205644 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -220,7 +220,7 @@
                   "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/checkout" } },
                   "targets": [{ "edgeId": "gateway--checkout-api", "weight": 1 }],
                   "quotas": [
-                    { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 180 }
+                    { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 90 }
                   ]
                 },
                 {

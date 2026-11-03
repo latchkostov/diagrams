@@ -522,7 +522,7 @@
                   "amount": 180,
                   "windowMs": 1000,
                   "algorithm": "token-bucket",
-                  "burst": 180
+                  "burst": 90
                 }
               ]
             },

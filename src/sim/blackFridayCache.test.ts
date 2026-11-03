@@ -11,6 +11,14 @@ import { collectEvidence } from "../checks/evidence";
 import { withEvidence } from "../checks/evidenceMerge";
 
 const d = current as DiagramFile;
+it("shows checkout shedding within the showcase's first eight seconds", () => {
+  const run = createSimulationRun(d, d.simulations![0]);
+  for (let tick = 0; tick < 800; tick++) {
+    if (run.state().waiting) run.resume();
+    run.step(10);
+  }
+  expect(run.engine.snapshot().nodes.gateway.rejected).toBeGreaterThan(0);
+});
 it("keeps the upgraded showcase clean in configured Checks and simulation evidence", () => {
   const configured = runChecks(d);
   expect(configured.findings).toEqual([]);

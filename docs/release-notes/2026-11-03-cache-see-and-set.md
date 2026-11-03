@@ -18,7 +18,8 @@ Search runs at 58.83% warm / 166.67% cold. Product pages derive 87.02% hits and 
 
 Six outside calls gain explicit 2 s timeouts: risk, tax, warehouse, payment provider, email and
 push. Fulfilment gains eight execution slots and a 2-core CPU limit to carry reply CPU work.
-Checkout's route quota and burst become 180 requests/s. The CDN's origin call retries only
+Checkout's route quota becomes 180 requests/s with a 90-request burst, preserving visible
+shedding within the existing eight-second showcase observation. The CDN's origin call retries only
 throttled replies, at most six attempts, with full jitter, 1 s exponential backoff capped at
 4 s, a 50% retry budget and a 20 s deadline. This keeps excess 429s and makes the story's
 existing retry claim true without losing requests. The earlier evidence difference was real:

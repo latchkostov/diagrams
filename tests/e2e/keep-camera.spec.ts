@@ -268,7 +268,7 @@ for (const inset of [0, 10, 100])
     await pauseClock(page);
     await page.getByTestId("live-restart").click();
     await page.getByTestId("live-play").click();
-    await page.clock.runFor(4500);
+    await page.clock.runFor(6500);
     await page.getByTestId("live-play").click();
     await expect(page.getByTestId("live-note-text")).toContainText("Doors open");
     await page.clock.resume();

@@ -195,7 +195,7 @@
             "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/checkout" } },
             "targets": [{ "edgeId": "gateway--checkout-api", "weight": 1 }],
             "quotas": [
-              { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 180 }
+              { "id": "checkout-rps", "unit": "requests", "amount": 180, "windowMs": 1000, "algorithm": "token-bucket", "burst": 90 }
             ]
           },
           {

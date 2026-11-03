@@ -1,5 +1,5 @@
 ---
-title: "Shoppers on the web #142 · 5.37 s end to end · 71 copies · 3 retries · dead-lettered"
+title: "Shoppers on the web #142 · 5.06 s end to end · 71 copies · 3 retries · dead-lettered"
 ---
 sequenceDiagram
   participant web as Shoppers on the web
@@ -140,7 +140,7 @@ sequenceDiagram
   push->>apns: ShipmentCreated (+3.14 s)<br/>Send
   status_projector->>status_cache: ShipmentCreated (+3.15 s)<br/>Upsert
   status_cache-->>status_projector: reply (+3.16 s)
-  notifier-)notify_q: ShipmentCreated (+3.17 s)<br/>Notify
+  notifier-)notify_q: ShipmentCreated (+3.16 s)<br/>Notify
   status_projector->>status_cache: ShipmentCreated (+3.18 s)<br/>Upsert
   status_cache-->>status_projector: reply (+3.19 s)
   fulfilment->>wms: OrderPlaced (+3.19 s)<br/>Pick request
@@ -150,67 +150,67 @@ sequenceDiagram
   Note over wms: Rejected
   Note over fulfilment: ✕ attempt 3 failed
   fulfilment--)orders: back to the broker after attempt 3 (+3.21 s)
-  wms-->>fulfilment: reply (+3.24 s)
-  fulfilment-)shipments: ShipmentCreated (+3.25 s)
+  wms-->>fulfilment: reply (+3.23 s)
+  fulfilment-)shipments: ShipmentCreated (+3.24 s)
   wms-->>fulfilment: reply (+3.32 s)
-  apns-->>push: reply (+3.40 s)
+  apns-->>push: reply (+3.36 s)
   Note over orders: Dead-lettered after 3 deliveries
   rect rgba(209, 57, 63, 0.14)
     orders-)orders_dlq: OrderPlaced (dead letter) (+3.43 s)
   end
-  notify_q-)push: ShipmentCreated (+3.47 s)
-  notify_q-)email: ShipmentCreated (+3.47 s)
+  notify_q-)push: ShipmentCreated (+3.46 s)
+  notify_q-)email: ShipmentCreated (+3.46 s)
   fulfilment-)shipments: ShipmentCreated (+3.49 s)
   notify_q-)push: ShipmentCreated (+3.49 s)
   Note over orders: Dead-lettered after 3 deliveries
   rect rgba(209, 57, 63, 0.14)
     orders-)orders_dlq: OrderPlaced (dead letter) (+3.51 s)
   end
-  shipments-)notifier: ShipmentCreated (+3.55 s)
-  shipments-)status_projector: ShipmentCreated (+3.55 s)
+  shipments-)notifier: ShipmentCreated (+3.54 s)
+  shipments-)status_projector: ShipmentCreated (+3.54 s)
   orders_dlq-)dlq_triage: OrderPlaced (+3.73 s)
   shipments-)notifier: ShipmentCreated (+3.79 s)
   shipments-)status_projector: ShipmentCreated (+3.79 s)
+  push->>apns: ShipmentCreated (+3.80 s)<br/>Send
   orders_dlq-)dlq_triage: OrderPlaced (+3.81 s)
-  push->>apns: ShipmentCreated (+3.82 s)<br/>Send
+  email->>sendgrid: ShipmentCreated (+3.84 s)<br/>Mail send
   push->>apns: ShipmentCreated (+3.84 s)<br/>Send
-  email->>sendgrid: ShipmentCreated (+3.86 s)<br/>Mail send
   status_projector->>status_cache: ShipmentCreated (+3.87 s)<br/>Upsert
+  notifier-)notify_q: ShipmentCreated (+3.87 s)<br/>Notify
   status_cache-->>status_projector: reply (+3.88 s)
-  notifier-)notify_q: ShipmentCreated (+3.88 s)<br/>Notify
-  apns-->>push: reply (+4.06 s)
-  apns-->>push: reply (+4.06 s)
-  status_projector->>status_cache: ShipmentCreated (+4.11 s)<br/>Upsert
-  status_cache-->>status_projector: reply (+4.12 s)
-  notifier-)notify_q: ShipmentCreated (+4.13 s)<br/>Notify
-  sendgrid-->>email: reply (+4.13 s)
-  dlq_triage->>loyalty: OrderPlaced (+4.14 s)<br/>Replay
-  orders_dlq-)dlq_triage: OrderPlaced (+4.14 s)
-  notify_q-)email: ShipmentCreated (+4.18 s)
-  notify_q-)push: ShipmentCreated (+4.18 s)
-  loyalty->>loyalty_db: OrderPlaced (+4.20 s)<br/>Points
-  loyalty_db-->>loyalty: reply (+4.21 s)
-  loyalty-->>dlq_triage: reply (+4.29 s)
-  orders_dlq-)dlq_triage: OrderPlaced (+4.39 s)
-  notify_q-)email: ShipmentCreated (+4.43 s)
-  notify_q-)push: ShipmentCreated (+4.43 s)
-  dlq_triage->>loyalty: OrderPlaced (+4.49 s)<br/>Replay
-  push->>apns: ShipmentCreated (+4.52 s)<br/>Send
-  loyalty->>loyalty_db: OrderPlaced (+4.55 s)<br/>Points
-  dlq_triage->>loyalty: OrderPlaced (+4.55 s)<br/>Replay
-  loyalty_db-->>loyalty: reply (+4.56 s)
-  email->>sendgrid: ShipmentCreated (+4.56 s)<br/>Mail send
-  loyalty-->>dlq_triage: reply (+4.57 s)
-  loyalty->>loyalty_db: OrderPlaced (+4.60 s)<br/>Points
-  loyalty_db-->>loyalty: reply (+4.61 s)
-  loyalty-->>dlq_triage: reply (+4.62 s)
-  apns-->>push: reply (+4.74 s)
-  push->>apns: ShipmentCreated (+4.77 s)<br/>Send
-  sendgrid-->>email: reply (+4.78 s)
-  dlq_triage->>loyalty: OrderPlaced (+4.81 s)<br/>Replay
-  email->>sendgrid: ShipmentCreated (+4.81 s)<br/>Mail send
-  loyalty->>loyalty_db: OrderPlaced (+4.87 s)<br/>Points
-  loyalty_db-->>loyalty: reply (+4.88 s)
-  loyalty-->>dlq_triage: reply (+4.96 s)
-  sendgrid-->>email: reply (+5.05 s)
+  apns-->>push: reply (+4.07 s)
+  sendgrid-->>email: reply (+4.11 s)
+  status_projector->>status_cache: ShipmentCreated (+4.12 s)<br/>Upsert
+  notifier-)notify_q: ShipmentCreated (+4.12 s)<br/>Notify
+  status_cache-->>status_projector: reply (+4.13 s)
+  apns-->>push: reply (+4.14 s)
+  dlq_triage->>loyalty: OrderPlaced (+4.15 s)<br/>Replay
+  orders_dlq-)dlq_triage: OrderPlaced (+4.15 s)
+  notify_q-)email: ShipmentCreated (+4.17 s)
+  notify_q-)push: ShipmentCreated (+4.17 s)
+  loyalty->>loyalty_db: OrderPlaced (+4.21 s)<br/>Points
+  loyalty_db-->>loyalty: reply (+4.22 s)
+  loyalty-->>dlq_triage: reply (+4.23 s)
+  notify_q-)email: ShipmentCreated (+4.42 s)
+  notify_q-)push: ShipmentCreated (+4.42 s)
+  orders_dlq-)dlq_triage: OrderPlaced (+4.43 s)
+  push->>apns: ShipmentCreated (+4.51 s)<br/>Send
+  dlq_triage->>loyalty: OrderPlaced (+4.54 s)<br/>Replay
+  email->>sendgrid: ShipmentCreated (+4.55 s)<br/>Mail send
+  dlq_triage->>loyalty: OrderPlaced (+4.57 s)<br/>Replay
+  loyalty->>loyalty_db: OrderPlaced (+4.59 s)<br/>Points
+  loyalty_db-->>loyalty: reply (+4.60 s)
+  loyalty-->>dlq_triage: reply (+4.61 s)
+  loyalty->>loyalty_db: OrderPlaced (+4.62 s)<br/>Points
+  loyalty_db-->>loyalty: reply (+4.63 s)
+  loyalty-->>dlq_triage: reply (+4.64 s)
+  push->>apns: ShipmentCreated (+4.76 s)<br/>Send
+  apns-->>push: reply (+4.78 s)
+  email->>sendgrid: ShipmentCreated (+4.80 s)<br/>Mail send
+  dlq_triage->>loyalty: OrderPlaced (+4.85 s)<br/>Replay
+  sendgrid-->>email: reply (+4.85 s)
+  loyalty->>loyalty_db: OrderPlaced (+4.90 s)<br/>Points
+  loyalty_db-->>loyalty: reply (+4.91 s)
+  loyalty-->>dlq_triage: reply (+4.92 s)
+  sendgrid-->>email: reply (+5.02 s)
   apns-->>push: reply (+5.05 s)
