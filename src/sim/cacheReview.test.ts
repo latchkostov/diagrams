@@ -15,6 +15,9 @@ import { CacheDerivations } from "../planning/CacheDerivations";
 import { nodeSummary, dockedNodeVitals } from "../live/hoverSummary";
 import { cacheReadout } from "../live/cacheReadout";
 import { latencyDuration } from "../live/latencyFormat";
+import { LiveController } from "../live/controller";
+import { emptyInputs, freePlaySimulation } from "../live/playbackInputs";
+import { dispatchReplayControl } from "./replayControls";
 
 it("explains simulation-overridden rules and a simulation-only Default policy", () => {
   const d = cacheFixture();
@@ -155,6 +158,37 @@ it("keeps untouched rate and fetch rings independent after a baseline edit befor
   expect(second.rules[0]).toEqual(before);
   expect(compile().rules[0]).toEqual(before);
   expect(first.rules[0].fetchMs.count).toBe(1);
+});
+
+it("refreshes Free play's baseline without clearing contents and records it for replay", () => {
+  const d = cacheFixture();
+  const c = new LiveController(d, { seed: 7, replayDelayMs: 0 });
+  try {
+    c.setInputs({ ...emptyInputs(), scale: 1 });
+    c.setPlaying(true);
+    c.advance(0);
+    c.advance(1000);
+    const generation = c.getState().generation;
+    const before = c.snapshot().nodes.cache;
+    const inputs = { ...emptyInputs(), traffic: 0.01, scale: 1 };
+    c.setInputs(inputs);
+    expect(c.getState().generation).toBe(generation);
+    const after = c.snapshot().nodes.cache;
+    expect(after.cache).toEqual(before.cache);
+    const rates = cacheRuntime.plan(d, freePlaySimulation(d, inputs));
+    expect(after.cacheDetails!.expected).toBe(
+      analyzeCapacity(d, freePlaySimulation(d, inputs)).cacheDemand!.cache[""].hitRatio,
+    );
+    expect(after.cacheDetails!.expected).toBeLessThan(before.cacheDetails!.expected! / 2);
+    const control = c.verificationContext().controls.at(-1)!.op;
+    expect(control).toMatchObject({ kind: "configuration", cacheRates: rates });
+    const replay = createEngine({ seed: 7 });
+    replay.load(d, cacheRuntime.plan(d));
+    dispatchReplayControl(control, { engine: replay, resume: () => {}, inject: () => {} });
+    expect(replay.snapshot().nodes.cache.cacheDetails!.expected).toBe(after.cacheDetails!.expected);
+  } finally {
+    c.dispose();
+  }
 });
 
 it("reuses cache derivations and compiled topology across Inputs and Properties renders", () => {

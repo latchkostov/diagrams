@@ -34,6 +34,7 @@ export type ReplayControl =
       patches: Record<string, NodeSimProps>;
       capacity?: number;
       multipliers?: { traffic: number; capacity: number };
+      cacheRates?: Parameters<SimEngine["setCacheRates"]>[0];
     };
 
 export interface TimedReplayControl {
@@ -92,6 +93,7 @@ export function dispatchReplayControl(op: ReplayControl, target: ReplayTarget): 
       for (const [id, status] of Object.entries(op.statuses ?? {})) engine.setNodeStatus(id, status);
       engine.setNodePropsBatch(op.patches, op.capacity);
       if (op.multipliers) target.setMultipliers?.(op.multipliers);
+      if (op.cacheRates) engine.setCacheRates(op.cacheRates);
       return;
     default: {
       const unknown: never = op;

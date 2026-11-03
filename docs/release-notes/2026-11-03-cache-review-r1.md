@@ -6,9 +6,10 @@ typed draft, so `Page, Invoice` saves two patterns and Undo restores the previou
 (R-cd56e4ce6b, R-8818ec643d).
 
 Cache explanations and capacity analysis share the effective simulation policy, including rules
-and a Default policy introduced by simulation setup (R-7e73679f04). Changing a saved run's Traffic
-or Capacity multiplier refreshes its expected-hit baseline without clearing entries, counters or
+and a Default policy introduced by simulation setup (R-7e73679f04). Changing Traffic or Capacity
+in a saved run or incremental Free play refreshes its expected-hit baseline without clearing entries, counters or
 random streams (R-e466534e7f).
+Free play records the baseline update in its replay controls so verification sees the same inputs.
 Baseline edits before the first request also preserve the independence of shared initial rate
 and fetch-sample rings; their first write cannot affect another rule or a later run.
 
