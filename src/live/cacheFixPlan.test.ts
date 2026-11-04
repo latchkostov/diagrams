@@ -20,10 +20,16 @@ it("each ladder edit equals the inspector preset and the saved comparison; fresh
   const d = example as DiagramFile,
     table = d.nodes[1].props!.cache as CacheTable;
   const steps = cacheLadder(table, "launch");
-  expect(steps.map((s) => s.step)).toEqual(["coalesce"]);
+  expect(steps.map((s) => s.step)).toEqual(["coalesce", "stale"]);
   expect(steps[0].cache.rules[0].policy).toEqual(oneFetchPerItem(table.rules[0].policy));
   expect(steps[0].cache).toEqual(d.simulations![1].setup!.props!.cdn.cache);
-  expect(cacheLadder(steps[0].cache, "launch")).toEqual([]);
+  expect(cacheLadder(steps[0].cache, "launch").map((s) => s.step)).toEqual(["stale"]);
+  expect(cacheLadder(steps[1].cache, "launch")).toEqual([]);
+  expect(cacheLadder(table, "launch", 300)[1].cache.rules[0].policy).toEqual({
+    ...table.rules[0].policy,
+    coalesce: true,
+    staleWhileRevalidateMs: 2000,
+  });
   expect(cacheLadder(table, "missing")).toEqual([]);
   expect(cacheLadder({ rules: [], default: { noStore: true } }, "")).toEqual([]);
 });

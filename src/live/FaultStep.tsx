@@ -3,6 +3,7 @@ import { t, useLocale } from "../i18n";
 import { faultTarget, type Fault } from "../model/faults";
 import type { DiagramFile } from "../model/types";
 import { defaultFault, faultTargets } from "./faults";
+import type { CacheTable } from "../model/caching";
 
 export function FaultStep({
   fault,
@@ -25,7 +26,13 @@ export function FaultStep({
         ? String(fault.cut)
         : fault.kind === "slow"
           ? String(fault.factor)
-          : String(fault.rate);
+          : fault.kind === "purge"
+            ? (fault.mode ?? "hard")
+            : String(fault.rate);
+  const table =
+    fault.kind === "purge"
+      ? (diagram.nodes.find((n) => n.id === fault.node)?.props?.cache as CacheTable | undefined)
+      : undefined;
   return (
     <div className="lv-step-body">
       <label>
@@ -48,6 +55,9 @@ export function FaultStep({
           <option value="fail" disabled={!faultTargets(diagram, "fail").length}>
             {t("fault.fail")}
           </option>
+          <option value="purge" disabled={!faultTargets(diagram, "purge").length}>
+            {t("cache.purge")}
+          </option>
         </ValidationSelect>
       </label>
       <label>
@@ -62,7 +72,9 @@ export function FaultStep({
                 ? { ...fault, boundary: e.target.value }
                 : fault.kind === "link"
                   ? { ...fault, edge: e.target.value }
-                  : { ...fault, node: e.target.value },
+                  : fault.kind === "purge"
+                    ? { ...fault, node: e.target.value, rule: undefined }
+                    : { ...fault, node: e.target.value },
             )
           }
         >
@@ -88,7 +100,9 @@ export function FaultStep({
                   ? { ...fault, cut: e.target.value === "true" }
                   : fault.kind === "slow"
                     ? { ...fault, factor: Number(e.target.value) as 1 | 2 | 5 | 10 }
-                    : { ...fault, rate: Number(e.target.value) as 0 | 0.1 | 0.5 },
+                    : fault.kind === "purge"
+                      ? { ...fault, mode: e.target.value as "hard" | "soft" }
+                      : { ...fault, rate: Number(e.target.value) as 0 | 0.1 | 0.5 },
             )
           }
         >
@@ -108,6 +122,11 @@ export function FaultStep({
                 {factor === 1 ? t("fault.normal") : t("fault.factor", { factor })}
               </option>
             ))
+          ) : fault.kind === "purge" ? (
+            <>
+              <option value="hard">{t("cache.hardPurge")}</option>
+              <option value="soft">{t("cache.softPurge")}</option>
+            </>
           ) : (
             [0, 0.1, 0.5].map((rate) => (
               <option key={rate} value={rate}>
@@ -117,6 +136,41 @@ export function FaultStep({
           )}
         </ValidationSelect>
       </label>
+      {fault.kind === "purge" && (
+        <>
+          <label>
+            <span>{t("cache.purgeRule")}</span>
+            <ValidationSelect
+              data-testid={`${testId}-fault-rule`}
+              value={fault.rule ?? "__all"}
+              onChange={(e) =>
+                onChange({ ...fault, rule: e.currentTarget.value === "__all" ? undefined : e.currentTarget.value })
+              }
+            >
+              <option value="__all">{t("cache.allRules")}</option>
+              {table?.rules.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label || r.id}
+                </option>
+              ))}
+              {table?.default && <option value="">{t("cache.everythingElse")}</option>}
+            </ValidationSelect>
+          </label>
+          <label>
+            <span>{t("cache.purgeReason")}</span>
+            <ValidationSelect
+              data-testid={`${testId}-fault-reason`}
+              value={fault.reason ?? "purge"}
+              onChange={(e) => onChange({ ...fault, reason: e.currentTarget.value as "purge" | "deploy" })}
+            >
+              <option value="purge">{t("cache.purge")}</option>
+              <option value="deploy">{t("cache.deploy")}</option>
+            </ValidationSelect>
+          </label>
+          <p className="insp-note">{t("cache.purgeHint")}</p>
+          {fault.mode === "soft" && <p className="insp-note">{t("cache.softPurgeHint")}</p>}
+        </>
+      )}
     </div>
   );
 }

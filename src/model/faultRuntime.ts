@@ -2,6 +2,8 @@ import type { DiagramFile, Simulation } from "./types";
 import { isDependency } from "./relations";
 import { t } from "../i18n/core";
 import { faultProblem, faultTarget, type Fault } from "./faults";
+import { cacheEnabled } from "./caching";
+import { stencilRole } from "../stencils/roles";
 
 // Fault playback and outage lookup load with Live; opening a file only needs the fault grammar.
 export const faultKey = (fault: Fault): string => JSON.stringify([fault.kind, faultTarget(fault)]);
@@ -12,7 +14,9 @@ export const faultActive = (fault: Fault): boolean =>
       ? fault.cut
       : fault.kind === "slow"
         ? fault.factor !== 1
-        : fault.rate !== 0;
+        : fault.kind === "fail"
+          ? fault.rate !== 0
+          : false;
 
 /** Includes enclosing boundaries, bounded even for an unvalidated cyclic input. */
 export const boundaryParents = (diagram: DiagramFile): ReadonlyMap<string, string | undefined> =>
@@ -107,9 +111,19 @@ export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulatio
     const range = f.kind === "boundary" ? topology.ranges.get(f.boundary) : undefined;
     if (f.kind === "boundary" ? !range : f.kind === "link" ? !topology.links.has(f.edge) : !topology.nodes.has(f.node))
       return t("fault.repairTarget");
+    if (f.kind === "purge") {
+      const node = topology.nodes.get(f.node)!;
+      const props = { ...node.props, ...simulation.setup?.props?.[f.node] };
+      if (
+        !cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), props.cache) ||
+        (f.rule !== undefined &&
+          !(f.rule === "" ? props.cache.default : props.cache.rules.some((r) => r.id === f.rule)))
+      )
+        return t("fault.repairTarget");
+    }
     const key = faultKey(f),
       value = faultActive(f) ? (f.kind === "slow" ? f.factor : f.kind === "fail" ? f.rate : true) : undefined;
-    if (active.get(key) === value) continue;
+    if (f.kind !== "purge" && active.get(key) === value) continue;
     if (value) active.set(key, value);
     else active.delete(key);
     // Drill fault changes also reset every node's latency recorder.

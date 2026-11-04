@@ -10,6 +10,7 @@ export function cacheTraceWords(cache: CacheTrace, id: string, diagram: DiagramL
     (node?.props?.cache as CacheTable | undefined)?.rules.find((r) => r.id === cache.rule)?.label ?? cache.rule ?? "";
   if (cache.fetches) return t("cache.herdEvent", { node: name, count: cache.fetches, rule });
   if (cache.outcome === "coalesced") return t("cache.coalesced", { mode: "waiting", count: 0 });
+  if (cache.outcome === "stale") return t("cache.staleTrace");
   if (cache.outcome === "hit")
     return cache.item && cache.freshMs !== undefined
       ? t("cache.hitFresh", {

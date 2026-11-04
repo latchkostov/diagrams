@@ -20,21 +20,33 @@ export function expNeg(x: number): number {
   for (let i = 0; i < halves; i++) sum *= sum;
   return sum;
 }
-export function itemHitShare(rate: number, ttlMs: number, fetchMs: number): number {
+export function itemHitShare(rate: number, ttlMs: number, fetchMs: number, staleMs = 0): number {
   if (!(rate > 0) || !Number.isFinite(fetchMs)) return 0;
   const fresh = (rate * ttlMs) / 1000;
-  return fresh / (1 + (rate * fetchMs) / 1000 + fresh);
+  const waiting = 1 + (rate * fetchMs) / 1000;
+  return (fresh + (1 - expNeg((rate * staleMs) / 1000)) * waiting) / (waiting + fresh);
 }
 export function cacheHitShare(policy: CachePolicy, rate: number, fetchMs: number): number {
   if (policy.noStore || !policy.ttlMs || !(rate > 0)) return 0;
   return popularityTable(policy.keys, policy.popularity).bands.reduce(
-    (sum, band) => sum + band.share * itemHitShare((rate * band.share) / band.count, policy.ttlMs!, fetchMs),
+    (sum, band) =>
+      sum +
+      band.share *
+        itemHitShare((rate * band.share) / band.count, policy.ttlMs!, fetchMs, policy.staleWhileRevalidateMs),
     0,
   );
 }
 
 /** Fresh hits stay unchanged. Tracked miss cohorts share one fetch per fill cycle. */
 export function cacheFetchShare(policy: CachePolicy, rate: number, fetchMs: number, tracked = 256): number {
+  if (policy.staleWhileRevalidateMs && !policy.noStore && policy.ttlMs && rate > 0 && Number.isFinite(fetchMs))
+    return popularityTable(policy.keys, policy.popularity).bands.reduce((sum, band) => {
+      const itemRate = (rate * band.share) / band.count;
+      const cycle = 1 + (itemRate * (fetchMs + policy.ttlMs!)) / 1000;
+      const q = 1 - expNeg((itemRate * policy.staleWhileRevalidateMs!) / 1000);
+      const collapsed = policy.coalesce && band.first < tracked && cacheTrackingEligible(rate, policy.ttlMs!);
+      return sum + (band.share * (collapsed ? 1 : (1 - q) * (1 + (itemRate * fetchMs) / 1000) + q)) / cycle;
+    }, 0);
   if (!policy.coalesce || !tracked || !cacheTrackingEligible(rate, policy.ttlMs!))
     return 1 - cacheHitShare(policy, rate, fetchMs);
   if (policy.noStore || !policy.ttlMs || !(rate > 0) || !Number.isFinite(fetchMs)) return 1;

@@ -14,6 +14,8 @@ type Config = Omit<
   | "fetchMs"
   | "freshUntil"
   | "fetching"
+  | "purgedAt"
+  | "revalidationCredit"
 >;
 
 /** Lossless sparse payloads retain only written slots; every retained byte is charged.
@@ -62,6 +64,8 @@ export class CacheCheckpoint {
     array(rule.fetchMs.samples);
     array(rule.freshUntil);
     array(rule.fetching);
+    values.push(rule.purgedAt ?? -1, rule.counts.staleHits ?? 0, rule.counts.revalidations ?? 0);
+    array(rule.revalidationCredit ?? new Float64Array(0));
     // Simulation clocks/counts are usually small integers. Varints keep full sample
     // rings compact; an IEEE-754 escape preserves fractional values and signed zero.
     const bytes: number[] = [];
@@ -137,7 +141,7 @@ export class CacheCheckpoint {
       statisticalPending = next(),
       statisticalDue = next(),
       warmSince = next();
-    return {
+    const rule: CacheRuleState = {
       ...this.config,
       stream,
       statisticalUntil,
@@ -151,5 +155,14 @@ export class CacheCheckpoint {
       freshUntil: array(),
       fetching: array(),
     };
+    const purgedAt = next(),
+      staleHits = next(),
+      revalidations = next(),
+      credit = array();
+    if (purgedAt >= 0) rule.purgedAt = purgedAt;
+    if (staleHits) rule.counts.staleHits = staleHits;
+    if (revalidations) rule.counts.revalidations = revalidations;
+    if (credit.length) rule.revalidationCredit = credit;
+    return rule;
   }
 }

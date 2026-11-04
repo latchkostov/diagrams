@@ -2171,7 +2171,50 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       settleWork(node, work, "error");
       return;
     }
-    if (work.cache?.outcome === "hit") {
+    if (work.cache?.revalidate) {
+      const lookup = work.cache;
+      const cache = work.cacheOwner!;
+      const flights = (cache.flights ??= new Map());
+      const key = `${lookup.rule!.id}:${lookup.item}`;
+      for (let i = 0; i < lookup.revalidate!; i++) {
+        if (
+          lookup.item >= 0 &&
+          (flights.has(key) || lookup.rule!.fetching[lookup.item] || time < lookup.rule!.freshUntil[lookup.item])
+        )
+          break;
+        spend();
+        const id = nextMessage++;
+        inSystem++;
+        const flightKey = lookup.item < 0 ? `${key}:${id}` : key;
+        const fetch: Work = {
+          message: {
+            ...work.message,
+            id,
+            represented: 1,
+            width: undefined,
+            returnCall: undefined,
+            family: {
+              root: id,
+              bornAt: time,
+              alive: 1,
+              parked: 0,
+              routesDone: work.message.request ? [work.message.request.id] : [],
+            },
+          },
+          remaining: 0,
+          route: work.route,
+          cache: { ...lookup, outcome: "stale", revalidate: 1 },
+          cacheOwner: cache,
+          cacheFlight: { key: flightKey, waiters: [], waiting: 0 },
+        };
+        flights.set(flightKey, fetch);
+        if (!beginCall(node, fetch)) {
+          flights.delete(flightKey);
+          gone(node, fetch.message, "drop", "cache refresh has no origin");
+        }
+      }
+    }
+    if (work.cache?.outcome === "hit" || work.cache?.outcome === "stale") {
       settleWork(node, work, "success");
       return;
     }
@@ -2284,9 +2327,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           recorder,
           work.cache.outcome === "not-cached"
             ? undefined
-            : work.cache.outcome === "coalesced"
-              ? "miss"
-              : work.cache.outcome,
+            : work.cache.outcome === "stale"
+              ? "hit"
+              : work.cache.outcome === "coalesced"
+                ? "miss"
+                : work.cache.outcome,
           time - work.cacheAt!,
           0,
           0,
@@ -2303,7 +2348,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     processed(node, work.message, work.cache ? cacheTrace(node, work) : undefined);
-    if (work.cache?.outcome === "hit" || work.cache?.outcome === "coalesced") {
+    if (work.cache?.outcome === "hit" || work.cache?.outcome === "stale" || work.cache?.outcome === "coalesced") {
       gone(node, work.message, "end", "cached");
       return;
     }
@@ -4059,9 +4104,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             : !nodes.has(fault.node)
       )
         return;
+      if (fault.kind === "purge") {
+        const cache = nodes.get(fault.node)!.cache;
+        if (!cache || (fault.rule !== undefined && !cache.rules.some((r) => r.id === fault.rule))) return;
+      }
       const key = faultKey(fault);
       const previous = faults.get(key);
-      if (!previous && !faultActive(fault)) return;
+      if (fault.kind !== "purge" && !previous && !faultActive(fault)) return;
       const magnitude = (value: Fault) =>
         value.kind === "boundary"
           ? value.down
@@ -4069,7 +4118,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             ? value.cut
             : value.kind === "slow"
               ? value.factor
-              : value.rate;
+              : value.kind === "fail"
+                ? value.rate
+                : undefined;
       if (previous && magnitude(previous) === magnitude(fault)) return;
       if (latencySinceFault) {
         latencyBudget = createLatencyBudget();
@@ -4082,7 +4133,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));
       else faults.delete(faultKey(fault));
-      if (fault.kind === "link") {
+      if (fault.kind === "purge") {
+        const node = nodes.get(fault.node)!;
+        cacheRuntime!.purge(node.cache!, time, fault.rule, fault.mode);
+        log("status", node, undefined, fault.reason === "deploy" ? "cache deploy" : "cache purge");
+      } else if (fault.kind === "link") {
         const edge = faultEdges.get(fault.edge)!;
         edge.cut = fault.cut;
       } else if (fault.kind === "fail") {

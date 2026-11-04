@@ -31,7 +31,15 @@ const SAMPLE_MS = HEALTH_SAMPLE_MS;
 
 export type TroubleKind = "down" | "retry-storm" | "cache-stampede" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
-  | { kind: "cache"; node: string; rule: string; item?: number; edge?: string; step: "coalesce"; cache: CacheTable }
+  | {
+      kind: "cache";
+      node: string;
+      rule: string;
+      item?: number;
+      edge?: string;
+      step: "coalesce" | "stale";
+      cache: CacheTable;
+    }
   | {
       kind: "resilience";
       edge: string;

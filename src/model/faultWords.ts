@@ -13,6 +13,8 @@ export function drillName(preset: DrillPreset): string {
       return t("fault.slowDependency");
     case "error-spike":
       return t("fault.errorSpike");
+    case "cold-cache":
+      return t("cache.coldCache");
   }
 }
 
@@ -30,7 +32,11 @@ export function faultLabel(fault: Fault, preset?: DrillPreset, diagram?: Diagram
           : t("fault.reconnect")
         : fault.kind === "slow"
           ? t("fault.slow")
-          : t("fault.fail");
+          : fault.kind === "purge"
+            ? fault.reason === "deploy"
+              ? t("cache.deploy")
+              : t("cache.purge")
+            : t("fault.fail");
   return t("fault.marker", { action, target: faultTargetLabel(fault, diagram) || faultTarget(fault) });
 }
 
@@ -91,6 +97,8 @@ export function nodeFaultLabel(node: string, faults?: readonly Fault[]): string 
 export function faultWindowLabel(fault: Fault, diagram?: DiagramFile): string {
   const label = faultTargetLabel(fault, diagram, false) || t("fault.unnamedTarget");
   switch (fault.kind) {
+    case "purge":
+      return t("cache.purgeWindow", { label });
     case "boundary":
       return fault.down ? t("latency.windowDown", { label }) : t("latency.windowRestored", { label });
     case "link":

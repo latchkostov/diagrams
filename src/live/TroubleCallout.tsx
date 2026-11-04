@@ -50,15 +50,17 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   const [expanded, setExpanded] = useState(false);
   const action = TROUBLE_ACTIONS[trouble.action.kind];
   const label =
-    trouble.action.kind === "restore-boundary"
-      ? t("fault.restoreNamed", { label: trouble.action.label })
-      : trouble.action.kind === "resilience"
-        ? resilienceFixLabel(trouble.action.step)
-        : trouble.action.kind === "scale-threads"
-          ? (planFixLabel(trouble.action.plan) ?? "")
-          : trouble.action.kind === "clear-fault"
-            ? t("fault.clearAction")
-            : action.label();
+    trouble.action.kind === "cache" && trouble.action.step === "stale"
+      ? t("cache.staleAction")
+      : trouble.action.kind === "restore-boundary"
+        ? t("fault.restoreNamed", { label: trouble.action.label })
+        : trouble.action.kind === "resilience"
+          ? resilienceFixLabel(trouble.action.step)
+          : trouble.action.kind === "scale-threads"
+            ? (planFixLabel(trouble.action.plan) ?? "")
+            : trouble.action.kind === "clear-fault"
+              ? t("fault.clearAction")
+              : action.label();
   // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
