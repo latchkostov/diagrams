@@ -1,6 +1,6 @@
 import type { DiagramFile, Simulation } from "../../model/types";
 import { hasCacheRules } from "../../model/caching";
-import type { CacheLookup, NodeCache, CacheReadout, CacheDetails } from "./cacheState";
+import type { CacheLookup, NodeCache, CacheReadout, CacheDetails, CacheItemObservation } from "./cacheState";
 import type { CompiledRoute } from "../routeMatching";
 
 export interface CacheRuntime {
@@ -12,6 +12,7 @@ export interface CacheRuntime {
     remaining: { value: number },
     rates?: Record<string, { rate: number; fetchMs: number }>,
   ): NodeCache;
+  reconfigure(cache: NodeCache, table: unknown): boolean;
   lookup(
     cache: NodeCache,
     type: string,
@@ -20,9 +21,13 @@ export interface CacheRuntime {
     now: number,
     size: number,
   ): CacheLookup;
-  start(cache: NodeCache, lookup: CacheLookup, size: number, now?: number): void;
+  start(cache: NodeCache, lookup: CacheLookup, size: number, now?: number): number | undefined;
   settle(cache: NodeCache, lookup: CacheLookup, now: number, size: number, ok: boolean): void;
   read(cache: NodeCache): CacheReadout;
+  itemFetches(cache: NodeCache): number;
+  observeItem(cache: NodeCache, rule: string, item: number): CacheItemObservation | undefined;
+  window(cache: NodeCache, now: number): CacheDetails["window"];
+  invalidateSummary(cache: NodeCache): void;
   details(cache: NodeCache, now: number, sinceFault?: CacheDetails["sinceFault"]): CacheDetails;
   updateExpected(cache: NodeCache, rates: Record<string, { rate: number; fetchMs: number }>): void;
   plan(

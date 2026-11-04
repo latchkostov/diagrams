@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "shoppers": [40, 40], "cdn": [400, 40], "origin": [760, 40], "db": [1159, 40] },
+    "TB": { "shoppers": [40, 40], "cdn": [40, 200], "origin": [40, 360], "db": [40, 520] }
+  },
+  "tidy": { "shoppers": [0, 160], "cdn": [320, 160], "origin": [630, 160], "db": [990, 160] },
+  "arrange": {
+    "alignLeft": { "shoppers": [0, 160], "cdn": [0, 160], "origin": [0, 160], "db": [0, 160] },
+    "alignMiddle": { "shoppers": [0, 160], "cdn": [330, 160], "origin": [660, 160], "db": [990, 160] },
+    "distributeH": { "shoppers": [0, 160], "cdn": [317, 160], "origin": [634, 160], "db": [990, 160] },
+    "distributeV": { "shoppers": [0, 160], "cdn": [330, 160], "origin": [660, 160], "db": [990, 160] },
+    "spreadH": { "shoppers": [0, 160], "cdn": [330, 160], "origin": [660, 160], "db": [990, 160] },
+    "boundaryAround": { "x": -40, "y": 96, "width": 1290, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "shoppers": [40, 40], "cdn": [400, 40], "origin": [760, 40], "db": [1159, 40] },
+    "groups": {}
+  }
+}

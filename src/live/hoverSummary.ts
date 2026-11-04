@@ -214,7 +214,7 @@ export function nodeSummary(
     sections.unshift({
       key: "cache",
       label: t("cache.heading"),
-      summary: cacheReadout(s) ? t("cache.compactSummary", cacheReadout(s)!) : t("cache.noCacheable"),
+      summary: cacheReadout(s) ? t("cache.summary", { ...cacheReadout(s)!, mode: "compact" }) : t("cache.noCacheable"),
     });
   return { problems, vitals, facts, sections };
 }

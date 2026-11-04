@@ -1,0 +1,270 @@
+{
+  "run": {
+    "time": 40000,
+    "totalMs": 40000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "backlog", "label": "Product API backlog < 50, always", "status": "pass", "value": 0 },
+      { "id": "latency", "label": "Shoppers p95 < 300 ms at the end", "status": "pass", "value": 258.0376694910721 },
+      { "id": "fetches", "label": "Launch page fetches in flight < 5, always", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "shoppers" },
+      { "atMs": 1000, "kind": "note", "label": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads." },
+      { "atMs": 12000, "kind": "note", "label": "One origin fetch serves everyone waiting for the same item." },
+      { "atMs": 40000, "kind": "traffic", "label": "shoppers ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shoppers": { "replicas": [1, 1, 0] },
+        "cdn": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": {
+              "launch": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 },
+              "products": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] },
+        "db": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 50,
+      "nodes": {
+        "shoppers": { "processed": 3974, "throughput": 399.1361722832782, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 3982,
+          "inFlight": 4,
+          "throughput": 399.1433766372618,
+          "cache": {
+            "requests": 3992,
+            "hits": 3585,
+            "misses": 272,
+            "notCached": 0,
+            "fetches": 272,
+            "fills": 6,
+            "coalesced": 135,
+            "hitRatio": 0.8980460921843687,
+            "originOffload": 0.9318637274549099,
+            "rules": {
+              "launch": { "requests": 3194, "hits": 3057, "misses": 2, "notCached": 0, "fetches": 2, "fills": 2, "coalesced": 135 },
+              "products": { "requests": 798, "hits": 528, "misses": 270, "notCached": 0, "fetches": 270, "fills": 4 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 267, "inFlight": 3, "throughput": 25.976038245090415, "replicas": [1, 1, 0] },
+        "db": { "processed": 267, "backlog": 1, "throughput": 25.976038245090415, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 53,
+      "nodes": {
+        "shoppers": { "processed": 7973, "throughput": 398.82020322604075, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 7981,
+          "inFlight": 4,
+          "throughput": 398.84356476739356,
+          "cache": {
+            "requests": 7992,
+            "hits": 7171,
+            "misses": 554,
+            "notCached": 0,
+            "fetches": 554,
+            "fills": 20,
+            "coalesced": 267,
+            "hitRatio": 0.8972722722722722,
+            "originOffload": 0.9306806806806807,
+            "rules": {
+              "launch": { "requests": 6394, "hits": 6123, "misses": 4, "notCached": 0, "fetches": 4, "fills": 4, "coalesced": 267 },
+              "products": { "requests": 1598, "hits": 1048, "misses": 550, "notCached": 0, "fetches": 550, "fills": 16 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 549, "inFlight": 4, "throughput": 27.79571300388274, "replicas": [1, 1, 0] },
+        "db": { "processed": 549, "backlog": 1, "inFlight": 1, "throughput": 27.79571300388274, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 53,
+      "nodes": {
+        "shoppers": { "processed": 11973, "throughput": 398.6915368656369, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 11980,
+          "inFlight": 4,
+          "throughput": 397.73233012738524,
+          "cache": {
+            "requests": 11992,
+            "hits": 10780,
+            "misses": 813,
+            "notCached": 0,
+            "fetches": 813,
+            "fills": 34,
+            "coalesced": 399,
+            "hitRatio": 0.8989326217478318,
+            "originOffload": 0.9322048032021347,
+            "rules": {
+              "launch": { "requests": 9594, "hits": 9189, "misses": 6, "notCached": 0, "fetches": 6, "fills": 6, "coalesced": 399 },
+              "products": { "requests": 2398, "hits": 1591, "misses": 807, "notCached": 0, "fetches": 807, "fills": 28 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 808, "inFlight": 4, "throughput": 27.25401299479975, "replicas": [1, 1, 0] },
+        "db": { "processed": 808, "inFlight": 1, "throughput": 27.25401299479975, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 51,
+      "nodes": {
+        "shoppers": { "processed": 15974, "throughput": 399.8735675323641, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 15982,
+          "inFlight": 4,
+          "throughput": 399.87607106296036,
+          "cache": {
+            "requests": 15992,
+            "hits": 14363,
+            "misses": 1092,
+            "notCached": 0,
+            "fetches": 1092,
+            "fills": 44,
+            "coalesced": 537,
+            "hitRatio": 0.8981365682841421,
+            "originOffload": 0.9317158579289645,
+            "rules": {
+              "launch": { "requests": 12794, "hits": 12249, "misses": 8, "notCached": 0, "fetches": 8, "fills": 8, "coalesced": 537 },
+              "products": { "requests": 3198, "hits": 2114, "misses": 1084, "notCached": 0, "fetches": 1084, "fills": 36 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1087, "inFlight": 3, "throughput": 28.947809195684666, "replicas": [1, 1, 0] },
+        "db": { "processed": 1087, "backlog": 1, "inFlight": 1, "throughput": 28.947809195684666, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 40000,
+    "inSystem": 51,
+    "real": {
+      "shoppers": { "processed": 15974, "throughput": 399.8735675323641, "replicas": [1, 1, 0] },
+      "cdn": {
+        "processed": 15982,
+        "inFlight": 4,
+        "throughput": 399.87607106296036,
+        "cache": {
+          "requests": 15992,
+          "hits": 14363,
+          "misses": 1092,
+          "notCached": 0,
+          "fetches": 1092,
+          "fills": 44,
+          "coalesced": 537,
+          "hitRatio": 0.8981365682841421,
+          "originOffload": 0.9317158579289645,
+          "rules": {
+            "launch": { "requests": 12794, "hits": 12249, "misses": 8, "notCached": 0, "fetches": 8, "fills": 8, "coalesced": 537 },
+            "products": { "requests": 3198, "hits": 2114, "misses": 1084, "notCached": 0, "fetches": 1084, "fills": 36 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 1087, "inFlight": 3, "throughput": 28.947809195684666, "replicas": [1, 1, 0] },
+      "db": { "processed": 1087, "backlog": 1, "inFlight": 1, "throughput": 28.947809195684666, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 15992, "fetch": 1090, "read": 1089 }
+  },
+  "events": {
+    "total": 68301,
+    "byKind": { "inject": 16000, "deliver": 18171, "process": 34130 },
+    "byNode": {
+      "shoppers": { "inject": 16000, "process": 15974 },
+      "cdn": { "deliver": 15992, "process": 15982 },
+      "origin": { "deliver": 1090, "process": 1087 },
+      "db": { "deliver": 1089, "process": 1087 }
+    },
+    "perSecond": [
+      "52da26d08d28",
+      "0371e46993b5",
+      "47a576e05d00",
+      "fe9a8fb1104c",
+      "3913166e0aae",
+      "b543c77a0401",
+      "75857fd46685",
+      "f2e0225b3111",
+      "9dacae5d4007",
+      "661468357e61",
+      "c4b51c253b86",
+      "77802880a9a8",
+      "3a079d492787",
+      "b939ea13d890",
+      "3220a0233956",
+      "a90c3ed3b78b",
+      "1070a52cf618",
+      "5febc13627a0",
+      "186d60b1e382",
+      "8b0a46d4b794",
+      "3f332973827a",
+      "33c4852544da",
+      "ab4d60833670",
+      "e4c9e2409c21",
+      "b9d9962e2cd4",
+      "93da7d3c9a94",
+      "96e0a58e1a33",
+      "48d5a8885bc2",
+      "2ed854f0fbd1",
+      "54d4a7a11811",
+      "42df2271f7de",
+      "463b7a78469f",
+      "e96d6ed039aa",
+      "36114f8deb7d",
+      "077885db25a4",
+      "783a2a2ff163",
+      "85e955ff34f5",
+      "b0217b1f6bdc",
+      "3ad69a21e483",
+      "d3288a735984",
+      "44e7a705acc8"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Watch Edge CDN: 320 requests/s want one launch item. It expires every five seconds; the Product API has four threads.", "focus": ["cdn", "origin"] },
+    { "atMs": 12000, "text": "One origin fetch serves everyone waiting for the same item.", "focus": ["cdn", "origin"] }
+  ],
+  "latency": {
+    "journeys": { "done": 15974, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 15974, "min": 50, "mean": 66.43670965318643, "p50": 50, "p90": 50, "max": 330 },
+    "waitMs": {
+      "cdn": { "count": 15974, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "origin": { "count": 1077, "min": 0, "mean": 7.112349117920148, "p50": 0, "p90": 30, "max": 90 },
+      "db": { "count": 1077, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "cdn": { "count": 15974, "min": 10, "mean": 26.436709653186426, "p50": 10, "p90": 10, "max": 290 },
+      "origin": { "count": 1077, "min": 90, "mean": 90, "p50": 90, "p90": 90, "max": 90 },
+      "db": { "count": 1077, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

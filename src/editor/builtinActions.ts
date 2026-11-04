@@ -2,6 +2,7 @@ import { revisionAtLeast } from "../model/revisions";
 import { boundaryActions, boundaryMenu } from "./boundaryActions";
 import { selectionActions, selectSimilarAction } from "./selectionActions";
 import { effectiveCallerPolicy } from "./callerPolicy";
+import { cacheOriginMenu } from "./cacheOriginBridge";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { cacheCapable } from "../model/caching";
 import { withCacheRules } from "../model/cacheEdits";
@@ -941,7 +942,7 @@ export function builtinActions(): Action[] {
           });
         }
         return ctx.mode === "live"
-          ? waiting
+          ? [...waiting, ...cacheOriginMenu(ctx)]
           : [
               ...waiting,
               {

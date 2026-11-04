@@ -1771,6 +1771,129 @@
         ]
       },
       {
+        "id": "doorbuster-stampede",
+        "title": "The doorbuster stampede",
+        "seed": 14,
+        "scale": 50,
+        "durationMs": 30000,
+        "setup": {
+          "props": {
+            "web": {
+              "trafficMix": {
+                "mode": "shares",
+                "entries": [
+                  { "routeId": "doorbuster", "share": 0.3 },
+                  { "routeId": "browse", "share": 0.02 },
+                  { "routeId": "search", "share": 0.01 },
+                  { "routeId": "beacon", "share": 0.67 }
+                ]
+              }
+            },
+            "app": {
+              "trafficMix": {
+                "mode": "shares",
+                "entries": [
+                  { "routeId": "doorbuster", "share": 0.3 },
+                  { "routeId": "browse", "share": 0.02 },
+                  { "routeId": "search", "share": 0.01 },
+                  { "routeId": "beacon", "share": 0.67 }
+                ]
+              }
+            }
+          }
+        },
+        "traffic": [
+          {
+            "id": "web-traffic",
+            "node": "web",
+            "shape": { "kind": "constant", "ratePerSec": 1800, "durationMs": 30000 }
+          },
+          {
+            "id": "app-traffic",
+            "node": "app",
+            "shape": { "kind": "constant", "ratePerSec": 1200, "durationMs": 30000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "A flash-sale landing page gets 900 views/s. Each page sends about two analytics beacons; only 90 requests/s browse other products or search. Watch Edge CDN and Catalog BFF.", "focus": ["cdn", "gateway", "catalog-bff"] }
+          },
+          {
+            "atMs": 5000,
+            "action": { "do": "note", "text": "The doorbuster expires every ten seconds: roughly 250–450 fetches race for one item. Catalog BFF queues them; the other stories keep their original traffic and capacity.", "focus": ["cdn", "gateway", "catalog-bff"] }
+          },
+          {
+            "atMs": 18000,
+            "action": {
+              "do": "props",
+              "node": "cdn",
+              "props": {
+                "cache": {
+                  "rules": [
+                    {
+                      "id": "doorbuster",
+                      "policy": { "ttlMs": 10000, "keys": 1, "coalesce": true },
+                      "label": "Doorbuster",
+                      "match": { "path": { "kind": "exact", "value": "/products/doorbuster-tv" }, "methods": ["GET"] }
+                    },
+                    {
+                      "id": "products",
+                      "policy": { "keys": 50000, "ttlMs": 300000, "popularity": "typical" },
+                      "label": "Product pages",
+                      "match": { "path": { "kind": "template", "value": "/products/{id}" }, "methods": ["GET"] }
+                    },
+                    {
+                      "id": "search",
+                      "policy": { "keys": 200000, "ttlMs": 60000, "popularity": "steep" },
+                      "label": "Search",
+                      "match": { "path": { "kind": "prefix", "value": "/search/" }, "methods": ["GET"] }
+                    },
+                    {
+                      "id": "orders",
+                      "policy": { "noStore": true },
+                      "label": "Order status",
+                      "match": { "path": { "kind": "template", "value": "/orders/{id}" }, "methods": ["GET"] }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "atMs": 18000,
+            "action": { "do": "note", "text": "The team turns on One fetch per item. The next expiries send one fetch; everyone shares its reply.", "focus": ["cdn", "gateway", "catalog-bff"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "doorbuster-fetches",
+            "label": "Doorbuster fetches in flight ≤ 1 at 28 s",
+            "metric": { "node": "cdn", "field": "itemFetches" },
+            "op": "<=",
+            "value": 1,
+            "when": "at",
+            "atMs": 28000
+          },
+          {
+            "id": "catalog-backlog",
+            "label": "Catalog BFF backlog < 50 at the end",
+            "metric": { "node": "catalog-bff", "field": "backlog" },
+            "op": "<",
+            "value": 50,
+            "when": "end"
+          },
+          {
+            "id": "shopper-p95",
+            "label": "Shoppers p95 < 300 ms at the end",
+            "metric": { "node": "web", "field": "p95" },
+            "op": "<",
+            "value": 300,
+            "when": "end"
+          }
+        ]
+      },
+      {
         "id": "sim-1",
         "title": "Parity rush",
         "durationMs": 20000,

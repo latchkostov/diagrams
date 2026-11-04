@@ -1,0 +1,21 @@
+---
+title: "Shoppers on the web #1 · 700 ms end to end · 4 copies"
+---
+sequenceDiagram
+  participant web as Shoppers on the web
+  participant cdn as Edge CDN
+  participant collector as Event collector
+  participant clickstream as Clickstream
+  participant sessionizer as Sessionizer
+  participant features as Feature store
+  participant lake as Event lake
+  web->>cdn: Shoppers on the web (+0.00 s)<br/>HTTPS
+  cdn->>collector: Shoppers on the web (+0.03 s)<br/>Beacons
+  collector-->>cdn: reply (+0.05 s)
+  collector-)clickstream: PageViewed (+0.05 s)
+  cdn-->>web: reply (+0.05 s)
+  clickstream-)sessionizer: PageViewed (+0.35 s)
+  sessionizer->>features: PageViewed (+0.68 s)<br/>Update features
+  sessionizer->>lake: PageViewed (+0.68 s)<br/>Sessions
+  features-->>sessionizer: reply (+0.69 s)
+  lake-->>sessionizer: reply (+0.69 s)

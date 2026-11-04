@@ -18,6 +18,8 @@ const bySlug = Object.fromEntries(
 
 const EXPECTED: Record<string, string[]> = {
   "vendor-edge-storefront": [],
+  // One origin replica is intentional; availability advice is separate from the expiry lesson.
+  "cache-stampede": ["suggestion single-point:origin"],
   "retry-storm": [
     "warning no-reader:orders",
     "warning retry-backoff:pay",
@@ -205,6 +207,17 @@ describe("simulation evidence on the public examples", () => {
         { simulation: "Shed load at Payments", what: "dropped", count: 1521 },
       ]);
       expect(shown.counted).toBe(3);
+    } else if (slug === "cache-stampede") {
+      expect(shown.result.findings.map((f) => f.id)).toEqual([
+        "single-point:origin",
+        "dropped:shoppers",
+        "dropped:cdn",
+      ]);
+      expect(shown.result.findings.filter((f) => f.evidence?.length).map((f) => f.evidence)).toEqual([
+        [{ simulation: "TTL only", what: "dropped", count: 7908 }],
+        [{ simulation: "TTL only", what: "dropped", count: 7914 }],
+      ]);
+      expect(shown.counted).toBe(2);
     } else if (slug === "zone-outage-drill") {
       expect(shown.result.findings.map((f) => f.id)).toEqual(["dropped:api-b"]);
       expect(shown.result.findings[0].evidence).toEqual([

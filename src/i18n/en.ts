@@ -3125,7 +3125,25 @@ const en = {
   "autoscaling.scaleBusy": "Scale on busy threads",
   "autoscaling.planBusy":
     "In “{simulation}”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
+  "examples.cacheStampedeSummary": "One fetch per item",
   "cache.rules": "Cache rules",
+  "cache.coalescingAction": "{mode, select, perRequest {Fetch per request} other {One fetch per item}}",
+  "cache.herdEvent": "{node}: {count, plural, one {# fetch} other {# fetches}} in flight for one {rule} item",
+  "cache.expires": "When an item expires",
+  "cache.coalesceHint": "Many CDNs collapse requests like this by default.",
+  "cache.stampedeChip": "⚡ Stampede",
+  "cache.pill":
+    "⚡ {mode, select, held {1 fetch · {count, plural, one {# waiting} other {# waiting}}} other {{count, plural, one {# fetch} other {# fetches}} for one item}}",
+  "cache.pillTitle":
+    "Item #{item}: {mode, select, held {one fetch to {origin} serves {count, plural, one {# waiting request} other {# waiting requests}}} other {expired {seconds} s ago; {count, plural, one {# fetch is} other {# fetches are}} in flight to {origin}}}.",
+  "cache.stampedeHeadline": "A hot item's expiry floods {origin}",
+  "cache.stampedeDetail":
+    "{node}'s {rule} item expired and {count, plural, one {# request went} other {# requests went}} to {origin} before the first reply.",
+  "cache.itemMetric": "fetches in flight for one item",
+  "cache.stampedeLesson":
+    "{rule} expiring sent {count, plural, one {# request} other {# requests}} to {origin} at once. One fetch per item sends 1.",
+  "cache.coalesced":
+    "{mode, select, waiting {Waiting for another request's fetch of the same item} other {{count, plural, one {# request shared another fetch} other {# requests shared another fetch}}}}",
   "cache.rulesHint": "Checked after routing. A hit answers here; a miss goes to the origin and fills the cache.",
   "cache.addRules": "Add cache rules…",
   "cache.keepFor": "Keep for",
@@ -3153,15 +3171,15 @@ const en = {
   "cache.semantics":
     "{hit}% of cacheable requests answered from the cache{state, select, warming {; warming up} other {}}",
   "cache.heading": "Cache",
-  "cache.summary": "Recent window (up to 10 s): {hit}% hits · origin offload {offload}%",
-  "cache.compactSummary": "{hit}% hits · {offload}% offload · recent ≤10s",
+  "cache.summary":
+    "{mode, select, compact {{hit}% hits · {offload}% offload · recent ≤10s} other {Recent window (up to 10 s): {hit}% hits · origin offload {offload}%}}",
   "cache.originLine":
     "Recent window (up to 10 s): {node} sends {fetch} of {rate} requests/s here ({hit}% answered at the edge).",
   "cache.counts": "Recent window: {hits} hits/s · {misses} misses/s · {notCached} not cached/s",
   "cache.ruleMeasured":
     "{name}: {policy} → {hit}% hits since restart{expected, select, unavailable {} other { (expected {expected}%)}}",
-  "cache.latency": "Since restart: Hits p95 {hit} · Misses p95 {miss}",
-  "cache.latencySinceFault": "Since fault at {at} s: Hits p95 {hit} · Misses p95 {miss}",
+  "cache.latency":
+    "{scope, select, fault {Since fault at {at} s} other {Since restart}}: Hits p95 {hit} · Misses p95 {miss}",
   "cache.missTail": "{miss}% of cacheable requests miss",
   "cache.derivation":
     "{name}: {rate} requests/s, kept {ttl}, over {count, plural, one {# item} other {# items}} ({popularity}) → {hit}% hits. {fetch}/s reach {origin}.",

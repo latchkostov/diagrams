@@ -31,7 +31,10 @@ export function CacheDetails({
   const rate = (n: number) => formatNumber(n / (w?.seconds ?? 10), { maximumFractionDigits: 1 });
   return (
     <div data-testid="cache-readout">
-      <p>{readout ? t("cache.summary", readout) : t("cache.noCacheable")}</p>
+      <p>{readout ? t("cache.summary", { ...readout, mode: "window" }) : t("cache.noCacheable")}</p>
+      {!!s.cache?.coalesced && (
+        <p data-testid="cache-coalesced">{t("cache.coalesced", { mode: "count", count: s.cache.coalesced })}</p>
+      )}
       {w && (
         <p data-testid="cache-window-counts">
           {t("cache.counts", {
@@ -47,7 +50,7 @@ export function CacheDetails({
           ...(table.default ? [{ id: "", label: t("cache.everythingElse"), policy: table.default }] : []),
         ].map((rule) => {
           const counts = s.cache?.rules[rule.id];
-          const total = (counts?.hits ?? 0) + (counts?.misses ?? 0);
+          const total = (counts?.hits ?? 0) + (counts?.misses ?? 0) + (counts?.coalesced ?? 0);
           return (
             <p key={rule.id} data-testid={`cache-live-rule-${rule.id}`}>
               {rule.policy.noStore
@@ -62,16 +65,12 @@ export function CacheDetails({
           );
         })}
       <p data-testid="cache-latency">
-        {sinceFault
-          ? t("cache.latencySinceFault", {
-              at: formatNumber(sinceFault.atMs / 1000, { maximumFractionDigits: 2 }),
-              hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
-              miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
-            })
-          : t("cache.latency", {
-              hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
-              miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
-            })}
+        {t("cache.latency", {
+          scope: sinceFault ? "fault" : "restart",
+          at: formatNumber((sinceFault?.atMs ?? 0) / 1000, { maximumFractionDigits: 2 }),
+          hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
+          miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
+        })}
       </p>
       {readout && readout.hit < 95 && <p className="insp-note">{t("cache.missTail", { miss: 100 - readout.hit })}</p>}
     </div>

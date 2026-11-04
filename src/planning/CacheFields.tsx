@@ -1,8 +1,10 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import type { EditorApi } from "../editor/types";
+import { nodeCachePolicy } from "../editor/cachePolicy";
 import type { DiagramFile } from "../model/types";
 import { checkCache, type CachePolicy, type CacheRule, type CacheTable, type Popularity } from "../model/caching";
 import { newCacheRule } from "../model/cacheEdits";
+import { oneFetchPerItem } from "../sim/cachePresets";
 import { revisionAtLeast } from "../model/revisions";
 import { matchText } from "../model/routingAppearance";
 import { MatchEditor } from "./RoutingFields";
@@ -174,6 +176,18 @@ function CachePolicyFields({
               </p>
             </>
           )}
+          <ReadoutDisclosure title={t("cache.expires")} testId={`${id}-expires`}>
+            <label className="insp-check">
+              <input
+                type="checkbox"
+                data-testid={`${id}-coalesce`}
+                checked={!!p.coalesce}
+                onChange={(e) => set(e.currentTarget.checked ? oneFetchPerItem(p) : { ...p, coalesce: false })}
+              />
+              {t("cache.coalescingAction", { mode: "coalesce" })}
+            </label>
+            <p className="insp-note">{t("cache.coalesceHint")}</p>
+          </ReadoutDisclosure>
         </>
       )}
     </>
@@ -187,6 +201,7 @@ export function CacheFields({
   counts,
   readDiagram,
   planning,
+  simulations,
 }: {
   editor: EditorApi;
   nodeId: string;
@@ -194,10 +209,10 @@ export function CacheFields({
   counts: { nodes: number; edges: number };
   readDiagram?: () => DiagramFile;
   planning?: DiagramFile["planning"];
+  simulations?: DiagramFile["simulations"];
 }) {
   useLocale();
-  const table = props.cache as CacheTable;
-  const [open, setOpen] = useState<string | null>(table.rules[0]?.id ?? null);
+  const [open, setOpen] = useState<string | null>((props.cache as CacheTable).rules[0]?.id ?? null);
   const [announce, setAnnounce] = useState("");
   const [problem, setProblem] = useState("");
   const focus = useRef<string | null>(null);
@@ -207,18 +222,31 @@ export function CacheFields({
   const state = useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
   const version = editor.getDocumentVersion();
   const limited = counts.nodes > 256 || counts.edges > 512;
-  const read = () => ({ ...version, limited, doc: limited ? undefined : (readDiagram?.() ?? editor.getDiagram()) });
+  const read = () => ({
+    ...version,
+    limited,
+    reader: readDiagram,
+    document: limited ? undefined : (readDiagram?.() ?? editor.getDiagram()),
+  });
   const [snapshot, setSnapshot] = useState(read);
   let current = snapshot;
   if (
     snapshot.identity !== version.identity ||
     snapshot.revision !== version.revision ||
-    snapshot.limited !== limited
+    snapshot.limited !== limited ||
+    snapshot.reader !== readDiagram
   ) {
     current = read();
     setSnapshot(current);
   }
-  const doc = current.doc;
+  const doc = limited ? undefined : current.document;
+  const policy = nodeCachePolicy(
+    editor,
+    nodeId,
+    live,
+    current.document ?? { nodes: [{ id: nodeId, props }], simulations },
+  );
+  const table = policy?.table ?? (props.cache as CacheTable);
   const configured = doc && configuredPlanning(doc, state);
   const demand = configured?.analysis.cacheDemand?.[nodeId];
   const origin = doc?.edges
@@ -234,11 +262,7 @@ export function CacheFields({
   const save = (next: CacheTable, field?: string) => {
     try {
       checkCache(next);
-      editor.setNodeProps(
-        nodeId,
-        { cache: next },
-        { merge: field ? `cache:${nodeId}:${field}` : `cache:${nodeId}:edit:${++cacheEdit}` },
-      );
+      policy?.set(next, { merge: field ? `cache:${nodeId}:${field}` : `cache:${nodeId}:edit:${++cacheEdit}` });
       setProblem("");
     } catch (e) {
       setProblem(e instanceof Error ? e.message : String(e));
@@ -281,7 +305,12 @@ export function CacheFields({
   };
   return (
     <Section title={t("cache.rules")}>
-      <div data-testid="inspector-cache" className="cache-fields">
+      <fieldset
+        data-testid="inspector-cache"
+        className="cache-fields cache-edit-fields"
+        disabled={policy?.editable === false}
+        aria-label={t("cache.rules")}
+      >
         <p className="insp-note">{t("cache.rulesHint")}</p>
         {!revisionAtLeast((doc?.planning ?? planning)?.revision, "p3-w3") && (
           <p className="insp-note">{t("cache.dormant")}</p>
@@ -366,9 +395,12 @@ export function CacheFields({
                         ? t("cache.expected", {
                             hit: Math.round(demand[rule.id].hitRatio * 100),
                             rate: formatNumber(demand[rule.id].rate, { maximumFractionDigits: 0 }),
-                            fetch: formatNumber(demand[rule.id].rate * (1 - demand[rule.id].hitRatio), {
-                              maximumFractionDigits: 0,
-                            }),
+                            fetch: formatNumber(
+                              demand[rule.id].rate * (demand[rule.id].fetchShare ?? 1 - demand[rule.id].hitRatio),
+                              demand[rule.id].fetchShare === undefined
+                                ? { maximumFractionDigits: 0 }
+                                : { maximumSignificantDigits: 2 },
+                            ),
                             origin: origin || t("cache.origin"),
                           })
                         : t("cache.noTraffic")}
@@ -458,7 +490,7 @@ export function CacheFields({
         <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="cache-announce">
           {announce}
         </div>
-      </div>
+      </fieldset>
     </Section>
   );
 }

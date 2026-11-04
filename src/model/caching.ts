@@ -10,6 +10,7 @@ export interface CachePolicy {
   noStore?: true;
   keys?: number;
   popularity?: Popularity;
+  coalesce?: boolean;
 }
 export interface CacheRule {
   id: string;
@@ -59,6 +60,7 @@ const policySchema: JsonSchema = {
     noStore: { enum: [true] },
     keys: { type: "integer", minimum: 1, maximum: 1_000_000 },
     popularity: { enum: ["even", "gentle", "typical", "steep"] },
+    coalesce: { type: "boolean" },
   },
 };
 export const cacheSchema: JsonSchema = {

@@ -6,7 +6,7 @@ import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
 import { analyzePlanningCapacity, planningSimulation } from "./capacityPlanning";
 import { explanationSimulation } from "../planning/explanation";
-import type { Popularity } from "../model/caching";
+import type { CacheTable, Popularity } from "../model/caching";
 import { configuredPlanning } from "../planning/cache";
 import { startingCacheRates } from "./cache/cacheBridge";
 import { autoScale } from "./scale";
@@ -42,8 +42,10 @@ export function agreement(
   popularity: Popularity = "typical",
   rate = 1000,
   fetchMs = 60,
+  coalesce = false,
 ) {
   const d = agreementDiagram(keys, ttlMs, popularity, rate, fetchMs);
+  if (coalesce) (d.nodes[1].props!.cache as CacheTable).default!.coalesce = true;
   if (scale === "auto") scale = autoScale(explanationSimulation(d), d);
   const legacyExpected = analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))).cacheDemand!.cache[""]
     .hitRatio;
@@ -332,4 +334,13 @@ it("excludes denied origins from a routed rule's fetch latency", () => {
     },
   };
   expect(analyzeCapacity(d).cacheDemand!.cache.fast.fetchMs).toBe(20);
+});
+
+it.each([1, 7, 17, 42, 99])("coalesced fills preserve Expected/Live fresh-hit agreement, seed %i", (seed) => {
+  for (const scale of [1, 10]) {
+    for (const fetchMs of [60, 1510]) {
+      const result = agreement(seed, scale, 1, 1000, "even", 2000, fetchMs, true);
+      expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(scale === 1 ? 0.02 : 0.03);
+    }
+  }
 });

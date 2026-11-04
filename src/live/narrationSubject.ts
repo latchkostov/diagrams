@@ -3,6 +3,7 @@ import type { Trouble } from "./observedTrouble";
 
 /** The service named by the status strip, independently of where a corrective action belongs. */
 export function narrationSubject(trouble: Trouble | undefined, diagram: DiagramFile): string | undefined {
+  if (trouble?.kind === "cache-stampede") return trouble.related?.[0] ?? trouble.node;
   if (trouble?.kind === "retry-storm") {
     // Verification may replace a corrective action with Events; its cause key still identifies the call.
     const edge =

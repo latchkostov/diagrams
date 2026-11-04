@@ -1,6 +1,6 @@
 import type { CacheCounts, CacheRuleState } from "./cacheState";
 
-const countKeys = ["requests", "hits", "misses", "notCached", "fetches", "fills"] as const;
+const countKeys = ["requests", "hits", "misses", "coalesced", "notCached", "fetches", "fills"] as const;
 type Config = Omit<
   CacheRuleState,
   | "stream"
@@ -104,6 +104,7 @@ export class CacheCheckpoint {
       requests: next(),
       hits: next(),
       misses: next(),
+      coalesced: next(),
       notCached: next(),
       fetches: next(),
       fills: next(),

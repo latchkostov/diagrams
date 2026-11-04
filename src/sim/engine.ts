@@ -186,7 +186,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         node.outgoing.some((e) => e.sync && !e.dlq)
       ) {
         cacheRuntime ??= requireCacheRuntime();
-        node.cache = cacheRuntime.compile(node.rawProps.cache, node.id, seed, scale, remaining, cacheRates?.[node.id]);
+        if (!only || !node.cache || !cacheRuntime.reconfigure(node.cache, node.rawProps.cache)) {
+          const peak = node.cache?.peakHerd;
+          node.cache = cacheRuntime.compile(
+            node.rawProps.cache,
+            node.id,
+            seed,
+            scale,
+            remaining,
+            cacheRates?.[node.id],
+          );
+          if (peak) node.cache.peakHerd = peak;
+        }
       } else node.cache = undefined;
       if (node.role === "store") node.waits = !!node.cache;
       for (const edge of node.outgoing) initializeCall(edge, !!node.cache);
@@ -1252,7 +1263,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       settleWork(node, work, "call-limit");
       return true;
     }
-    if (node.cache && work.cache) cacheRuntime!.start(node.cache, work.cache, sizeOf(work.message), time);
+    if (work.cacheOwner && work.cache) {
+      work.cache.origin = requests[0].id;
+      const herd = cacheRuntime!.start(work.cacheOwner, work.cache, sizeOf(work.message), time);
+      if (herd) log("status", node, undefined, "cache herd", { ...cacheTrace(node, work), fetches: herd });
+    }
     const call: Call = {
       attempt: attempt(node, work),
       id: nextCall++,
@@ -1748,7 +1763,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (node.status === "paused") return;
     let ok = a.outcome!.ok;
-    if (node.cache && work.cache) cacheRuntime!.settle(node.cache, work.cache, time, sizeOf(work.message), ok);
+    if (work.cacheOwner && work.cache)
+      cacheRuntime!.settle(work.cacheOwner, work.cache, time, sizeOf(work.message), ok);
     const retry =
       !ok || ((call.replies ?? 0) > 0 && (node.status === "down" || releaseNow))
         ? retryFor(node, work, !releaseNow)
@@ -1844,7 +1860,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       retireThread(node, work, releaseNow || node.status === "down", timedOut ? 0 : undefined);
       retireRequest(work, releaseNow);
     }
-    if (ok) complete(node, work);
+    if (work.cacheFlight) finishCacheFlight(node, work, settledCause(a));
+    else if (ok) complete(node, work);
     else fail(node, work, retry);
     // Logical acknowledgement releases the broker's delivery slot now. Its
     // retained thread must not later look like a queued pushed request.
@@ -2095,6 +2112,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  /** A cache fetch owns no shopper's deadline. Each parked request answers its own caller, even if late. */
+  function finishCacheFlight(node: Node, work: Work, cause: OutcomeKind): void {
+    const flight = work.cacheFlight!;
+    work.cacheOwner!.flights!.delete(flight.key);
+    cacheRuntime!.invalidateSummary(work.cacheOwner!);
+    for (const waiter of flight.waiters) {
+      waiter.failureCode = work.failureCode;
+      waiter.timeoutOrigin = work.timeoutOrigin;
+      settleWork(node, waiter, cause, false);
+    }
+    gone(node, work.message, cause === "success" ? "end" : "drop", "cache fetch");
+  }
+
   /** Ends the work's current attempt with `cause`: success, or what failed it. */
   function settleWork(node: Node, work: Work, cause: OutcomeKind, allowRetry = true): void {
     finishThreadWork(node, work);
@@ -2109,7 +2139,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       retireThread(node, work, node.status === "down" || !allowRetry);
       retireRequest(work, !allowRetry);
     }
-    if (ok) complete(node, work);
+    if (work.cacheFlight) finishCacheFlight(node, work, cause);
+    else if (ok) complete(node, work);
     else fail(node, work, retry);
     if (work.retained) work.attempt = undefined;
   }
@@ -2141,6 +2172,69 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (work.cache?.outcome === "hit") {
       settleWork(node, work, "success");
+      return;
+    }
+    if (work.cache?.outcome === "miss" && work.cache.rule?.policy.coalesce && work.cache.item >= 0) {
+      const cache = work.cacheOwner!;
+      const key = `${work.cache.rule.id}:${work.cache.item}`;
+      const flights = (cache.flights ??= new Map());
+      let fetch = flights.get(key);
+      // A miss can finish its local hop after the first fetch has already filled.
+      // It shares that reply instead of starting a redundant second fetch in the same expiry.
+      const filled = !fetch && time < work.cache.rule.freshUntil[work.cache.item];
+      const coalesced = sizeOf(work.message) - (fetch || filled ? 0 : 1);
+      cache.counts.misses -= coalesced;
+      cache.counts.coalesced += coalesced;
+      work.cache.rule.counts.misses -= coalesced;
+      work.cache.rule.counts.coalesced += coalesced;
+      if (filled) {
+        work.cache.outcome = "coalesced";
+        settleWork(node, work, "success");
+        return;
+      }
+      retireThread(node, work);
+      endResources(node, work);
+      endThreadAdmission(work);
+      release(work);
+      work.slotted = false;
+      work.message = { ...work.message, represented: sizeOf(work.message) };
+      if (!fetch) {
+        spend();
+        const id = nextMessage++;
+        inSystem++;
+        fetch = {
+          message: {
+            ...work.message,
+            id,
+            represented: 1,
+            width: undefined,
+            returnCall: undefined,
+            family: {
+              root: id,
+              bornAt: time,
+              alive: 1,
+              parked: 0,
+              routesDone: work.message.request ? [work.message.request.id] : [],
+            },
+          },
+          remaining: 0,
+          route: work.route,
+          cache: { ...work.cache },
+          cacheOwner: cache,
+          cacheFlight: { key, waiters: [], waiting: 0 },
+        };
+        flights.set(key, fetch);
+      }
+      work.cache.outcome = "coalesced";
+      if (work.message.family.trace) step(work.message, "cache", node.id, { cache: cacheTrace(node, work) });
+      fetch.cacheFlight!.waiters.push(work);
+      fetch.cacheFlight!.waiting += sizeOf(work.message);
+      cacheRuntime!.invalidateSummary(cache);
+      if (fetch.waitingCall === undefined && !beginCall(node, fetch)) {
+        flights.delete(key);
+        for (const waiter of fetch.cacheFlight!.waiters) settleWork(node, waiter, "call-limit", false);
+        gone(node, fetch.message, "drop", "cache fetch has no origin");
+      }
       return;
     }
     if (waits() && beginCall(node, work)) return;
@@ -2187,7 +2281,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (recorder)
         recordLatency(
           recorder,
-          work.cache.outcome === "not-cached" ? undefined : work.cache.outcome,
+          work.cache.outcome === "not-cached"
+            ? undefined
+            : work.cache.outcome === "coalesced"
+              ? "miss"
+              : work.cache.outcome,
           time - work.cacheAt!,
           0,
           0,
@@ -2204,7 +2302,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     processed(node, work.message, work.cache ? cacheTrace(node, work) : undefined);
-    if (work.cache?.outcome === "hit") {
+    if (work.cache?.outcome === "hit" || work.cache?.outcome === "coalesced") {
       gone(node, work.message, "end", "cached");
       return;
     }
@@ -2518,6 +2616,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // admission bucket or service time is spent.
     if (node.table && !work.route && !routeOnArrival(node, work)) return;
     if (node.cache && !work.cache) {
+      work.cacheOwner = node.cache;
       work.cacheAt = time;
       work.cache = cacheRuntime!.lookup(
         node.cache,
@@ -3554,8 +3653,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         return recorder ? latencyMetrics(recorder).p95 : 0;
       }
       if (metric.field === "originFetches") return (node.cache?.counts.fetches ?? 0) / scale;
+      if (metric.field === "itemFetches") return node.cache ? cacheRuntime!.itemFetches(node.cache) / scale : 0;
       if (metric.field === "hitRatio" || metric.field === "originOffload") {
-        const window = node.cache && cacheRuntime!.details(node.cache, time).window;
+        const window = node.cache && cacheRuntime!.window(node.cache, time);
         return metric.field === "hitRatio"
           ? window && window.hits + window.misses
             ? (100 * window.hits) / (window.hits + window.misses)
@@ -4019,6 +4119,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       setNodePropsBatch({ [nodeId]: patch });
     },
     setNodePropsBatch,
+    observeCacheItem(nodeId, rule, item) {
+      const cache = nodes.get(nodeId)?.cache;
+      return cache && cacheRuntime!.observeItem(cache, rule, item);
+    },
     setCacheRates(rates) {
       for (const node of nodes.values()) if (node.cache) cacheRuntime!.updateExpected(node.cache, rates[node.id] ?? {});
     },

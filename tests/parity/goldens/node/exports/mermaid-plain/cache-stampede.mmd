@@ -1,0 +1,11 @@
+---
+title: A cache stampede
+---
+flowchart LR
+  shoppers(["Shoppers"])
+  cdn["Edge CDN"]
+  origin["Product API<br/>4 threads · 60 ms · blocking"]
+  db[("Catalog DB")]
+  shoppers --> cdn
+  cdn --> origin
+  origin --> db

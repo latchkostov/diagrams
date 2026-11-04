@@ -118,6 +118,7 @@ export function useLiveFixes({
         action.kind === "free-thread" ||
         action.kind === "add-timeout" ||
         action.kind === "scale-threads" ||
+        action.kind === "cache" ||
         action.kind === "resilience"
       ) {
         // The callout's chunk brought the code its button runs (src/live/threadFixes.ts).
@@ -159,6 +160,7 @@ export function useLiveFixes({
         t.action.kind !== "add-dlq" &&
         t.action.kind !== "free-thread" &&
         t.action.kind !== "scale-threads" &&
+        t.action.kind !== "cache" &&
         t.action.kind !== "resilience" &&
         t.action.kind !== "add-timeout"));
 

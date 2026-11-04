@@ -128,7 +128,7 @@ Times are milliseconds from the start, and rates and counts are real messages.
 
 - Rates up to 10,000,000/s, bursts and injections up to 100,000 messages, times up to 600,000 ms.
 - All traffic in the file together: at most 200,000 messages as played (rate × duration, summed, ÷ each simulation's `scale`, the real messages per dot).
-- Expectation metrics: `hitRatio`, `originOffload`, `originFetches`, `p95`, `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `retried`, `shortCircuited`, `shed`, `amplification`, `goodput`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
+- Expectation metrics: `hitRatio`, `originOffload`, `originFetches`, `itemFetches`, `p95`, `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `retried`, `shortCircuited`, `shed`, `amplification`, `goodput`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
 
 <!-- END GENERATED sim-limits -->
 

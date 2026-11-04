@@ -1,0 +1,305 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3",
+    "requestRoutes": [
+      { "id": "launch", "label": "Launch page", "address": { "method": "GET", "path": "/launch" } },
+      { "id": "products", "label": "Other products", "address": { "method": "GET", "path": "/products/example" } }
+    ]
+  },
+  "nodeProps": {
+    "shoppers": {
+      "ratePerSec": 400,
+      "trafficMix": {
+        "mode": "shares",
+        "entries": [{ "routeId": "launch", "share": 0.8 }, { "routeId": "products", "share": 0.2 }]
+      },
+      "latencyMs": 0,
+      "replicas": 1,
+      "jitter": 0.2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Shoppers",
+      "healthChecks": false
+    },
+    "cdn": {
+      "latencyMs": 5,
+      "jitter": 0,
+      "cache": {
+        "rules": [
+          {
+            "id": "launch",
+            "label": "Launch page",
+            "match": { "path": { "kind": "exact", "value": "/launch" } },
+            "policy": { "ttlMs": 5000, "keys": 1 }
+          },
+          {
+            "id": "products",
+            "label": "Other products",
+            "match": { "path": { "kind": "prefix", "value": "/products/" } },
+            "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+          }
+        ]
+      },
+      "ratePerSec": 2,
+      "replicas": 1,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Edge CDN",
+      "healthChecks": false
+    },
+    "origin": { "replicas": 1, "concurrency": 4, "latencyMs": 60, "jitter": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Product API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "db": { "latencyMs": 20, "jitter": 0, "ratePerSec": 2, "replicas": 1, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Catalog DB", "healthChecks": false }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "planning.requestRoutes", "shoppers.props.trafficMix", "cdn.props.cache", "origin.props.preset", "origin.props.presetRevision", "one-fetch.setup.props.cdn.cache", "requests.props.networkDelayMs", "fetch.props.caller", "fetch.props.networkDelayMs", "read.props.caller"] },
+  "autoScale": { "freePlay": 10, "ttl-only": 10, "one-fetch": 10 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "origin",
+      "suggestion": "Product API: raise replicas from 1 to 6.",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [66.66666666666667, 400, 6, 1, 1, 0], "db": ["Infinity", 400, 0, 1, 1, 0] },
+      "connections": { "requests": 400, "fetch": 400, "read": 400 },
+      "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
+    },
+    "explanations": {
+      "origin": {
+        "id": "origin",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 66.66666666666667,
+        "offered": 400,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.06,
+        "utilization": 6,
+        "growth": 333.3333333333333,
+        "contributors": [{ "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 400, "via": "Edge CDN" }],
+        "target": 0.5,
+        "minimumReplicas": 6,
+        "targetReplicas": 12,
+        "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 12 }],
+        "fixId": "capacity:origin",
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "shoppers": [{ "kind": "calls", "edge": "requests", "peer": "cdn" }],
+      "cdn": [{ "kind": "calls", "edge": "fetch", "peer": "origin" }],
+      "origin": [{ "kind": "calls", "edge": "read", "peer": "db" }]
+    },
+    "sizing": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11 }],
+    "redundancy": { "origin": { "replicas": 11, "enough": true } },
+    "resolved": {
+      "shoppers": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 400,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Shoppers",
+        "healthChecks": false
+      },
+      "cdn": {
+        "profile": { "family": "edge", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Edge CDN",
+        "healthChecks": false
+      },
+      "origin": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 60,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Product API",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Catalog DB",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "ttl-only": { "configured": "(same as edit)", "simulation": "ttl-only", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "one-fetch": { "configured": "(same as edit)", "simulation": "one-fetch", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "origin",
+          "headline": "Product API is over capacity",
+          "detail": "600% · 400/s of 67/s",
+          "fix": {
+            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+            "label": "Product API 1 → 11 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+            "origin": ["over", "600% · 400/s of 67/s"],
+            "db": ["idle", "400/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "origin",
+          "headline": "Product API is over capacity",
+          "detail": "30× · 2k/s of 67/s",
+          "fix": {
+            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 55, "label": "Product API" }],
+            "label": "Product API 1 → 55 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "2k/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "2k/s · no limit", { "modeled": false }],
+            "origin": ["over", "30× · 2k/s of 67/s"],
+            "db": ["idle", "2k/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "origin",
+          "headline": "Product API is over capacity",
+          "detail": "600% · 400/s of 67/s",
+          "fix": {
+            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 22, "label": "Product API" }],
+            "label": "Product API 1 → 22 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+            "origin": ["over", "600% · 400/s of 67/s"],
+            "db": ["idle", "400/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "origin",
+          "headline": "Product API is over capacity",
+          "detail": "600% · 400/s of 67/s",
+          "fix": {
+            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+            "label": "Product API 1 → 11 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+            "origin": ["over", "600% · 400/s of 67/s"],
+            "db": ["idle", "400/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "ttl-only": {
+      "tone": "over",
+      "top": "origin",
+      "headline": "Product API is over capacity",
+      "detail": "600% · 400/s of 67/s",
+      "fix": {
+        "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+        "label": "Product API 1 → 11 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["over", "600% · 400/s of 67/s"],
+        "db": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "one-fetch": {
+      "tone": "over",
+      "top": "origin",
+      "headline": "Product API is over capacity",
+      "detail": "600% · 400/s of 67/s",
+      "fix": {
+        "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+        "label": "Product API 1 → 11 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["over", "600% · 400/s of 67/s"],
+        "db": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "viewport": "translate(32px, 212.774px) scale(1.07769)",
+  "nodes": {
+    "shoppers": { "kind": "node", "box": "translate(0px, 160px) 220×72", "text": "Shoppers Web Browser" },
+    "cdn": { "kind": "node", "box": "translate(330px, 160px) 220×72", "text": "Edge CDN CDN" },
+    "origin": { "kind": "node", "box": "translate(660px, 160px) 232×72", "text": "Product API 4 threads · 60 ms · blocking" },
+    "db": { "kind": "node", "box": "translate(990px, 160px) 220×72", "text": "Catalog DB Database" }
+  },
+  "edges": { "requests": "M220,196 L330,196", "fetch": "M550,196 L660,196", "read": "M892,196 L990,196" },
+  "labels": {}
+}
