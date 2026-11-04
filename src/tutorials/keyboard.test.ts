@@ -87,6 +87,22 @@ it("keeps authored keyboard routes for native radio groups", () => {
   expect(withKeyboardSolutions(lesson).steps.find((s) => s.id === "default")!.keyboardSolution).toBe(route);
 });
 
+it.each(["route", "default"])("teaches opening Route table before editing %s", (id) => {
+  const lesson = allTutorials.find((lesson) => lesson.id === "route-by-address")!;
+  const step = lesson.steps.find((step) => step.id === id)!;
+  const disclosure = "inspector-section-node-routes";
+  const row = id === "route" ? "routes-rule-parcels" : "routes-default";
+  const pointerOpen = step.solution.findIndex((action) => "open" in action && action.open === disclosure);
+  const pointerRow = step.solution.findIndex((action) => "click" in action && action.click === row);
+  const keyboardOpen = step.keyboardSolution!.findIndex((action) => "open" in action && action.open === disclosure);
+  const keyboardRow = step.keyboardSolution!.findIndex((action) => "activate" in action && action.activate === row);
+  expect(pointerOpen).toBeGreaterThanOrEqual(0);
+  expect(pointerOpen).toBeLessThan(pointerRow);
+  expect(keyboardOpen).toBeGreaterThanOrEqual(0);
+  expect(keyboardOpen).toBeLessThan(keyboardRow);
+  expect(step.targets.some((target) => target.testId === disclosure)).toBe(true);
+});
+
 it("uses an authored keyboard solution before translating unsupported pointer gestures", () => {
   const keyboardSolution = [{ press: "ControlOrMeta+a" }];
   const lesson = allTutorials[0];

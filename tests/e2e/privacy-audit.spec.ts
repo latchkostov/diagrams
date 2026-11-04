@@ -530,6 +530,7 @@ test.describe("this browser's storage", () => {
       await gotoCanvas(page, SLUG);
       await context.grantPermissions(["clipboard-read", "clipboard-write"]);
       await page.getByTestId("node-shopper").click({ button: "right" });
+      await page.getByTestId("context-menu-item-item.copy-family").click();
       await page.getByTestId("context-menu-item-item.copy-for-ai").click();
       await expect(page.getByTestId("toast")).toContainText("Copied");
       await page.getByTestId("canvas-wrap").focus();

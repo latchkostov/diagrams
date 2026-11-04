@@ -18,6 +18,9 @@ import { downloadText } from "../interop/files";
 import { t, useLocale } from "../i18n";
 import { formatList, formatRate } from "../i18n/format";
 import type { DiagramFile } from "../model/types";
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
+import { notify } from "../interop/ui/toast";
+import { isolate } from "../live/bidi";
 
 export function PlanningUpgrade({
   editor,
@@ -32,6 +35,8 @@ export function PlanningUpgrade({
 }) {
   useLocale();
   const previewButton = useRef<HTMLButtonElement>(null);
+  const modelSummary = useRef<HTMLParagraphElement>(null);
+  const focusSummary = useRef(false);
   const [preview, setPreview] = useState<"a1" | "waits" | "retries" | "cache" | "legacy" | null>(
     initialPreview ? "a1" : null,
   );
@@ -39,6 +44,12 @@ export function PlanningUpgrade({
   useLayoutEffect(() => {
     if (initialPreview && (takePreviewFocus?.() ?? true)) upgradeButton.current?.focus();
   }, [initialPreview, takePreviewFocus]);
+  useLayoutEffect(() => {
+    if (focusSummary.current) {
+      modelSummary.current?.focus();
+      focusSummary.current = false;
+    }
+  });
   const resilience = preview === "retries";
   const caching = preview === "cache";
   const a1 = preview === "a1";
@@ -60,6 +71,18 @@ export function PlanningUpgrade({
   const before = d && next ? analyzePlanningCapacity(d, explanationSimulation(d)) : undefined;
   const after = next ? analyzePlanningCapacity(next, explanationSimulation(next)) : undefined;
   const legacy = preview === "legacy" && d?.planning ? legacyExport(d) : undefined;
+  const cacheNodes = d && caching ? cacheUpgradeNodes(d) : [];
+  const cacheIds = new Set(cacheNodes.map((row) => row.nodeId));
+  const nodesById = new Map(d?.nodes.map((n) => [n.id, n]));
+  const origins = d
+    ? formatList([
+        ...new Set(
+          d.edges
+            .filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow") && cacheIds.has(e.from))
+            .map((e) => isolate(nodesById.get(e.to)?.label ?? e.to)),
+        ),
+      ])
+    : "";
   const capacity = (value: number) => (Number.isFinite(value) ? formatRate(value) : t("admission.unknownShort"));
   const upgradeContent = d && next && before && after && (
     <div data-testid="planning-upgrade-preview">
@@ -68,12 +91,13 @@ export function PlanningUpgrade({
           ? t("cache.upgradeHint", {
               nodes:
                 formatList(
-                  cacheUpgradeNodes(d).map((row) =>
+                  cacheNodes.map((row) =>
                     row.simulation
-                      ? t("cache.upgradeSimulation", { node: row.node, simulation: row.simulation })
-                      : row.node,
+                      ? t("cache.upgradeSimulation", { node: isolate(row.node), simulation: isolate(row.simulation) })
+                      : isolate(row.node),
                   ),
                 ) || t("cache.none"),
+              origins: origins || t("cache.origin"),
             })
           : resilience
             ? t("resilience.upgradeHint")
@@ -109,17 +133,41 @@ export function PlanningUpgrade({
           </button>
         </>
       )}
-      <ul>
-        {(waits ? d.nodes.filter((n) => after.nodes[n.id].waits) : d.nodes).map((n) => (
-          <li key={n.id}>
-            {t("planning.upgradeNode", {
-              name: n.label,
-              before: capacity(before.nodes[n.id].capacity),
-              after: capacity(after.nodes[n.id].capacity),
-            })}
-          </li>
-        ))}
+      <ul data-testid="planning-capacity-changes">
+        {(waits ? d.nodes.filter((n) => after.nodes[n.id].waits) : d.nodes)
+          .filter(
+            (n) =>
+              !caching ||
+              (Number.isFinite(before.nodes[n.id].capacity) &&
+                Number.isFinite(after.nodes[n.id].capacity) &&
+                before.nodes[n.id].capacity !== after.nodes[n.id].capacity),
+          )
+          .map((n) => (
+            <li key={n.id}>
+              {t("planning.upgradeNode", {
+                name: n.label,
+                before: capacity(before.nodes[n.id].capacity),
+                after: capacity(after.nodes[n.id].capacity),
+              })}
+            </li>
+          ))}
       </ul>
+      {caching && (
+        <ReadoutDisclosure title={t("cache.technicalDetails")} testId="cache-upgrade-details">
+          <p>{t("cache.capacityDetails")}</p>
+          <ul>
+            {d.nodes.map((n) => (
+              <li key={n.id}>
+                {t("planning.upgradeNode", {
+                  name: isolate(n.label),
+                  before: capacity(before.nodes[n.id].capacity),
+                  after: capacity(after.nodes[n.id].capacity),
+                })}
+              </li>
+            ))}
+          </ul>
+        </ReadoutDisclosure>
+      )}
       <button
         className="btn btn-primary"
         data-testid="planning-upgrade"
@@ -136,17 +184,27 @@ export function PlanningUpgrade({
                     : upgradePlanning(editor.getDiagram()),
           );
           setPreview(null);
-          previewButton.current?.focus();
+          if (caching) {
+            focusSummary.current = true;
+            notify(t("cache.enabled"), {
+              action: {
+                label: t("routing.undo"),
+                undoes: true,
+                testId: "cache-upgrade-undo",
+                run: () => editor.undo(),
+              },
+            });
+          } else previewButton.current?.focus();
         }}
       >
-        {t("planning.upgrade")}
+        {caching ? t("cache.enable") : t("planning.upgrade")}
       </button>
     </div>
   );
   return (
     <section className="insp-section" data-testid="planning-model">
       <h3 className="insp-section-title">{t("planning.model")}</h3>
-      <p className="insp-note">
+      <p className="insp-note" ref={modelSummary} tabIndex={-1} data-testid="planning-model-summary">
         {planning?.revision === "p3-w3"
           ? t("cache.model")
           : planning?.revision === "p3-w2"
@@ -236,15 +294,20 @@ export function PlanningUpgrade({
         {preview === "legacy" && upgradeContent}
         {legacy && (
           <div data-testid="planning-legacy-preview">
-            {revisionAtLeast(d?.planning?.revision, "p3-w3") && <p>{t("cache.exportLoss")}</p>}
-            {revisionAtLeast(d?.planning?.revision, "p3-w2") && <p>{t("resilience.exportLoss")}</p>}
-            {revisionAtLeast(d?.planning?.revision, "p3-w1") && <p>{t("threads.exportLoss")}</p>}
-            <p>
-              {d?.planning?.revision === "p3"
-                ? t("broker.exportLoss")
-                : t("planning.losses", { fields: formatList(legacy.losses) })}
-            </p>
-            {d?.planning?.revision === "p3" && <p>{formatList(legacy.losses)}</p>}
+            {revisionAtLeast(d?.planning?.revision, "p3-w3") && (
+              <p data-testid="planning-legacy-cache-loss">{t("cache.exportLoss")}</p>
+            )}
+            {revisionAtLeast(d?.planning?.revision, "p3-w3") && <p>{t("cache.originalUnchanged")}</p>}
+            {revisionAtLeast(d?.planning?.revision, "p3-w2") && (
+              <p data-testid="planning-legacy-resilience-loss">{t("resilience.exportLoss")}</p>
+            )}
+            {revisionAtLeast(d?.planning?.revision, "p3-w1") && (
+              <p data-testid="planning-legacy-waits-loss">{t("threads.exportLoss")}</p>
+            )}
+            {d?.planning?.revision === "p3" && <p>{t("broker.exportLoss")}</p>}
+            <ReadoutDisclosure title={t("cache.technicalDetails")} testId="planning-legacy-details">
+              <p>{t("planning.losses", { fields: formatList(legacy.losses) })}</p>
+            </ReadoutDisclosure>
             <button
               className={next ? "btn" : "btn btn-primary"}
               data-testid="planning-legacy-download"

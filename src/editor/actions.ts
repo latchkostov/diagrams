@@ -112,7 +112,7 @@ export interface Action {
   /** Offered in the Inspector Selection actions overflow. */
   inspectorSelection?: boolean;
   /** Fold related context-menu actions under one row; palette and Inspector keep direct routes. */
-  menuGroup?: Pick<MenuItem, "id" | "label" | "icon">;
+  menuGroup?: Pick<MenuItem, "id" | "label" | "icon"> & { single?: "direct" };
   /** Modes the action is offered in. Default ["edit"]. */
   modes?: readonly EditorMode[];
   label: string | ((ctx: ActionContext) => string);
@@ -150,6 +150,15 @@ export interface MenuSection {
   /** Optional header rendered above the section. */
   title?: string;
 }
+
+/** Shared by regular Copy and optional Copy for AI registrations. */
+export const copyMenu = {
+  id: "item.copy-family",
+  get label() {
+    return t("shortcuts.copy");
+  },
+  icon: "copy" as const,
+};
 
 export const builtinSections: readonly MenuSection[] = [
   { id: "insert", order: 10 },
@@ -235,6 +244,7 @@ export class ActionRegistry {
         .sort((a, b) => (a.action.order ?? 100) - (b.action.order ?? 100) || a.seq - b.seq);
       const items: MenuItem[] = [];
       const menuGroups = new Map<string, MenuItem>();
+      const directSingles = new Set<string>();
       for (const { action } of entries) {
         const item = toItem(action, ctx);
         if (!item) continue;
@@ -243,6 +253,7 @@ export class ActionRegistry {
           items.push(item);
           continue;
         }
+        if (group.single === "direct") directSingles.add(group.id);
         let parent = menuGroups.get(group.id);
         if (!parent) {
           parent = { type: "item", ...group, children: [] };
@@ -255,7 +266,9 @@ export class ActionRegistry {
       if (out.length) out.push({ type: "separator" });
       const title = this.sections.get(id)?.title;
       if (title) out.push({ type: "header", label: title });
-      out.push(...items);
+      out.push(
+        ...items.map((item) => (directSingles.has(item.id) && item.children?.length === 1 ? item.children[0] : item)),
+      );
     }
     return out;
   }

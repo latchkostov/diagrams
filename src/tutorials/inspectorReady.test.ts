@@ -14,7 +14,7 @@ it.each([false, true])("waits for both late Inspector sections (planning first: 
   const pending = tutorialInspectorReady({ getByTestId } as unknown as Pick<Page, "getByTestId">).then(() => {
     ready = true;
   });
-  expect([...releases.keys()]).toEqual(["inspector-field-node-description-editor", "planning-explanation-c"]);
+  expect([...releases.keys()]).toEqual(["inspector-node-description-toggle", "planning-explanation-c"]);
   await Promise.resolve();
   expect(ready).toBe(false);
   const [first, last] = [...releases.keys()];

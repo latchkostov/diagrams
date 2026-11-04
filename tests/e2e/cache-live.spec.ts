@@ -29,13 +29,21 @@ test("Live shows the hit chip, cache hover, split latency and Inputs derivation"
   await page.clock.resume();
   await openLiveNodeDetails(page, "cache", "cache");
 
+  await expect(page.getByTestId("cache-readout")).toContainText("Requests kept away from \u2068Origin\u2069");
+  await expect(page.getByTestId("cache-readout")).not.toContainText("hits over 10 s");
+  await expect(page.getByTestId("cache-latency")).toContainText("At this cache");
+  await expect(page.getByTestId("cache-latency")).toContainText("0 ms modelled lookup");
   const summary = page.getByTestId("hover-summary-cache");
   await expect(summary).toHaveText(/\d+% hits · \d+% offload · recent ≤10s/);
   await expect.poll(() => summary.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 
-  await expect(page.getByTestId("cache-readout")).toContainText("Recent window (up to 10 s)");
+  await expect(page.getByTestId("cache-readout")).not.toContainText("Recent window (up to 10 s)");
+  await expect(page.getByTestId("cache-readout")).not.toContainText("recent ≤10s");
+  await expect(page.getByTestId("cache-latency")).toContainText("since restart");
   await expect(page.getByTestId("cache-latency")).toContainText("Misses p95");
-  await expect(page.getByTestId("cache-live-rule-pages")).toContainText("hits since restart (expected 86%)");
+  await expect(page.getByTestId("cache-live-rule-pages")).toContainText(
+    "answered here since restart (hit ratio) (expected \u206886%\u2069)",
+  );
   if (process.env.CDN_SHOTS) {
     mkdirSync(process.env.CDN_SHOTS, { recursive: true });
     await chip.screenshot({ path: join(process.env.CDN_SHOTS, "chip.png") });

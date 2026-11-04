@@ -40,7 +40,10 @@ async function seed(page: Page, d: DiagramFile, { dark = false } = {}) {
   await page.addInitScript(
     ({ key, d }) => {
       localStorage.setItem(key, JSON.stringify(d));
-      localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "node-simulation": true }));
+      localStorage.setItem(
+        "diagrams.inspector.open.v1",
+        JSON.stringify({ "node-simulation": true, "node-routes": true }),
+      );
     },
     { key: STORAGE_KEYS.autosavePrefix + slug, d },
   );

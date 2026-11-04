@@ -141,7 +141,7 @@ export function upgradeCaching(d: DiagramFile): DiagramFile {
 
 /** Preview executable storing policies, including saved overrides that become active after upgrading. */
 export function cacheUpgradeNodes(d: DiagramFile) {
-  const rows: { node: string; simulation?: string }[] = [];
+  const rows: { nodeId: string; node: string; simulation?: string }[] = [];
   const eligible = new Set(
     d.nodes
       .filter(
@@ -155,7 +155,8 @@ export function cacheUpgradeNodes(d: DiagramFile) {
     const table = value as CacheTable | undefined;
     return !!table && (!!table.default?.ttlMs || table.rules.some((r) => !!r.policy.ttlMs));
   };
-  for (const node of d.nodes) if (eligible.has(node.id) && storing(node.props?.cache)) rows.push({ node: node.label });
+  for (const node of d.nodes)
+    if (eligible.has(node.id) && storing(node.props?.cache)) rows.push({ nodeId: node.id, node: node.label });
   for (const sim of d.simulations ?? []) {
     for (const node of d.nodes) {
       if (!eligible.has(node.id) || storing(node.props?.cache)) continue;
@@ -165,7 +166,7 @@ export function cacheUpgradeNodes(d: DiagramFile) {
           (step) => step.action.do === "props" && step.action.node === node.id && storing(step.action.props.cache),
         )
       )
-        rows.push({ node: node.label, simulation: sim.title });
+        rows.push({ nodeId: node.id, node: node.label, simulation: sim.title });
     }
   }
   return rows;

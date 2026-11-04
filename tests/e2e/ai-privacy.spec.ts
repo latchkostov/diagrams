@@ -200,6 +200,7 @@ test("on a local-only diagram the AI panel says so, and Copy for AI copies nothi
   await expect.poll(() => toolNames(page)).toEqual([]);
   const node = localOnlyFixture.nodes[0];
   await page.getByTestId(`node-${node.id}`).click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-family").click();
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toContainText("AI is off");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");

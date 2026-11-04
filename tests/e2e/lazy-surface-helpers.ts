@@ -64,6 +64,7 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
   if (id === "inspector.cache") {
     await gotoCanvas(page, SLUG);
     await page.getByTestId("node-cache").click();
+    await page.getByTestId("inspector-section-node-cache").click();
     return;
   }
   if (id === "canvas.stencils") {

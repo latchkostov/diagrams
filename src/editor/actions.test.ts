@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramAnnotation } from "../model/types";
-import { ActionRegistry, builtinSections, type ActionContext, type MenuNode } from "./actions";
+import { ActionRegistry, builtinSections, copyMenu, type ActionContext, type MenuNode } from "./actions";
 import type { EditorApi } from "./types";
 
 // Keep the real logger: incomplete fixtures must fail instead of hiding broken menu predicates.
@@ -29,6 +29,62 @@ const ctx = (target: ActionContext["target"]): ActionContext => ({
 });
 const ids = (items: MenuNode[]) =>
   items.map((i) => (i.type === "item" ? i.id : i.type === "header" ? `[${i.label}]` : "---"));
+
+it("keeps every caching-capable stencil's menus within twelve actions, including Copy for AI", async () => {
+  const { builtinActions } = await import("./builtinActions");
+  const { stencils } = await import("../stencils/registry");
+  const { cacheCapable } = await import("../model/caching");
+  const registry = new ActionRegistry(builtinSections);
+  registry.register([
+    ...builtinActions(),
+    {
+      id: "item.copy-for-ai",
+      section: "clipboard",
+      targets: ["node"],
+      label: "Copy for AI",
+      menuGroup: copyMenu,
+      modes: ["edit", "live"],
+    },
+  ]);
+  const counts: Record<string, number> = {};
+  for (const stencil of stencils.filter((s) => cacheCapable(s.id, s.simRole))) {
+    const context = ctx("node");
+    const node = { id: "n", label: "Cache", stencil: stencil.id, x: 0, y: 0 };
+    context.nodeId = node.id;
+    context.selection.nodeIds = [node.id];
+    context.editor.getNode = () => node;
+    context.editor.getDiagram = () => ({
+      format: "diagrams/v1",
+      title: "Test",
+      planning: { revision: "p3-w3" },
+      nodes: [node, { id: "peer", label: "Service behind the cache", stencil: "generic.service", x: 320, y: 0 }],
+      edges: [],
+    });
+    const menu = registry.build(context).filter((row) => row.type === "item");
+    counts[stencil.id] = menu.length;
+    expect(menu.length, stencil.id).toBeLessThanOrEqual(12);
+    for (const row of menu)
+      if (row.children)
+        expect(
+          row.children.filter((child) => child.type === "item").length,
+          `${stencil.id}/${row.id}`,
+        ).toBeLessThanOrEqual(12);
+    const simulation = menu.find((row) => row.id === "node.simulation");
+    expect(simulation?.children?.some((child) => child.type === "item" && child.id === "node.add-cache-rules")).toBe(
+      true,
+    );
+    expect(
+      menu
+        .find((row) => row.id === "item.copy-family")
+        ?.children?.filter((row) => row.type === "item")
+        .map((row) => row.id),
+    ).toEqual(["item.copy", "item.copy-for-ai"]);
+    const live = registry.build({ ...context, mode: "live" }).filter((row) => row.type === "item");
+    expect(live.find((row) => row.id === "item.copy-family")?.children).toHaveLength(1);
+  }
+  expect(Object.keys(counts).length).toBeGreaterThanOrEqual(6);
+  console.info("Caching menu counts:", JSON.stringify(counts));
+});
 
 describe("action registry", () => {
   it("builds per target, ordered by section with separators", () => {

@@ -92,6 +92,7 @@ export const commandPalette: Tutorial = {
         { press: "ControlOrMeta+k" },
         { fill: "command-input", text: msg("chrome.nodeProperties") },
         { click: "command-item-action:node.properties" },
+        { open: "inspector-node-description-toggle" },
         { fill: "inspector-field-node-description", text: msg("tutorials.commandPalette.description") },
       ],
     },

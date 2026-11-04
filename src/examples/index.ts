@@ -61,7 +61,7 @@ const publicExamples: PublicExample[] = (
     {
       slug: "black-friday-commerce",
       theme: "systems",
-      summary: "60 services: route table, HPA, KEDA, outbox, DLQ",
+      summary: msg("examples.blackFridaySummary"),
       featured: true,
     },
     {

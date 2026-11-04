@@ -52,6 +52,7 @@ for (const { field, name, diagram, nodeId, binding } of cases) {
     });
     await expect(page.getByTestId("diagram-title")).toHaveText(diagram.title);
     await page.getByTestId(`node-${nodeId}`).dblclick();
+    if (field === "node-description") await page.getByTestId("inspector-node-description-toggle").click();
     const input = page.getByTestId(`inspector-field-${field}`);
     await expect(input).toBeVisible();
     if (binding) {

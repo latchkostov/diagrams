@@ -66,11 +66,17 @@ export const propertySheet: Tutorial = {
       goal: msg("tutorials.propertySheet.descriptionGoalV2"),
       done: msg("tutorials.propertySheet.descriptionDone"),
       check: { kind: "field", subject: "api", field: "description" },
-      targets: [{ testId: "inspector-field-node-description", tip: msg("tutorials.propertySheet.descriptionGoalV2") }],
+      targets: [
+        { testId: "inspector-field-node-description", tip: msg("tutorials.propertySheet.descriptionGoalV2") },
+        { testId: "inspector-node-description-toggle", tip: msg("tutorials.propertySheet.descriptionGoalV2") },
+      ],
       demo: [
         { kind: "field", subject: "api", field: "description", value: msg("tutorials.propertySheet.descriptionValue") },
       ],
-      solution: [{ fill: "inspector-field-node-description", text: msg("tutorials.propertySheet.descriptionValue") }],
+      solution: [
+        { open: "inspector-node-description-toggle" },
+        { fill: "inspector-field-node-description", text: msg("tutorials.propertySheet.descriptionValue") },
+      ],
     },
     {
       id: "read",
