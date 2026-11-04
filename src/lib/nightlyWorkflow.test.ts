@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
 import { E2E_PROFILES } from "../../scripts/e2e-profiles.mjs";
@@ -34,13 +33,13 @@ it("shards the full 20x property corpus with independent reports and a step dead
 });
 
 it("isolates cache agreement without duplicating or dropping any discovered property file", () => {
-  const files = execFileSync(
-    "git",
-    ["grep", "-l", ["from", '"fast-check"'].join(" "), "--", "src/**/*.test.ts", "src/**/*.test.tsx"],
-    { encoding: "utf8" },
-  )
-    .trim()
-    .split(/\r?\n/);
+  // Walk the source tree instead of asking Git: the Linux gate copies HEAD without .git. Same rule as
+  // CI's discovery (a test file importing fast-check); src/examples/private holds no tests.
+  const files = (readdirSync("src", { recursive: true, encoding: "utf8" }) as string[])
+    .map((path) => `src/${path.replaceAll("\\", "/")}`)
+    .filter((path) => !path.startsWith("src/examples/private/") && /\.test\.tsx?$/.test(path))
+    .filter((path) => readFileSync(path, "utf8").includes(["from", '"fast-check"'].join(" ")))
+    .sort();
   const agreement = propertyFiles(files, "agreement-0");
   const ordinary = propertyFiles(files, "1");
   expect(agreement).toEqual(["src/sim/cacheAgreement.test.ts"]);
