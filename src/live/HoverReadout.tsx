@@ -99,7 +99,7 @@ export function SectionRows({
               {s.key === "threads" ? "☷" : s.key === "latency" ? "◷" : s.key === "resources" ? "▦" : "≡"}
             </span>
             <strong>{s.label}</strong>
-            <small>
+            <small data-testid={`${docked ? "inspector-live" : "hover"}-summary-${s.key}`}>
               <bdi>{s.summary}</bdi>
             </small>
             <span aria-hidden>{pinned && open === s.key ? "⌄" : "›"}</span>

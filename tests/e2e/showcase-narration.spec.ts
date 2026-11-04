@@ -7,7 +7,7 @@ const narrations = [
     slug: "black-friday-commerce",
     sim: "doors-open",
     at: 4500,
-    text: "The edge answers 87%",
+    text: "The edge answers repeat product pages and searches",
     focus: ["cdn", "gateway", "catalog-bff", "search-api"],
   },
   {

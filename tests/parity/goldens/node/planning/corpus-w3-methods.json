@@ -9,8 +9,8 @@
       "suggestion": "Readers: 0% utilized",
       "converged": true,
       "iterations": 3,
-      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 200, 0, 1, 1, 0], "cache": ["Infinity", 200, 0, 1, 1, 0], "origin": ["Infinity", 101.9607843137255, 0, 1, 1, 0] },
-      "connections": { "input": 200, "fetch": 101.9607843137255 },
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 200, 0, 1, 1, 0], "cache": ["Infinity", 200, 0, 1, 1, 0], "origin": ["Infinity", 106.54205607476635, 0, 1, 1, 0] },
+      "connections": { "input": 200, "fetch": 106.54205607476635 },
       "offeredTypes": { "source": ["Readers"], "cache": ["Readers"], "origin": ["Readers"] }
     },
     "explanations": {},
@@ -54,7 +54,7 @@
       "origin": {
         "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 50,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0,
@@ -86,7 +86,7 @@
           "nodes": {
             "source": ["idle", "200/s · no limit", { "modeled": false }],
             "cache": ["idle", "200/s · no limit", { "modeled": false }],
-            "origin": ["idle", "102/s · no limit", { "modeled": false }]
+            "origin": ["idle", "107/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -104,7 +104,7 @@
           "nodes": {
             "source": ["idle", "1k/s · no limit", { "modeled": false }],
             "cache": ["idle", "1k/s · no limit", { "modeled": false }],
-            "origin": ["idle", "506/s · no limit", { "modeled": false }]
+            "origin": ["idle", "529/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -122,7 +122,7 @@
           "nodes": {
             "source": ["idle", "200/s · no limit", { "modeled": false }],
             "cache": ["idle", "200/s · no limit", { "modeled": false }],
-            "origin": ["idle", "102/s · no limit", { "modeled": false }]
+            "origin": ["idle", "107/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -140,7 +140,7 @@
           "nodes": {
             "source": ["idle", "200/s · no limit", { "modeled": false }],
             "cache": ["idle", "200/s · no limit", { "modeled": false }],
-            "origin": ["idle", "102/s · no limit", { "modeled": false }]
+            "origin": ["idle", "107/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -157,7 +157,7 @@
       "nodes": {
         "source": ["idle", "200/s · no limit", { "modeled": false }],
         "cache": ["idle", "200/s · no limit", { "modeled": false }],
-        "origin": ["idle", "102/s · no limit", { "modeled": false }]
+        "origin": ["idle", "107/s · no limit", { "modeled": false }]
       }
     }
   }

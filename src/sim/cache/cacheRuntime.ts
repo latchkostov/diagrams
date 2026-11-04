@@ -8,6 +8,7 @@ import type { CacheCounts, CacheRuleState } from "./cacheState";
 import { cachePlan } from "./planning";
 import { cacheScale } from "./cacheScale";
 import { analyzeCapacity } from "../capacity";
+import { cacheTrackingEligible } from "./tracking";
 import { latencyMetrics } from "../latency";
 import type { NodeCache } from "./cacheState";
 
@@ -163,6 +164,7 @@ export const cacheRuntime: CacheRuntime = {
           let tracked = 0;
           for (const band of popularity?.bands ?? []) {
             if (
+              !cacheTrackingEligible(planned, rule.policy.ttlMs!) ||
               band.first >= CACHE_LIMITS.tracked ||
               band.count !== 1 ||
               !remaining.value ||
@@ -191,6 +193,9 @@ export const cacheRuntime: CacheRuntime = {
             stream: streamSeed(seed, node, `cache:${rule.id}`),
             tracked,
             statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) : 0,
+            statisticalCredit: drawStream(streamSeed(seed, node, `cache-credit:${rule.id}`)).value * scale,
+            statisticalPending: 0,
+            statisticalDue: 0,
             freshUntil,
             fetching: new Float64Array(tracked),
             rate: initialRate(planned),
@@ -256,7 +261,26 @@ export const cacheRuntime: CacheRuntime = {
       rule.warmSince === undefined
         ? steady
         : Math.min(steady, 1 - expNeg((itemRate * Math.max(0, now - rule.warmSince - mean)) / 1000));
-    const hit = item >= 0 ? now < rule.freshUntil[item] : draw(rule) < (now < rule.statisticalUntil ? share : 0);
+    // Healthy statistical bands already include expiry in the shared formula.
+    // Sparse sampled misses need not refill once per TTL. Once pending fills
+    // stop making progress on their expected clock (or fail), use only the TTL
+    // of the last successful fill. New arrivals never extend either deadline.
+    // Without planned demand, isolated injections retain fill-bounded expiry.
+    const healthy =
+      rule.rate.planned > 0 && rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
+    const available = healthy || now < Math.abs(rule.statisticalUntil);
+    // Stratify statistical outcomes: the shared formula already includes item
+    // expiry. Independent whole-dot draws can leave artificial gaps between
+    // successful fills at coarse scales and charge that expiry a second time.
+    // Carry at most one dot of credit; availability still gates every hit.
+    const stratified = !cacheTrackingEligible(rule.rate.planned, rule.policy.ttlMs!);
+    if (item < 0 && stratified) rule.statisticalCredit += share * size;
+    const sample = item < 0 ? draw(rule) : 0;
+    const hit =
+      item >= 0
+        ? now < rule.freshUntil[item]
+        : available && (stratified ? rule.statisticalCredit >= size : sample < share);
+    if (item < 0 && stratified) rule.statisticalCredit = Math.min(size, rule.statisticalCredit - (hit ? size : 0));
     add(hit ? "hits" : "misses");
     cache.window!.buckets[bucket + (hit ? 1 : 2)] += size;
     return {
@@ -294,12 +318,21 @@ export const cacheRuntime: CacheRuntime = {
         return fetches;
       }
     }
+    if (lookup.rule && lookup.item < 0 && lookup.outcome === "miss") {
+      const rule = lookup.rule;
+      if (!rule.statisticalPending) {
+        const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
+        rule.statisticalDue = lookup.at + mean;
+      }
+      rule.statisticalPending++;
+    }
   },
   settle(cache, lookup, now, size, ok) {
     if (!lookup.fetching) return;
     lookup.fetching = undefined;
     const rule = lookup.rule;
     if (!rule) return;
+    if (lookup.item < 0 && lookup.outcome === "miss") rule.statisticalPending--;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
     if (lookup.item >= 0) {
       const state = summaryState(cache);
@@ -307,7 +340,11 @@ export const cacheRuntime: CacheRuntime = {
       state.value = undefined;
     }
     if (lookup.item >= 0 && !rule.fetching[lookup.item]) cache.herds?.delete(`${rule.id}:${lookup.item}`);
-    if (!ok || lookup.outcome !== "miss") return;
+    if (!ok || lookup.outcome !== "miss") {
+      if (!ok && lookup.item < 0 && lookup.outcome === "miss" && rule.statisticalUntil > 0)
+        rule.statisticalUntil = -rule.statisticalUntil;
+      return;
+    }
     if (Object.isFrozen(rule.fetchMs)) rule.fetchMs = { ...rule.fetchMs, samples: rule.fetchMs.samples.slice() };
     const mean = rule.fetchMs,
       duration = now - lookup.at;
@@ -316,9 +353,15 @@ export const cacheRuntime: CacheRuntime = {
     mean.samples[mean.cursor] = duration;
     mean.sum += duration;
     mean.cursor = (mean.cursor + 1) % mean.samples.length;
-    // Statistical freshness is approximate, but only successful replies can renew it.
-    if (lookup.item < 0) rule.statisticalUntil = now + rule.policy.ttlMs!;
-    if (lookup.item >= 0 && now >= rule.freshUntil[lookup.item]) {
+    // A successful reply is progress for the shared statistical band. Keep one
+    // bounded progress clock even when many sampled fetches remain in flight.
+    if (lookup.item < 0) {
+      rule.statisticalUntil = now + rule.policy.ttlMs!;
+      rule.statisticalDue = now + mean.sum / mean.count;
+    }
+    // Replies belong to the expiry they observed. A duplicate from an older
+    // fetch cycle must not refill again after the first fill has itself expired.
+    if (lookup.item >= 0 && lookup.freshUntil === rule.freshUntil[lookup.item] && now >= rule.freshUntil[lookup.item]) {
       rule.freshUntil[lookup.item] = now + rule.policy.ttlMs!;
       rule.counts.fills++;
       cache.counts.fills++;
@@ -371,11 +414,12 @@ export const cacheRuntime: CacheRuntime = {
       seconds: Math.min(10, Math.max(0.01, now / 1000)),
     };
   },
-  details(cache, now) {
+  details(cache, now, sinceFault) {
     const latency = cache.latency && latencyMetrics(cache.latency);
     const { herd, itemFetches } = summary(cache);
     const window = cacheRuntime.window(cache, now);
     return {
+      ...(sinceFault ? { sinceFault } : {}),
       expected: cache.expected,
       herdThreshold: cache.herdThreshold,
       itemFetches,

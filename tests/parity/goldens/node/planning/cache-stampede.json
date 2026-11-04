@@ -6,43 +6,43 @@
     "simulation": "free-play",
     "analysis": {
       "bottleneck": "origin",
-      "suggestion": "Product API: 57% utilized",
+      "suggestion": "Product API: 78% utilized",
       "converged": true,
       "iterations": 4,
-      "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [66.66666666666667, 37.8364701371455, 0.5675470520571824, 1, 1, 0], "db": ["Infinity", 37.8364701371455, 0, 1, 1, 0] },
-      "connections": { "requests": 400, "fetch": 37.8364701371455, "read": 37.8364701371455 },
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 39.030302692823426, 0.7806060538564685, 1, 1, 0], "db": ["Infinity", 39.030302692823426, 0, 1, 1, 0] },
+      "connections": { "requests": 400, "fetch": 39.030302692823426, "read": 39.030302692823426 },
       "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
     },
     "explanations": {
       "origin": {
-        "waits": { "workMs": 60, "callMs": 0, "threadHoldMs": 60, "memoryResidenceMs": 60, "slots": 4, "ceiling": 66.66666666666667 },
+        "waits": { "workMs": 60, "callMs": 20, "threadHoldMs": 80, "memoryResidenceMs": 80, "slots": 4, "ceiling": 50 },
         "id": "origin",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 66.66666666666667,
-        "offered": 37.8364701371455,
+        "capacity": 50,
+        "offered": 39.030302692823426,
         "replicas": 1,
         "baseReplicas": 1,
         "omittedContributors": 0,
         "activeReplicas": 1,
         "assignments": [],
         "slots": 4,
-        "seconds": 0.06,
-        "utilization": 0.5675470520571824,
+        "seconds": 0.08,
+        "utilization": 0.7806060538564685,
         "growth": 0,
         "contributors": [
-          { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 37.8364701371455, "via": "Edge CDN" }
+          { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 39.030302692823426, "via": "Edge CDN" }
         ],
         "target": 0.5,
         "minimumReplicas": 1,
         "changes": null,
         "converged": true,
         "routes": [
-          { "route": "products", "address": "GET /products/example", "offered": 27.127275984674775, "rejected": 0, "throttled": 0 },
-          { "route": "launch", "address": "GET /launch", "offered": 10.709194152470722, "rejected": 0, "throttled": 0 }
+          { "route": "products", "address": "GET /products/example", "offered": 27.129953673687545, "rejected": 0, "throttled": 0 },
+          { "route": "launch", "address": "GET /launch", "offered": 11.90034901913588, "rejected": 0, "throttled": 0 }
         ]
       }
     },
@@ -72,7 +72,7 @@
       "cdn": {
         "profile": { "family": "edge", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 5,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0,
@@ -102,7 +102,7 @@
       "db": {
         "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 20,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0,
@@ -123,43 +123,43 @@
       "simulation": "one-fetch",
       "analysis": {
         "bottleneck": "origin",
-        "suggestion": "Product API: 41% utilized",
+        "suggestion": "Product API: 55% utilized",
         "converged": true,
         "iterations": 4,
-        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [66.66666666666667, 27.32058273832948, 0.4098087410749422, 1, 1, 0], "db": ["Infinity", 27.32058273832948, 0, 1, 1, 0] },
-        "connections": { "requests": 400, "fetch": 27.32058273832948, "read": 27.32058273832948 },
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 27.322515955550585, 0.5464503191110117, 1, 1, 0], "db": ["Infinity", 27.322515955550585, 0, 1, 1, 0] },
+        "connections": { "requests": 400, "fetch": 27.322515955550585, "read": 27.322515955550585 },
         "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
       },
       "explanations": {
         "origin": {
-          "waits": { "workMs": 59.99999999999999, "callMs": 0, "threadHoldMs": 59.99999999999999, "memoryResidenceMs": 60, "slots": 4, "ceiling": 66.66666666666667 },
+          "waits": { "workMs": 60.00000000000001, "callMs": 20, "threadHoldMs": 80, "memoryResidenceMs": 80, "slots": 4, "ceiling": 50 },
           "id": "origin",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 66.66666666666667,
-          "offered": 27.32058273832948,
+          "capacity": 50,
+          "offered": 27.322515955550585,
           "replicas": 1,
           "baseReplicas": 1,
           "omittedContributors": 0,
           "activeReplicas": 1,
           "assignments": [],
           "slots": 4,
-          "seconds": 0.05999999999999999,
-          "utilization": 0.4098087410749422,
+          "seconds": 0.08,
+          "utilization": 0.5464503191110117,
           "growth": 0,
           "contributors": [
-            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 27.32058273832948, "via": "Edge CDN" }
+            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 27.322515955550585, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "products", "address": "GET /products/example", "offered": 27.127275984674775, "rejected": 0, "throttled": 0 },
-            { "route": "launch", "address": "GET /launch", "offered": 0.1933067536547058, "rejected": 0, "throttled": 0 }
+            { "route": "products", "address": "GET /products/example", "offered": 27.129953673687545, "rejected": 0, "throttled": 0 },
+            { "route": "launch", "address": "GET /launch", "offered": 0.19256228186304009, "rejected": 0, "throttled": 0 }
           ]
         }
       },
@@ -174,18 +174,18 @@
       "normal": {
         "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
         "view": {
-          "tone": "ok",
+          "tone": "warn",
           "top": "origin",
-          "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+          "headline": "Product API is busy",
+          "detail": "78% · 39/s of 50/s. Still some headroom.",
           "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
             "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
             "cdn": ["idle", "400/s · no limit", { "modeled": false }],
-            "origin": ["ok", "57% · 38/s of 67/s"],
-            "db": ["idle", "38/s · no limit", { "modeled": false }]
+            "origin": ["warn", "78% · 39/s of 50/s"],
+            "db": ["idle", "39/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -196,18 +196,18 @@
           "tone": "over",
           "top": "origin",
           "headline": "Product API is over capacity",
-          "detail": "155% · 103/s of 67/s",
+          "detail": "218% · 109/s of 50/s",
           "fix": {
-            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 3, "label": "Product API" }],
-            "label": "Product API 1 → 3 replicas"
+            "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 4, "label": "Product API" }],
+            "label": "Product API 1 → 4 replicas"
           },
           "addConsumer": null,
           "converged": true,
           "nodes": {
             "shoppers": ["idle", "2k/s · no limit", { "modeled": false }],
             "cdn": ["idle", "2k/s · no limit", { "modeled": false }],
-            "origin": ["over", "155% · 103/s of 67/s"],
-            "db": ["idle", "103/s · no limit", { "modeled": false }]
+            "origin": ["over", "218% · 109/s of 50/s"],
+            "db": ["idle", "109/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -215,18 +215,18 @@
       "half-pods": {
         "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
         "view": {
-          "tone": "ok",
+          "tone": "warn",
           "top": "origin",
-          "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+          "headline": "Product API is busy",
+          "detail": "78% · 39/s of 50/s. Still some headroom.",
           "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
             "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
             "cdn": ["idle", "400/s · no limit", { "modeled": false }],
-            "origin": ["ok", "57% · 38/s of 67/s"],
-            "db": ["idle", "38/s · no limit", { "modeled": false }]
+            "origin": ["warn", "78% · 39/s of 50/s"],
+            "db": ["idle", "39/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -234,50 +234,50 @@
       "double-partitions": {
         "inputs": { "props": {}, "rates": {} },
         "view": {
-          "tone": "ok",
+          "tone": "warn",
           "top": "origin",
-          "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+          "headline": "Product API is busy",
+          "detail": "78% · 39/s of 50/s. Still some headroom.",
           "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
             "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
             "cdn": ["idle", "400/s · no limit", { "modeled": false }],
-            "origin": ["ok", "57% · 38/s of 67/s"],
-            "db": ["idle", "38/s · no limit", { "modeled": false }]
+            "origin": ["warn", "78% · 39/s of 50/s"],
+            "db": ["idle", "39/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
       }
     },
     "ttl-only": {
-      "tone": "ok",
+      "tone": "warn",
       "top": "origin",
-      "headline": "Healthy: every service has headroom",
-      "detail": "Busiest: Product API at 57% · 38/s of 67/s",
+      "headline": "Product API is busy",
+      "detail": "78% · 39/s of 50/s. Still some headroom.",
       "fix": null,
       "addConsumer": null,
       "converged": true,
       "nodes": {
         "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
         "cdn": ["idle", "400/s · no limit", { "modeled": false }],
-        "origin": ["ok", "57% · 38/s of 67/s"],
-        "db": ["idle", "38/s · no limit", { "modeled": false }]
+        "origin": ["warn", "78% · 39/s of 50/s"],
+        "db": ["idle", "39/s · no limit", { "modeled": false }]
       }
     },
     "one-fetch": {
       "tone": "ok",
       "top": "origin",
       "headline": "Healthy: every service has headroom",
-      "detail": "Busiest: Product API at 41% · 27/s of 67/s",
+      "detail": "Busiest: Product API at 55% · 27/s of 50/s",
       "fix": null,
       "addConsumer": null,
       "converged": true,
       "nodes": {
         "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
         "cdn": ["idle", "400/s · no limit", { "modeled": false }],
-        "origin": ["ok", "41% · 27/s of 67/s"],
+        "origin": ["ok", "55% · 27/s of 50/s"],
         "db": ["idle", "27/s · no limit", { "modeled": false }]
       }
     }

@@ -7,8 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { CacheDerivations } from "../planning/CacheDerivations";
 import { createEngine } from "./engine";
+import { cacheRuntime } from "./cache/cacheRuntime";
 import { startingCacheRates } from "./cache/cacheBridge";
-import "./cache/cacheRuntime";
 
 it("a hot item's fill cycle sends one fetch instead of all requests waiting for it", () => {
   const policy = { ttlMs: 10000, keys: 1, coalesce: true };
@@ -98,4 +98,54 @@ it.each([1, 7, 17, 42, 99])("coalesced origin demand agrees with a warm run, see
   const fetches = engine.snapshot().nodes.cache.cache!.fetches - before;
   // A finite window can intersect one extra fill cycle at either boundary.
   expect(Math.abs(fetches - expected * 100)).toBeLessThanOrEqual(1);
+});
+
+it("short-TTL statistical rules do not predict coalescing", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 2000;
+  d.planning!.requestRoutes = [{ id: "page", address: { method: "GET", path: "/page" } }];
+  d.nodes[0].props!.trafficMix = { mode: "shares", entries: [{ routeId: "page", share: 1 }] };
+  const cache: CacheTable = {
+    rules: [
+      {
+        id: "short",
+        match: { path: { kind: "exact", value: "/page" } },
+        policy: { ttlMs: 100, keys: 1, coalesce: true },
+      },
+    ],
+  };
+  d.nodes[1].props!.cache = cache;
+  const analysis = analyzeCapacity(d),
+    rule = analysis.cacheDemand!.cache.short;
+  const runtime = cacheRuntime.compile(cache, "cache", 7, 1, { value: 4096 }, startingCacheRates(d)!.cache);
+  expect(runtime.rules[0].tracked).toBe(0);
+  expect(rule.fetchShare).toBe(1 - rule.hitRatio);
+  expect(analysis.connections.fetch).toBeCloseTo(rule.rate * (1 - rule.hitRatio), 9);
+  expect(cacheFetchShare(cache.rules[0].policy, rule.rate, rule.fetchMs)).toBe(1 - rule.hitRatio);
+});
+
+it("short-TTL rules leave the shared tracking budget for a coalesced long-TTL rule", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 2000;
+  const paths = Array.from({ length: 17 }, (_, i) => `page-${i}`);
+  d.planning!.requestRoutes = paths.map((id) => ({ id, address: { method: "GET", path: `/${id}` } }));
+  d.nodes[0].props!.trafficMix = {
+    mode: "shares",
+    entries: paths.map((routeId) => ({ routeId, share: 1 / paths.length })),
+  };
+  const cache: CacheTable = {
+    rules: paths.slice(0, 16).map((id) => ({
+      id,
+      match: { path: { kind: "exact", value: `/${id}` } },
+      policy: { ttlMs: 100, keys: 256, coalesce: true },
+    })),
+    default: { ttlMs: 1000, keys: 1, coalesce: true },
+  };
+  d.nodes[1].props!.cache = cache;
+  const analysis = analyzeCapacity(d),
+    rule = analysis.cacheDemand!.cache[""];
+  const runtime = cacheRuntime.compile(cache, "cache", 7, 1, { value: 4096 }, startingCacheRates(d)!.cache);
+  expect(runtime.rules.map((r) => r.tracked)).toEqual([...Array<number>(16).fill(0), 1]);
+  expect(rule.fetchShare).toBeCloseTo(cacheFetchShare(cache.default!, rule.rate, rule.fetchMs, 1), 12);
+  expect(rule.fetchShare).toBeLessThan(1 - rule.hitRatio);
 });

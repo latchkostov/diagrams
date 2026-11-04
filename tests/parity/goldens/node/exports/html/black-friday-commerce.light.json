@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "cc7814ece12ca8eb325ce57cc1650c0b2493aa56cc346fb613dccdd277f6a796", "bytes": 208328 },
+  "file": { "sha256": "340a995252602e99062c13e701495f524b922727b055b8a8e0fc4eee40f91476", "bytes": 208369 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -1373,7 +1373,7 @@
             },
             {
               "atMs": 4000,
-              "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers 87% of product pages and 65% of searches; the origin sees about 300 of 1,460 a second. Larkspur sized its origin for what the edge lets through." }
+              "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers repeat product pages and searches, so fewer requests reach the services behind it. Watch the cache readouts as traffic rises. Larkspur sized its services for what the edge lets through." }
             },
             {
               "atMs": 6000,

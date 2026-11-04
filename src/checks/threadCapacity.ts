@@ -1,5 +1,4 @@
 import type { CheckContext } from "./context";
-import { analyzeCapacity } from "../sim/capacity";
 
 const cache = new WeakMap<CheckContext, ReturnType<CheckContext["capacity"]>>();
 
@@ -33,9 +32,7 @@ export function threadCapacity(ctx: CheckContext) {
         : [];
     }),
   );
-  const analysis = Object.keys(readyReplicas).length
-    ? analyzeCapacity(ctx.diagram, ctx.planning(), { readyReplicas, topology: ctx.topology })
-    : initial;
+  const analysis = Object.keys(readyReplicas).length ? ctx.capacity(readyReplicas) : initial;
   cache.set(ctx, analysis);
   return analysis;
 }

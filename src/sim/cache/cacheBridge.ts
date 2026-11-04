@@ -28,7 +28,7 @@ export interface CacheRuntime {
   observeItem(cache: NodeCache, rule: string, item: number): CacheItemObservation | undefined;
   window(cache: NodeCache, now: number): CacheDetails["window"];
   invalidateSummary(cache: NodeCache): void;
-  details(cache: NodeCache, now: number): CacheDetails;
+  details(cache: NodeCache, now: number, sinceFault?: CacheDetails["sinceFault"]): CacheDetails;
   updateExpected(cache: NodeCache, rates: Record<string, { rate: number; fetchMs: number }>): void;
   plan(
     diagram: DiagramFile,

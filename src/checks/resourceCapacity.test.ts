@@ -7,6 +7,31 @@ import { resourceLesson } from "../model/autoscalingLessons";
 import { buildContext } from "./context";
 import { runChecks } from "./run";
 import { capacity } from "./rules/capacity";
+import { cacheFixture } from "../lab/cacheFixture";
+import { threadCapacity } from "./threadCapacity";
+
+it("queue-to-store planning stays unlimited with an unrelated busy-thread HPA", () => {
+  const d = cacheFixture();
+  delete d.nodes[1].props!.cache;
+  d.nodes[1].stencil = "generic.queue";
+  d.edges.forEach((edge) => {
+    edge.kind = "async";
+  });
+  const caller = structuredClone(busy.nodes.find((node) => node.id === "caller")!) as DiagramFile["nodes"][number];
+  const a = caller.props!.autoscaling as HpaConfig;
+  a.controller.settings.metrics = [
+    {
+      source: { kind: "pods", metric: "busyThreads" },
+      target: { kind: "averageValue", value: 11 },
+      windowMs: 1000,
+      metricDelayMs: 0,
+    },
+  ];
+  d.nodes.push(caller);
+  const ctx = buildContext(d);
+  expect(threadCapacity(ctx).nodes.cache.capacity).toBe(Infinity);
+  expect(capacity.detect(ctx).filter((finding) => finding.target === "cache")).toEqual([]);
+});
 
 it("indexes resource-warning targets once before filtering capacity candidates", () => {
   const d = autoscalingFixture(),

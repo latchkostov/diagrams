@@ -27,10 +27,11 @@ export function CacheDetails({
   const planned = configuredPlanning(diagram, live?.controller.getState())?.analysis.cacheDemand?.[id];
   const w = s.cacheDetails?.window;
   const latency = s.cacheDetails?.latency;
+  const sinceFault = s.cacheDetails?.sinceFault;
   const rate = (n: number) => formatNumber(n / (w?.seconds ?? 10), { maximumFractionDigits: 1 });
   return (
     <div data-testid="cache-readout">
-      <p>{readout ? t("cache.summary", readout) : t("cache.noCacheable")}</p>
+      <p>{readout ? t("cache.summary", { ...readout, mode: "window" }) : t("cache.noCacheable")}</p>
       {!!s.cache?.coalesced && (
         <p data-testid="cache-coalesced">{t("cache.coalesced", { mode: "count", count: s.cache.coalesced })}</p>
       )}
@@ -65,6 +66,8 @@ export function CacheDetails({
         })}
       <p data-testid="cache-latency">
         {t("cache.latency", {
+          scope: sinceFault ? "fault" : "restart",
+          at: formatNumber((sinceFault?.atMs ?? 0) / 1000, { maximumFractionDigits: 2 }),
           hit: latency?.hit?.samples ? latencyDuration(latency.hit.p95) : "—",
           miss: latency?.miss?.samples ? latencyDuration(latency.miss.p95) : "—",
         })}
