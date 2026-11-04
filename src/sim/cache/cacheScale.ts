@@ -2,6 +2,7 @@ import type { DiagramFile, Simulation } from "../../model/types";
 import { cacheEnabled } from "../../model/caching";
 import { stencilRole } from "../../stencils/roles";
 import { popularityTable } from "./popularity";
+import { cacheTrackingEligible } from "./tracking";
 
 export type CacheScaleRates = Record<string, Record<string, { rate: number }>>;
 
@@ -17,7 +18,7 @@ export function cacheScale(
     if (!cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), table)) continue;
     for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
       const rate = rates[node.id]?.[rule.id]?.rate ?? 0;
-      if (rule.policy.noStore || !rate) continue;
+      if (rule.policy.noStore || !rate || !cacheTrackingEligible(rate, rule.policy.ttlMs!)) continue;
       const hottest = popularityTable(rule.policy.keys, rule.policy.popularity).hottestShare;
       scale = Math.min(scale, Math.max(1, (rate * hottest * rule.policy.ttlMs!) / 1000 / 50));
     }

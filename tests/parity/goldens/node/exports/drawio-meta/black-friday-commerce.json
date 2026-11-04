@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "b94da178eb5e67bf13bb6c44cd0c98cafec5ca9b76ada36dad2a8e09f87741c6",
-    "bytes": 329281,
+    "sha256": "ac80f004ee98d3ec07707abb8ce988d8bf54355399414fc87f0af009a9416809",
+    "bytes": 329322,
     "inlined": {
       "airflow": "airflow bb347b1c98e3b7d4",
       "argocd": "argo f05272f641716862",
@@ -1405,7 +1405,7 @@
               },
               {
                 "atMs": 4000,
-                "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers 87% of product pages and 65% of searches; the origin sees about 300 of 1,460 a second. Larkspur sized its origin for what the edge lets through." }
+                "action": { "focus": ["cdn", "gateway", "catalog-bff", "search-api"], "do": "note", "text": "The edge answers repeat product pages and searches, so fewer requests reach the services behind it. Watch the cache readouts as traffic rises. Larkspur sized its services for what the edge lets through." }
               },
               {
                 "atMs": 6000,

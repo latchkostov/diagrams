@@ -39,6 +39,7 @@ export function CacheDetails({
   const planned = configuredPlanning(diagram, live?.controller.getState())?.analysis.cacheDemand?.[id];
   const w = s.cacheDetails?.window;
   const latency = s.cacheDetails?.latency;
+  const sinceFault = s.cacheDetails?.sinceFault;
   const rate = (n: number) => cacheRate(n / (w?.seconds ?? 10));
   const rules = table && [
     ...table.rules,
@@ -100,6 +101,8 @@ export function CacheDetails({
       )}
       <p data-testid="cache-latency">
         {t("cache.latency", {
+          scope: sinceFault ? "fault" : "restart",
+          at: isolate(formatNumber((sinceFault?.atMs ?? 0) / 1000, { maximumFractionDigits: 2 })),
           hit: latency?.hit?.samples ? isolate(cacheLatency(latency.hit.p95, true)) : "—",
           miss: latency?.miss?.samples ? isolate(cacheLatency(latency.miss.p95)) : "—",
         })}

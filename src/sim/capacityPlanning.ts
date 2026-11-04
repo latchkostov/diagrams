@@ -1,8 +1,9 @@
+import { effectiveCacheTable } from "./cache/cacheAnalysis";
 import { withSizing, type SizingChange } from "./capacityInputs";
 export { sourceTraffic, withSizing, type SizingChange } from "./capacityInputs";
 import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
-import { analyzeCapacity, type NodeCapacity } from "./capacity";
+import { analyzeCapacity, type CapacityOptions, type NodeCapacity } from "./capacity";
 import { resolveProps } from "./defaults";
 import { allocateGroupReplicas, compileTopology } from "./topology";
 import type { NodeStatus } from "./types";
@@ -35,6 +36,12 @@ export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation 
       props[n.id] = { ...props[n.id], latencyMs: 0 };
   }
   return { ...sim, setup: { ...sim.setup, props } };
+}
+
+/** Capacity is unlimited at plain gateways/stores; their response time still matters to caching. */
+export function analyzePlanningCapacity(d: DiagramFile, sim: Simulation, options: CapacityOptions = {}) {
+  const caching = d.nodes.some((n) => effectiveCacheTable(d, n, sim));
+  return analyzeCapacity(d, caching ? sim : planningSimulation(d, sim), { ...options, unlimitedService: true });
 }
 
 export interface SizingOptions {
@@ -121,7 +128,7 @@ export function sizingFix(
     if (to > from) changes.push({ nodeId: brokerId, key: "partitions", from, to });
   }
   if (!changes.length) return null;
-  const verified = analyzeCapacity(d, planningSimulation(d, withSizing(sim, changes)), { status: opts.status });
+  const verified = analyzePlanningCapacity(d, withSizing(sim, changes), { status: opts.status });
   if ([...effective.keys(), ...devices].some((id) => verified.nodes[id].utilization > target + 1e-9)) return null;
   return changes;
 }

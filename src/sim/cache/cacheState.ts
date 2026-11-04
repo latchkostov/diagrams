@@ -27,6 +27,7 @@ export interface CacheItemObservation {
   edge?: string;
 }
 export interface CacheDetails {
+  sinceFault?: import("../types").LatencyMetrics["sinceFault"];
   herdThreshold?: number;
   itemFetches?: number;
   peakHerd?: { rule: string; item: number; fetches: number; edge?: string };
@@ -49,6 +50,9 @@ export interface CacheRuleState {
   stream: number;
   tracked: number;
   statisticalUntil: number;
+  statisticalCredit: number;
+  statisticalPending: number;
+  statisticalDue: number;
   freshUntil: Float64Array;
   fetching: Float64Array;
   rate: { buckets: Float64Array; second: number; planned: number };

@@ -156,6 +156,7 @@ for (const locale of ["en", "ar", "en-XA"])
     );
     await gotoCanvas(page, "kafka-order-pipeline");
     await page.getByTestId("node-kong").dblclick();
+    await page.getByTestId("inspector-section-node-routes").click();
     await page.getByTestId("inspector-resize").press("Home");
     const fallback = page.getByTestId("routes-default");
     await expect(fallback.getByTestId("route-target-summary")).not.toHaveText("Orders, Orders canary");
@@ -545,6 +546,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
     await gotoCanvas(page, "api-route-table");
     await page.getByTestId("node-gateway").dblclick();
+    await page.getByTestId("inspector-section-node-routes").click();
     await expect(page.getByTestId("routes-table")).toBeVisible();
     await page.getByTestId("inspector-resize").press("Home");
     const textBox = (id: string) =>

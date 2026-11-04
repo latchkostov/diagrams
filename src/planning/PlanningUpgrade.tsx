@@ -11,8 +11,7 @@ import {
   resilienceUpgradeCalls,
   legacyExport,
 } from "./migration";
-import { analyzeCapacity } from "../sim/capacity";
-import { planningSimulation } from "../sim/capacityPlanning";
+import { analyzePlanningCapacity } from "../sim/capacityPlanning";
 import { explanationSimulation } from "./explanation";
 import { withPrivacyField } from "../lib/diagramIO";
 import { downloadText } from "../interop/files";
@@ -69,8 +68,8 @@ export function PlanningUpgrade({
             : d && !revisionAtLeast(d.planning?.revision, "p3")
               ? upgradePlanning(d)
               : undefined;
-  const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
-  const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
+  const before = d && next ? analyzePlanningCapacity(d, explanationSimulation(d)) : undefined;
+  const after = next ? analyzePlanningCapacity(next, explanationSimulation(next)) : undefined;
   const legacy = preview === "legacy" && d?.planning ? legacyExport(d) : undefined;
   const cacheNodes = d && caching ? cacheUpgradeNodes(d) : [];
   const cacheIds = new Set(cacheNodes.map((row) => row.nodeId));

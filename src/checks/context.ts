@@ -8,8 +8,8 @@ import {
   type CompiledEdge,
   type CompiledTopology,
 } from "../sim/topology";
-import { analyzeCapacity, type CapacityAnalysis } from "../sim/capacity";
-import { planningSimulation, sourceTraffic } from "../sim/capacityPlanning";
+import { type CapacityAnalysis } from "../sim/capacity";
+import { analyzePlanningCapacity, sourceTraffic } from "../sim/capacityPlanning";
 import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import { readingOrder } from "../canvas/keyboardNav";
 import { estimateCardSize } from "../canvas/nodes/size";
@@ -68,8 +68,8 @@ export interface CheckContext {
   isBoundary(id: string): boolean;
   /** Free play as capacity planning sees it, as live view's Show capacity does (src/sim/capacityPlanning.ts). */
   planning(): Simulation;
-  /** analyzeCapacity of `planning()`: the diagram's own (free-play) rates. Computed on first use. */
-  capacity(): CapacityAnalysis;
+  /** Planning analysis of free-play rates; optional ready fleets use the same planning policy. */
+  capacity(readyReplicas?: Readonly<Record<string, number>>): CapacityAnalysis;
   /**
    * Scenario sizing for the saved simulations, on first use only (it plays them). In the editor's main thread, what
    * the checks worker already worked out (src/lib/scenarioPlanner.ts); where checks run locally (the worker, the
@@ -122,11 +122,11 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   const otherIds = () =>
     (others ??= new Set([...(diagram.groups ?? []), ...(diagram.annotations ?? [])].map((x) => x.id)));
   const plan = () =>
-    (planning ??= planningSimulation(diagram, {
+    (planning ??= {
       id: "free-play",
       title: "Free play",
       traffic: sourceTraffic(diagram),
-    }));
+    });
   return {
     diagram,
     nodes,
@@ -168,7 +168,10 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     },
     isBoundary: (id) => (boundaries ??= new Set((diagram.groups ?? []).map((g) => g.id))).has(id),
     planning: plan,
-    capacity: () => (capacity ??= analyzeCapacity(diagram, plan(), { topology })),
+    capacity: (readyReplicas) =>
+      readyReplicas
+        ? analyzePlanningCapacity(diagram, plan(), { topology, readyReplicas })
+        : (capacity ??= analyzePlanningCapacity(diagram, plan(), { topology })),
     plans: () => (scenario === null ? (scenario = scenarioPlans(diagram)) : scenario),
   };
 }

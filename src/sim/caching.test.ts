@@ -121,6 +121,49 @@ it("only the first successful reply fills; failed and no-store fetches never fil
   expect(n.counts).toMatchObject({ hits: 0, misses: 0, fills: 0, notCached: 1 });
 });
 
+it("discards an old cycle's duplicate even after its first fill has expired", () => {
+  const c = cacheRuntime.compile({ rules: [], default: { ttlMs: 1000, keys: 1 } }, "edge", 7, 1, { value: 4096 });
+  const first = cacheRuntime.lookup(c, "Page", undefined, true, 0, 1);
+  const duplicate = cacheRuntime.lookup(c, "Page", undefined, true, 500, 1);
+  cacheRuntime.start(c, first, 1);
+  cacheRuntime.start(c, duplicate, 1);
+  cacheRuntime.settle(c, first, 1500, 1, true);
+  cacheRuntime.settle(c, duplicate, 2600, 1, true);
+  expect(c.rules[0].freshUntil[0]).toBe(2500);
+  expect(c.counts.fills).toBe(1);
+  const next = cacheRuntime.lookup(c, "Page", undefined, true, 2600, 1);
+  expect(next.outcome).toBe("miss");
+  cacheRuntime.start(c, next, 1);
+  cacheRuntime.settle(c, next, 4100, 1, true);
+  expect(c.rules[0].freshUntil[0]).toBe(5100);
+  expect(c.counts.fills).toBe(2);
+});
+
+it("statistical availability survives sampled gaps but expires after failed fetches", () => {
+  const c = cacheRuntime.compile(
+    { rules: [], default: { ttlMs: 100, keys: 20, popularity: "even" } },
+    "edge",
+    7,
+    10,
+    { value: 4096 },
+    { "": { rate: 200, fetchMs: 10 } },
+  );
+  const arrive = (at: number, ok: boolean) => {
+    const lookup = cacheRuntime.lookup(c, "Page", undefined, true, at, 10);
+    if (lookup.outcome === "miss") {
+      cacheRuntime.start(c, lookup, 10);
+      cacheRuntime.settle(c, lookup, at + 10, 10, ok);
+    }
+  };
+  for (let i = 0; i < 100; i++) arrive(1000 + 50 * i, true);
+  expect(c.counts.hits).toBeGreaterThan(0);
+  for (let i = 100; i < 200; i++) arrive(1000 + 50 * i, false);
+  const hits = c.counts.hits;
+  for (let i = 200; i < 300; i++) arrive(1000 + 50 * i, false);
+  expect(c.counts.hits).toBe(hits);
+  expect(c.counts.fetches).toBe(c.counts.misses);
+});
+
 it("analysis reduces origin demand by the derived hit share", () => {
   const a = analyzeCapacity(cacheFixture());
   const rule = a.cacheDemand!.cache[""];
@@ -213,6 +256,69 @@ it("automatic scale keeps the hottest item above the 50-dots-per-TTL tracking th
   expect(cache.rules[0].tracked).toBeGreaterThan(0);
   const coarse = cacheRuntime.compile(d.nodes[1].props!.cache, "cache", 7, scale * 100, { value: 4096 }, rates);
   expect(coarse.rules[0].tracked).toBe(0);
+});
+
+it("automatic scale preserves the dot budget for short-TTL statistical rules", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 2000;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 20, popularity: "even" } };
+  const simulation = {
+    id: "short-ttl",
+    title: "Short TTL",
+    traffic: [{ id: "load", node: "source", shape: { kind: "constant" as const, ratePerSec: 2000, durationMs: 1000 } }],
+  };
+  const rates = cacheRuntime.plan(d, simulation);
+  expect(rates.cache[""].rate).toBe(2000);
+  expect(autoScale(simulation, d, rates)).toBe(50);
+  expect(autoScale(simulation, d)).toBe(50);
+  const cache = cacheRuntime.compile(d.nodes[1].props!.cache, "cache", 7, 50, { value: 4096 }, rates.cache);
+  expect(cache.rules[0].tracked).toBe(0);
+});
+
+it("warm statistical hits expire after the last successful fill when the origin pauses without a deadline", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 20, popularity: "even" } };
+  const e = createEngine({ seed: 7, scale: 1, maxParticles: 0 });
+  e.load(d, cacheRuntime.plan(d));
+  e.setTraffic(true);
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBeGreaterThan(0);
+  e.setNodeStatus("origin", "paused");
+  // Allow replies already returning at the pause to fill, then expire their TTL.
+  e.step(200);
+  const hits = e.snapshot().nodes.cache.cache!.hits;
+  const fetches = e.snapshot().nodes.cache.cache!.fetches;
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.fetches).toBeGreaterThan(fetches);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBe(hits);
+});
+
+it("coarse statistical fills stop making progress during a pause and replay their overdue clock", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 2000;
+  d.nodes[2].props!.latencyMs = 0;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 1, popularity: "even" } };
+  const e = createEngine({ seed: 7, scale: 50, maxParticles: 0 });
+  e.load(d, cacheRuntime.plan(d));
+  e.setTraffic(true);
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.hitRatio).toBeGreaterThan(0.87);
+  e.setNodeStatus("origin", "paused");
+  e.step(500);
+  const token = e.checkpoint();
+  const before = e.snapshot().nodes.cache.cache!;
+  const suffix = () => {
+    e.step(2000);
+    return e.snapshot();
+  };
+  const expected = suffix();
+  expect(expected.nodes.cache.cache!.hits).toBe(before.hits);
+  expect(expected.nodes.cache.cache!.fetches).toBeGreaterThan(before.fetches);
+  e.restore(token);
+  expect(suffix()).toEqual(expected);
+  e.setNodeStatus("origin", "up");
+  e.step(2000);
+  expect(e.snapshot().nodes.cache.cache!.hits).toBeGreaterThan(before.hits);
 });
 
 it("cold statistical cache never hits when every fetch fails", () => {

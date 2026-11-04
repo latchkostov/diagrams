@@ -3932,7 +3932,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               }
             : {}),
           ...(node.cache
-            ? { cache: cacheRuntime!.read(node.cache), cacheDetails: cacheRuntime!.details(node.cache, time) }
+            ? {
+                cache: cacheRuntime!.read(node.cache),
+                cacheDetails: cacheRuntime!.details(node.cache, time, sinceFault),
+              }
             : {}),
           id: node.id,
           role: node.role,

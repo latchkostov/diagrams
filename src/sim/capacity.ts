@@ -1,5 +1,6 @@
 import { analysisCache, effectiveCacheTable } from "./cache/cacheAnalysis";
 import { cacheHitShare, cacheFetchShare } from "./cache/cacheMath";
+import { cacheTrackingEligible } from "./cache/tracking";
 import { CACHE_LIMITS } from "../model/caching";
 import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
@@ -103,6 +104,7 @@ interface Entry {
   up: boolean;
   /** Down (not just paused): a gateway's health checks route around it. */
   down: boolean;
+  unlimitedService?: boolean;
   /** Request routing, compiled once per analysis as playback compiles it. */
   table?: CompiledTable;
   mix?: CompiledMix;
@@ -143,6 +145,7 @@ const uncappedServiceRate = (entry: Entry, replicas: number, endpointId?: string
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
   const device = entry.role === "gateway" ? entry.props.device : undefined;
   if (device) return device.perUnit * activeUnits(device.ha, replicas);
+  if (entry.unlimitedService && (entry.role === "gateway" || entry.role === "store")) return Infinity;
   if (entry.role === "gateway" || entry.role === "store")
     return entry.props.latencyMs ? 1000 / entry.props.latencyMs : Infinity;
   return Infinity;
@@ -222,6 +225,8 @@ function compatibleScale(demand: { rate: number; consumers: string[] }[], capaci
 }
 
 export interface CapacityOptions {
+  /** Planning keeps gateway/store capacity unlimited without erasing cache fetch time. */
+  unlimitedService?: boolean;
   /** Already compiled for this effective diagram (Checks share their one static graph). */
   topology?: import("./topology").CompiledTopology;
   /** Current eligible fleet, only for resource-enabled live nodes. Omitted means configured initial capacity. */
@@ -262,6 +267,7 @@ export function analyzeCapacity(
       active: replicas,
       up: status !== "down" && status !== "paused",
       down: status === "down",
+      unlimitedService: options.unlimitedService,
       ...(routes && raw.routeTable !== undefined && routeTableCapable(input.stencil, role)
         ? { table: compileTable(raw.routeTable) }
         : {}),
@@ -279,7 +285,7 @@ export function analyzeCapacity(
   }
   const hasCaches = cacheMatchers.size > 0;
   const cacheTracking = new Map<string, Map<string, number>>();
-  if (hasCaches) {
+  function updateCacheTracking() {
     let remaining = CACHE_LIMITS.totalTracked;
     for (const node of diagram.nodes) {
       const table = effectiveCacheTable(diagram, node, simulation);
@@ -292,7 +298,10 @@ export function analyzeCapacity(
         continue;
       const rules = new Map<string, number>();
       for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
-        const tracked = rule.policy.noStore ? 0 : Math.min(CACHE_LIMITS.tracked, rule.policy.keys ?? 1000, remaining);
+        const tracked =
+          rule.policy.noStore || !cacheTrackingEligible(cacheDemand[node.id]?.[rule.id]?.rate ?? 0, rule.policy.ttlMs!)
+            ? 0
+            : Math.min(CACHE_LIMITS.tracked, rule.policy.keys ?? 1000, remaining);
         remaining -= tracked;
         rules.set(rule.id, tracked);
       }
@@ -730,10 +739,24 @@ export function analyzeCapacity(
           const item = byRule[ruleId];
           item.fetchMs /= item.rate;
           item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
-          if (policy.coalesce && !policy.noStore)
-            item.fetchShare = cacheFetchShare(policy, item.rate, item.fetchMs, cacheTracking.get(id)?.get(ruleId) ?? 0);
         }
         cacheDemand[id] = byRule;
+      }
+      // Allocate the shared budget after every rule's demand is known, as Live does.
+      updateCacheTracking();
+      for (const node of diagram.nodes) {
+        const table = effectiveCacheTable(diagram, node, simulation);
+        if (!table) continue;
+        for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
+          const item = cacheDemand[node.id]?.[rule.id];
+          if (item && rule.policy.coalesce && !rule.policy.noStore)
+            item.fetchShare = cacheFetchShare(
+              rule.policy,
+              item.rate,
+              item.fetchMs,
+              cacheTracking.get(node.id)?.get(rule.id) ?? 0,
+            );
+        }
       }
     }
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));

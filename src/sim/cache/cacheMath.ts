@@ -1,5 +1,6 @@
 import type { CachePolicy } from "../../model/caching";
 import { popularityTable } from "./popularity";
+import { cacheTrackingEligible } from "./tracking";
 
 /** e^-x: fixed Taylor polynomial on [0, 1/8], followed by deterministic squaring. */
 export function expNeg(x: number): number {
@@ -34,7 +35,8 @@ export function cacheHitShare(policy: CachePolicy, rate: number, fetchMs: number
 
 /** Fresh hits stay unchanged. Tracked miss cohorts share one fetch per fill cycle. */
 export function cacheFetchShare(policy: CachePolicy, rate: number, fetchMs: number, tracked = 256): number {
-  if (!policy.coalesce || !tracked) return 1 - cacheHitShare(policy, rate, fetchMs);
+  if (!policy.coalesce || !tracked || !cacheTrackingEligible(rate, policy.ttlMs!))
+    return 1 - cacheHitShare(policy, rate, fetchMs);
   if (policy.noStore || !policy.ttlMs || !(rate > 0) || !Number.isFinite(fetchMs)) return 1;
   return popularityTable(policy.keys, policy.popularity).bands.reduce((sum, band) => {
     const itemRate = (rate * band.share) / band.count;

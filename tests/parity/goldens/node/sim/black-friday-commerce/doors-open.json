@@ -15,7 +15,7 @@
       { "atMs": 0, "kind": "traffic", "label": "Web shoppers" },
       { "atMs": 0, "kind": "traffic", "label": "App shoppers" },
       { "atMs": 0, "kind": "traffic", "label": "Carrier scans" },
-      { "atMs": 4000, "kind": "note", "label": "The edge answers 87% of product pages and 65% of searches; the origin sees about 300 of 1,460 a second. Larkspur sized its origin for what the edge lets through." },
+      { "atMs": 4000, "kind": "note", "label": "The edge answers repeat product pages and searches, so fewer requests reach the services behind it. Watch the cache readouts as traffic rises. Larkspur sized its services for what the edge lets through." },
       { "atMs": 6000, "kind": "note", "label": "Doors open: 2,500 requests a second. The checkout route is capped at 180 a second; the rest get 429 and retry." },
       { "atMs": 8000, "kind": "note", "label": "Checkout's CPU passes 70%, so its HPA starts more pods. Open its Live details for the replica history." },
       { "atMs": 13000, "kind": "note", "label": "Orders reach Kafka through the outbox. Fulfilment lag rises and KEDA adds workers, up to the 24 partitions." },
@@ -739,7 +739,7 @@
   },
   "notes": [
     { "atMs": 0, "text": "A normal morning: 500 requests a second. The gateway's route table sends each path to its own service.", "focus": ["cdn", "gateway", "catalog-bff", "search-api", "cart-api", "checkout-api"] },
-    { "atMs": 4000, "text": "The edge answers 87% of product pages and 65% of searches; the origin sees about 300 of 1,460 a second. Larkspur sized its origin for what the edge lets through.", "focus": ["cdn", "gateway", "catalog-bff", "search-api"] },
+    { "atMs": 4000, "text": "The edge answers repeat product pages and searches, so fewer requests reach the services behind it. Watch the cache readouts as traffic rises. Larkspur sized its services for what the edge lets through.", "focus": ["cdn", "gateway", "catalog-bff", "search-api"] },
     { "atMs": 6000, "text": "Doors open: 2,500 requests a second. The checkout route is capped at 180 a second; the rest get 429 and retry.", "focus": ["gateway", "checkout-api"] },
     { "atMs": 8000, "text": "Checkout's CPU passes 70%, so its HPA starts more pods. Open its Live details for the replica history.", "focus": ["checkout-api", "payments", "orders-db"] },
     { "atMs": 13000, "text": "Orders reach Kafka through the outbox. Fulfilment lag rises and KEDA adds workers, up to the 24 partitions.", "focus": ["outbox-relay", "orders", "fulfilment"] },

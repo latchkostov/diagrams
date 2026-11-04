@@ -9,8 +9,8 @@
       "suggestion": "Readers: 0% utilized",
       "converged": true,
       "iterations": 3,
-      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 200, 0, 1, 1, 0], "cache": ["Infinity", 200, 0, 1, 1, 0], "origin": ["Infinity", 142.04504735939145, 0, 1, 1, 0] },
-      "connections": { "input": 200, "fetch": 142.04504735939145 },
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 200, 0, 1, 1, 0], "cache": ["Infinity", 200, 0, 1, 1, 0], "origin": ["Infinity", 142.3863146888652, 0, 1, 1, 0] },
+      "connections": { "input": 200, "fetch": 142.3863146888652 },
       "offeredTypes": { "source": ["Readers"], "cache": ["Readers"], "origin": ["Readers"] }
     },
     "explanations": {},
@@ -54,7 +54,7 @@
       "origin": {
         "profile": { "family": "sql", "revision": "p3-w3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 50,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0,
@@ -106,7 +106,7 @@
           "nodes": {
             "source": ["idle", "1k/s · no limit", { "modeled": false }],
             "cache": ["idle", "1k/s · no limit", { "modeled": false }],
-            "origin": ["idle", "484/s · no limit", { "modeled": false }]
+            "origin": ["idle", "488/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}

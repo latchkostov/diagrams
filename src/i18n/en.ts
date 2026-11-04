@@ -3198,12 +3198,15 @@ const en = {
   "cache.semantics":
     "{hit}% of cacheable requests answered from the cache{state, select, warming {; warming up} other {}}",
   "cache.heading": "Cache",
-  "cache.summary": "{hit}% hits over 10 s · origin offload {offload}%",
-  "cache.originLine": "{node} sends {fetch} of {rate} requests/s here ({hit}% answered at the edge).",
+  "cache.summary":
+    "{mode, select, compact {{hit}% hits · {offload}% offload · recent ≤10s} other {Recent window (up to 10 s): {hit}% hits · origin offload {offload}%}}",
+  "cache.originLine":
+    "Recent window (up to 10 s): {node} sends {fetch} of {rate} requests/s here ({hit}% answered at the edge).",
   "cache.counts": "Answered here (hits): {hits} · Fetches: {misses} · Not cached: {notCached}",
   "cache.ruleMeasured":
     "{name}: {policy} → {hit} answered here since restart (hit ratio){expected, select, unavailable {} other { (expected {expected})}}",
-  "cache.latency": "At this cache since restart · Hits p95 {hit} · Misses p95 {miss}",
+  "cache.latency":
+    "At this cache {scope, select, fault {since fault at {at} s} other {since restart}} · Hits p95 {hit} · Misses p95 {miss}",
   "cache.missTail": "{miss}% of cacheable requests miss",
   "cache.derivation":
     "{name}: {rate} requests/s, kept {ttl}, over {count, plural, one {# item} other {# items}} ({popularity}) → {hit}% hits. {fetch}/s reach {origin}.",
@@ -3212,7 +3215,8 @@ const en = {
   "cache.offloadMetric": "origin offload (%)",
   "cache.fetchMetric": "origin fetches",
   "cache.p95Metric": "latency p95 (ms)",
-  "cache.runLesson": "{node} answered {hit}% of cacheable requests; {origin} saw {fetch} of {rate} a second.",
+  "cache.runLesson":
+    "Since restart: {node} answered {hit}% of cacheable requests; {origin} saw an average of {fetch} of {rate} requests/s.",
   "cache.hitTrace": "Hit at {node}",
   "cache.missTrace": "Miss at {node} · fetching from {origin}",
   "cache.passTrace": "Not cached: {reason}",
