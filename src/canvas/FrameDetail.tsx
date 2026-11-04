@@ -163,6 +163,10 @@ const FrameDecoration = memo(
       });
       let lastDrawing = "";
       let dirty = true;
+      // Call pills come and go with traffic. They are placed last, against the settled
+      // frame's blockers, so their churn re-places only the pills (see the observer).
+      let pillsDirty = false;
+      let placePills: (() => boolean) | null = null;
       const fonts = new WeakMap<Element, number>();
       const cardWidths = new WeakMap<HTMLElement, { key: FlowNode["data"]; width: number }>();
       const wrapCache = new WeakMap<HTMLElement, { text: string; width: number; wrapped: boolean }>();
@@ -175,19 +179,27 @@ const FrameDecoration = memo(
       const setHidden = (el: HTMLElement | SVGElement, hidden: boolean) => {
         el.toggleAttribute("data-detail-hidden", hidden);
       };
+      const settledFrame = () =>
+        !disposed &&
+        !suspended &&
+        fontsReady &&
+        camera.phase === "idle" &&
+        !camera.interacting &&
+        !root.hasAttribute("data-viewport-moving");
       const update = () => {
         frame = 0;
-        if (
-          disposed ||
-          suspended ||
-          !fontsReady ||
-          camera.phase !== "idle" ||
-          camera.interacting ||
-          root.hasAttribute("data-viewport-moving")
-        )
-          return;
-        if (!dirty) return;
+        if (!settledFrame()) return;
+        if (!dirty) {
+          if (!pillsDirty) return;
+          pillsDirty = false;
+          if (placePills?.()) {
+            observer.takeRecords();
+            return;
+          }
+        }
         dirty = false;
+        pillsDirty = false;
+        placePills = null;
         const s = store.getState();
         // One root traversal; classify each element once rather than rescan the
         // canvas for every kind of decoration.
@@ -360,37 +372,38 @@ const FrameDecoration = memo(
           }
         // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
         // Card titles are not secondary text: the `.nb-label` rule in app-shared.css alone sizes them.
-        const textChanges = textElements
-          .filter((el) => {
-            if (!visible) return true;
-            const id = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']")?.dataset;
-            const key = id?.id ?? id?.testid?.slice("node-badge-".length);
-            return !key || visible.has(key) || s.nodeLookup.get(key)?.type !== "diagram";
-          })
-          .map((el) => {
-            if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
-            const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
-            const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
-            const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
-            const edge =
-              edgeLabel &&
-              edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
-            const isActive =
-              !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
-            const title = el.classList.contains("grp-label");
-            const detail =
-              title || el.classList.contains("ann-zone-label")
-                ? { show: !title || !far, scale: 1 }
-                : el.classList.contains("lv-alert") && id && lit.has(id)
-                  ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-                  : textDetail(fonts.get(el)!, zoom, title || isActive, view);
-            const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
-            return { el, whole, detail };
-          });
-        for (const { el, whole, detail } of textChanges) {
-          whole.toggleAttribute("data-detail-text-hidden", !detail.show);
-          el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
-        }
+        const detailed = (el: HTMLElement) => {
+          if (!visible) return true;
+          const id = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']")?.dataset;
+          const key = id?.id ?? id?.testid?.slice("node-badge-".length);
+          return !key || visible.has(key) || s.nodeLookup.get(key)?.type !== "diagram";
+        };
+        const textChange = (el: HTMLElement) => {
+          if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
+          const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
+          const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
+          const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
+          const edge =
+            edgeLabel &&
+            edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
+          const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
+          const title = el.classList.contains("grp-label");
+          const detail =
+            title || el.classList.contains("ann-zone-label")
+              ? { show: !title || !far, scale: 1 }
+              : el.classList.contains("lv-alert") && id && lit.has(id)
+                ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
+                : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+          const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
+          return { el, whole, detail };
+        };
+        const applyText = (changes: ReturnType<typeof textChange>[]) => {
+          for (const { el, whole, detail } of changes) {
+            whole.toggleAttribute("data-detail-text-hidden", !detail.show);
+            el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
+          }
+        };
+        applyText(textElements.filter(detailed).map(textChange));
         placeRegionTitles(root, s, { style, direction, captions, hideDependencies });
         // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
         // Reserve two lines only when the original text needs them at the card's measured width.
@@ -777,37 +790,60 @@ const FrameDecoration = memo(
         }
         for (const write of labelWrites) write();
         // Call annotations belong to their edge too; a pinned caller must not leave a clipped pill.
-        for (const pill of pills) pill.style.removeProperty("translate");
-        const pillBoxes = new Map(pills.map((pill) => [pill, box(pill, origin)]));
-        for (const pill of pills) {
-          const edge = edges.get(pill.dataset.callEdge ?? "");
-          if (!edge) continue;
-          const ends = edgeInFrame(
-            states.get(edge.source) ?? "out",
-            states.get(edge.target) ?? "out",
-            active.has(edge.source) || active.has(edge.target),
-          );
-          const b = pillBoxes.get(pill)!;
-          const path = routes.get(edge.id)?.points;
-          let placed = cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
-          if (phone && cropped && ends.pill) {
-            const subject = cards.get(states.get(edge.source) === "in" ? edge.source : edge.target);
-            if (subject) {
-              const card = cardBoxes.get(states.get(edge.source) === "in" ? edge.source : edge.target)!;
-              placed = {
-                ...b,
-                x: Math.max(inner.x, Math.min(card.x, inner.x + inner.width - b.width)),
-                y: card.y - b.height - 18,
-              };
+        // Pills are placed last: nothing above depends on them, so traffic adding, removing or
+        // relabelling a pill re-runs only this step against the same settled blockers.
+        const settled = [...blockers];
+        const placeCallPills = (pills: HTMLElement[]) => {
+          const blockers = [...settled];
+          for (const pill of pills) pill.style.removeProperty("translate");
+          const pillBoxes = new Map(pills.map((pill) => [pill, box(pill, origin)]));
+          for (const pill of pills) {
+            const edge = edges.get(pill.dataset.callEdge ?? "");
+            if (!edge) continue;
+            const ends = edgeInFrame(
+              states.get(edge.source) ?? "out",
+              states.get(edge.target) ?? "out",
+              active.has(edge.source) || active.has(edge.target),
+            );
+            const b = pillBoxes.get(pill)!;
+            const path = routes.get(edge.id)?.points;
+            let placed =
+              cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
+            if (phone && cropped && ends.pill) {
+              const subject = cards.get(states.get(edge.source) === "in" ? edge.source : edge.target);
+              if (subject) {
+                const card = cardBoxes.get(states.get(edge.source) === "in" ? edge.source : edge.target)!;
+                placed = {
+                  ...b,
+                  x: Math.max(inner.x, Math.min(card.x, inner.x + inner.width - b.width)),
+                  y: card.y - b.height - 18,
+                };
+              }
+            }
+            const hidden = far || (cropped && (!ends.pill || !placed || !contains(inner, placed)));
+            setHidden(pill, hidden);
+            if (!hidden && placed) {
+              if (cropped) pill.style.translate = `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`;
+              blockers.push(placed);
             }
           }
-          const hidden = far || (cropped && (!ends.pill || !placed || !contains(inner, placed)));
-          setHidden(pill, hidden);
-          if (!hidden && placed) {
-            if (cropped) pill.style.translate = `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`;
-            blockers.push(placed);
-          }
-        }
+        };
+        placeCallPills(pills);
+        placePills = () => {
+          // Anything that moved the pane needs the whole pass.
+          const now = root.getBoundingClientRect();
+          if (
+            now.left !== origin.left ||
+            now.top !== origin.top ||
+            now.width !== origin.width ||
+            now.height !== origin.height
+          )
+            return false;
+          const current = [...root.querySelectorAll<HTMLElement>("[data-call-edge]")];
+          applyText(current.filter((el) => el.classList.contains("lv-call-pill") && detailed(el)).map(textChange));
+          placeCallPills(current);
+          return true;
+        };
         for (const badge of badges) {
           const id = badge.dataset.nodeId ?? badge.dataset.testid?.slice("node-badge-".length);
           if (id && states.has(id)) {
@@ -870,8 +906,23 @@ const FrameDecoration = memo(
           cameraInputs = next;
           dirty = true;
         }
-        if (dirty && !frame) frame = requestAnimationFrame(update);
+        if ((dirty || pillsDirty) && !frame) frame = requestAnimationFrame(update);
       });
+      const schedulePills = () => {
+        pillsDirty = true;
+        if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
+      };
+      // A call pill mounting, unmounting or changing its text with the traffic.
+      const pillOnly = (record: MutationRecord) => {
+        if (!(record.target instanceof Element)) return false;
+        if (record.target.closest("[data-call-edge]")) return true;
+        const nodes = [...(record.addedNodes ?? []), ...(record.removedNodes ?? [])];
+        return (
+          record.type === "childList" &&
+          nodes.length > 0 &&
+          nodes.every((node) => node instanceof Element && node.hasAttribute("data-call-edge"))
+        );
+      };
       const observer = new MutationObserver((records) => {
         // Our own title commits and hidden Overview readouts do not change geometry.
         // Filter individually so a mixed batch still handles traffic ink without a layout pass.
@@ -887,9 +938,18 @@ const FrameDecoration = memo(
         if (!relevant.length) return;
         // Rate ranking changes at the UI clock. Only flip edge ink here: traffic
         // must never remeasure a settled frame or rebuild its labels and routes.
-        if (relevant.every((record) => record.attributeName === "data-live-main")) {
+        // Call pills follow the same traffic, so they only re-place the pills.
+        const ink = relevant.filter((record) => record.attributeName === "data-live-main");
+        const others = relevant.filter((record) => record.attributeName !== "data-live-main");
+        if (others.every(pillOnly)) {
+          // A settled frame places them before this frame paints: no extra frame showing an unplaced pill.
+          if (others.length) {
+            if (dirty || pillsDirty || frame || !settledFrame() || !placePills) schedulePills();
+            else if (placePills()) observer.takeRecords();
+            else schedule();
+          }
           if (root.hasAttribute("data-detail-overview"))
-            for (const record of relevant)
+            for (const record of ink)
               if (record.target instanceof SVGElement)
                 setHidden(
                   record.target,
@@ -971,6 +1031,7 @@ const FrameDecoration = memo(
       const unregister = viewport
         ? registerFrameCapture(viewport, () => {
             suspended = true;
+            placePills = null;
             // suspendFrameCapture normalizes the identity scale for capture in every view.
             reset();
             return () => {
