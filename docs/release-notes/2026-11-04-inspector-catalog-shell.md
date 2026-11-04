@@ -1,10 +1,10 @@
 ## Keep the Simulation loading shell visible
 
-The Inspector now mounts its settings while the optional Simulation translations download, so a slow
-catalog shows the existing loading shell and a failed download offers Retry. Naming remains usable
+The Inspector's settings boundary now shows Simulation loading feedback while its optional
+translations download, and a failed download offers the existing Retry. Naming remains usable
 through loading and recovery, including German and Arabic and language switches during a download.
 
-The Route table rule count and Cache rules heading and summary belong to the core catalog because
-they appear before the Simulation surface is ready. The parent settings loader no longer waits on
-that optional catalog. No wording, simulation behavior or output golden changes; the catalog parity
-update produced zero changes because the combined translations are identical.
+The parent settings loader waits for the same catalog as its Simulation child, so it must provide
+the child's loading feedback until that child can mount. Rule summaries stay in the optional catalog,
+preserving the existing locale size budget. No wording, simulation behavior or output golden changes.
+The catalog parity update produced zero changes because the combined translations are identical.
