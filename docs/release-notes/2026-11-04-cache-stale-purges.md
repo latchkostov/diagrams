@@ -57,15 +57,20 @@ the peak queue is 55–57 and end shopper p95 is 52.8 ms. Every Black Friday chi
 passes.
 
 Before feature edits, unmemoized Black Friday planScaling measured 965.6 ms
-cold and 723.7, 672.8 and 678.5 ms warm. The final same-process before/after
+cold and 723.7, 672.8 and 678.5 ms warm. The pre-integration same-process before/after
 comparison measured before 986.2, 699.1, 582.6 and 614.7 ms; after 565.6, 556.0,
 547.8 and 560.5 ms. Timings are descriptive, not absolute test budgets. Both
 sides retain four runs, 11,248 ticks and 25,218 messages; the new read-only
 story adds no autoscaler sizing playback.
 
-Measured production cache runtime: 4,297 bytes gzip (5 KiB cap). Live adds
-128,196 bytes gzip beyond the canvas, leaving 6,804 bytes against 135,000 and
-660 bytes beyond the fixed 6,144-byte reserve. No budget or reserve was raised.
+After integrating #434's call/ledger optimization, a fresh paired run measured
+before 682.1, 469.1, 399.9 and 385.0 ms; after 367.5, 369.3, 369.8 and 363.6 ms.
+The after samples followed the before samples in the same process; this is not
+an isolated performance comparison. The run, tick and message counts are unchanged.
+
+Measured production cache runtime: 4,294 bytes gzip (5 KiB cap). Live adds
+128,816 bytes gzip beyond the canvas, leaving 6,184 bytes against 135,000 and
+40 bytes beyond the fixed 6,144-byte reserve. No budget or reserve was raised.
 The narrow remaining reserve has a separate trim follow-up.
 
 ## Parity inventory
