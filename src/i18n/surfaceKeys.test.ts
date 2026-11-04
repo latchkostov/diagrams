@@ -32,6 +32,14 @@ it("keeps labels shared by planning, inspector and Live controls in core", () =>
   expect(modules.get("src/planning/ui.ts")?.declares).toEqual(["simulation"]);
 });
 
+it("keeps node settings mounted while the simulation catalog waits behind its loading shell", () => {
+  const modules = readSources(process.cwd());
+  expect(modules.get("src/canvas/inspector/lazyNodeSettings.tsx")?.declares).toEqual([]);
+  const keys = modules.get("src/canvas/inspector/NodeSettings.tsx")!.keys;
+  expect(keys).toEqual(expect.arrayContaining(["cache.rules", "cache.ruleCount", "planning.routeCount"]));
+  for (const key of keys) expect(catalogBucket(key), key).toBe("core");
+});
+
 const graph = (modules: Record<string, Partial<SourceModule>>) =>
   new Map(
     Object.entries(modules).map(([file, m]) => [file, { keys: [], declares: [], imports: [], dynamic: [], ...m }]),

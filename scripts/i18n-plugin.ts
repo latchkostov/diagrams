@@ -46,6 +46,10 @@ import { APP_ENTRIES, formatViolations, readSources, surfaceKeyViolations } from
 const coreMessages = new Set<Key>([
   // The node menu offers cache authoring before the optional Inspector downloads.
   "cache.addRules",
+  // Disclosure headings and summaries mount before the Simulation catalog's own loading shell.
+  "cache.rules",
+  "cache.ruleCount",
+  "planning.routeCount",
   "htmlExport.simulations",
   "htmlExport.theme",
   "htmlExport.light",
