@@ -88,6 +88,94 @@ export interface LedgerState {
 }
 export type LedgerSums = Record<ReservationScope, number>;
 
+type ReservationInput = Pick<Reservation, "owner" | "scope" | "startActive"> &
+  Partial<Pick<Reservation, "edge" | "keys" | "phase" | "startedAt" | "units">>;
+
+/** Work, wait and CPU-tail phases update one layout, including checkpoint restores. */
+class ReservationRecord<Group> implements Reservation<Group> {
+  owner: Reservation<Group>["owner"];
+  scope: Reservation<Group>["scope"];
+  edge: Reservation<Group>["edge"];
+  keys: Reservation<Group>["keys"];
+  startedAt: Reservation<Group>["startedAt"];
+  units: Reservation<Group>["units"];
+  releaseAt: Reservation<Group>["releaseAt"] = undefined;
+  turnoverAt: Reservation<Group>["turnoverAt"] = undefined;
+  notBefore: Reservation<Group>["notBefore"] = undefined;
+  group: Reservation<Group>["group"] = undefined;
+  retiredActive: Reservation<Group>["retiredActive"] = undefined;
+  requestWeight: Reservation<Group>["requestWeight"] = undefined;
+  admissionLagMs: Reservation<Group>["admissionLagMs"] = undefined;
+  replica: Reservation<Group>["replica"] = undefined;
+  memorySlots: Reservation<Group>["memorySlots"] = undefined;
+  cpuParts: Reservation<Group>["cpuParts"] = undefined;
+  cpuRemaining: Reservation<Group>["cpuRemaining"] = undefined;
+  logicalCpuRemaining: Reservation<Group>["logicalCpuRemaining"] = undefined;
+  cpuPerRequest: Reservation<Group>["cpuPerRequest"] = undefined;
+  cpuBacklog: Reservation<Group>["cpuBacklog"] = undefined;
+  cpuOwed: Reservation<Group>["cpuOwed"] = undefined;
+  fractionalTail: Reservation<Group>["fractionalTail"] = undefined;
+  cpuBackoffUntil: Reservation<Group>["cpuBackoffUntil"] = undefined;
+  retryAdmissionAt: Reservation<Group>["retryAdmissionAt"] = undefined;
+  startActive: Reservation<Group>["startActive"];
+  segmentActive: Reservation<Group>["segmentActive"];
+  id: Reservation<Group>["id"];
+  represented: Reservation<Group>["represented"];
+  weight: Reservation<Group>["weight"];
+  phase: Reservation<Group>["phase"];
+  heldMs: Reservation<Group>["heldMs"];
+  room: Reservation<Group>["room"];
+  cap: Reservation<Group>["cap"];
+
+  constructor(
+    scope: ReservationInput,
+    represented: number,
+    weight: number,
+    room: number,
+    cap: number,
+    id: number,
+    startActive: number,
+  ) {
+    this.owner = scope.owner;
+    this.scope = scope.scope;
+    this.edge = scope.edge;
+    this.keys = scope.keys;
+    this.startedAt = scope.startedAt;
+    this.units = scope.units;
+    this.startActive = startActive;
+    this.segmentActive = scope.startActive;
+    this.id = id;
+    this.represented = represented;
+    this.weight = weight;
+    this.phase = scope.phase ?? "work";
+    this.heldMs = 0;
+    this.room = room;
+    this.cap = cap;
+  }
+}
+
+function createReservation<Group>(
+  scope: ReservationInput,
+  represented: number,
+  weight: number,
+  room: number,
+  cap: number,
+  id: number,
+  startActive: number,
+): Reservation<Group> {
+  return new ReservationRecord<Group>(scope, represented, weight, room, cap, id, startActive) satisfies Record<
+    keyof Reservation<Group>,
+    unknown
+  >;
+}
+
+/** Checkpoint traversal overwrites shallow values while preserving the reservation layout. */
+export function cloneReservation(value: object): Reservation | undefined {
+  return value instanceof ReservationRecord
+    ? createReservation(value, value.represented, value.weight, value.room, value.cap, value.id, value.startActive)
+    : undefined;
+}
+
 export class SampledLedger {
   state: LedgerState = { reservations: new Map(), owners: new Map(), nextReservation: 1 };
 
@@ -114,7 +202,7 @@ export class SampledLedger {
     if (!Number.isFinite(represented) || !Number.isFinite(weight) || weight < Math.min(1, represented) || !(weight > 0))
       return;
     let owner = this.state.owners.get(scope.owner);
-    const credits = owner?.credits.get(creditKey(scope));
+    const credits = owner?.credits.size ? owner.credits.get(creditKey(scope)) : undefined;
     let remaining = weight;
     let startActive = admissibleActive;
     while (credits?.length && remaining > 1e-9) {
@@ -126,18 +214,15 @@ export class SampledLedger {
       if (credit.weight <= 1e-9) credits.shift();
     }
     if (remaining > 1e-9) startActive = scope.startActive;
-    const reservation: Reservation<Group> = {
-      ...scope,
-      startActive: Math.min(scope.startActive, startActive),
-      segmentActive: scope.startActive,
-      id: this.state.nextReservation++,
+    const reservation = createReservation<Group>(
+      scope,
       represented,
       weight,
-      phase: scope.phase ?? "work",
-      heldMs: 0,
       room,
       cap,
-    };
+      this.state.nextReservation++,
+      Math.min(scope.startActive, startActive),
+    );
     if (!owner) {
       owner = { reservations: new Set(), heap: [], indices: new Map(), credits: new Map() };
       this.state.owners.set(scope.owner, owner);

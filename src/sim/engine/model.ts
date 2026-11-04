@@ -384,3 +384,81 @@ export function resourceWork(node: Node): CpuTail<Group>[] {
       ]
     : node.working;
 }
+
+/** Allocate lifecycle slots together; ordinary calls and checkpoint replay keep the same fast layout. */
+class WorkRecord implements Work {
+  responseAt: Work["responseAt"] = undefined;
+  cache: Work["cache"] = undefined;
+  cacheAt: Work["cacheAt"] = undefined;
+  cacheOwner: Work["cacheOwner"] = undefined;
+  cacheFlight: Work["cacheFlight"] = undefined;
+  priority: Work["priority"] = undefined;
+  queueProtected: Work["queueProtected"] = undefined;
+  queueSize: Work["queueSize"] = undefined;
+  queuedAt: Work["queuedAt"] = undefined;
+  queuedUnits: Work["queuedUnits"] = undefined;
+  continuation: Work["continuation"] = undefined;
+  failureCode: Work["failureCode"] = undefined;
+  timeoutOrigin: Work["timeoutOrigin"] = undefined;
+  attempt: Work["attempt"] = undefined;
+  residentWeight: Work["residentWeight"] = undefined;
+  resumeAtAdmission: Work["resumeAtAdmission"] = undefined;
+  waitingCall: Work["waitingCall"] = undefined;
+  outputs: Work["outputs"] = undefined;
+  outputMessage: Work["outputMessage"] = undefined;
+  workedAt: Work["workedAt"] = undefined;
+  waitRemaining: Work["waitRemaining"] = undefined;
+  errorRate: Work["errorRate"] = undefined;
+  retained: Work["retained"] = undefined;
+  held: Work["held"] = undefined;
+  slotted: Work["slotted"] = undefined;
+  route: Work["route"] = undefined;
+  thread: Work["thread"] = undefined;
+  requestLease: Work["requestLease"] = undefined;
+  localThread: Work["localThread"] = undefined;
+  recoveryCapacity: Work["recoveryCapacity"] = undefined;
+  recoveryThread: Work["recoveryThread"] = undefined;
+  lease: Work["lease"] = undefined;
+  threadLease: Work["threadLease"] = undefined;
+  admissibleActive: Work["admissibleActive"] = undefined;
+  executionWeight: Work["executionWeight"] = undefined;
+  cohort: Work["cohort"] = undefined;
+  workSegment: Work["workSegment"] = undefined;
+  group: Work["group"] = undefined;
+  replica: Work["replica"] = undefined;
+  memorySlots: Work["memorySlots"] = undefined;
+  cpuRemaining: Work["cpuRemaining"] = undefined;
+  logicalCpuRemaining: Work["logicalCpuRemaining"] = undefined;
+  cpuPerRequest: Work["cpuPerRequest"] = undefined;
+  cpuBacklog: Work["cpuBacklog"] = undefined;
+  cpuOwed: Work["cpuOwed"] = undefined;
+  fractionalTail: Work["fractionalTail"] = undefined;
+  cpuBackoffUntil: Work["cpuBackoffUntil"] = undefined;
+  retryAdmissionAt: Work["retryAdmissionAt"] = undefined;
+  cpuParts: Work["cpuParts"] = undefined;
+
+  constructor(
+    public message: Message,
+    public remaining: number,
+    public via: Edge | undefined,
+    public delivery: Delivery | undefined,
+    public injected: boolean | undefined,
+  ) {}
+}
+
+export function createWork(
+  message: Message,
+  remaining: number,
+  via?: Edge,
+  delivery?: Delivery,
+  injected?: boolean,
+): Work {
+  return new WorkRecord(message, remaining, via, delivery, injected) satisfies Record<keyof Work, unknown>;
+}
+
+/** Checkpoint traversal replaces the shallow object's aliases after allocating its lifecycle slots. */
+export function cloneWork(value: object): Work | undefined {
+  return value instanceof WorkRecord
+    ? createWork(value.message, value.remaining, value.via, value.delivery, value.injected)
+    : undefined;
+}
