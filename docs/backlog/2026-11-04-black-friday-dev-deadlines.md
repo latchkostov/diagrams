@@ -15,6 +15,12 @@ The difference is the Checks worker's scenario sizing, which starts about 0.2 s 
 
 The engine's cost per simulated message is unchanged (53–56 µs). The example's new callers, timeouts and fourth simulation run the call model: `beginCall`, the credit ledger and thread reservations account for most of the added time. On a four-CPU runner with three test workers, the two pages' sizing runs land inside the capture.
 
+After three fix rounds, the owner approved quarantining only the `@dev` 25% then 100% case with
+`test.fixme` in PR #433 (Nightly `41840422814`). The 40% Dev case, Build-mode coverage and every
+other `lowzoom-chips` test remain enabled. The 30-second deadline is unchanged. Restore this case
+when one of the following options resolves the page-load contention; the measurements above show
+that changing export code or re-recording its output would address the wrong work.
+
 No product change is retained for this test. Options that keep the deadline and outputs:
 
 - speed up the engine's call and ledger path (an engine change: needs the fc-sweep gate);

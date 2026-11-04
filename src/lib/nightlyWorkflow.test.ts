@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
 import { E2E_PROFILES } from "../../scripts/e2e-profiles.mjs";
+import { agreementPattern, propertyFiles } from "../../scripts/ci/property-files.mjs";
 import { fuzzSeeds } from "../test/fuzzSeeds";
 
 it("keeps overlapping Nightly dispatches and every matrix sibling", () => {
@@ -14,14 +16,62 @@ it("keeps overlapping Nightly dispatches and every matrix sibling", () => {
 it("shards the full 20x property corpus with independent reports and a step deadline before the job deadline", () => {
   const { jobs } = parse(readFileSync(".github/workflows/nightly.yml", "utf8"));
   const job = jobs.properties;
-  expect(job.strategy?.matrix).toEqual({ shard: [1, 2, 3, 4], total: [4] });
+  expect(job.strategy?.matrix).toEqual({
+    shard: [1, 2, 3, 4],
+    total: [4],
+    include: Array.from({ length: 5 }, (_, batch) => ({ shard: `agreement-${batch}`, total: 5 })),
+  });
   const run = job.steps.find((step: { run?: string }) => step.run?.includes("vitest run"));
   expect(run.env).toMatchObject({ FC_SEED: "random", FC_RUN_MULTIPLIER: "20" });
-  expect(run.run).toContain("git grep -l");
+  expect(run.run).toContain('node scripts/ci/property-files.mjs "$SHARD"');
+  expect(run.run).toContain('if [[ "$SHARD" = agreement-* ]]; then');
+  expect(run.run).toContain('--testNamePattern="$(node scripts/ci/property-files.mjs "$SHARD" --pattern)"');
   expect(run.run).toContain('--shard="$SHARD/$TOTAL"');
+  expect(run.run).toContain('"${files[@]}" "${args[@]}"');
   expect(run.env).toMatchObject({ SHARD: "${{ matrix.shard }}", TOTAL: "${{ matrix.total }}" });
-  expect(run["timeout-minutes"]).toBeGreaterThan(10);
+  expect(run["timeout-minutes"]).toBe(20);
   expect(run["timeout-minutes"] + 5).toBeLessThanOrEqual(job["timeout-minutes"]);
+});
+
+it("isolates cache agreement without duplicating or dropping any discovered property file", () => {
+  const files = execFileSync(
+    "git",
+    ["grep", "-l", ["from", '"fast-check"'].join(" "), "--", "src/**/*.test.ts", "src/**/*.test.tsx"],
+    { encoding: "utf8" },
+  )
+    .trim()
+    .split(/\r?\n/);
+  const agreement = propertyFiles(files, "agreement-0");
+  const ordinary = propertyFiles(files, "1");
+  expect(agreement).toEqual(["src/sim/cacheAgreement.test.ts"]);
+  expect(ordinary).not.toContain(agreement[0]);
+  expect([...ordinary, ...agreement].sort()).toEqual(files.sort());
+  for (const shard of ["2", "3", "4"]) expect(propertyFiles(files, shard)).toEqual(ordinary);
+  for (let batch = 1; batch < 5; batch++) expect(propertyFiles(files, `agreement-${batch}`)).toEqual(agreement);
+  expect(() => propertyFiles(files, "0")).toThrow("Unknown property shard");
+});
+
+it("partitions agreement cases exactly once and keeps every observation with its statistical bound", () => {
+  const patterns = Array.from({ length: 5 }, (_, batch) => new RegExp(agreementPattern(`agreement-${batch}`)));
+  const owners = (title: string) => patterns.flatMap((pattern, batch) => (pattern.test(title) ? [batch] : []));
+  expect(owners("A1: analysis and Live agree over a steady 20 s window, seed 1")).toEqual([0]);
+  expect(owners("automatic short-TTL scale preserves Expected/Live agreement (20 items)")).toEqual([0]);
+  for (let batch = 0; batch < 5; batch++) {
+    expect(owners(`A1: random rule sizes and TTLs preserve steady-state agreement (batch ${batch})`)).toEqual([batch]);
+    for (const kind of ["general", "short TTL"]) {
+      for (const scale of [1, 10, "auto"]) {
+        const label = `${kind}, batch ${batch}, case 0, scale ${scale}`;
+        expect(owners(`A1: item count, popularity, TTL, fetch time and rate sweep agreement (${label})`)).toEqual([
+          batch,
+        ]);
+        for (const seed of [1, 17, 42])
+          expect(
+            owners(`A1: item count, popularity, TTL, fetch time and rate sweep observation (${label}, seed ${seed})`),
+          ).toEqual([batch]);
+      }
+    }
+  }
+  expect(() => agreementPattern("agreement-5")).toThrow("Unknown agreement shard");
 });
 
 it("halves Linux E2E shard workloads without dropping repetitions, and retains reports after step timeouts", () => {

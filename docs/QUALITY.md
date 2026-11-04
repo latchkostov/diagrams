@@ -409,7 +409,8 @@ workflow). It covers what pull requests skip for speed, with no retries:
 
 Linux browser shards download the four served profiles from one same-run build job, including dev-server
 shards that need production HTML for framed-header checks. They have a 30-minute action deadline inside a 40-minute job, leaving time to
-upload results after a step failure. Random properties use four file shards, each with a 20-minute
+upload results after a step failure. Random properties use four ordinary file shards plus five cache-agreement
+seed batches, each with a 20-minute
 test deadline inside a 30-minute job. All matrices keep `fail-fast: false`. Every dispatch keeps its
 own run without a workflow concurrency group that could replace a pending run.
 [Cancellation evidence and budget rationale](release-notes/2026-10-27-nightly-job-results.md).
@@ -438,12 +439,17 @@ In PowerShell, set `$env:FC_SEED='-673370871'` and `$env:FC_PATH='840:7:7:6:5:5:
 remove both environment variables afterwards. Paths belong to one property and its generator version,
 so always filter to the failing test. Every failing seed becomes a fixed, minimal regression test.
 
-Nightly's four **Random property tests** shards discover the fast-check test files and run them with
+Nightly's **Random property tests** discover the fast-check test files and run them with
 `FC_SEED=random FC_RUN_MULTIPLIER=20`: twenty times each property's usual run count (currently
 20,000 policy sequences and 10,000 controller interleavings). Use `propertyRuns()` from
 `src/test/fastCheck.ts` when setting a property's explicit `numRuns`, so Nightly scales it too.
 When replaying a Nightly failure, also set `FC_RUN_MULTIPLIER=20` to keep its run parameters.
 Seed and path remain in the job's failure log; no retry or custom reporter hides them.
+
+Four file shards cover ordinary properties. Cache agreement runs separately in its five existing seed batches;
+each case's observations and aggregate bound stay together, and batch zero also runs the pinned cases.
+`scripts/ci/property-files.mjs` selects these disjoint lanes without changing the corpus, simulation windows,
+sample floors, assertions or instrumentation. Reports remain independent for every shard.
 
 ### Timing assertions
 
