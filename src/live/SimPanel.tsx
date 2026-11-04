@@ -6,7 +6,14 @@ import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
 import { faultTimelineProblem } from "../model/faultRuntime";
 import { simulationProblem } from "../interop/native";
 import { FaultStep } from "./FaultStep";
-import { defaultFault, drillFault, drillKind, drillName, faultTargets } from "./faults";
+import {
+  defaultFault,
+  drillFault,
+  drillKind,
+  drillName,
+  faultTargets,
+  faultDiagram as configuredFaultDiagram,
+} from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -189,6 +196,7 @@ export function SimPanel({
   const interaction = useInteraction();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
+  const faultDiagram = sim ? configuredFaultDiagram(diagram, sim) : diagram;
   useLayoutEffect(() => onDraftChange?.(sim), [sim, onDraftChange]);
   useLayoutEffect(() => {
     if (!onEditCommand) return;
@@ -345,7 +353,7 @@ export function SimPanel({
                   key={i}
                   index={i}
                   step={step}
-                  diagram={diagram}
+                  diagram={faultDiagram}
                   types={types}
                   warnings={warnings.filter((w) => w.where === `timeline:${i}`)}
                   onChange={(next) => edit((d) => void (d.timeline![i] = next))}
@@ -360,7 +368,7 @@ export function SimPanel({
                 onChange={(event) => {
                   const preset = event.target.value;
                   if (!preset) return;
-                  if (preset !== "note" && !faultTargets(diagram, drillKind(preset as DrillPreset)).length) return;
+                  if (preset !== "note" && !faultTargets(faultDiagram, drillKind(preset as DrillPreset)).length) return;
                   edit((d) => {
                     const last = d.timeline?.at(-1)?.atMs ?? -2000;
                     const action: TimelineAction =
@@ -368,7 +376,7 @@ export function SimPanel({
                         ? { do: "note", text: "", focus: [] }
                         : {
                             do: "fault",
-                            fault: drillFault(preset as DrillPreset, diagram),
+                            fault: drillFault(preset as DrillPreset, faultDiagram),
                             drill: preset as DrillPreset,
                           };
                     (d.timeline ??= []).push({ atMs: last + 2000, action });
@@ -383,10 +391,10 @@ export function SimPanel({
                     <option
                       key={preset}
                       value={preset}
-                      disabled={!faultTargets(diagram, drillKind(preset)).length}
+                      disabled={!faultTargets(faultDiagram, drillKind(preset)).length}
                       data-testid={`sim-panel-preset-${preset}`}
                     >
-                      {faultTargets(diagram, drillKind(preset)).length
+                      {faultTargets(faultDiagram, drillKind(preset)).length
                         ? drillName(preset)
                         : translate("fault.unavailablePreset", {
                             name: drillName(preset),
@@ -395,7 +403,9 @@ export function SimPanel({
                                 ? translate("fault.needsBoundary")
                                 : preset === "region-connectivity"
                                   ? translate("fault.needsLink")
-                                  : translate("fault.needsNode"),
+                                  : preset === "cold-cache"
+                                    ? translate("cache.needsRules")
+                                    : translate("fault.needsNode"),
                           })}
                     </option>
                   ))}

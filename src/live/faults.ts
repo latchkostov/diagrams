@@ -1,4 +1,4 @@
-import type { DiagramFile } from "../model/types";
+import type { DiagramFile, Simulation } from "../model/types";
 import { type DrillPreset, type Fault } from "../model/faults";
 import { faultTopology } from "../model/faultRuntime";
 import { stencilRole } from "../stencils/roles";
@@ -7,6 +7,22 @@ import { cacheEnabled } from "../model/caching";
 export { drillName } from "../model/faultWords";
 
 const targetCache = new WeakMap<DiagramFile, Map<Fault["kind"], { id: string; label: string }[]>>();
+const setups = new WeakMap<DiagramFile, WeakMap<object, DiagramFile>>();
+export function faultDiagram(diagram: DiagramFile, simulation: Simulation): DiagramFile {
+  const props = simulation.setup?.props;
+  if (!props) return diagram;
+  const cache = setups.get(diagram) ?? new WeakMap<object, DiagramFile>();
+  setups.set(diagram, cache);
+  let effective = cache.get(props);
+  if (!effective) {
+    effective = {
+      ...diagram,
+      nodes: diagram.nodes.map((n) => (props[n.id] ? { ...n, props: { ...n.props, ...props[n.id] } } : n)),
+    };
+    cache.set(props, effective);
+  }
+  return effective;
+}
 export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {
   let cache = targetCache.get(diagram);
   if (!cache) targetCache.set(diagram, (cache = new Map()));

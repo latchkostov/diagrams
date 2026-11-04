@@ -3,6 +3,14 @@ import { simulationFieldErrors } from "./validate";
 import { LIMITS } from "../interop/native";
 import { editableProperties } from "./editableProperties";
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
+import { purgeEditorFixture } from "../lab/cachePurgeFixture";
+
+it("accepts a purge of a rule supplied only by the selected setup", () => {
+  const d = purgeEditorFixture(),
+    simulation = d.simulations![0];
+  simulation.timeline = [{ atMs: 0, action: { do: "fault", fault: { kind: "purge", node: "cdn", rule: "__all" } } }];
+  expect(simulationFieldErrors(simulation, d)).toEqual([]);
+});
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",

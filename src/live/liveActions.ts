@@ -202,7 +202,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
             },
             ...table.rules.map((r) => ({
               type: "item" as const,
-              id: `sim.purge:${mode}:${r.id}`,
+              id: `sim.purge:${mode}:rule:${r.id}`,
               label: r.label || r.id,
               run: apply({ kind: "purge", node, mode, rule: r.id }),
             })),
@@ -247,6 +247,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
                   type: "item" as const,
                   id: "sim.deploy-purge",
                   label: t("cache.deploy"),
+                  hint: t("cache.hardPurge"),
                   run: apply({ kind: "purge", node, reason: "deploy" }),
                 },
               ]

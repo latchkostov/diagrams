@@ -43,9 +43,12 @@ export function agreement(
   rate = 1000,
   fetchMs = 60,
   coalesce = false,
+  staleWhileRevalidateMs = 0,
 ) {
   const d = agreementDiagram(keys, ttlMs, popularity, rate, fetchMs);
   if (coalesce) (d.nodes[1].props!.cache as CacheTable).default!.coalesce = true;
+  if (staleWhileRevalidateMs)
+    (d.nodes[1].props!.cache as CacheTable).default!.staleWhileRevalidateMs = staleWhileRevalidateMs;
   if (scale === "auto") scale = autoScale(explanationSimulation(d), d);
   const legacyExpected = analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))).cacheDemand!.cache[""]
     .hitRatio;
@@ -166,6 +169,19 @@ it.fails.each([1, 10, "auto"] as const)(
     expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(result.scale === 1 ? 0.02 : 0.03);
   },
 );
+
+it.each([0, 1, 2, 3, 4])("A1: stale serving agrees for tracked items and statistical tails (batch %i)", (batch) => {
+  fc.assert(
+    fc.property(fc.integer(), fc.constantFrom(1, 10), fc.constantFrom(1, 1000), (seed, scale, keys) => {
+      const result = agreement(seed, scale, keys, 1000, "typical", 1000, 60, true, 5000);
+      expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(scale === 1 ? 0.02 : 0.03);
+    }),
+    {
+      numRuns: propertyRuns(1),
+      ...(fc.readConfigureGlobal().seed === undefined ? {} : { seed: (fc.readConfigureGlobal().seed! + batch) | 0 }),
+    },
+  );
+});
 
 // Keep Nightly's full case count without putting every simulation under one test-runner timeout.
 it.each([0, 1, 2, 3, 4])("A1: random rule sizes and TTLs preserve steady-state agreement (batch %i)", (batch) => {

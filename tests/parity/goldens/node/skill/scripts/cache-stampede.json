@@ -8,7 +8,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "c5cb2ab353803265af2a269bc9dbf2c6b17872a55588458015ccf4e0ac436aa1", "bytes": 4345 },
+    "decoded": { "sha256": "d41325867100fca2469df74bbca35479187ce1c80581e575215b4d7419e5df7c", "bytes": 9090 },
     "sameAsFile": true,
     "warned": false
   },
@@ -21,7 +21,7 @@
       "diagram": {
         "format": "diagrams/v2",
         "title": "A cache stampede",
-        "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting about two seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default.",
+        "description": "A small store serves 400 requests/s: 80% want one launch item, kept for five seconds. A four-thread Product API can handle the warm product tail, but repeated expiry herds grow from about 65 to 640 fetches in flight, leaving thousands queued and shoppers waiting about two seconds. Compare the same seed with One fetch per item: one launch fetch per expiry, a backlog below 10 and p95 below 300 ms. Many CDNs collapse requests like this by default. Serve stale while refreshing removes expiry waits. A hard purge at the peak empties both rules: refilling 20,000 other products takes minutes, so the four-thread API stays far behind through the run and both backlog and shopper p95 fail. Soft purge keeps stale copies serving while refreshing; every chip passes.",
         "planning": {
           "revision": "p3-w3",
           "requestRoutes": [
@@ -147,7 +147,7 @@
               },
               {
                 "id": "fetches",
-                "label": "Launch page fetches in flight < 5, always",
+                "label": "Most fetches in flight for one item < 5, always",
                 "metric": { "node": "cdn", "field": "itemFetches" },
                 "op": "<",
                 "value": 5,
@@ -197,7 +197,7 @@
               },
               {
                 "id": "fetches",
-                "label": "Launch page fetches in flight < 5, always",
+                "label": "Most fetches in flight for one item < 5, always",
                 "metric": { "node": "cdn", "field": "itemFetches" },
                 "op": "<",
                 "value": 5,
@@ -220,6 +220,226 @@
                         "label": "Other products",
                         "match": { "path": { "kind": "prefix", "value": "/products/" } },
                         "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "serve-stale",
+            "title": "Serve stale while refreshing",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 40000,
+            "traffic": [
+              {
+                "id": "shoppers",
+                "node": "shoppers",
+                "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "note", "text": "At expiry, the edge answers from the stale copy and sends one background fetch. Shoppers keep moving.", "focus": ["cdn", "origin"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "backlog",
+                "label": "Product API backlog < 50, always",
+                "metric": { "node": "origin", "field": "backlog" },
+                "op": "<",
+                "value": 50,
+                "when": "always"
+              },
+              {
+                "id": "latency",
+                "label": "Shoppers p95 < 300 ms at the end",
+                "metric": { "node": "shoppers", "field": "p95" },
+                "op": "<",
+                "value": 300,
+                "when": "end"
+              },
+              {
+                "id": "fetches",
+                "label": "Most fetches in flight for one item < 5, always",
+                "metric": { "node": "cdn", "field": "itemFetches" },
+                "op": "<",
+                "value": 5,
+                "when": "always"
+              }
+            ],
+            "setup": {
+              "props": {
+                "cdn": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true, "staleWhileRevalidateMs": 30000 }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical", "staleWhileRevalidateMs": 30000 }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "hard-purge",
+            "title": "A purge at the peak",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 40000,
+            "traffic": [
+              {
+                "id": "shoppers",
+                "node": "shoppers",
+                "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "note", "text": "Both rules can serve stale copies while refreshing. A hard purge removes those copies; a soft purge keeps them.", "focus": ["cdn"] }
+              },
+              {
+                "atMs": 15000,
+                "action": { "do": "fault", "fault": { "kind": "purge", "node": "cdn", "mode": "hard" } }
+              },
+              {
+                "atMs": 15100,
+                "action": { "do": "note", "text": "The hard purge empties the cache. Refilling 20,000 other products takes minutes: the four-thread API stays far behind through this run. Both backlog and shopper p95 fail. Compare Soft purge: stale copies serve while refreshing and every chip passes.", "focus": ["cdn", "origin"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "backlog",
+                "label": "Product API backlog < 50, always",
+                "metric": { "node": "origin", "field": "backlog" },
+                "op": "<",
+                "value": 50,
+                "when": "always"
+              },
+              {
+                "id": "latency",
+                "label": "Shoppers p95 < 300 ms at the end",
+                "metric": { "node": "shoppers", "field": "p95" },
+                "op": "<",
+                "value": 300,
+                "when": "end"
+              },
+              {
+                "id": "fetches",
+                "label": "Most fetches in flight for one item < 5, always",
+                "metric": { "node": "cdn", "field": "itemFetches" },
+                "op": "<",
+                "value": 5,
+                "when": "always"
+              }
+            ],
+            "setup": {
+              "props": {
+                "cdn": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true, "staleWhileRevalidateMs": 30000 }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical", "staleWhileRevalidateMs": 30000 }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "soft-purge",
+            "title": "Soft purge",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 40000,
+            "traffic": [
+              {
+                "id": "shoppers",
+                "node": "shoppers",
+                "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 40000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "note", "text": "Both rules can serve stale copies while refreshing. A hard purge removes those copies; a soft purge keeps them.", "focus": ["cdn"] }
+              },
+              {
+                "atMs": 15000,
+                "action": { "do": "fault", "fault": { "kind": "purge", "node": "cdn", "mode": "soft" } }
+              },
+              {
+                "atMs": 15100,
+                "action": { "do": "note", "text": "The soft purge keeps stale copies. The edge answers shoppers while background fetches refresh them.", "focus": ["cdn", "origin"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "backlog",
+                "label": "Product API backlog < 50, always",
+                "metric": { "node": "origin", "field": "backlog" },
+                "op": "<",
+                "value": 50,
+                "when": "always"
+              },
+              {
+                "id": "latency",
+                "label": "Shoppers p95 < 300 ms at the end",
+                "metric": { "node": "shoppers", "field": "p95" },
+                "op": "<",
+                "value": 300,
+                "when": "end"
+              },
+              {
+                "id": "fetches",
+                "label": "Most fetches in flight for one item < 5, always",
+                "metric": { "node": "cdn", "field": "itemFetches" },
+                "op": "<",
+                "value": 5,
+                "when": "always"
+              }
+            ],
+            "setup": {
+              "props": {
+                "cdn": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true, "staleWhileRevalidateMs": 30000 }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical", "staleWhileRevalidateMs": 30000 }
                       }
                     ]
                   }

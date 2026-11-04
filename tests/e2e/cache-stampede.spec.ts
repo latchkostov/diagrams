@@ -16,6 +16,8 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import type { CacheTable } from "../../src/model/caching";
+import type { DiagramFile } from "../../src/model/types";
+import { staleCalloutFixture } from "../../src/lab/cachePurgeFixture";
 
 async function originMenu(page: Page) {
   const at = await edgePoint(page, "fetch");
@@ -23,49 +25,57 @@ async function originMenu(page: Page) {
   await page.getByTestId("context-menu-item-edge.simulation").hover();
 }
 
-test("a confirmed stampede action edits only its saved simulation; keyboard Undo restores it", async ({ page }) => {
-  await installThreadVerification(page);
-  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
-    key: STORAGE_KEYS.autosavePrefix + "cache-stampede",
-    diagram: stampede,
+for (const step of ["coalesce", "stale"] as const)
+  test(`a confirmed ${step} action edits only its saved simulation; keyboard Undo restores it`, async ({ page }) => {
+    await installThreadVerification(page);
+    const diagram = step === "stale" ? staleCalloutFixture() : (structuredClone(stampede) as DiagramFile);
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + "cache-stampede",
+      diagram,
+    });
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=cache-stampede&live=1&paused=1&sim=ttl-only");
+    await pauseClock(page);
+    const before = await savedDiagram(page);
+    await page.getByTestId("live-play").click();
+    const callout = page.getByTestId("trouble-callout"),
+      action = page.getByTestId("trouble-action");
+    for (let sample = 0; sample < 60; sample++) {
+      await page.clock.runFor(500);
+      if (!(await callout.count()) || (await callout.getAttribute("data-kind")) !== "cache-stampede") continue;
+      await page.getByTestId("live-play").click();
+      await waitForThreadVerification(page);
+      if ((await action.getAttribute("data-action")) === "cache") break;
+      await page.getByTestId("live-play").click();
+    }
+    await expect(callout).toHaveAttribute("data-kind", "cache-stampede");
+    await expect(action).toHaveAttribute("data-action", "cache");
+    const label = step === "coalesce" ? "One fetch per item" : "Serve stale while refreshing";
+    await expect(action).toHaveText(label);
+    await expect(page.getByTestId("node-cache-cdn")).toContainText("Stampede");
+    await expect(page.getByTestId("call-pill-fetch")).toContainText("fetches for one item");
+    if (process.env.CDN_SHOTS) {
+      mkdirSync(process.env.CDN_SHOTS, { recursive: true });
+      await page.screenshot({ path: join(process.env.CDN_SHOTS, `${step}-callout.png`) });
+    }
+    await action.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("toast")).toContainText(`${label} in “TTL only”`);
+    await page.clock.runFor(400);
+    await expect
+      .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.props?.cdn.cache)
+      .toMatchObject({ rules: [{ id: "launch", policy: { coalesce: true } }, { id: "products" }] });
+    if (step === "stale")
+      expect(
+        ((await savedDiagram(page)).simulations?.[0].setup?.props?.cdn.cache as CacheTable).rules[0].policy
+          .staleWhileRevalidateMs,
+      ).toBeGreaterThan(0);
+    expect((await savedDiagram(page)).nodes).toEqual(before.nodes);
+    await page.getByTestId("thread-fix-undo").focus();
+    await page.keyboard.press("Enter");
+    await page.clock.runFor(400);
+    await expect.poll(async () => (await savedDiagram(page)).simulations?.[0].setup).toBeUndefined();
   });
-  await page.clock.install();
-  await gotoLive(page, "./?view=canvas&example=cache-stampede&live=1&paused=1&sim=ttl-only");
-  await pauseClock(page);
-  const before = await savedDiagram(page);
-  await page.getByTestId("live-play").click();
-  const callout = page.getByTestId("trouble-callout"),
-    action = page.getByTestId("trouble-action");
-  for (let sample = 0; sample < 60; sample++) {
-    await page.clock.runFor(500);
-    if (!(await callout.count()) || (await callout.getAttribute("data-kind")) !== "cache-stampede") continue;
-    await page.getByTestId("live-play").click();
-    await waitForThreadVerification(page);
-    if ((await action.getAttribute("data-action")) === "cache") break;
-    await page.getByTestId("live-play").click();
-  }
-  await expect(callout).toHaveAttribute("data-kind", "cache-stampede");
-  await expect(action).toHaveAttribute("data-action", "cache");
-  await expect(action).toHaveText("One fetch per item");
-  await expect(page.getByTestId("node-cache-cdn")).toContainText("Stampede");
-  await expect(page.getByTestId("call-pill-fetch")).toContainText("fetches for one item");
-  if (process.env.CDN_SHOTS) {
-    mkdirSync(process.env.CDN_SHOTS, { recursive: true });
-    await page.screenshot({ path: join(process.env.CDN_SHOTS, "stampede-callout.png") });
-  }
-  await action.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("toast")).toContainText("One fetch per item in “TTL only”");
-  await page.clock.runFor(400);
-  await expect
-    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.props?.cdn.cache)
-    .toMatchObject({ rules: [{ id: "launch", policy: { coalesce: true } }, { id: "products" }] });
-  expect((await savedDiagram(page)).nodes).toEqual(before.nodes);
-  await page.getByTestId("thread-fix-undo").focus();
-  await page.keyboard.press("Enter");
-  await page.clock.runFor(400);
-  await expect.poll(async () => (await savedDiagram(page)).simulations?.[0].setup).toBeUndefined();
-});
 
 test("the origin Simulation menu toggles its single storing rule in the saved run and supports Undo", async ({
   page,

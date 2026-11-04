@@ -46,6 +46,9 @@ import { APP_ENTRIES, formatViolations, readSources, surfaceKeyViolations } from
 const coreMessages = new Set<Key>([
   // The node menu offers cache authoring before the optional Inspector downloads.
   "cache.addRules",
+  // Fault markers can also be produced by headless Checks and tutorial matching.
+  "cache.coldCache",
+  "cache.purge",
   "htmlExport.simulations",
   "htmlExport.theme",
   "htmlExport.light",
