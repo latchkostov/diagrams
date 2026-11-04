@@ -70,6 +70,8 @@ async function open(page: Page, viewport = 1920, live = false, simulation?: stri
     const editing = page.getByTestId("dock-edit-properties");
     if ((await editing.getAttribute("aria-expanded")) !== "true") await editing.click();
   }
+  const routes = page.getByTestId("inspector-section-node-routes");
+  if ((await routes.getAttribute("aria-expanded")) !== "true") await routes.click();
   await expect(page.getByTestId("routes-table")).toBeVisible();
   await settled(page);
 }

@@ -242,6 +242,7 @@ test("AI is off: no WebMCP tools, Copy for AI and copied prompts off; the on-dev
   // Copy for AI is off on the right-click, and copies nothing.
   await page.evaluate(() => navigator.clipboard.writeText("before"));
   await page.getByTestId("node-intake").click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-family").click();
   await expect(page.getByTestId("context-menu-item-item.copy-for-ai")).toHaveAttribute("aria-disabled", "true");
   await page.keyboard.press("Escape");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");

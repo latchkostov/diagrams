@@ -37,7 +37,9 @@ it("copies the editor document once per version and checks graph counts before c
     revision++;
     await render(257);
     expect(getDiagram).toHaveBeenCalledTimes(2);
-    expect(host.textContent).toContain("Throughput explanation is unavailable");
+    expect(host.textContent).toContain(
+      "Expected hits aren't available for this large diagram. Run Live to measure this rule.",
+    );
     await render();
     expect(getDiagram).toHaveBeenCalledTimes(3);
   } finally {

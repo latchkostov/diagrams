@@ -7,6 +7,13 @@ import { loadExample } from "./index";
 
 const publicItems = withExampleDetails(examples.filter((e) => !e.localOnly));
 describe("example gallery", () => {
+  it.each(["cache", "edge cache"])("finds the caching showcase with %s", (query) => {
+    expect(
+      filterExamples(publicItems, query)
+        .flatMap((s) => s.items)
+        .map((e) => e.slug),
+    ).toContain("black-friday-commerce");
+  });
   it("groups in theme order and keeps input order inside each theme", () => {
     const sections = filterExamples(publicItems, "");
     expect(sections.map((s) => s.theme?.id)).toEqual([

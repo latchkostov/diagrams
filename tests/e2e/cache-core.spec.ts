@@ -41,9 +41,24 @@ test("W3 preview names storing caches and upgrades in one undo step", async ({ p
   await page.keyboard.press("Enter");
   await page.getByTestId("cache-upgrade-preview").click();
   await expect(page.getByTestId("planning-upgrade-preview")).toContainText("Edge cache");
-  await page.getByTestId("planning-upgrade").click();
+  await expect(page.getByTestId("planning-upgrade-preview")).toContainText(
+    "Requests answered there will no longer reach",
+  );
+  await expect(page.getByTestId("cache-upgrade-details-body")).not.toBeVisible();
+  await expect(page.getByTestId("planning-capacity-changes")).not.toContainText("Unknown");
+  await expect(page.getByTestId("planning-upgrade")).toHaveText("Enable caching");
+  await page.getByTestId("planning-upgrade").focus();
+  await page.keyboard.press("Enter");
   await expect.poll(async () => (await savedDiagram(page)).planning?.revision).toBe("p3-w3");
-  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("planning-model-summary")).toBeFocused();
+  await expect(page.getByTestId("toast")).toContainText("Enabled caching");
+  await page.getByTestId("planning-preview").click();
+  await expect(page.getByTestId("planning-legacy-preview")).toContainText(
+    "In the older file, every request reaches the origin; cache rules won't run.",
+  );
+  await expect(page.getByTestId("planning-legacy-preview")).toContainText("Your diagram keeps its current behaviour.");
+  await expect(page.getByTestId("planning-legacy-details-body")).not.toBeVisible();
+  await page.getByTestId("cache-upgrade-undo").click();
   await expect.poll(async () => (await savedDiagram(page)).planning?.revision).toBe("p3-w2");
   expect((await savedDiagram(page)).nodes[1].props?.cache).toEqual(d.nodes[1].props?.cache);
 });

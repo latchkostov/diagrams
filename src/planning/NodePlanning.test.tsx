@@ -6,6 +6,7 @@ import { resourceLesson } from "../model/autoscalingLessons";
 import { LiveController } from "../live/controller";
 import { LiveContext, type LiveUi } from "../live/context";
 import { NodePlanning } from "./NodePlanning";
+import type { EditorApi } from "../editor/types";
 
 // Render a client subscription synchronously: the test deliberately leaves its publication behind the engine.
 vi.mock("react", async (original) => ({
@@ -17,6 +18,20 @@ vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i
 vi.mock("../live/DockedLive", () => ({
   DockedLive: ({ children }: { children(section: string): ReactNode }) => children("resources"),
 }));
+it("offers Live instead of asking to dismantle a large caching diagram", () => {
+  const getDiagram = vi.fn();
+  const html = renderToStaticMarkup(
+    <NodePlanning
+      id="cache"
+      editor={{ getDiagram } as unknown as EditorApi}
+      counts={{ nodes: 257, edges: 2 }}
+      cacheConfigured
+    />,
+  );
+  expect(html).toContain("Expected hits aren&#x27;t available for this large diagram. Run Live to measure this rule.");
+  expect(html).not.toContain("Simplify the diagram");
+  expect(getDiagram).not.toHaveBeenCalled();
+});
 it("resource totals and replica rows share one clock between live publications", () => {
   const d = autoscalingFixture();
   d.nodes[0].props!.ratePerSec = 1;

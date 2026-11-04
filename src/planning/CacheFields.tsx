@@ -9,13 +9,13 @@ import { revisionAtLeast } from "../model/revisions";
 import { matchText } from "../model/routingAppearance";
 import { MatchEditor } from "./RoutingFields";
 import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
-import { Section } from "../canvas/inspector/fields";
 import { configuredPlanning } from "./cache";
 import { planningHost } from "./host";
 import { popularityTable } from "../sim/cache/popularity";
 import { t, useLocale } from "../i18n";
-import { formatNumber } from "../i18n/format";
-import { cacheDuration, policyWords, popularityLabel } from "./cacheWords";
+import { formatNumber, formatPercent } from "../i18n/format";
+import { cacheDuration, cacheRate, policyWords, popularityLabel } from "./cacheWords";
+import { isolate } from "../live/bidi";
 import { notify } from "../interop/ui/toast";
 import "../styles/cache.css";
 
@@ -202,6 +202,7 @@ export function CacheFields({
   readDiagram,
   planning,
   simulations,
+  initiallyOpen = true,
 }: {
   editor: EditorApi;
   nodeId: string;
@@ -210,9 +211,12 @@ export function CacheFields({
   readDiagram?: () => DiagramFile;
   planning?: DiagramFile["planning"];
   simulations?: DiagramFile["simulations"];
+  initiallyOpen?: boolean;
 }) {
   useLocale();
-  const [open, setOpen] = useState<string | null>((props.cache as CacheTable).rules[0]?.id ?? null);
+  const [open, setOpen] = useState<string | null>(
+    initiallyOpen ? ((props.cache as CacheTable).rules[0]?.id ?? null) : null,
+  );
   const [announce, setAnnounce] = useState("");
   const [problem, setProblem] = useState("");
   const focus = useRef<string | null>(null);
@@ -304,64 +308,73 @@ export function CacheFields({
     }
   };
   return (
-    <Section title={t("cache.rules")}>
-      <fieldset
-        data-testid="inspector-cache"
-        className="cache-fields cache-edit-fields"
-        disabled={policy?.editable === false}
-        aria-label={t("cache.rules")}
-      >
-        <p className="insp-note">{t("cache.rulesHint")}</p>
-        {!revisionAtLeast((doc?.planning ?? planning)?.revision, "p3-w3") && (
-          <p className="insp-note">{t("cache.dormant")}</p>
-        )}
-        {doc && !origin && <p className="insp-note">{t("cache.noOrigin")}</p>}
-        <div role="group" aria-label={t("cache.rules")}>
-          <div className="cache-row cache-head" aria-hidden="true">
-            <span data-testid="cache-order-heading">{t("routing.order")}</span>
-            <span data-testid="cache-match-heading">{t("routing.match")}</span>
-            <span>{t("cache.keepFor")}</span>
-            <span>{t("cache.items")}</span>
-          </div>
-          {table.rules.map((rule, i) => (
-            <div key={rule.id}>
-              <button
-                type="button"
-                className="cache-row"
-                data-testid={`cache-rule-${rule.id}`}
-                aria-expanded={open === rule.id}
-                aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
-                ref={(el) => {
-                  if (el) rows.current.set(rule.id, el);
-                  else rows.current.delete(rule.id);
-                }}
-                onClick={() => setOpen(open === rule.id ? null : rule.id)}
-                onKeyDown={keys(rule.id)}
-              >
-                <span>{i + 1}</span>
-                <span className="route-cut" title={matchText(rule.match)}>
-                  {rule.label && (
-                    <small>
-                      {rule.label}
-                      <br />
-                    </small>
-                  )}
-                  {matchText(rule.match)}
-                </span>
-                <span>{rule.policy.noStore ? t("cache.noStore") : cacheDuration(rule.policy.ttlMs!)}</span>
-                <span>{rule.policy.noStore ? "—" : formatNumber(rule.policy.keys ?? 1000)}</span>
-              </button>
-              {open === rule.id && (
-                <div className="route-details" data-testid={`cache-rule-${rule.id}-details`}>
-                  <label className="insp-field">
-                    <span className="insp-label">{t("routing.ruleName")}</span>
-                    <input
-                      className="insp-input"
-                      data-testid={`cache-rule-${rule.id}-label`}
-                      value={rule.label ?? ""}
-                      onChange={(e) => update(rule, { label: e.currentTarget.value }, "label")}
-                    />
-                  </label>
+    <fieldset
+      data-testid="inspector-cache"
+      className="cache-fields cache-edit-fields"
+      disabled={policy?.editable === false}
+      aria-label={t("cache.rules")}
+    >
+      <p className="insp-note">{t("cache.rulesHint")}</p>
+      {!revisionAtLeast((doc?.planning ?? planning)?.revision, "p3-w3") && (
+        <p className="insp-note">{t("cache.dormant")}</p>
+      )}
+      {doc && !origin && <p className="insp-note">{t("cache.noOrigin")}</p>}
+      <div role="group" aria-label={t("cache.rules")}>
+        <div className="cache-row cache-head" aria-hidden="true">
+          <span data-testid="cache-order-heading">{t("routing.order")}</span>
+          <span data-testid="cache-match-heading">{t("routing.match")}</span>
+          <span>{t("cache.keepFor")}</span>
+          <span>{t("cache.items")}</span>
+        </div>
+        {table.rules.map((rule, i) => (
+          <div key={rule.id}>
+            <button
+              type="button"
+              className="cache-row"
+              data-testid={`cache-rule-${rule.id}`}
+              aria-expanded={open === rule.id}
+              aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
+              ref={(el) => {
+                if (el) rows.current.set(rule.id, el);
+                else rows.current.delete(rule.id);
+              }}
+              onClick={() => setOpen(open === rule.id ? null : rule.id)}
+              onKeyDown={keys(rule.id)}
+            >
+              <span>{i + 1}</span>
+              <span className="route-cut" title={matchText(rule.match)}>
+                {rule.label && (
+                  <small>
+                    <bdi>{rule.label}</bdi>
+                    <br />
+                  </small>
+                )}
+                <bdi dir="ltr">{matchText(rule.match)}</bdi>
+              </span>
+              <span>
+                <bdi>{rule.policy.noStore ? t("cache.noStore") : cacheDuration(rule.policy.ttlMs!)}</bdi>
+              </span>
+              <span>{rule.policy.noStore ? "—" : formatNumber(rule.policy.keys ?? 1000)}</span>
+            </button>
+            {open === rule.id && (
+              <div className="route-details" data-testid={`cache-rule-${rule.id}-details`}>
+                <label className="insp-field">
+                  <span className="insp-label">{t("routing.ruleName")}</span>
+                  <input
+                    className="insp-input"
+                    data-testid={`cache-rule-${rule.id}-label`}
+                    value={rule.label ?? ""}
+                    onChange={(e) => update(rule, { label: e.currentTarget.value }, "label")}
+                  />
+                </label>
+                <p
+                  className="insp-note route-cut"
+                  title={matchText(rule.match)}
+                  data-testid={`cache-rule-${rule.id}-match-summary`}
+                >
+                  {t("cache.matchSummary", { match: isolate(matchText(rule.match)) })}
+                </p>
+                <ReadoutDisclosure title={t("cache.editMatch")} testId={`cache-rule-${rule.id}-edit-match`}>
                   <MatchEditor
                     match={rule.match}
                     testId={`cache-rule-${rule.id}-match`}
@@ -383,29 +396,37 @@ export function CacheFields({
                       />
                     </label>
                   </ReadoutDisclosure>
-                  <CachePolicyFields
-                    id={`cache-rule-${rule.id}`}
-                    policy={rule.policy}
-                    set={(policy, field) => update(rule, { policy }, field)}
-                  />
-                  <p data-testid={`cache-rule-${rule.id}-expected`} className="insp-note">
-                    {!configured
-                      ? t("planning.analysisLimit")
-                      : demand?.[rule.id]?.rate
-                        ? t("cache.expected", {
-                            hit: Math.round(demand[rule.id].hitRatio * 100),
-                            rate: formatNumber(demand[rule.id].rate, { maximumFractionDigits: 0 }),
-                            fetch: formatNumber(
+                </ReadoutDisclosure>
+                <CachePolicyFields
+                  id={`cache-rule-${rule.id}`}
+                  policy={rule.policy}
+                  set={(policy, field) => update(rule, { policy }, field)}
+                />
+                <p data-testid={`cache-rule-${rule.id}-expected`} className="insp-note" dir="auto">
+                  {!configured
+                    ? t("cache.analysisLimit")
+                    : demand?.[rule.id]?.rate
+                      ? rule.policy.noStore
+                        ? t("cache.expectedNotCached", {
+                            rate: cacheRate(demand[rule.id].rate),
+                            origin: isolate(origin || t("cache.origin")),
+                          })
+                        : t("cache.expected", {
+                            hit: isolate(formatPercent(demand[rule.id].hitRatio)),
+                            rate: cacheRate(demand[rule.id].rate, true),
+                            fetch: cacheRate(
                               demand[rule.id].rate * (demand[rule.id].fetchShare ?? 1 - demand[rule.id].hitRatio),
+                              false,
                               demand[rule.id].fetchShare === undefined
                                 ? { maximumFractionDigits: 0 }
                                 : { maximumSignificantDigits: 2 },
                             ),
-                            origin: origin || t("cache.origin"),
+                            origin: isolate(origin || t("cache.origin")),
                           })
-                        : t("cache.noTraffic")}
-                  </p>
-                  <div className="insp-row2">
+                      : t("cache.noTraffic")}
+                </p>
+                <ReadoutDisclosure title={t("cache.ruleActions")} testId={`cache-rule-${rule.id}-actions`}>
+                  <div className="cache-rule-actions">
                     <button
                       type="button"
                       className="btn"
@@ -433,64 +454,62 @@ export function CacheFields({
                       {t("inspector.delete")}
                     </button>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <ReadoutDisclosure
-          title={t("cache.everythingElse")}
-          testId="cache-default"
-          summary={table.default ? policyWords(table.default) : t("cache.notCached")}
-        >
-          <label className="insp-check">
-            <input
-              type="checkbox"
-              data-testid="cache-default-enabled"
-              checked={!!table.default}
-              onChange={(e) =>
-                save({
-                  ...table,
-                  default: e.currentTarget.checked
-                    ? { ttlMs: 300_000, keys: 50_000, popularity: "typical" }
-                    : undefined,
-                })
-              }
-            />
-            {t("cache.storeDefault")}
-          </label>
-          {table.default && (
-            <CachePolicyFields
-              id="cache-default"
-              policy={table.default}
-              set={(policy, field) => save({ ...table, default: policy }, field ? `default:${field}` : undefined)}
-            />
-          )}
-        </ReadoutDisclosure>
-        <button
-          type="button"
-          className="btn"
-          ref={add}
-          data-testid="cache-add-rule"
-          disabled={table.rules.length >= 32}
-          onClick={() => {
-            const rule = newCacheRule(table);
-            save({ ...table, rules: [...table.rules, rule] });
-            setOpen(rule.id);
-            focus.current = rule.id;
-          }}
-        >
-          {t("routing.addRule")}
-        </button>
-        {problem && (
-          <p role="alert" data-testid="cache-problem">
-            {problem}
-          </p>
+                </ReadoutDisclosure>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <ReadoutDisclosure
+        title={t("cache.everythingElse")}
+        testId="cache-default"
+        summary={table.default ? policyWords(table.default) : t("cache.notCached")}
+      >
+        <label className="insp-check">
+          <input
+            type="checkbox"
+            data-testid="cache-default-enabled"
+            checked={!!table.default}
+            onChange={(e) =>
+              save({
+                ...table,
+                default: e.currentTarget.checked ? { ttlMs: 300_000, keys: 50_000, popularity: "typical" } : undefined,
+              })
+            }
+          />
+          {t("cache.storeDefault")}
+        </label>
+        {table.default && (
+          <CachePolicyFields
+            id="cache-default"
+            policy={table.default}
+            set={(policy, field) => save({ ...table, default: policy }, field ? `default:${field}` : undefined)}
+          />
         )}
-        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="cache-announce">
-          {announce}
-        </div>
-      </fieldset>
-    </Section>
+      </ReadoutDisclosure>
+      <button
+        type="button"
+        className="btn"
+        ref={add}
+        data-testid="cache-add-rule"
+        disabled={table.rules.length >= 32}
+        onClick={() => {
+          const rule = newCacheRule(table);
+          save({ ...table, rules: [...table.rules, rule] });
+          setOpen(rule.id);
+          focus.current = rule.id;
+        }}
+      >
+        {t("routing.addRule")}
+      </button>
+      {problem && (
+        <p role="alert" data-testid="cache-problem">
+          {problem}
+        </p>
+      )}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="cache-announce">
+        {announce}
+      </div>
+    </fieldset>
   );
 }

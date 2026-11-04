@@ -168,7 +168,7 @@ export function readCatalog(code: string, dir = LOCALES_DIR): Partial<Record<Key
 }
 
 /**
- * Plain messages looked up by number: long optional copy avoids repeating English in each locale chunk;
+ * Plain messages looked up by number: gallery and long optional copy avoid repeating English in each locale chunk;
  * shared English that a language translates differently keeps a separate lookup for each message.
  */
 export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key> {
@@ -180,8 +180,10 @@ export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key>
   for (const key of keys)
     if (
       plain(key) &&
-      ["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) &&
-      en[key].length >= 64
+      // The gallery includes the caching promise on the start card. Numeric
+      // lookups keep its English keys out of each locale without changing readiness.
+      (key.startsWith("examples.") ||
+        (["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) && en[key].length >= 64))
     )
       out.add(key);
   for (const group of byEnglish.values()) {

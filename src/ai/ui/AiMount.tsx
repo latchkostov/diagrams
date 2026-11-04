@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { useWorkbenchDock } from "../../canvas/inspector/dockState";
 import { t, msg } from "../../i18n";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { actionRegistry, type Action } from "../../editor/actions";
+import { actionRegistry, copyMenu, type Action } from "../../editor/actions";
 import { matches } from "../../editor/shortcuts";
 import { paletteHost } from "../../palette/host";
 import { privacyOf } from "../../lib/localOnly";
@@ -212,6 +212,7 @@ function aiToolActions(newDiagram: () => void): Action[] {
   return [
     {
       id: "item.copy-for-ai",
+      menuGroup: copyMenu,
       section: "clipboard",
       targets: ["node", "edge", "selection"],
       modes: ["edit", "live"],

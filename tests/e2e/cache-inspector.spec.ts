@@ -18,6 +18,7 @@ async function setup(page: Page) {
 }
 async function add(page: Page) {
   await page.getByTestId("node-cache").click({ button: "right" });
+  await page.getByTestId("context-menu-item-node.simulation").click();
   await page.getByTestId("context-menu-item-node.add-cache-rules").click();
   await waitForSelectionSettled(page);
 }
@@ -47,6 +48,7 @@ test("Properties keeps selection and focuses the cache editor after its held chu
 test("message patterns preserve separators during keyboard entry and follow Undo", async ({ page }) => {
   await setup(page);
   await add(page);
+  await page.getByTestId("cache-rule-cache-1-edit-match-toggle").click();
   await page.getByTestId("cache-rule-cache-1-types-toggle").click();
   const field = page.getByTestId("cache-rule-cache-1-types-input");
   await field.focus();
@@ -62,6 +64,7 @@ test("message patterns preserve separators during keyboard entry and follow Undo
 test("Black Friday exposes the four ordered edge rules in Properties", async ({ page }) => {
   await gotoCanvas(page, "black-friday-commerce");
   await page.getByTestId("node-cdn").click();
+  await page.getByTestId("inspector-section-node-cache").click();
   await expect(page.getByTestId("inspector-cache")).toBeVisible();
   await waitForSelectionSettled(page);
   for (const id of ["doorbuster", "products", "search", "orders"])
@@ -75,9 +78,10 @@ test("Black Friday exposes the four ordered edge rules in Properties", async ({ 
   const match = await page.getByTestId("cache-match-heading").boundingBox();
   if (!match) throw new Error("Match heading has no rendered box");
   expect(right).toBeLessThanOrEqual(match.x);
-  await page.getByTestId("cache-rule-doorbuster").click();
   await page.getByTestId("cache-rule-products").click();
-  await expect(page.getByTestId("cache-rule-products-expected")).toContainText("Throughput explanation is unavailable");
+  await expect(page.getByTestId("cache-rule-products-expected")).toContainText(
+    "Expected hits aren't available for this large diagram. Run Live to measure this rule.",
+  );
   await page.getByTestId("cache-rule-products").click();
   if (process.env.CDN_SHOTS) {
     mkdirSync(process.env.CDN_SHOTS, { recursive: true });
@@ -103,6 +107,8 @@ test("add cache rules upgrades once, derives Expected, and offers TTL and popula
   await page.getByTestId("cache-rule-cache-1-keys").fill("1");
   await expect(page.getByTestId("cache-rule-cache-1-popularity")).toHaveCount(0);
   await page.getByTestId("cache-rule-cache-1-no-store").check();
+  await expect(page.getByTestId("cache-rule-cache-1-expected")).toContainText("Not cached: all");
+  await expect(page.getByTestId("cache-rule-cache-1-expected")).not.toContainText("0% hits");
   await expect
     .poll(async () => (await savedDiagram(page)).nodes[1].props?.cache)
     .toMatchObject({ rules: [{ policy: { noStore: true } }] });

@@ -36,9 +36,13 @@ it("distinguishes recent cache rates from cumulative rule and latency measuremen
   const cache = renderToStaticMarkup(
     createElement(CacheDetails, { diagram: d, id: "cache", s: state.snapshot.nodes.cache }),
   );
-  expect(cache).toContain("Recent window (up to 10 s)");
-  expect(cache).toContain("hits since restart");
-  expect(cache).toContain('data-testid="cache-latency">Since restart:');
+  expect(
+    nodeSummary(state.snapshot.nodes.cache, []).sections.find((section) => section.key === "cache")?.summary,
+  ).toMatch(/recent ≤10s$/);
+  expect(cache).not.toContain("Recent window (up to 10 s)");
+  expect(cache).toContain("Answered here (hits)");
+  expect(cache).toContain("answered here since restart (hit ratio)");
+  expect(cache).toContain('data-testid="cache-latency">At this cache since restart ·');
   const node = {
     id: "origin",
     position: { x: 0, y: 0 },
@@ -90,12 +94,12 @@ it("cache latency scope follows drill faults", () => {
   expect(reset.cacheDetails!.latency).toBeUndefined();
   expect(reset.cacheDetails!.sinceFault).toMatchObject({ atMs: 2000 });
   const render = (s: typeof reset) => renderToStaticMarkup(createElement(CacheDetails, { diagram: d, id: "cache", s }));
-  expect(render(reset)).toContain('data-testid="cache-latency">Since fault at 2 s:');
+  expect(render(reset)).toContain('data-testid="cache-latency">At this cache since fault at \u20682\u2069 s ·');
   run.step(1000);
   const after = run.engine.snapshot().nodes.cache;
   expect(after.cacheDetails!.latency!.total!.samples).toBeGreaterThan(0);
   expect(after.cacheDetails!.latency!.total!.samples).toBeLessThan(before.latency!.total!.samples);
-  expect(render(after)).toContain('data-testid="cache-latency">Since fault at 2 s:');
+  expect(render(after)).toContain('data-testid="cache-latency">At this cache since fault at \u20682\u2069 s ·');
   expect(after.cache!.requests).toBeGreaterThan(0);
 });
 

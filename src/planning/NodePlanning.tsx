@@ -54,6 +54,7 @@ export function NodePlanning({
   readDiagram,
   liveOnly = false,
   configuredOnly = false,
+  cacheConfigured = false,
 }: {
   diagram?: DiagramFile;
   id: string;
@@ -66,6 +67,7 @@ export function NodePlanning({
   readDiagram?: () => DiagramFile;
   liveOnly?: boolean;
   configuredOnly?: boolean;
+  cacheConfigured?: boolean;
 }) {
   useLocale();
   // Name fields save every key, but planning reads once after naming ends. Check the cheap
@@ -112,7 +114,7 @@ export function NodePlanning({
     return (
       <div className="planning-explanation">
         <p className="insp-note" data-testid="planning-unavailable">
-          <span aria-hidden>ⓘ</span> {t("planning.analysisLimit")}
+          <span aria-hidden>ⓘ</span> {cacheConfigured ? t("cache.analysisLimit") : t("planning.analysisLimit")}
         </p>
         {observed && (
           <p data-testid="planning-observed">
@@ -132,7 +134,7 @@ export function NodePlanning({
     return (
       <>
         <p className="insp-note" data-testid="planning-unavailable">
-          <span aria-hidden>ⓘ</span> {t("planning.analysisLimit")}
+          <span aria-hidden>ⓘ</span> {cacheConfigured ? t("cache.analysisLimit") : t("planning.analysisLimit")}
         </p>
         {!hover && !configuredOnly && observed && d && (
           <LiveDetails
