@@ -183,6 +183,24 @@ it("purge evidence names the purged tail and observed origin, not an untouched l
   expect(cacheRuntime.details(cache, 200).purge).toMatchObject({ tailItems: 20000, refillMs: 250000 });
 });
 
+it("keeps the reported tail size and refill bound on the same purged rule", () => {
+  const cache = cacheRuntime.compile(
+    {
+      rules: [
+        { id: "large", match: { types: ["Page"] }, policy: { ttlMs: 1000, keys: 20000 } },
+        { id: "tiny", match: { types: ["Tiny"] }, policy: { ttlMs: 1000, keys: 1 } },
+      ],
+    },
+    "cache",
+    7,
+    1,
+    { value: 256 },
+    { large: { rate: 1000000, fetchMs: 10 }, tiny: { rate: 0.001, fetchMs: 10 } },
+  );
+  cacheRuntime.purge(cache, 100);
+  expect(cacheRuntime.details(cache, 100).purge).toMatchObject({ tailItems: 20000, refillMs: 20 });
+});
+
 it.each(["hard", "soft"] as const)(
   "shared Live preserves a %s per-rule deploy purge and rejects invalid modes",
   (mode) => {
