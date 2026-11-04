@@ -386,6 +386,17 @@ it("Focus includes neighbours' labels, or centres the selection at its floor", (
   expect(spread.zoom).toBe(0.9);
   expect(spread.x + 90 * spread.zoom).toBe(588);
 });
+it("Focus leaves the topmost card's decoration inside the clipping frame", () => {
+  vi.mocked(selectRoutes).mockReturnValue(new Map());
+  const state = workbenchState();
+  state.nodeLookup.get("b")!.internals.positionAbsolute.y = 580;
+  const view = focusSelectionViewport(workbenchRoot, state, { style: "straight", direction: "LR" })!;
+  expect(view.zoom).toBeGreaterThanOrEqual(0.9);
+  const frame = innerFrame(workbenchRoot.clientWidth, workbenchRoot.clientHeight, "focus", false);
+  const first = state.nodeLookup.get("a")!;
+  const top = view.y + first.internals.positionAbsolute.y * view.zoom - FRAME_CARD_SPACE.top;
+  expect(top).toBeGreaterThanOrEqual(frame.y);
+});
 it.each([0.35, 1, 1.5])("Follow pans to an off-screen subject without changing zoom %s", (zoom) => {
   const state = workbenchState(6000);
   state.transform = [40, 60, zoom];

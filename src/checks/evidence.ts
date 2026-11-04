@@ -1,3 +1,4 @@
+import "../sim/cache/cacheRuntime";
 import { faultTimelineProblem } from "../model/faultRuntime";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";

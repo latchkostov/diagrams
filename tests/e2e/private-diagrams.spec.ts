@@ -766,7 +766,11 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
   await html.saveAs(htmlFile);
   expect(filePayload(readFileSync(htmlFile, "utf8")).diagram.private).toBe(true);
   for (const file of [nativeFile, legacyFile]) {
+    const previous = await currentDiagram(page);
     await page.getByTestId("import-input").setInputFiles(file);
+    // These files have the same title and leave identical import notices. The previous
+    // document's open Properties must not certify the new import before it mounts.
+    await expect.poll(() => currentDiagram(page)).not.toBe(previous);
     await expect(page.getByTestId("toast").last()).toContainText("Imported");
     await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
@@ -774,11 +778,13 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
     expect((await entry(page, slug)).private).toBe(true);
   }
   // Interactive HTML is a viewer; re-import its embedded native payload through the supported JSON path.
+  const previous = await currentDiagram(page);
   await page.getByTestId("import-input").setInputFiles({
     name: "private-html-payload.diagram.json",
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(filePayload(readFileSync(htmlFile, "utf8")).diagram)),
   });
+  await expect.poll(() => currentDiagram(page)).not.toBe(previous);
   await expect(page.getByTestId("toast").last()).toContainText("Imported");
   await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();

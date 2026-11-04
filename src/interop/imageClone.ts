@@ -244,15 +244,25 @@ async function cloneIFrameElement(iframe: HTMLIFrameElement, options: Options, s
   return iframe.cloneNode(false) as HTMLIFrameElement;
 }
 
-async function cloneSingleNode(node: HTMLElement, options: Options, slicer: Slicer): Promise<HTMLElement> {
+async function cloneSingleNode(node: HTMLElement, options: CloneOptions, slicer: Slicer): Promise<HTMLElement> {
   if (isInstanceOfElement(node, HTMLCanvasElement)) return slicer.wait(cloneCanvasElement(node, slicer));
   if (isInstanceOfElement(node, HTMLVideoElement)) return slicer.wait(cloneVideoElement(node, options, slicer));
   if (isInstanceOfElement(node, HTMLIFrameElement)) return cloneIFrameElement(node, options, slicer);
   const clone = node.cloneNode(isSVGElement(node)) as HTMLElement;
+  // Track loads before the paint walk can yield or be cancelled.
   if (clone instanceof HTMLImageElement) slicer.trackImage(clone);
   if (clone instanceof SVGImageElement) slicer.trackImage(clone);
   if (isSVGElement(clone))
     for (const image of clone.querySelectorAll<SVGImageElement>("image")) slicer.trackImage(image);
+  if (isSVGElement(clone) && options.svgPaint) {
+    const originals = [node, ...node.getElementsByTagName("*")];
+    const copies = [clone, ...clone.getElementsByTagName("*")];
+    for (const [i, original] of originals.entries()) {
+      const paint = options.svgPaint.get(original);
+      if (paint) for (const [name, value] of paint) if (value) (copies[i] as SVGElement).style.setProperty(name, value);
+      await slicer.breathe();
+    }
+  }
   return clone;
 }
 
@@ -286,7 +296,13 @@ async function cloneChildren(
 
 /** PNG declarations stay in capture order, outside native CSSOM until style sharing. */
 export type RasterStyles = WeakMap<Element, Map<string, string>>;
-type CloneOptions = Options & { rasterStyles?: RasterStyles };
+type CloneOptions = Options & {
+  /** Font downloads can run beside cloning; the font phase still awaits the complete CSS. */
+  fontCSS?: Promise<string>;
+  rasterStyles?: RasterStyles;
+  /** Computed SVG paint, captured before cloning without mutating the live drawing. */
+  svgPaint?: WeakMap<Element, readonly (readonly [string, string])[]>;
+};
 const RESOURCE_STYLE = /^(font-family$|background|-webkit-mask|mask)/;
 
 function readStyle(style: CSSStyleDeclaration, record = new Map<string, string>()) {
@@ -668,7 +684,7 @@ export async function toSvg(node: HTMLElement, options: Options, slicer: Slicer)
  * The text of the SVG toSvg encodes into its data URL (decoding that URL gives it back exactly): a file to save
  * needs no round trip through percent-encoding.
  */
-export async function toSvgText(node: HTMLElement, options: Options, slicer: Slicer): Promise<string> {
+export async function toSvgText(node: HTMLElement, options: CloneOptions, slicer: Slicer): Promise<string> {
   const { width, height } = getImageSize(node, options);
   return nodeToSvgText(await prepare(node, options, slicer), width, height, slicer);
 }
@@ -678,7 +694,8 @@ async function prepare(node: HTMLElement, options: CloneOptions, slicer: Slicer)
   const clonedNode = (await cloneNode(node, options, slicer, true))!;
   slicer.progress(0.7);
   await slicer.pause();
-  await slicer.wait(embedWebFonts(clonedNode, options));
+  const fontOptions = options.fontCSS ? { ...options, fontEmbedCSS: await slicer.wait(options.fontCSS) } : options;
+  await slicer.wait(embedWebFonts(clonedNode, fontOptions));
   slicer.progress(0.75);
   await slicer.wait(embedImages(clonedNode, options, slicer));
   slicer.progress(0.8);

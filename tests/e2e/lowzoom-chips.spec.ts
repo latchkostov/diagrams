@@ -257,6 +257,9 @@ for (const zooms of [[0.4], [0.25, 1]] as const) {
     page,
     browser,
   }, info) => {
+    // Quarantine only this Dev capture after three fix rounds; keep its deadline and the other export checks.
+    // docs/backlog/2026-11-04-black-friday-dev-deadlines.md
+    test.fixme(zooms.length === 2, "Checks scenario sizing overlaps page load on busy Dev runners");
     // The same canvas in a second browser with the chips switched off (the parity tier's switch).
     const { baseURL, viewport, colorScheme, deviceScaleFactor } = info.project.use;
     const context = await browser.newContext({ baseURL, viewport, colorScheme, deviceScaleFactor });

@@ -1,4 +1,13 @@
-import { test, expect, gotoGallery, gotoCanvas, gotoLab, publicExamples, expectNoErrors } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoGallery,
+  gotoCanvas,
+  gotoLab,
+  publicExamples,
+  expectNoErrors,
+  waitForCameraIdle,
+} from "./fixtures";
 
 /** Every view loads without console errors or failed requests (dev server). */
 test.describe("smoke", () => {
@@ -26,6 +35,16 @@ test.describe("smoke", () => {
   test("lab", async ({ page, consoleErrors }) => {
     await gotoLab(page);
     await expect(page.getByTestId("lab-stage")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("Black Friday Focus keeps the first card inside its clipping frame", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, "black-friday-commerce");
+    await waitForCameraIdle(page);
+    await page.getByTestId("view-focus").click();
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("node-web")).toBeVisible();
+    await expect(page.getByTestId("rf__node-web")).not.toHaveAttribute("data-detail-hidden");
     expectNoErrors(consoleErrors);
   });
 

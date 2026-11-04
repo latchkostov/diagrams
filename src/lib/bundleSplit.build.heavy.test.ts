@@ -399,6 +399,16 @@ describe("production bundle split", () => {
     expect(closure([liveChunk(b)!], b).has(cache!)).toBe(false);
     expect(gzipSync(cache!.code, { level: 9 }).length).toBeLessThanOrEqual(5 * 1024);
   });
+  it("keeps cache playback out of the prefetched AI panel", () => {
+    const b = plain();
+    const ai = b.chunks.find((chunk) =>
+      Object.keys(chunk.modules).some((id) => /[/\\]src[/\\]ai[/\\]ui[/\\]AiPanel\.tsx$/.test(id)),
+    );
+    expect(ai).toBeDefined();
+    expect(
+      found(bundled(closure([ai!], b)), [["cache playback", /[/\\]src[/\\]sim[/\\]cache[/\\]cacheRuntime\.ts$/]]),
+    ).toEqual([]);
+  });
   it("initializes cache schema constants in the same native chunk as node properties", () => {
     const owner = (name: string) =>
       plain().chunks.find((chunk) =>

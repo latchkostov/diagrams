@@ -352,3 +352,133 @@ it.each([false, true])("bounds FrameDetail work and filters geometry-neutral mut
   expect(work[0]).toBeGreaterThan(0);
   expect(work[1] / work[0]).toBeLessThanOrEqual(24);
 });
+
+it("re-places only call pills when traffic adds, removes or relabels one", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("getComputedStyle", () => ({
+    fontSize: "10px",
+    lineHeight: "12px",
+    fontWeight: "400",
+    fontFamily: "sans-serif",
+    letterSpacing: "0px",
+    direction: "ltr",
+  }));
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  let mutate = (_records: MutationRecord[]) => {};
+  const NativeMutationObserver = MutationObserver;
+  vi.stubGlobal(
+    "MutationObserver",
+    class extends NativeMutationObserver {
+      constructor(run: MutationCallback) {
+        super(run);
+        mutate = (records) => run(records, this);
+      }
+    },
+  );
+  const frames = new Map<number, FrameRequestCallback>();
+  let seq = 0;
+  vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+    frames.set(++seq, run);
+    return seq;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  fixture.camera.subscribe.mockImplementation((run: () => void) => {
+    fixture.listeners.add(run);
+    return () => fixture.listeners.delete(run);
+  });
+  const flush = () =>
+    act(async () => {
+      for (let i = 0; i < 3; i++) {
+        const pending = [...frames.values()];
+        frames.clear();
+        for (const run of pending) run(0);
+        await Promise.resolve();
+      }
+    });
+  // Overview below the far zoom hides every pill, so a placed pill is visible in its attribute.
+  fixture.camera.state.view = "overview";
+  fixture.camera.state.mode = "live";
+  fixture.state = {
+    nodes: ["a", "b"].map((id, i) => ({
+      id,
+      type: "diagram",
+      position: { x: i * 300, y: 0 },
+      data: { label: id },
+    })) as FlowNode[],
+    edges: [{ id: "a-b", source: "a", target: "b" }] as DiagramFlowEdge[],
+    nodeLookup: new Map(),
+    transform: [0, 0, 0.2],
+  };
+  for (const node of fixture.state.nodes) fixture.state.nodeLookup.set(node.id, node);
+  const host = document.createElement("div");
+  host.innerHTML = `<div class="react-flow__viewport">${fixture.state.nodes.map((n) => `<div class="react-flow__node react-flow__node-diagram" data-id="${n.id}"><div class="nb"></div></div>`).join("")}<svg class="react-flow__edge" data-id="a-b"><path class="fe-path"/></svg><div class="lv-badges"></div></div>`;
+  document.body.append(host);
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    return new DOMRect(0, 0, this === host ? 1200 : 40, this === host ? 800 : 16);
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(220);
+  const query = vi.spyOn(host, "querySelectorAll");
+  const traversals = () =>
+    query.mock.calls.filter(([selector]) => selector.includes(".react-flow__node[data-id]")).length;
+  const badges = host.querySelector(".lv-badges")!;
+  const pill = (edge: string) => {
+    const el = document.createElement("span");
+    el.className = "lv-call-pill";
+    el.dataset.callEdge = edge;
+    el.dataset.testid = `call-pill-${edge}`;
+    el.textContent = "↗ 1 in flight";
+    return el;
+  };
+  const added = (el: Element) =>
+    ({
+      type: "childList",
+      target: badges,
+      addedNodes: [el],
+      removedNodes: [],
+      attributeName: null,
+    }) as unknown as MutationRecord;
+  const mount = document.createElement("div");
+  document.body.append(mount);
+  const root = createRoot(mount);
+  try {
+    await act(() =>
+      root.render(<FrameDetail host={{ current: host }} routing={{ style: "straight", direction: "LR" }} decorate />),
+    );
+    await flush();
+    expect(traversals()).toBe(1);
+    // Settled: the new pill is placed before its frame paints, without the whole pass or another frame.
+    const first = pill("a-b");
+    badges.append(first);
+    mutate([added(first)]);
+    expect(first.hasAttribute("data-detail-hidden")).toBe(true);
+    expect(first.style.fontSize).not.toBe("");
+    expect(frames.size).toBe(0);
+    expect(traversals()).toBe(1);
+    // A relabelled pill re-measures only the pills too.
+    first.dataset.detailMeasure = "14";
+    mutate([{ type: "attributes", target: first, attributeName: "data-detail-measure" } as unknown as MutationRecord]);
+    await flush();
+    expect(traversals()).toBe(1);
+    // Pending geometry wins: the pill waits for (and is placed by) the whole pass.
+    fixture.state = { ...fixture.state, transform: [10, 0, 0.2] };
+    mutate([{ type: "attributes", target: host, attributeName: "data-detail-measure" } as unknown as MutationRecord]);
+    const second = pill("a-b");
+    badges.append(second);
+    mutate([added(second)]);
+    expect(second.hasAttribute("data-detail-hidden")).toBe(false);
+    await flush();
+    expect(traversals()).toBe(2);
+    expect(second.hasAttribute("data-detail-hidden")).toBe(true);
+    // Anything else under the viewport still invalidates the frame.
+    const other = document.createElement("span");
+    badges.append(other);
+    mutate([added(other)]);
+    await flush();
+    expect(traversals()).toBe(3);
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+    mount.remove();
+  }
+});

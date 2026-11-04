@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
-import { cloneNode, shareRasterStyles, Slicer, type RasterStyles } from "./imageClone";
+import { cloneNode, shareRasterStyles, Slicer, toSvgText, type RasterStyles } from "./imageClone";
 import type { Options } from "html-to-image/es/types";
 
 vi.mock("html-to-image/es/util", async (original) => ({
@@ -18,11 +18,60 @@ function computed(values: Record<string, string>) {
     (_node, pseudo) =>
       ({
         cssText: "",
+        fontFamily: "",
         getPropertyValue: (name: string) => (pseudo ? "none" : (values[name] ?? "")),
       }) as CSSStyleDeclaration,
   );
   return { includeStyleProperties: Object.keys(values) };
 }
+
+it("clones while fonts download and embeds their complete bytes before serialization", async () => {
+  computed({ color: "red" });
+  const node = document.createElement("div");
+  node.textContent = "Font overlap";
+  let release!: (css: string) => void;
+  const fontCSS = new Promise<string>((resolve) => {
+    release = resolve;
+  });
+  const progress: number[] = [];
+  const slicer = new Slicer(1, { onProgress: (done) => progress.push(done) });
+  let completed = false;
+  const rendering = toSvgText(node, { width: 10, height: 10, fontCSS }, slicer).then((text) => {
+    completed = true;
+    return text;
+  });
+  try {
+    await vi.waitFor(() => expect(progress).toContain(0.7));
+    expect(completed).toBe(false);
+    expect(progress).not.toContain(0.75);
+    release("/* exact font payload */");
+    expect(await rendering).toContain("/* exact font payload */");
+  } finally {
+    release("");
+    await rendering;
+    slicer.dispose();
+  }
+});
+
+it("applies captured SVG paint to the deep clone in native order without touching its source", async () => {
+  computed({});
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const path = document.createElementNS(svg.namespaceURI, "path");
+  path.setAttribute("d", "M0 0h10");
+  svg.append(path);
+  const paint = [
+    ["fill", "none"],
+    ["stroke", "rgb(1, 2, 3)"],
+    ["opacity", "0.5"],
+  ] as const;
+  const svgPaint = new WeakMap<Element, typeof paint>([[path, paint]]);
+  const reference = svg.cloneNode(true) as SVGSVGElement;
+  for (const [name, value] of paint) (reference.firstElementChild as SVGElement).style.setProperty(name, value);
+  const clone = await cloneNode(svg as unknown as HTMLElement, { svgPaint }, new Slicer(2), true);
+  const serialize = (node: Node) => new XMLSerializer().serializeToString(node);
+  expect(serialize(clone!)).toBe(serialize(reference));
+  expect(path.getAttribute("style")).toBeNull();
+});
 
 it("captures PNG declarations without complete native writes or read-back", async () => {
   const values = Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`--capture-${i}`, `${i}`]));

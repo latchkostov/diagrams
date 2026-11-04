@@ -28,13 +28,13 @@ const runs = examples.flatMap(({ slug, diagram }) =>
 );
 
 /** Node's run of the same script: the expected values (V8, as the parity goldens). */
-function inNode(diagram: DiagramFile, simulation: Simulation): EngineRun {
+async function inNode(diagram: DiagramFile, simulation: Simulation): Promise<EngineRun> {
   const sandbox: Record<string, unknown> = { console, performance, setTimeout, clearTimeout, structuredClone };
   sandbox.globalThis = sandbox;
   sandbox.window = sandbox;
   runInNewContext(readFileSync(HARNESS, "utf8"), sandbox);
   const play = sandbox.__playDigests as typeof playDigests;
-  return JSON.parse(JSON.stringify(play(diagram, simulation, UNTIL_MS))) as EngineRun;
+  return JSON.parse(JSON.stringify(await play(diagram, simulation, UNTIL_MS))) as EngineRun;
 }
 
 test("the harness covers saved simulations", () => {
@@ -44,7 +44,7 @@ test("the harness covers saved simulations", () => {
 
 for (const run of runs)
   test(`${run.name}: the same digests as V8`, async ({ page, browserName }) => {
-    const expected = inNode(run.diagram, run.simulation);
+    const expected = await inNode(run.diagram, run.simulation);
     expect(expected.digests.length).toBeGreaterThan(0);
     await page.setContent("<!doctype html><title>engine digests</title>");
     await page.addScriptTag({ content: readFileSync(HARNESS, "utf8") });

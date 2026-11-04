@@ -43,11 +43,11 @@ function imageDownloads(page: Page) {
 // draws: SVG byte for byte, PNG within the capped raster tolerance; the browser parity tier pins the exported images too (docs/PARITY.md).
 
 /** The library's toSvg and toPng against the sliced port, on the canvas as it is, with the same options. */
-async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png" = "all") {
+async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png" = "all", compareSvg = false) {
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
   await waitForStableViewport(page);
   return page.evaluate(
-    async ({ sliceMs, kind }) => {
+    async ({ sliceMs, kind, compareSvg }) => {
       const port = (await import(
         "/src/interop/imageClone.ts" as string
       )) as typeof import("../../src/interop/imageClone");
@@ -58,6 +58,28 @@ async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png"
       const options = { fontEmbedCSS, width: 1600, height: 1200, pixelRatio: 1, cacheBust: false };
       const slicer = () => new port.Slicer(viewport.getElementsByTagName("*").length, { sliceMs });
       const svgSlicer = slicer();
+      if (compareSvg) {
+        const canonical = (text: string) => {
+          const names = new Map<string, string>();
+          return text.replace(/\bu[0-9a-z]{4}\d+\b/g, (name) => {
+            if (!names.has(name)) names.set(name, `pseudo${names.size}`);
+            return names.get(name) ?? name;
+          });
+        };
+        const url = await lib.toSvg(viewport, options);
+        const reference = canonical(decodeURIComponent(url.slice(url.indexOf(",") + 1)));
+        const actual = canonical(await port.toSvgText(viewport, options, svgSlicer));
+        // Compare every byte here, avoiding multi-megabyte trace protocol results.
+        return {
+          svg: [],
+          png: [],
+          text: "",
+          fromUrl: "",
+          equal: actual === reference,
+          yields: svgSlicer.yields,
+          elements: viewport.getElementsByTagName("*").length,
+        };
+      }
       const svg =
         kind === "png" ? [] : [await lib.toSvg(viewport, options), await port.toSvg(viewport, options, svgSlicer)];
       const png =
@@ -65,9 +87,17 @@ async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png"
       // The file the app saves: the SVG text itself, which decoding the data URL gives back.
       const text = kind === "all" ? await port.toSvgText(viewport, options, slicer()) : "";
       const fromUrl = kind === "all" ? decodeURIComponent(svg[1].slice(svg[1].indexOf(",") + 1)) : "";
-      return { svg, png, text, fromUrl, yields: svgSlicer.yields, elements: viewport.getElementsByTagName("*").length };
+      return {
+        svg,
+        png,
+        text,
+        fromUrl,
+        equal: undefined,
+        yields: svgSlicer.yields,
+        elements: viewport.getElementsByTagName("*").length,
+      };
     },
-    { sliceMs, kind },
+    { sliceMs, kind, compareSvg },
   );
 }
 
@@ -89,6 +119,95 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
     // Compare the same stationary drawing across sequential clones. Viewport animation
     // is tested elsewhere; a still-running initial fit changes the cloned matrix.
     await page.emulateMedia({ reducedMotion: "reduce" });
+  });
+
+  test("Black Friday SVG keeps every native byte", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
+    await gotoCanvas(page, "black-friday-commerce");
+    await waitForStableViewport(page);
+    const result = await bothWays(page, 40, "svg", true);
+    expect(result.equal).toBe(true);
+  });
+
+  test("SVG export never writes paint into the live drawing", async ({ page }) => {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    const writes = await page.getByTestId("canvas-wrap").evaluate(async (root) => {
+      const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+      const styles = new WeakSet<CSSStyleDeclaration>();
+      for (const svg of root.getElementsByTagName("svg"))
+        for (const element of svg.getElementsByTagName("*")) styles.add((element as SVGElement).style);
+      const setter = CSSStyleDeclaration.prototype.setProperty;
+      let writes = 0;
+      CSSStyleDeclaration.prototype.setProperty = function (...args: Parameters<typeof setter>) {
+        if (styles.has(this)) writes++;
+        setter.apply(this, args);
+      };
+      try {
+        await image.renderDiagramImage("svg");
+        return writes;
+      } finally {
+        CSSStyleDeclaration.prototype.setProperty = setter;
+      }
+    });
+    expect(writes).toBe(0);
+  });
+
+  test("SVG clones during a cold font download and keeps every completed byte", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
+    // The held response guarantees the boundary; the existing Black Friday byte test
+    // owns the large drawing. Keep this scheduling regression on the Lab contract.
+    await gotoLab(page, "export-contract");
+    await page.getByTestId("lab-open-editor").click();
+    await waitForStableViewport(page);
+    await page.evaluate(() => document.fonts.ready.then(() => {}));
+    const fonts = Promise.withResolvers<undefined>();
+    let requested = 0;
+    await page.route(/\.woff2(?:\?|$)/, async (route) => {
+      requested++;
+      await fonts.promise;
+      await route.continue();
+    });
+    type Capture = { progress: number; text?: string };
+    const capture = page.evaluate(async () => {
+      const state: Capture = { progress: 0 };
+      (window as unknown as { __fontCapture: Capture }).__fontCapture = state;
+      const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+      state.text = await (
+        await image.renderDiagramImage("svg", {
+          onProgress: (done) => {
+            state.progress = done;
+          },
+        })
+      ).text();
+    });
+    try {
+      await expect.poll(() => requested).toBeGreaterThan(0);
+      await expect
+        .poll(() => page.evaluate(() => (window as unknown as { __fontCapture: Capture }).__fontCapture.progress))
+        .toBe(0.7);
+      fonts.resolve(undefined);
+      await capture;
+      const result = await page.evaluate(async () => {
+        const first = (window as unknown as { __fontCapture: Capture }).__fontCapture.text;
+        if (typeof first !== "string") throw new Error("SVG capture did not complete");
+        const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+        const next = await (await image.renderDiagramImage("svg")).text();
+        const canonical = (svg: string) => {
+          const names = new Map<string, string>();
+          return svg.replace(/\bu[0-9a-z]{4}\d+\b/g, (name) => {
+            if (!names.has(name)) names.set(name, `pseudo${names.size}`);
+            return names.get(name) ?? name;
+          });
+        };
+        return { same: canonical(first) === canonical(next), fonts: first.includes("@font-face") };
+      });
+      expect(result).toEqual({ same: true, fonts: true });
+    } finally {
+      fonts.resolve(undefined);
+      await capture;
+      await page.unrouteAll({ behavior: "wait" });
+    }
   });
 
   test("PNG tolerance rejects a moved card and a missing label", async ({ page }) => {

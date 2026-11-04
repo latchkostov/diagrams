@@ -167,6 +167,7 @@ export async function planOffThread(diagram: DiagramFile): Promise<ScalingPlan[]
       // Fall through to the main thread.
     }
   }
+  await import("../../sim/cache/cacheBridge").then((m) => m.ensureCacheRuntime(diagram));
   const { planScaling } = await import("../../sim/scalingPlanner");
   const plans = planScaling(diagram);
   rememberPlans(diagram, plans);

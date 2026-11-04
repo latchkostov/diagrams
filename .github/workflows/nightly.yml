@@ -46,7 +46,8 @@ jobs:
     name: Random property tests (20x runs) ${{ matrix.shard }}/${{ matrix.total }}
     runs-on: ubuntu-26.04
     # Both Oct 27 runs hit the old 10-minute job limit. waits.review alone took 376-380s.
-    # Four file shards retain every property's 20x corpus; allow 20m for a slow shard,
+    # Four file shards plus agreement's five existing seed batches retain the entire 20x corpus.
+    # Keep each agreement case's observations and aggregate assertion together. Allow 20m per step,
     # with setup/cleanup margin outside that step so an overrun fails instead of cancelling.
     timeout-minutes: 30
     strategy:
@@ -54,6 +55,12 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
         total: [4]
+        include:
+          - { shard: agreement-0, total: 5 }
+          - { shard: agreement-1, total: 5 }
+          - { shard: agreement-2, total: 5 }
+          - { shard: agreement-3, total: 5 }
+          - { shard: agreement-4, total: 5 }
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
@@ -66,10 +73,16 @@ jobs:
           SHARD: ${{ matrix.shard }}
           TOTAL: ${{ matrix.total }}
         run: |
-          mapfile -t files < <(git grep -l 'from "fast-check"' -- 'src/**/*.test.ts' 'src/**/*.test.tsx')
+          mapfile -t files < <(node scripts/ci/property-files.mjs "$SHARD")
           test "${#files[@]}" -gt 0
+          args=()
+          if [[ "$SHARD" = agreement-* ]]; then
+            args+=(--testNamePattern="$(node scripts/ci/property-files.mjs "$SHARD" --pattern)")
+          else
+            args+=(--shard="$SHARD/$TOTAL")
+          fi
           mkdir -p tests/.output
-          pnpm exec vitest run "${files[@]}" --shard="$SHARD/$TOTAL" --reporter=default --reporter=json --outputFile=tests/.output/property-results.json
+          pnpm exec vitest run "${files[@]}" "${args[@]}" --reporter=default --reporter=json --outputFile=tests/.output/property-results.json
       - name: Upload randomized property failures, seeds and shrink paths
         if: always()
         uses: actions/upload-artifact@v7

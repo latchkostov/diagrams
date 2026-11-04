@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(285.972px, -671.784px) scale(1.00541)",
+  "viewport": "translate(298.425px, -637.081px) scale(0.972973)",
   "nodes": {
     "group:edge": { "kind": "group", "box": "translate(420px, 836px) 300×176", "text": "Cloudflare edge" },
     "group:aws": { "kind": "group", "box": "translate(820px, 252px) 4120×1920", "text": "AWS us-east-1 · production" },
@@ -12,7 +12,7 @@
     "group:payment-partners": { "kind": "group", "box": "translate(1780px, -4px) 720×176", "text": "Payment and tax partners" },
     "group:delivery-partners": { "kind": "group", "box": "translate(5140px, 1036px) 300×656", "text": "Delivery partners" },
     "group:saas-data": { "kind": "group", "box": "translate(3240px, 2216px) 720×176", "text": "Data SaaS" },
-    "web": { "kind": "node", "box": "translate(0px, 700px) 220×72", "text": "" },
+    "web": { "kind": "node", "box": "translate(0px, 700px) 220×72", "text": "Shoppers on the web Storefront SPA" },
     "app": { "kind": "node", "box": "translate(0px, 900px) 220×72", "text": "Larkspur app iOS and Android" },
     "carriers": { "kind": "node", "box": "translate(0px, 1100px) 220×72", "text": "Carrier scans tracking webhooks" },
     "cdn": { "kind": "node", "box": "translate(460px, 900px) 220×72", "text": "Edge CDN WAF, bot rules, TLS" },

@@ -33,7 +33,11 @@ export function options(argv) {
   while (args.length) {
     const arg = args.shift();
     if (arg === "--linux") result.linux = true;
-    else if (arg === "--no-docker") result.docker = false;
+    else if (arg === "--target") {
+      const target = args.shift();
+      if (target !== "build" && target !== "dev") throw new Error("--target requires build or dev");
+      result.target = target;
+    } else if (arg === "--no-docker") result.docker = false;
     else if (arg === "--cpus") {
       const value = args.shift() ?? "";
       if (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) <= 0)
@@ -228,6 +232,7 @@ export function plan(config, changed = [], root) {
           ],
           {
             E2E_SELF_HOST: selfHost.join(","),
+            ...(config.target ? { E2E_TARGET: config.target } : {}),
           },
         ),
       ]);
@@ -235,4 +240,5 @@ export function plan(config, changed = [], root) {
   return groups;
 }
 
-export const canStamp = (config) => config.command === "full" && config.docker && !config.only.length && !config.shard;
+export const canStamp = (config) =>
+  config.command === "full" && config.docker && !config.only.length && !config.shard && config.target !== "dev";

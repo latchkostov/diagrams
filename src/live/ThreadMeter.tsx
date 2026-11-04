@@ -1,5 +1,13 @@
 import type { NodeSimState } from "../sim/types";
+import { memo } from "react";
 import { t } from "../i18n";
+
+/** The pool's slot dividers: the same marks until its size changes, so traffic never rebuilds them. */
+const SlotTicks = memo(function SlotTicks({ slots }: { slots: number }) {
+  return Array.from({ length: Math.max(0, Math.floor(slots) - 1) }, (_, i) => (
+    <i key={i} style={{ left: `${((i + 1) / slots) * 100}%` }} />
+  ));
+});
 
 export function ThreadMeter({
   id,
@@ -36,10 +44,7 @@ export function ThreadMeter({
       <span className="lv-threads-wait" style={{ width: fraction(threads.waiting) }}>
         {threads.waiting > 0 && <span aria-hidden>⌛</span>}
       </span>
-      {threads.slots <= 32 &&
-        Array.from({ length: Math.max(0, Math.floor(threads.slots) - 1) }, (_, i) => (
-          <i key={i} style={{ left: `${((i + 1) / threads.slots) * 100}%` }} />
-        ))}
+      {threads.slots <= 32 && <SlotTicks slots={threads.slots} />}
     </div>
   );
 }
