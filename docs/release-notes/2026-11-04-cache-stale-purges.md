@@ -63,7 +63,7 @@ comparison measured before 986.2, 699.1, 582.6 and 614.7 ms; after 565.6, 556.0,
 sides retain four runs, 11,248 ticks and 25,218 messages; the new read-only
 story adds no autoscaler sizing playback.
 
-Measured production cache runtime: 4,288 bytes gzip (5 KiB cap). Live adds
+Measured production cache runtime: 4,297 bytes gzip (5 KiB cap). Live adds
 128,196 bytes gzip beyond the canvas, leaving 6,804 bytes against 135,000 and
 660 bytes beyond the fixed 6,144-byte reserve. No budget or reserve was raised.
 The narrow remaining reserve has a separate trim follow-up.

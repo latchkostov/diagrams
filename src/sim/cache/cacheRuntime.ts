@@ -169,7 +169,11 @@ export const cacheRuntime: CacheRuntime = {
       (r) =>
         (id === undefined || r.id === id) && !r.policy.noStore && (mode === "hard" || !r.policy.staleWhileRevalidateMs),
     );
-    if (coldRules.length)
+    const tail = coldRules.reduce<(typeof coldRules)[number] | undefined>(
+      (largest, rule) => (!largest || (rule.policy.keys ?? 1000) > (largest.policy.keys ?? 1000) ? rule : largest),
+      undefined,
+    );
+    if (tail)
       cache.cold = {
         atMs: now,
         at: now,
@@ -178,11 +182,8 @@ export const cacheRuntime: CacheRuntime = {
         fetches: cache.counts.fetches,
         peakFetchRate: 0,
         hard: mode === "hard",
-        tailItems: Math.max(0, ...coldRules.map((r) => r.policy.keys ?? 1000)),
-        refillMs: Math.max(
-          0,
-          ...coldRules.filter((r) => r.rate.planned > 0).map((r) => ((r.policy.keys ?? 1000) / r.rate.planned) * 1000),
-        ),
+        tailItems: tail.policy.keys ?? 1000,
+        refillMs: tail.rate.planned > 0 ? ((tail.policy.keys ?? 1000) / tail.rate.planned) * 1000 : 0,
       };
     for (const rule of cache.rules) {
       if (id !== undefined && rule.id !== id) continue;
