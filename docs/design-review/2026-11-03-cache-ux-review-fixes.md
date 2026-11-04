@@ -11,3 +11,7 @@ only implementation details collapse. No new toolbar, menu or inspector controls
 Regressions cover Black Friday's default routing, exact coalesced fetch/offload rates, duplicate CDN
 names, all seven model revisions, linear label indexing and reuse across counter-only publications.
 Mutation checks restore the old projections or replace fetch/offload arithmetic and confirm failures.
+
+Browser verification also updates the Inspector resize fixture to open the independent Route table
+disclosure before exercising its cells. The resize, persistence, camera and focus assertions remain
+unchanged. Export visibility tests open Diagram properties, where the model preview lives.
