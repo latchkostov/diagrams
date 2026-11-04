@@ -30,10 +30,13 @@ it.each([1, 7, 17, 42, 99])("TTL herds grow; one fetch per item passes every unc
     return {
       maxFetches,
       maxBacklog,
+      endBacklog: run.engine.snapshot().nodes.origin.backlog,
       peaks,
       p95: run.engine.snapshot().nodes.shoppers.latency!.p95,
       expectations: run.state().expectations.map((e) => e.status),
       fetches: run.engine.snapshot().nodes.cdn.cache!.fetches,
+      staleHits: run.engine.snapshot().nodes.cdn.cache!.staleHits ?? 0,
+      revalidations: run.engine.snapshot().nodes.cdn.cache!.revalidations ?? 0,
     };
   });
   expect(results[0].expectations).toEqual(["fail", "fail", "fail"]);
@@ -46,4 +49,12 @@ it.each([1, 7, 17, 42, 99])("TTL herds grow; one fetch per item passes every unc
   expect(results[1].maxBacklog).toBeLessThan(10);
   expect(results[1].expectations).toEqual(["pass", "pass", "pass"]);
   expect(results[1].fetches).toBeLessThan(results[0].fetches);
+  console.info("stale and purge bands", JSON.stringify({ seed, results: results.slice(2) }));
+  expect(results[2].expectations).toEqual(["pass", "pass", "pass"]);
+  expect(results[2].staleHits).toBeGreaterThan(0);
+  expect(results[2].revalidations).toBeGreaterThan(0);
+  expect(results[3].expectations).toEqual(["fail", "pass", "pass"]);
+  expect(results[3].maxBacklog).toBeGreaterThan(50);
+  expect(results[4].expectations).toEqual(["pass", "pass", "pass"]);
+  expect(results[4].maxBacklog).toBeLessThan(50);
 });

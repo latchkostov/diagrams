@@ -9,7 +9,7 @@ export function assertCacheInvariants(
   const owned = new Set<string>();
   for (const { work } of calls ?? [])
     if (work.cacheFlight) {
-      const key = `${work.cache?.rule?.id}:${work.cache?.item}`;
+      const key = work.cacheFlight.key;
       if (owned.has(key) || work.message.represented !== 1) throw new Error("C3 multiple fetches for one item");
       owned.add(key);
     }

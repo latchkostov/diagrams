@@ -13,6 +13,7 @@ export interface CacheRuntime {
     rates?: Record<string, { rate: number; fetchMs: number }>,
   ): NodeCache;
   reconfigure(cache: NodeCache, table: unknown): boolean;
+  purge(cache: NodeCache, now: number, rule?: string, mode?: "hard" | "soft"): void;
   lookup(
     cache: NodeCache,
     type: string,

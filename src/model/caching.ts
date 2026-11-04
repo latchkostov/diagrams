@@ -11,6 +11,7 @@ export interface CachePolicy {
   keys?: number;
   popularity?: Popularity;
   coalesce?: boolean;
+  staleWhileRevalidateMs?: number;
 }
 export interface CacheRule {
   id: string;
@@ -61,6 +62,7 @@ const policySchema: JsonSchema = {
     keys: { type: "integer", minimum: 1, maximum: 1_000_000 },
     popularity: { enum: ["even", "gentle", "typical", "steep"] },
     coalesce: { type: "boolean" },
+    staleWhileRevalidateMs: { type: "number", minimum: 0, maximum: 86_400_000 },
   },
 };
 export const cacheSchema: JsonSchema = {

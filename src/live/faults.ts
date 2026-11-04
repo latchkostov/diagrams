@@ -2,6 +2,7 @@ import type { DiagramFile } from "../model/types";
 import { type DrillPreset, type Fault } from "../model/faults";
 import { faultTopology } from "../model/faultRuntime";
 import { stencilRole } from "../stencils/roles";
+import { cacheEnabled } from "../model/caching";
 
 export { drillName } from "../model/faultWords";
 
@@ -16,6 +17,10 @@ export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: s
   return targets;
 }
 function buildTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {
+  if (kind === "purge")
+    return diagram.nodes.filter((n) =>
+      cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), n.props?.cache),
+    );
   if (kind === "boundary") return diagram.groups ?? [];
   if (kind === "link") {
     const { nodes, links } = faultTopology(diagram);
@@ -31,6 +36,7 @@ export function defaultFault(kind: Fault["kind"], diagram: DiagramFile): Fault {
   const target = faultTargets(diagram, kind);
   if (kind === "boundary") return { kind, boundary: target[0]?.id ?? "", down: true };
   if (kind === "link") return { kind, edge: target[0]?.id ?? "", cut: true };
+  if (kind === "purge") return { kind, node: target[0]?.id ?? "", mode: "hard" };
   const roles = new Map(diagram.nodes.map((node) => [node.id, stencilRole(node.stencil)]));
   const node =
     target.find((n) => roles.get(n.id) === "processor")?.id ??
@@ -46,6 +52,7 @@ export function drillFault(preset: DrillPreset, diagram: DiagramFile): Fault {
 }
 
 export function drillKind(preset: DrillPreset): Fault["kind"] {
+  if (preset === "cold-cache") return "purge";
   return preset === "zone-outage"
     ? "boundary"
     : preset === "region-connectivity"

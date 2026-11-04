@@ -10,6 +10,8 @@ export interface CacheCounts {
   notCached: number;
   fetches: number;
   fills: number;
+  staleHits?: number;
+  revalidations?: number;
 }
 export interface CacheReadout extends Omit<CacheCounts, "coalesced"> {
   coalesced?: number;
@@ -27,6 +29,7 @@ export interface CacheItemObservation {
   edge?: string;
 }
 export interface CacheDetails {
+  purge?: { atMs: number; peakFetchRate: number; recoveredAfterMs?: number };
   sinceFault?: import("../types").LatencyMetrics["sinceFault"];
   herdThreshold?: number;
   itemFetches?: number;
@@ -59,8 +62,19 @@ export interface CacheRuleState {
   fetchMs: { samples: Float64Array; cursor: number; count: number; sum: number; planned: number };
   counts: CacheCounts;
   warmSince?: number;
+  purgedAt?: number;
+  revalidationCredit?: Float64Array;
 }
 export interface NodeCache {
+  cold?: {
+    atMs: number;
+    at: number;
+    requests: number;
+    hits: number;
+    fetches: number;
+    peakFetchRate: number;
+    recoveredAfterMs?: number;
+  };
   herds?: Map<string, { expiredAt: number; edge?: string }>;
   herdThreshold: number;
   peakHerd?: { rule: string; item: number; fetches: number; edge?: string };
@@ -75,8 +89,9 @@ export interface CacheLookup {
   origin?: string;
   rule?: CacheRuleState;
   item: number;
-  outcome: "hit" | "miss" | "coalesced" | "not-cached";
+  outcome: "hit" | "stale" | "miss" | "coalesced" | "not-cached";
   at: number;
   freshUntil?: number;
   fetching?: true;
+  revalidate?: number;
 }

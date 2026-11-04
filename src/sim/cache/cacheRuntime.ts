@@ -66,6 +66,20 @@ function windowBucket(cache: NodeCache, now: number): number {
   return (second % 10) * 4;
 }
 
+function observeCold(cache: NodeCache, now: number) {
+  const cold = cache.cold;
+  if (!cold || now - cold.at < 1000) return;
+  const elapsed = (now - cold.at) / 1000;
+  cold.peakFetchRate = Math.max(cold.peakFetchRate, (cache.counts.fetches - cold.fetches) / elapsed);
+  const requests = cache.counts.requests - cold.requests;
+  if (cold.recoveredAfterMs === undefined && requests > 0 && (cache.counts.hits - cold.hits) / requests > 0.8)
+    cold.recoveredAfterMs = now - cold.atMs;
+  cold.at = now;
+  cold.requests = cache.counts.requests;
+  cold.hits = cache.counts.hits;
+  cold.fetches = cache.counts.fetches;
+}
+
 const zeroCounts: CacheCounts = Object.freeze({
   requests: 0,
   hits: 0,
@@ -123,7 +137,11 @@ export const cacheRuntime: CacheRuntime = {
     checkCache(value);
     const table = value as CacheTable;
     const next = [...table.rules, ...(table.default ? [{ id: "", match: undefined, policy: table.default }] : [])];
-    if (!cache.rules.some((r) => r.policy.coalesce) && !next.some((r) => r.policy.coalesce)) return false;
+    if (
+      !cache.rules.some((r) => r.policy.coalesce || r.policy.staleWhileRevalidateMs) &&
+      !next.some((r) => r.policy.coalesce || r.policy.staleWhileRevalidateMs)
+    )
+      return false;
     if (next.length !== cache.rules.length) return false;
     for (let i = 0; i < next.length; i++) {
       const before = cache.rules[i],
@@ -145,6 +163,31 @@ export const cacheRuntime: CacheRuntime = {
     // Keep the same rule identities: in-flight fills and parked waiters still own them.
     for (let i = 0; i < next.length; i++) cache.rules[i].policy = next[i].policy;
     return true;
+  },
+  purge(cache, now, id, mode = "hard") {
+    if (
+      mode === "hard" ||
+      cache.rules.some((r) => (id === undefined || r.id === id) && !r.policy.staleWhileRevalidateMs)
+    )
+      cache.cold = {
+        atMs: now,
+        at: now,
+        requests: cache.counts.requests,
+        hits: cache.counts.hits,
+        fetches: cache.counts.fetches,
+        peakFetchRate: 0,
+      };
+    for (const rule of cache.rules) {
+      if (id !== undefined && rule.id !== id) continue;
+      const soft = mode === "soft" && !!rule.policy.staleWhileRevalidateMs;
+      for (let i = 0; i < rule.tracked; i++)
+        rule.freshUntil[i] = soft && rule.freshUntil[i] > 0 ? Math.min(rule.freshUntil[i], now) : 0;
+      rule.purgedAt = now;
+      rule.statisticalUntil = soft && rule.statisticalUntil ? now : 0;
+      rule.warmSince = soft ? undefined : now;
+      rule.revalidationCredit = undefined;
+    }
+    summaries.delete(cache);
   },
   compile(value, node, seed, scale, remaining, rates) {
     checkCache(value);
@@ -227,13 +270,14 @@ export const cacheRuntime: CacheRuntime = {
     cache.expected = total ? expected / total : 0;
   },
   lookup(cache, type, request, sync, now, size) {
+    observeCold(cache, now);
     const rule = cache.rules.find(
       (r) => !r.match || ((!r.address || matchesRequest(r.match, request)) && acceptsType(r.types, type)),
     );
     if (rule && Object.isFrozen(rule.counts)) rule.counts = counts();
     const add = (key: keyof CacheCounts) => {
-      cache.counts[key] += size;
-      if (rule) rule.counts[key] += size;
+      cache.counts[key] = (cache.counts[key] ?? 0) + size;
+      if (rule) rule.counts[key] = (rule.counts[key] ?? 0) + size;
     };
     add("requests");
     const bucket = windowBucket(cache, now);
@@ -256,7 +300,9 @@ export const cacheRuntime: CacheRuntime = {
       item = band.first < rule.tracked ? band.first : -1;
     const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
     const itemRate = (currentRate * band.share) / band.count;
-    const steady = itemHitShare(itemRate, rule.policy.ttlMs!, mean);
+    const staleMs = rule.policy.staleWhileRevalidateMs ?? 0;
+    const freshShare = itemHitShare(itemRate, rule.policy.ttlMs!, mean);
+    const steady = staleMs ? itemHitShare(itemRate, rule.policy.ttlMs!, mean, staleMs) : freshShare;
     const share =
       rule.warmSince === undefined
         ? steady
@@ -281,13 +327,29 @@ export const cacheRuntime: CacheRuntime = {
         ? now < rule.freshUntil[item]
         : available && (stratified ? rule.statisticalCredit >= size : sample < share);
     if (item < 0 && stratified) rule.statisticalCredit = Math.min(size, rule.statisticalCredit - (hit ? size : 0));
-    add(hit ? "hits" : "misses");
-    cache.window!.buckets[bucket + (hit ? 1 : 2)] += size;
+    const stale =
+      staleMs > 0 &&
+      (item >= 0
+        ? !hit && rule.freshUntil[item] > 0 && now < rule.freshUntil[item] + staleMs
+        : hit && sample >= freshShare);
+    let revalidate = 0;
+    if (stale && item >= 0 && !rule.fetching[item]) revalidate = 1;
+    if (item < 0 && staleMs && available) {
+      const credit = (rule.revalidationCredit ??= new Float64Array(bands.length));
+      const q = 1 - expNeg((itemRate * staleMs) / 1000);
+      credit[low] += (size * q) / (1 + (itemRate * (mean + rule.policy.ttlMs!)) / 1000);
+      revalidate = Math.floor(credit[low]);
+      credit[low] -= revalidate;
+    }
+    add(hit || stale ? "hits" : "misses");
+    if (stale) add("staleHits");
+    cache.window!.buckets[bucket + (hit || stale ? 1 : 2)] += size;
     return {
       rule,
       item,
-      outcome: hit ? "hit" : "miss",
+      outcome: stale ? "stale" : hit ? "hit" : "miss",
       at: now,
+      ...(revalidate ? { revalidate } : {}),
       ...(item >= 0 ? { freshUntil: rule.freshUntil[item] } : {}),
     };
   },
@@ -299,6 +361,10 @@ export const cacheRuntime: CacheRuntime = {
     const bucket = windowBucket(cache, now ?? lookup.at);
     cache.window!.buckets[bucket + 3] += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
+    if (lookup.revalidate) {
+      cache.counts.revalidations = (cache.counts.revalidations ?? 0) + size;
+      if (lookup.rule) lookup.rule.counts.revalidations = (lookup.rule.counts.revalidations ?? 0) + size;
+    }
     if (lookup.rule && lookup.item >= 0) {
       const fetches = (lookup.rule.fetching[lookup.item] += size);
       const state = summaryState(cache);
@@ -340,7 +406,7 @@ export const cacheRuntime: CacheRuntime = {
       state.value = undefined;
     }
     if (lookup.item >= 0 && !rule.fetching[lookup.item]) cache.herds?.delete(`${rule.id}:${lookup.item}`);
-    if (!ok || lookup.outcome !== "miss") {
+    if (!ok || (lookup.outcome !== "miss" && !lookup.revalidate)) {
       if (!ok && lookup.item < 0 && lookup.outcome === "miss" && rule.statisticalUntil > 0)
         rule.statisticalUntil = -rule.statisticalUntil;
       return;
@@ -361,7 +427,12 @@ export const cacheRuntime: CacheRuntime = {
     }
     // Replies belong to the expiry they observed. A duplicate from an older
     // fetch cycle must not refill again after the first fill has itself expired.
-    if (lookup.item >= 0 && lookup.freshUntil === rule.freshUntil[lookup.item] && now >= rule.freshUntil[lookup.item]) {
+    if (
+      lookup.item >= 0 &&
+      (lookup.freshUntil === rule.freshUntil[lookup.item] ||
+        (lookup.at <= (rule.purgedAt ?? -1) && rule.freshUntil[lookup.item] <= rule.purgedAt!)) &&
+      now >= rule.freshUntil[lookup.item]
+    ) {
       rule.freshUntil[lookup.item] = now + rule.policy.ttlMs!;
       rule.counts.fills++;
       cache.counts.fills++;
@@ -419,6 +490,15 @@ export const cacheRuntime: CacheRuntime = {
     const { herd, itemFetches } = summary(cache);
     const window = cacheRuntime.window(cache, now);
     return {
+      ...(cache.cold
+        ? {
+            purge: {
+              atMs: cache.cold.atMs,
+              peakFetchRate: cache.cold.peakFetchRate,
+              ...(cache.cold.recoveredAfterMs === undefined ? {} : { recoveredAfterMs: cache.cold.recoveredAfterMs }),
+            },
+          }
+        : {}),
       ...(sinceFault ? { sinceFault } : {}),
       expected: cache.expected,
       herdThreshold: cache.herdThreshold,

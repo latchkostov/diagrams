@@ -397,7 +397,7 @@ export interface TraceStep {
 
 export interface CacheTrace {
   fetches?: number;
-  outcome: "hit" | "miss" | "coalesced" | "not-cached";
+  outcome: "hit" | "stale" | "miss" | "coalesced" | "not-cached";
   rule?: string;
   item?: number;
   freshMs?: number;

@@ -2,6 +2,7 @@ import { boundaryRestoreHint } from "../model/faultWords";
 import { t } from "../i18n";
 import { type Fault } from "../model/faults";
 import { canCutLink } from "../model/faultRuntime";
+import { cacheEnabled, type CacheTable } from "../model/caching";
 // Context-menu entries for the live view, registered in the "simulation" section of the action
 // registry while live mode is on (and offered only in the "live" mode). They change the running engine only; "Save to diagram" is the
 // explicit way to keep a tweak.
@@ -187,7 +188,69 @@ export function liveActions(host: LiveActionsHost): Action[] {
         const restoreHint = boundaryRestoreHint(c.currentDiagram, node, faults);
         const slow = faults.find((f) => f.kind === "slow" && f.node === node);
         const fail = faults.find((f) => f.kind === "fail" && f.node === node);
+        const diagramNode = c.currentDiagram.nodes.find((n) => n.id === node)!;
+        const cache = c.effectiveProps(node).cache;
+        const caching = cacheEnabled(c.currentDiagram.planning, diagramNode.stencil, role(node), cache);
+        const purgeItems = (mode: "hard" | "soft"): MenuNode[] => {
+          const table = cache as CacheTable;
+          const rows: MenuNode[] = [
+            {
+              type: "item",
+              id: `sim.purge:${mode}:all`,
+              label: t("cache.allRules"),
+              run: apply({ kind: "purge", node, mode }),
+            },
+            ...table.rules.map((r) => ({
+              type: "item" as const,
+              id: `sim.purge:${mode}:${r.id}`,
+              label: r.label || r.id,
+              run: apply({ kind: "purge", node, mode, rule: r.id }),
+            })),
+            ...(table.default
+              ? [
+                  {
+                    type: "item" as const,
+                    id: `sim.purge:${mode}:default`,
+                    label: t("cache.everythingElse"),
+                    run: apply({ kind: "purge", node, mode, rule: "" }),
+                  },
+                ]
+              : []),
+          ];
+          return rows.length <= 12
+            ? rows
+            : Array.from({ length: Math.ceil(rows.length / 10) }, (_, i) => ({
+                type: "item" as const,
+                id: `sim.purge:${mode}:group-${i}`,
+                label: t("cache.ruleRange", { from: i * 10 + 1, to: Math.min(rows.length, (i + 1) * 10) }),
+                children: rows.slice(i * 10, (i + 1) * 10),
+              }));
+        };
         return protect([
+          ...(caching
+            ? [
+                {
+                  type: "item" as const,
+                  id: "sim.purge",
+                  label: t("cache.purge"),
+                  hint: t("cache.purgeHint"),
+                  children: purgeItems("hard"),
+                },
+                {
+                  type: "item" as const,
+                  id: "sim.soft-purge",
+                  label: t("cache.softPurge"),
+                  hint: t("cache.softPurgeHint"),
+                  children: purgeItems("soft"),
+                },
+                {
+                  type: "item" as const,
+                  id: "sim.deploy-purge",
+                  label: t("cache.deploy"),
+                  run: apply({ kind: "purge", node, reason: "deploy" }),
+                },
+              ]
+            : []),
           {
             type: "item",
             id: "sim.kill",
