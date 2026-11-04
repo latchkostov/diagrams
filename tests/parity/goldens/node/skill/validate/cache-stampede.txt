@@ -1,4 +1,7 @@
 exit 0
-VALID <repo>/src/examples/cache-stampede.json: 4 nodes, 3 edges, 2 simulations
+VALID <repo>/src/examples/cache-stampede.json: 4 nodes, 3 edges, 5 simulations
   warning: simulations[0] "TTL only": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
   warning: simulations[1] "One fetch per item": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+  warning: simulations[2] "Serve stale while refreshing": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+  warning: simulations[3] "A purge at the peak": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+  warning: simulations[4] "Soft purge": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).

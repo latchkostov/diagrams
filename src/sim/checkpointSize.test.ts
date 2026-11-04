@@ -7,6 +7,56 @@ import { cacheFixture } from "../lab/cacheFixture";
 import type { CacheTable } from "../model/caching";
 import { createLatencyRecorder, recordLatency } from "./latency";
 
+it("bounds fully populated stale checkpoints at all 256 rules and 4096 tracked items", () => {
+  const d = cacheFixture();
+  for (let i = 1; i < 8; i++) {
+    d.nodes.push({ ...structuredClone(d.nodes[1]), id: `cache${i}` });
+    d.edges.push({ ...structuredClone(d.edges[1]), id: `fetch${i}`, from: `cache${i}` });
+  }
+  for (const node of d.nodes.filter((n) => n.stencil === "generic.cdn"))
+    node.props!.cache = {
+      rules: Array.from({ length: 32 }, (_, i) => ({
+        id: `r${i}`,
+        match: { types: [`Page${i}`] },
+        policy: { ttlMs: 1000, keys: 1000, staleWhileRevalidateMs: 5000 },
+      })),
+    };
+  const watch = watchCheckpoints();
+  try {
+    const e = createEngine({ seed: 7 });
+    e.load(d);
+    e.checkpoint();
+    const caches = [...watch.sources[0][0].values()].flatMap((n) => (n.cache ? [n.cache] : []));
+    const rules = caches.flatMap((c) => c.rules);
+    expect(rules).toHaveLength(256);
+    expect(rules.reduce((n, r) => n + r.tracked, 0)).toBe(4096);
+    for (const cache of caches)
+      for (const rule of cache.rules) {
+        rule.freshUntil.fill(5000);
+        rule.purgedAt = 4000;
+        rule.rate = { ...rule.rate, buckets: rule.rate.buckets.slice(), planned: 2000 };
+        rule.statisticalUntil = 1000000;
+        rule.fetchMs = { ...rule.fetchMs, count: 32, cursor: 0, sum: 3200, samples: new Float64Array(32).fill(100) };
+        for (let i = 0; i < 512; i++) cacheRuntime.lookup(cache, `Page${rule.id.slice(1)}`, undefined, true, 5100, 1);
+      }
+    const credits = rules.map((r) => r.revalidationCredit);
+    const packed = e.checkpoint();
+    const expected = e.snapshot();
+    e.restore(packed);
+    expect(e.snapshot()).toEqual(expected);
+    expect(
+      [...watch.copies[0][0].values()].flatMap((n) => n.cache?.rules.map((r) => r.revalidationCredit) ?? []),
+    ).toEqual(credits);
+    for (const node of d.nodes) delete node.props?.cache;
+    e.load(d);
+    const increment = packed.bytes - e.checkpoint().bytes;
+    console.info("stale checkpoint increment", increment);
+    expect(increment).toBeLessThanOrEqual(130 * 1024);
+  } finally {
+    watch.stop();
+  }
+});
+
 it("sizes cycles and aliases once and includes Map/Set payloads", () => {
   const item = { text: "x".repeat(1000) };
   const graph = { item, map: new Map([[item, item]]), set: new Set([item]), self: {} };

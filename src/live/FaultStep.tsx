@@ -87,10 +87,10 @@ export function FaultStep({
         </ValidationSelect>
       </label>
       <label>
-        <span>{t("fault.magnitude")}</span>
+        <span>{fault.kind === "purge" ? t("cache.purgeMode") : t("fault.magnitude")}</span>
         <ValidationSelect
           value={value}
-          aria-label={t("fault.magnitude")}
+          aria-label={fault.kind === "purge" ? t("cache.purgeMode") : t("fault.magnitude")}
           data-testid={`${testId}-fault-value`}
           onChange={(e) =>
             onChange(
@@ -142,18 +142,21 @@ export function FaultStep({
             <span>{t("cache.purgeRule")}</span>
             <ValidationSelect
               data-testid={`${testId}-fault-rule`}
-              value={fault.rule ?? "__all"}
+              value={fault.rule === undefined ? "all" : `rule:${fault.rule}`}
               onChange={(e) =>
-                onChange({ ...fault, rule: e.currentTarget.value === "__all" ? undefined : e.currentTarget.value })
+                onChange({
+                  ...fault,
+                  rule: e.currentTarget.value === "all" ? undefined : e.currentTarget.value.slice(5),
+                })
               }
             >
-              <option value="__all">{t("cache.allRules")}</option>
+              <option value="all">{t("cache.allRules")}</option>
               {table?.rules.map((r) => (
-                <option key={r.id} value={r.id}>
+                <option key={r.id} value={`rule:${r.id}`}>
                   {r.label || r.id}
                 </option>
               ))}
-              {table?.default && <option value="">{t("cache.everythingElse")}</option>}
+              {table?.default && <option value="rule:">{t("cache.everythingElse")}</option>}
             </ValidationSelect>
           </label>
           <label>

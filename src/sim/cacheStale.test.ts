@@ -7,6 +7,7 @@ import { cacheFixture } from "../lab/cacheFixture";
 import { createEngine } from "./engine";
 import { itemHitShare, cacheFetchShare } from "./cache/cacheMath";
 import type { CacheTable } from "../model/caching";
+import { parseMessage, encodeMessage, LiveDecoder } from "../collab/room/liveWire";
 
 const table = (window = 1000): CacheTable => ({
   rules: [],
@@ -78,6 +79,37 @@ it.each(["hard", "soft"] as const)("a %s purge preserves an in-flight reply's fi
   expect(cache.rules[0].freshUntil[0]).toBe(2300);
 });
 
+it("a miss waiting at the cache can start after a hard purge and still fill on reply", () => {
+  const cache = compile();
+  cache.rules[0].freshUntil[0] = 1000;
+  const lookup = cacheRuntime.lookup(cache, "Page", undefined, true, 2100, 1);
+  expect(lookup.outcome).toBe("miss");
+  cacheRuntime.purge(cache, 2110);
+  cacheRuntime.start(cache, lookup, 1, 2120);
+  cacheRuntime.settle(cache, lookup, 2130, 1, true);
+  expect(cache.rules[0].freshUntil[0]).toBe(3130);
+});
+
+it("soft purge ignores Don't store rules when reporting cold-cache evidence", () => {
+  const cache = cacheRuntime.compile(
+    {
+      rules: [
+        { id: "stored", match: { types: ["Page"] }, policy: { ttlMs: 1000, keys: 1, staleWhileRevalidateMs: 5000 } },
+        { id: "personal", match: { types: ["Private"] }, policy: { noStore: true } },
+      ],
+    },
+    "cache",
+    7,
+    1,
+    { value: 256 },
+  );
+  cacheRuntime.purge(cache, 100, undefined, "soft");
+  expect(cacheRuntime.details(cache, 100).purge).toBeUndefined();
+  cacheRuntime.purge(cache, 200);
+  cacheRuntime.purge(cache, 300, undefined, "soft");
+  expect(cacheRuntime.details(cache, 300).purge?.atMs).toBe(200);
+});
+
 it.each([1, 10, 50])(
   "stale hits reply independently of the one real background fetch at scale %i; purges replay",
   (scale) => {
@@ -122,3 +154,59 @@ it("stale hits and refreshes use the approved cycle formula", () => {
   expect(itemHitShare(900, p.ttlMs, 300, p.staleWhileRevalidateMs)).toBe(1);
   expect(cacheFetchShare(p, 900, 300)).toBeCloseTo(1 / 9271, 12);
 });
+
+it("purge evidence names the purged tail and observed origin, not an untouched larger rule", () => {
+  const cache = cacheRuntime.compile(
+    {
+      rules: [
+        { id: "small", match: { types: ["Small"] }, policy: { ttlMs: 1000, keys: 1 } },
+        { id: "tail", match: { types: ["Tail"] }, policy: { ttlMs: 300000, keys: 20000 } },
+      ],
+    },
+    "cache",
+    7,
+    1,
+    { value: 256 },
+    { small: { rate: 100, fetchMs: 10 }, tail: { rate: 80, fetchMs: 10 } },
+  );
+  cacheRuntime.purge(cache, 100, "small");
+  const lookup = cacheRuntime.lookup(cache, "Small", undefined, true, 110, 1);
+  lookup.origin = "selected-origin";
+  cacheRuntime.start(cache, lookup, 1);
+  expect(cacheRuntime.details(cache, 110).purge).toMatchObject({
+    tailItems: 1,
+    refillMs: 10,
+    edge: "selected-origin",
+    hard: true,
+  });
+  cacheRuntime.purge(cache, 200, "tail");
+  expect(cacheRuntime.details(cache, 200).purge).toMatchObject({ tailItems: 20000, refillMs: 250000 });
+});
+
+it.each(["hard", "soft"] as const)(
+  "shared Live preserves a %s per-rule deploy purge and rejects invalid modes",
+  (mode) => {
+    const message = {
+      t: "op" as const,
+      run: "purges.1",
+      entry: {
+        seq: 1,
+        tick: 100,
+        op: {
+          kind: "fault" as const,
+          fault: { kind: "purge" as const, node: "cache", rule: "__all", mode, reason: "deploy" as const },
+        },
+      },
+    };
+    expect(parseMessage(message)).toEqual(message);
+    const decoder = new LiveDecoder();
+    const parts = encodeMessage(message, 7)!;
+    expect(parts.map((p) => decoder.push("host", p)).at(-1)).toEqual(message);
+    expect(
+      parseMessage({
+        ...message,
+        entry: { ...message.entry, op: { ...message.entry.op, fault: { ...message.entry.op.fault, mode: "clear" } } },
+      }),
+    ).toBeUndefined();
+  },
+);

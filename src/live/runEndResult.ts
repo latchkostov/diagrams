@@ -46,11 +46,23 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
   const effective = simulationEdges(diagram, state.running ?? undefined);
   for (const node of effective.nodes) {
     const purge = state.snapshot.nodes[node.id]?.cacheDetails?.purge;
-    const edge = effective.edges.find((e) => e.from === node.id && e.kind === "sync");
+    const edge = effective.edges.find((e) => e.id === purge?.edge);
     if (!purge || !edge || !(purge.peakFetchRate > 0)) continue;
+    const origin = effective.nodes.find((n) => n.id === edge.to)?.label ?? edge.to;
+    const target = state.snapshot.nodes[edge.to];
+    if (
+      purge.hard &&
+      purge.tailItems > 1 &&
+      purge.refillMs >= 120_000 &&
+      target?.backlog > (target.threads?.slots ?? 0)
+    )
+      return t("cache.coldTailLesson", {
+        origin: isolate(origin),
+        items: isolate(formatNumber(purge.tailItems)),
+      });
     return t("cache.coldLesson", {
       rate: isolate(formatNumber(purge.peakFetchRate, { maximumFractionDigits: 0 })),
-      origin: isolate(effective.nodes.find((n) => n.id === edge.to)?.label ?? edge.to),
+      origin: isolate(origin),
       recovery:
         purge.recoveredAfterMs === undefined
           ? t("cache.coldUnrecovered")

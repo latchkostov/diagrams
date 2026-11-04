@@ -115,7 +115,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -145,7 +146,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -1704,7 +1706,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -1734,7 +1737,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -3118,7 +3122,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -3148,7 +3153,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -4707,7 +4713,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -4737,7 +4744,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -6117,7 +6125,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -6147,7 +6156,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -7706,7 +7716,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -7736,7 +7747,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -9287,7 +9299,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -9317,7 +9330,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -10876,7 +10890,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -10906,7 +10921,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -12234,6 +12250,18 @@
                   "oneOf": [
                     {
                       "type": "object",
+                      "required": ["kind", "node"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": { "const": "purge" },
+                        "node": { "type": "string", "minLength": 1 },
+                        "rule": { "type": "string" },
+                        "mode": { "enum": ["hard", "soft"] },
+                        "reason": { "enum": ["purge", "deploy"] }
+                      }
+                    },
+                    {
+                      "type": "object",
                       "required": ["kind", "boundary", "down"],
                       "additionalProperties": false,
                       "properties": {
@@ -12274,7 +12302,7 @@
                     }
                   ]
                 },
-                "drill": { "enum": ["zone-outage", "region-connectivity", "slow-dependency", "error-spike"] },
+                "drill": { "enum": ["zone-outage", "region-connectivity", "slow-dependency", "error-spike", "cold-cache"] },
                 "note": { "type": "string", "maxLength": 300 }
               }
             }
@@ -12402,7 +12430,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -12432,7 +12461,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -13991,7 +14021,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -14021,7 +14052,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -15400,7 +15432,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -15430,7 +15463,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -16989,7 +17023,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -17019,7 +17054,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -18394,7 +18430,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -18424,7 +18461,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }
@@ -19983,7 +20021,8 @@
                             "noStore": { "enum": [true] },
                             "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                             "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                            "coalesce": { "type": "boolean" }
+                            "coalesce": { "type": "boolean" },
+                            "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                           }
                         }
                       }
@@ -20013,7 +20052,8 @@
                       "noStore": { "enum": [true] },
                       "keys": { "type": "integer", "minimum": 1, "maximum": 1000000 },
                       "popularity": { "enum": ["even", "gentle", "typical", "steep"] },
-                      "coalesce": { "type": "boolean" }
+                      "coalesce": { "type": "boolean" },
+                      "staleWhileRevalidateMs": { "type": "number", "minimum": 0, "maximum": 86400000 }
                     }
                   }
                 }

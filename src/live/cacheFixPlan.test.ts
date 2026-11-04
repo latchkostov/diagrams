@@ -9,6 +9,7 @@ import { realSnapshot } from "../sim/units";
 import { TroubleWatcher } from "./observedTrouble";
 import * as headless from "../sim/headless";
 import "../sim/cache/cacheRuntime";
+import { staleCalloutFixture } from "../lab/cachePurgeFixture";
 
 const context = (seed = 7) => {
   const diagram = structuredClone(example) as DiagramFile;
@@ -72,6 +73,30 @@ it("requires two observed expiries and every recovery band, not one lucky sample
     expect(cacheRecovers(before, { ...after, ...patch })).toBe(false);
   expect(cacheRecovers({ ...before, herd: false }, after)).toBe(false);
 });
+
+it.each([1, 7, 17, 42, 99])(
+  "proves stale serving when coalescing still leaves shoppers waiting at expiry (seed %s)",
+  (seed) => {
+    const c = context(seed);
+    c.origin.diagram = staleCalloutFixture(seed);
+    c.origin.simulation = { ...c.origin.diagram.simulations![0], seed };
+    const proven = vi.fn();
+    const run = createSimulationRun(c.origin.diagram, c.origin.simulation, { maxParticles: 0 });
+    const watcher = new TroubleWatcher();
+    while (run.state().time < 18000) {
+      run.step(10);
+      if (watcher.observe(realSnapshot(run.engine.snapshot()), c.origin.diagram)[0]?.kind === "cache-stampede") break;
+    }
+    const result = confirmedCacheFix({ context: c, node: "cdn", rule: "launch", time: run.state().time, proven });
+    expect(result).toMatchObject({
+      step: "stale",
+      cache: {
+        rules: [{ policy: { coalesce: true, staleWhileRevalidateMs: expect.any(Number) } }, { id: "products" }],
+      },
+    });
+    expect(proven).toHaveBeenCalledOnce();
+  },
+);
 
 it("verifies the requested item independently of another overlapping item's display summary", () => {
   const create = headless.createHeadlessRun;

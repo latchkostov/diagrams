@@ -1,0 +1,136 @@
+{
+  "trace": { "rootId": 1, "type": "Shoppers", "origin": "shoppers", "startedAt": 10, "done": true, "partial": false, "truncated": false, "steps": 11, "endedAt": 60 },
+  "steps": [
+    { "t": 10, "kind": "emit", "id": 1, "type": "Shoppers", "node": "shoppers", "route": "launch" },
+    { "t": 10, "kind": "copy", "id": 2, "type": "Shoppers", "node": "shoppers", "parent": 1, "route": "launch" },
+    { "t": 10, "kind": "send", "id": 2, "type": "Shoppers", "node": "shoppers", "edge": "requests", "via": "message", "until": 25, "route": "launch" },
+    { "t": 30, "kind": "arrive", "id": 2, "type": "Shoppers", "node": "cdn", "edge": "requests", "route": "launch" },
+    {
+      "t": 30,
+      "kind": "cache",
+      "id": 2,
+      "type": "Shoppers",
+      "node": "cdn",
+      "cache": { "outcome": "hit", "rule": "launch", "item": 1, "freshMs": 75.6282187346369, "origin": "origin" },
+      "route": "launch"
+    },
+    { "t": 30, "kind": "start", "id": 2, "type": "Shoppers", "node": "cdn", "route": "launch" },
+    { "t": 40, "kind": "send", "id": 2, "type": "Shoppers", "node": "cdn", "edge": "requests", "via": "reply", "until": 55, "route": "launch" },
+    { "t": 40, "kind": "done", "id": 2, "type": "Shoppers", "node": "cdn", "route": "launch" },
+    { "t": 40, "kind": "end", "id": 2, "type": "Shoppers", "node": "cdn", "reason": "cached", "route": "launch" },
+    { "t": 60, "kind": "done", "id": 1, "type": "Shoppers", "node": "shoppers", "route": "launch" },
+    { "t": 60, "kind": "end", "id": 1, "type": "Shoppers", "node": "shoppers", "reason": "consumed", "route": "launch" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Shoppers",
+    "origin": "shoppers",
+    "startedAt": 10,
+    "totalMs": 50,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Shoppers", "node": "shoppers", "copy": false, "route": "launch" },
+      { "key": "3", "kind": "hop", "t": 20, "id": 2, "type": "Shoppers", "node": "cdn", "from": "shoppers", "edge": "requests", "sync": true, "latencyMs": 20, "waitMs": 0, "travelMs": 20, "renamed": false, "copy": true, "route": "launch" }
+    ],
+    "visits": [
+      { "id": 1, "node": "shoppers", "at": 0, "done": 50 },
+      { "id": 2, "node": "shoppers", "at": 0, "left": 0 },
+      { "id": 2, "node": "cdn", "at": 20, "start": 20, "done": 30 }
+    ],
+    "ids": [1, 2],
+    "copies": 1,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["shoppers", "cdn"],
+    "edges": ["requests"],
+    "rowOf": { "0": "0", "3": "3" }
+  },
+  "sequence": {
+    "title": "Shoppers #1",
+    "summary": "50 ms end to end · 1 copy",
+    "participants": [{ "id": "shoppers", "label": "Shoppers" }, { "id": "cdn", "label": "Edge CDN" }],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 15, "from": "shoppers", "to": "cdn", "style": "sync", "label": "Shoppers", "id": 2, "type": "Shoppers" },
+      { "kind": "arrow", "t": 30, "until": 45, "from": "cdn", "to": "shoppers", "style": "reply", "label": "reply", "id": 2, "type": "Shoppers" }
+    ],
+    "totalMs": 50,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Shoppers #1 · 50 ms end to end · 1 copy\"\n---\nsequenceDiagram\n  participant shoppers as Shoppers\n  participant cdn as Edge CDN\n  shoppers->>cdn: Shoppers (+0.00 s)\n  cdn-->>shoppers: reply (+0.03 s)\n",
+  "svg": {
+    "light": { "sha256": "b0add1e835b71666de4e2a72e8069bfaea89980aa37c8298ea864348c8313110", "bytes": 3401, "width": 420, "height": 274, "headerHeight": 142 },
+    "dark": { "sha256": "84dc83a7c853c78b19ae4586eefa5d5a1eb56b614bf96d8f6ac943ee28e2e8e1", "bytes": 3400, "width": 420, "height": 274, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Shoppers",
+    "origin": "shoppers",
+    "beats": [
+      { "kind": "establish", "msg": 1, "type": "Shoppers", "node": "shoppers", "start": 0, "duration": 800, "realFrom": 0, "realTo": 0, "caption": "Shoppers sends Shoppers", "rowKey": "0", "i": 0, "color": "#0072B2", "tone": "plain" },
+      { "kind": "travel", "msg": 2, "type": "Shoppers", "edge": "requests", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 15, "caption": "Shoppers", "tone": "plain", "i": 1, "color": "#0072B2", "rowKey": "3" },
+      {
+        "kind": "process",
+        "msg": 2,
+        "type": "Shoppers",
+        "node": "cdn",
+        "anchor": { "edge": "requests", "end": 1 },
+        "start": 1800,
+        "duration": 600,
+        "realFrom": 20,
+        "realTo": 20,
+        "caption": "Hit at Edge CDN · Launch page item #1 · fresh for 0 s more",
+        "i": 2,
+        "color": "#0072B2",
+        "tone": "plain"
+      },
+      {
+        "kind": "process",
+        "msg": 2,
+        "type": "Shoppers",
+        "node": "cdn",
+        "anchor": { "edge": "requests", "end": 1 },
+        "start": 2400,
+        "duration": 656.7939019774532,
+        "realFrom": 20,
+        "realTo": 30,
+        "caption": "Edge CDN · processing · 10 ms",
+        "i": 3,
+        "color": "#0072B2",
+        "tone": "plain",
+        "short": "processing · 10 ms"
+      },
+      { "kind": "reply", "msg": 2, "type": "Shoppers", "edge": "requests", "reverse": true, "start": 3056.793901977453, "duration": 600, "realFrom": 30, "realTo": 45, "i": 4, "color": "#0072B2", "tone": "plain" },
+      { "kind": "process", "msg": 1, "type": "Shoppers", "node": "shoppers", "start": 800, "duration": 600, "realFrom": 50, "realTo": 50, "caption": "Shoppers · processing", "i": 5, "color": "#0072B2", "tone": "plain", "short": "processing" },
+      { "kind": "end", "msg": 1, "type": "Shoppers", "node": "cdn", "start": 3456.793901977453, "duration": 1200, "realFrom": 50, "realTo": 50, "caption": "Done · 50 ms · 1 copy", "tone": "done", "i": 6, "color": "#0072B2" }
+    ],
+    "duration": 4656.793901977453,
+    "realTotal": 50,
+    "stops": [0, 800, 3457],
+    "nodes": ["shoppers", "cdn"],
+    "edges": ["requests"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 50 ms · 1 copy",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800 }
+  },
+  "slowMotionReduced": {
+    "duration": 7500,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["process", 3000, 1500],
+      ["process", 4500, 1500],
+      ["process", 1500, 1500],
+      ["end", 6000, 1500]
+    ]
+  }
+}

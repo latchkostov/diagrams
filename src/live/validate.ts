@@ -6,7 +6,7 @@ import { t } from "../i18n";
 
 import type { DiagramFile, Simulation } from "../model/types";
 import { LIMITS } from "../interop/native";
-import { faultTargets } from "./faults";
+import { faultTargets, faultDiagram } from "./faults";
 import { editableProperties } from "./editableProperties";
 
 export interface SimFieldError {
@@ -87,7 +87,7 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
       target(
         `${id}-fault-target`,
         `${label}: Target`,
-        faultTargets(diagram, a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
+        faultTargets(faultDiagram(diagram, sim), a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
       );
     else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
     if (a.do === "inject") range(`${id}-count`, `${label}: Messages`, a.count, LIMITS.maxMessageCount, true);

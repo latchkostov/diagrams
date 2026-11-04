@@ -165,10 +165,11 @@ export const cacheRuntime: CacheRuntime = {
     return true;
   },
   purge(cache, now, id, mode = "hard") {
-    if (
-      mode === "hard" ||
-      cache.rules.some((r) => (id === undefined || r.id === id) && !r.policy.staleWhileRevalidateMs)
-    )
+    const coldRules = cache.rules.filter(
+      (r) =>
+        (id === undefined || r.id === id) && !r.policy.noStore && (mode === "hard" || !r.policy.staleWhileRevalidateMs),
+    );
+    if (coldRules.length)
       cache.cold = {
         atMs: now,
         at: now,
@@ -176,6 +177,12 @@ export const cacheRuntime: CacheRuntime = {
         hits: cache.counts.hits,
         fetches: cache.counts.fetches,
         peakFetchRate: 0,
+        hard: mode === "hard",
+        tailItems: Math.max(0, ...coldRules.map((r) => r.policy.keys ?? 1000)),
+        refillMs: Math.max(
+          0,
+          ...coldRules.filter((r) => r.rate.planned > 0).map((r) => ((r.policy.keys ?? 1000) / r.rate.planned) * 1000),
+        ),
       };
     for (const rule of cache.rules) {
       if (id !== undefined && rule.id !== id) continue;
@@ -335,11 +342,14 @@ export const cacheRuntime: CacheRuntime = {
     let revalidate = 0;
     if (stale && item >= 0 && !rule.fetching[item]) revalidate = 1;
     if (item < 0 && staleMs && available) {
-      const credit = (rule.revalidationCredit ??= new Float64Array(bands.length));
       const q = 1 - expNeg((itemRate * staleMs) / 1000);
-      credit[low] += (size * q) / (1 + (itemRate * (mean + rule.policy.ttlMs!)) / 1000);
-      revalidate = Math.floor(credit[low]);
-      credit[low] -= revalidate;
+      // Statistical bands share their rule's origin and fill clock. Their fluid
+      // rates add linearly, so one remainder retains all expected refresh work
+      // without allocating hundreds of per-band doubles at the 256-rule limit.
+      const credit =
+        (rule.revalidationCredit ?? 0) + (size * q) / (1 + (itemRate * (mean + rule.policy.ttlMs!)) / 1000);
+      revalidate = Math.floor(credit);
+      rule.revalidationCredit = credit - revalidate;
     }
     add(hit || stale ? "hits" : "misses");
     if (stale) add("staleHits");
@@ -356,8 +366,24 @@ export const cacheRuntime: CacheRuntime = {
   start(cache, lookup, size, now) {
     if (lookup.fetching || lookup.outcome === "hit") return;
     lookup.fetching = true;
+    // A queued lookup may straddle a purge before its origin call starts. Keep
+    // the new empty/stale cycle even though the fetch clock starts later.
+    const rule = lookup.rule;
+    if (
+      rule &&
+      lookup.item >= 0 &&
+      lookup.at <= (rule.purgedAt ?? -1) &&
+      rule.freshUntil[lookup.item] <= rule.purgedAt!
+    )
+      lookup.freshUntil = rule.freshUntil[lookup.item];
     if (now !== undefined) lookup.at = now;
     cache.counts.fetches += size;
+    if (cache.cold && lookup.origin && !cache.cold.mixedOrigins) {
+      if (cache.cold.edge && cache.cold.edge !== lookup.origin) {
+        cache.cold.edge = undefined;
+        cache.cold.mixedOrigins = true;
+      } else cache.cold.edge = lookup.origin;
+    }
     const bucket = windowBucket(cache, now ?? lookup.at);
     cache.window!.buckets[bucket + 3] += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
@@ -495,6 +521,10 @@ export const cacheRuntime: CacheRuntime = {
             purge: {
               atMs: cache.cold.atMs,
               peakFetchRate: cache.cold.peakFetchRate,
+              tailItems: cache.cold.tailItems,
+              refillMs: cache.cold.refillMs,
+              hard: cache.cold.hard,
+              ...(cache.cold.edge ? { edge: cache.cold.edge } : {}),
               ...(cache.cold.recoveredAfterMs === undefined ? {} : { recoveredAfterMs: cache.cold.recoveredAfterMs }),
             },
           }

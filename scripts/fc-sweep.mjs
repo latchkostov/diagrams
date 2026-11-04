@@ -54,6 +54,7 @@ if (!files.length) {
     "src/sim/scaleEquivalence.heavy.test.ts",
     "src/sim/resilience.invariants.heavy.test.ts",
     "src/sim/caching.invariants.test.ts",
+    "src/sim/cacheStale.test.ts",
     "src/sim/cacheAgreement.test.ts",
   );
 }

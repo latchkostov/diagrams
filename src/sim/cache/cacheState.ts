@@ -29,7 +29,15 @@ export interface CacheItemObservation {
   edge?: string;
 }
 export interface CacheDetails {
-  purge?: { atMs: number; peakFetchRate: number; recoveredAfterMs?: number };
+  purge?: {
+    atMs: number;
+    peakFetchRate: number;
+    recoveredAfterMs?: number;
+    tailItems: number;
+    refillMs: number;
+    hard: boolean;
+    edge?: string;
+  };
   sinceFault?: import("../types").LatencyMetrics["sinceFault"];
   herdThreshold?: number;
   itemFetches?: number;
@@ -63,7 +71,7 @@ export interface CacheRuleState {
   counts: CacheCounts;
   warmSince?: number;
   purgedAt?: number;
-  revalidationCredit?: Float64Array;
+  revalidationCredit?: number;
 }
 export interface NodeCache {
   cold?: {
@@ -74,6 +82,11 @@ export interface NodeCache {
     fetches: number;
     peakFetchRate: number;
     recoveredAfterMs?: number;
+    tailItems: number;
+    refillMs: number;
+    hard: boolean;
+    edge?: string;
+    mixedOrigins?: boolean;
   };
   herds?: Map<string, { expiredAt: number; edge?: string }>;
   herdThreshold: number;
