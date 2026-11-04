@@ -1,3 +1,4 @@
+import { createWork } from "./engine/model";
 import { cacheEnabled, CACHE_LIMITS } from "../model/caching";
 import { requireCacheRuntime, type CacheRuntime } from "./cache/cacheBridge";
 import { createResources } from "./engine/resources";
@@ -1984,7 +1985,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         edge.delivered += dotsOf(event.message);
         log("deliver", edge.to, event.message);
         lineage.arrived(event.message, edge.to.id, edge.id);
-        arrive(edge.to, { message: event.message, via: edge, remaining: latency(edge.to) });
+        arrive(edge.to, createWork(event.message, latency(edge.to), edge));
       }
     }
   }
@@ -2829,7 +2830,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     inSystem++;
     lineage.born(message.family, type, node.id, route?.id);
     if (injected) log("inject", node, message);
-    arrive(node, { message, remaining: latency(node), injected });
+    arrive(node, createWork(message, latency(node), undefined, undefined, injected));
   }
   function admitPending(node: Node): void {
     if (!node.pending.length && !node.resume.length && !node.takeovers.length) return;
@@ -3046,12 +3047,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         log("deliver", trip.edge.to, trip.message);
         lineage.arrived(trip.message, trip.edge.to.id, trip.edge.id);
-        arrive(trip.edge.to, {
-          message: trip.message,
-          via: trip.edge,
-          delivery: trip.delivery,
-          remaining: latency(trip.edge.to),
-        });
+        arrive(trip.edge.to, createWork(trip.message, latency(trip.edge.to), trip.edge, trip.delivery));
       }
     }
   }

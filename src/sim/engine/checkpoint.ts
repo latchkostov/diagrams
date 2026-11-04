@@ -1,3 +1,5 @@
+import { cloneWork } from "./model";
+import { cloneReservation } from "../ledger";
 /** Whole-graph checkpoint boundary; all facade state is read and installed explicitly. */
 import type { Fault } from "../../model/faults";
 import type { Attempt } from "../attempt";
@@ -126,7 +128,8 @@ function cloneSized<T>(
       clone
         ? array
           ? Array(value.length)
-          : { __proto__: Object.getPrototypeOf(value) as object | null, ...value }
+          : (cloneWork(value) ??
+            cloneReservation(value) ?? { __proto__: Object.getPrototypeOf(value) as object | null, ...value })
         : value
     ) as Record<string, unknown>;
     seen.set(value, result);

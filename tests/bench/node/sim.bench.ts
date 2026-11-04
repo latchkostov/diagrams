@@ -1,14 +1,16 @@
+import { publicExamples } from "../../../src/bench/workloads/examples";
+import { planScaling, PLANNER_LIMITS } from "../../../src/sim/scalingPlanner";
 import { waitingFixture } from "../../../src/lab/waitingFixture";
 import "../../../src/sim/cache/cacheRuntime";
 import { cacheFixture } from "../../../src/lab/cacheFixture";
 import { resilienceFixture } from "../../../src/lab/resilienceFixture";
-// The simulation, without the browser (docs/BENCHMARKS.md § Metrics): loading a diagram into the engine, the live
+// The simulation, without the browser (docs/BENCHMARKS.md Â§ Metrics): loading a diagram into the engine, the live
 // view's per-frame main-thread work (LiveController.advance and snapshot, as LiveSession's tick does them, with a
 // publish every UI_MS) at three message rates, the engine's own step, frame() and snapshot(), and playing a saved
 // simulation to the end. The particle drawing is the browser's (tests/bench/ui/live.bench.ts).
 //
 // Message rates: "x1" is free play as it opens (the sources' own rates at the automatic dot scale: about 60 dots a
-// second in all, src/sim/scale.ts); "x10" and "x100" set Traffic × to 10 and 100 at the same dot scale, so ten and a
+// second in all, src/sim/scale.ts); "x10" and "x100" set Traffic Ã— to 10 and 100 at the same dot scale, so ten and a
 // hundred times as many dots play (until the engine's source budget of 10,000 sampled messages a second stops them).
 //
 // Gates: loading, frame() and snapshot() grow linearly; a tick with nothing moving grows at most linearly; the same
@@ -37,6 +39,22 @@ import {
 
 const s = suite("sim");
 
+s.timing("Black Friday scenario sizing", () => {
+  const d = publicExamples().find(({ slug }) => slug === "black-friday-commerce")?.diagram;
+  if (!d) throw new Error("Black Friday needs its public sizing workload");
+  let counter = { ticks: 0, runs: 0, messages: 0 };
+  const run = () => {
+    counter = { ticks: 0, runs: 0, messages: 0 };
+    // Supplying the existing shared message budget bypasses memoization: measure the worker's first sizing run.
+    return planScaling(d, counter, { remaining: PLANNER_LIMITS.messages });
+  };
+  const w = workloadInfo("black-friday", d.nodes.length, d);
+  s.time("planScaling", measure(run, { samples: 9, warmup: 3 }), w);
+  s.count("planScaling-runs", counter.runs, { w });
+  s.count("planScaling-ticks", counter.ticks, { w });
+  s.count("planScaling-messages", counter.messages, { w });
+});
+
 s.gating("w3 cache: four bounded popularity tables", () => {
   const make = (rate: number) => {
     const d = cacheFixture();
@@ -64,7 +82,7 @@ s.gating("w3 cache: four bounded popularity tables", () => {
   const small = make(375),
     large = make(3000);
   s.time("engineStep", measure(large.run, { samples: 3, warmup: 1 }), workloadInfo("pipeline", 3, large.d), "w3-cache");
-  s.growth("w3Cache", small.run, large.run, LINEAR_LIMIT, "8× requests with bounded tables stays below 24× work");
+  s.growth("w3Cache", small.run, large.run, LINEAR_LIMIT, "8Ã— requests with bounded tables stays below 24Ã— work");
 });
 
 /** 60 frames a second, as requestAnimationFrame runs them. */
@@ -266,15 +284,15 @@ s.gating("W1 ledger idle step with 10,000 open calls", () => {
     workloadInfo("pipeline", 4, d),
     "w1-10000-open-calls",
   );
-  // Same-run 1,250 → 10,000 calls: the standard 8× input / 24× ceiling
-  // tolerates linear work and runner noise but rejects a quadratic scan (~64×).
+  // Same-run 1,250 â†’ 10,000 calls: the standard 8Ã— input / 24Ã— ceiling
+  // tolerates linear work and runner noise but rejects a quadratic scan (~64Ã—).
   // Millisecond timings above are report-only; the paused callee keeps calls open.
   s.growth(
     "ledgerOpenCallsIdleStep",
     () => small.e.step(FRAME_MS),
     () => e.step(FRAME_MS),
     LINEAR_LIMIT,
-    "8× open calls must stay below 24× idle-step work; same-process baseline, no millisecond budget",
+    "8Ã— open calls must stay below 24Ã— idle-step work; same-process baseline, no millisecond budget",
   );
   s.count("ledgerOpenCallsAfter", e.snapshot().nodes.caller.threads?.waiting ?? -1, { limit: 10_000, op: "==" });
 });
@@ -306,7 +324,13 @@ s.gating("w2 storm: 10,000 open calls, three attempts", () => {
   const small = make(1250),
     large = make(10000);
   s.time("engineStep", measure(large.run, { samples: 3, warmup: 1 }), workloadInfo("pipeline", 4, large.d), "w2-storm");
-  s.growth("w2StormAttempts", small.run, large.run, LINEAR_LIMIT, "8× calls and bounded attempts stay below 24× work");
+  s.growth(
+    "w2StormAttempts",
+    small.run,
+    large.run,
+    LINEAR_LIMIT,
+    "8Ã— calls and bounded attempts stay below 24Ã— work",
+  );
   large.run();
   s.count("w2StormAttempts", large.e.snapshot().edges.call.calls?.attempts ?? -1, { limit: 30000, op: "==" });
   s.count("w2StormIdle", large.e.snapshot().inSystem, { limit: 0, op: "==" });
