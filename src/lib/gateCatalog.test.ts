@@ -21,3 +21,26 @@ it("the gate's dev config removes eager local catalogs before Vite expands impor
   expect(result.status, result.stderr + result.stdout).toBe(0);
   expect(result.stdout).toContain("public fixtures only");
 });
+
+it("isolates each gate's resolved Dev optimizer cache from other gates and native Vite", () => {
+  const probe = `
+    import { runnerImport, resolveConfig } from "vite";
+    const paths = [];
+    for (const [gate, port] of [["1", "6681"], ["1", "6686"], ["", "6681"]]) {
+      process.env.E2E_GATE = gate;
+      process.env.E2E_DEV_PORT = port;
+      const { module } = await runnerImport("./vite.config.ts", { root: process.cwd(), configFile: false, logLevel: "error" });
+      const config = await resolveConfig({ ...module.default, configFile: false, logLevel: "silent" }, "serve");
+      paths.push(config.cacheDir);
+    }
+    if (new Set(paths).size !== 3) throw new Error("Dev servers share optimizer metadata: " + paths.join(", "));
+    if (paths.slice(0, 2).some(path => path.includes("node_modules"))) throw new Error("Gate cache is on the shared dependency volume");
+    console.log("isolated optimizer caches");
+  `;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], {
+    encoding: "utf8",
+    env: { ...process.env, VITEST: "", VITE_CONFIG_NATIVE_IGNORE_WARNING: "true" },
+  });
+  expect(result.status, result.stderr + result.stdout).toBe(0);
+  expect(result.stdout).toContain("isolated optimizer caches");
+});

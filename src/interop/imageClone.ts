@@ -297,6 +297,8 @@ async function cloneChildren(
 /** PNG declarations stay in capture order, outside native CSSOM until style sharing. */
 export type RasterStyles = WeakMap<Element, Map<string, string>>;
 type CloneOptions = Options & {
+  /** Font downloads can run beside cloning; the font phase still awaits the complete CSS. */
+  fontCSS?: Promise<string>;
   rasterStyles?: RasterStyles;
   /** Computed SVG paint, captured before cloning without mutating the live drawing. */
   svgPaint?: WeakMap<Element, readonly (readonly [string, string])[]>;
@@ -682,7 +684,7 @@ export async function toSvg(node: HTMLElement, options: Options, slicer: Slicer)
  * The text of the SVG toSvg encodes into its data URL (decoding that URL gives it back exactly): a file to save
  * needs no round trip through percent-encoding.
  */
-export async function toSvgText(node: HTMLElement, options: Options, slicer: Slicer): Promise<string> {
+export async function toSvgText(node: HTMLElement, options: CloneOptions, slicer: Slicer): Promise<string> {
   const { width, height } = getImageSize(node, options);
   return nodeToSvgText(await prepare(node, options, slicer), width, height, slicer);
 }
@@ -692,7 +694,8 @@ async function prepare(node: HTMLElement, options: CloneOptions, slicer: Slicer)
   const clonedNode = (await cloneNode(node, options, slicer, true))!;
   slicer.progress(0.7);
   await slicer.pause();
-  await slicer.wait(embedWebFonts(clonedNode, options));
+  const fontOptions = options.fontCSS ? { ...options, fontEmbedCSS: await slicer.wait(options.fontCSS) } : options;
+  await slicer.wait(embedWebFonts(clonedNode, fontOptions));
   slicer.progress(0.75);
   await slicer.wait(embedImages(clonedNode, options, slicer));
   slicer.progress(0.8);

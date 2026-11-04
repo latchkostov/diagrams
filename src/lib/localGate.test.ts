@@ -46,6 +46,18 @@ it("invokes standalone pnpm and JS shims without shell interpretation", () => {
 
 const config = (args: string[] = []) => options(["full", ...args]);
 
+it("carries the requested Nightly target into Linux browser steps without stamping Dev as production", () => {
+  const dev = config(["--linux", "--target", "dev"]);
+  const browsers = plan(dev)
+    .flat()
+    .filter((step) => /^e2e-\d+$/.test(step.name));
+  expect(browsers.length).toBeGreaterThan(0);
+  for (const step of browsers) expect(step.env.E2E_TARGET).toBe("dev");
+  expect(canStamp(dev)).toBe(false);
+  expect(canStamp(config(["--target", "build"]))).toBe(true);
+  for (const target of ["", "preview", "DEV"]) expect(() => config(["--target", target])).toThrow("--target");
+});
+
 it("accepts Linux CPU quotas and Docker memory sizes without requiring worker overrides", () => {
   expect(config(["--linux", "--cpus", "3", "--memory", "7g"])).toMatchObject({ cpus: 3, memory: "7g" });
   expect(config(["--linux", "--cpus", "0.5", "--memory", "512M"])).toMatchObject({ cpus: 0.5, memory: "512m" });

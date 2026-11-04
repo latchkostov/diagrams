@@ -221,10 +221,10 @@ async function captureDiagramImage(kind: "png" | "svg", opts: ImageOptions, view
     await paint.read(viewport, slicer);
     // Embedding web fonts is the slow part (fetch + inline every @font-face): do it once per session.
     fontCss ??= getWebFontCSS(viewport, {}).catch(() => "");
-    const fontEmbedCSS = await slicer.wait(fontCss);
+    const fontEmbedCSS = kind === "png" ? await slicer.wait(fontCss) : undefined;
     slicer.progress(0.15);
     const options = {
-      fontEmbedCSS,
+      ...(kind === "svg" ? { fontCSS: fontCss } : { fontEmbedCSS }),
       svgPaint: paint.values,
       width,
       height,

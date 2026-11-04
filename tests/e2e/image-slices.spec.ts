@@ -153,6 +153,63 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
     expect(writes).toBe(0);
   });
 
+  test("SVG clones during a cold font download and keeps every completed byte", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("diagrams.lowZoom", "off"));
+    // The held response guarantees the boundary; the existing Black Friday byte test
+    // owns the large drawing. Keep this scheduling regression on the Lab contract.
+    await gotoLab(page, "export-contract");
+    await page.getByTestId("lab-open-editor").click();
+    await waitForStableViewport(page);
+    await page.evaluate(() => document.fonts.ready.then(() => {}));
+    const fonts = Promise.withResolvers<undefined>();
+    let requested = 0;
+    await page.route(/\.woff2(?:\?|$)/, async (route) => {
+      requested++;
+      await fonts.promise;
+      await route.continue();
+    });
+    type Capture = { progress: number; text?: string };
+    const capture = page.evaluate(async () => {
+      const state: Capture = { progress: 0 };
+      (window as unknown as { __fontCapture: Capture }).__fontCapture = state;
+      const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+      state.text = await (
+        await image.renderDiagramImage("svg", {
+          onProgress: (done) => {
+            state.progress = done;
+          },
+        })
+      ).text();
+    });
+    try {
+      await expect.poll(() => requested).toBeGreaterThan(0);
+      await expect
+        .poll(() => page.evaluate(() => (window as unknown as { __fontCapture: Capture }).__fontCapture.progress))
+        .toBe(0.7);
+      fonts.resolve(undefined);
+      await capture;
+      const result = await page.evaluate(async () => {
+        const first = (window as unknown as { __fontCapture: Capture }).__fontCapture.text;
+        if (typeof first !== "string") throw new Error("SVG capture did not complete");
+        const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+        const next = await (await image.renderDiagramImage("svg")).text();
+        const canonical = (svg: string) => {
+          const names = new Map<string, string>();
+          return svg.replace(/\bu[0-9a-z]{4}\d+\b/g, (name) => {
+            if (!names.has(name)) names.set(name, `pseudo${names.size}`);
+            return names.get(name) ?? name;
+          });
+        };
+        return { same: canonical(first) === canonical(next), fonts: first.includes("@font-face") };
+      });
+      expect(result).toEqual({ same: true, fonts: true });
+    } finally {
+      fonts.resolve(undefined);
+      await capture;
+      await page.unrouteAll({ behavior: "wait" });
+    }
+  });
+
   test("PNG tolerance rejects a moved card and a missing label", async ({ page }) => {
     await gotoLab(page, "export-contract");
     const images = await page.evaluate(async () => {

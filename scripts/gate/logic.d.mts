@@ -4,6 +4,7 @@ export interface Config {
   linux: boolean;
   docker: boolean;
   repeat: number;
+  target?: "build" | "dev";
   repeatEach?: number;
   only: string[];
   ports?: number;

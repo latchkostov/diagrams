@@ -187,6 +187,11 @@ const viewer = interactiveViewer(() => [noPrivateExamples()]);
 export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
   base: "./",
+  // Linux gates share installed dependencies, but never another server's optimizer metadata.
+  cacheDir:
+    process.env.E2E_GATE === "1"
+      ? `tests/.output/vite-cache-${process.env.E2E_DEV_PORT ?? process.env.E2E_PORT ?? "default"}`
+      : undefined,
   // Reports contain HTML snapshots. Watching them adds work and broadcasts reloads
   // during the same test run, even though none is application source.
   server: { watch: { ignored: ["**/tests/.output/**"] } },

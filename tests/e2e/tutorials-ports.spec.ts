@@ -1,5 +1,13 @@
 import type { Page } from "@playwright/test";
-import { test, expect, pageLoadTimeout, expectNoErrors, openShareChooser, animationFrames } from "./fixtures";
+import {
+  test,
+  expect,
+  pageLoadTimeout,
+  expectNoErrors,
+  openShareChooser,
+  animationFrames,
+  waitForChecks,
+} from "./fixtures";
 import { openAdvanced, openAiPanel } from "./ai-helpers";
 import { emulateTracker } from "./collab-tracker";
 import type { ProductObservations } from "../../src/lib/observations";
@@ -90,6 +98,9 @@ test("Checks: a real worker job publishes findings", async ({ page, consoleError
   await page.evaluate(() => window.__checks?.flush());
   await expect.poll(async () => (await latest(page)).checks?.status).toBe("done");
   await finished(page);
+  // Canvas measurements can queue a newer check after the first result completed the
+  // lesson. Read the real worker only after that queued work has finished as well.
+  await waitForChecks(page);
   const result = (await latest(page)).checks;
   expect(result?.status).toBe("done");
   expect(result?.result?.findings.some((finding) => finding.rule === "no-reader")).toBe(true);
