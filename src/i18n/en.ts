@@ -3127,8 +3127,7 @@ const en = {
     "In “{simulation}”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
   "examples.cacheStampedeSummary": "One fetch per item",
   "cache.rules": "Cache rules",
-  "examples.blackFridaySummary":
-    "A sale surge: the edge answers repeat product requests so fewer reach the services behind it.",
+  "examples.blackFridaySummary": "The edge answers repeat requests.",
   "inspector.addDescription": "Add description…",
   "planning.routeCount": "{count, plural, one {# rule} other {# rules}}",
   "cache.ruleCount": "{count, plural, one {# rule · checked after routing} other {# rules · checked after routing}}",
@@ -5110,7 +5109,8 @@ const en = {
     "A marker follows an addressed request; its name does not choose the destination.",
   "tutorials.routeByAddress.routeTitle": "Choose {orders}",
   "tutorials.routeByAddress.routeGoal":
-    "In the gateway Route table, open rule 1. Select {orders} as a target, then clear {users} so {orders} is the only target.",
+    "Open the gateway Properties, then expand Route table and open rule 1. Select {orders} as a target, then clear {users} so {orders} is the only target.",
+  "tutorials.routeByAddress.openTable": "Open Route table to edit its rules and Default.",
   "tutorials.routeByAddress.routeDone": "The keyed rule now sends its matching address only to {orders}.",
   "tutorials.routeByAddress.watchTitle": "Trace a matched request",
   "tutorials.routeByAddress.watchGoal":

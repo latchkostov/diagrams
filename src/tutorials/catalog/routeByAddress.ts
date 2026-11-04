@@ -47,6 +47,11 @@ export const routeByAddress: Tutorial = {
       sticky: true,
       targets: [
         {
+          testId: "inspector-section-node-routes",
+          selected: "gw",
+          tip: msg("tutorials.routeByAddress.openTable"),
+        },
+        {
           testId: "node-{gw}",
           tip: () => t("tutorials.routeByAddress.routeTitle", { orders: t("tutorials.routeByAddress.ordersService") }),
         },
@@ -66,6 +71,7 @@ export const routeByAddress: Tutorial = {
       ],
       solution: [
         { dblclick: "node-{gw}" },
+        { open: "inspector-section-node-routes" },
         { click: "routes-rule-parcels" },
         { click: "routes-rule-parcels-targets-to-tracking" },
         { click: "routes-rule-parcels-targets-to-pricing" },
@@ -130,7 +136,14 @@ export const routeByAddress: Tutorial = {
         value: [{ edgeId: "to-tracking", weight: 1 }],
       },
       sticky: true,
-      targets: [{ testId: "node-{gw}", tip: msg("tutorials.routeByAddress.defaultTitle") }],
+      targets: [
+        {
+          testId: "inspector-section-node-routes",
+          selected: "gw",
+          tip: msg("tutorials.routeByAddress.openTable"),
+        },
+        { testId: "node-{gw}", tip: msg("tutorials.routeByAddress.defaultTitle") },
+      ],
       demo: [
         {
           kind: "patch",
@@ -145,6 +158,7 @@ export const routeByAddress: Tutorial = {
         { press: "Escape" },
         { focus: "node-{gw}" },
         { press: "F2" },
+        { open: "inspector-section-node-routes" },
         { activate: "routes-default" },
         { focus: "routes-default-reject" },
         { press: "ArrowDown" },
@@ -154,6 +168,7 @@ export const routeByAddress: Tutorial = {
         { click: "live-toggle" },
         { press: "Escape" },
         { dblclick: "node-{gw}" },
+        { open: "inspector-section-node-routes" },
         { click: "routes-default" },
         { click: "routes-default-forward" },
         { click: "routes-default-targets-to-pricing" },

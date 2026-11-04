@@ -1,10 +1,48 @@
-import { test, expect, savedDiagram } from "./fixtures";
+import { test, expect, savedDiagram, gotoCanvas, waitForSelectionSettled, STORAGE_KEYS } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { lazySurfaces, type LazySurfaceId } from "../../src/lib/lazySurfaces";
 import { readFileSync } from "node:fs";
 import { chunk, holdChunk } from "./chunk";
 import { openSurface as open, surfaceChunk } from "./lazy-surface-helpers";
 import { pauseClock } from "./fixtures";
+import { cacheFixture } from "../../src/lab/cacheFixture";
+
+test("Cache rules loads only on disclosure, keeping its pending shell and keyboard focus", async ({ page }) => {
+  const held = await holdChunk(page, surfaceChunk("inspector.cache"));
+  await page.addInitScript(
+    ({ key, diagram }) => {
+      localStorage.setItem(key, JSON.stringify(diagram));
+      localStorage.setItem("diagrams.inspector.open.v1", "{}");
+    },
+    { key: STORAGE_KEYS.autosavePrefix + "blocking-call", diagram: cacheFixture() },
+  );
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await page.getByTestId("node-cache").click();
+    await waitForSelectionSettled(page);
+    const disclosure = page.getByTestId("inspector-section-node-cache");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(held.requested()).toBe(false);
+    await expect(page.getByTestId("inspector.cache-loading")).toHaveCount(0);
+    await expect(disclosure).toHaveCSS("cursor", "pointer");
+    await disclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("inspector.cache-loading")).toBeVisible();
+    await expect(page.getByTestId("inspector.cache-loading")).toHaveAttribute("aria-busy", "true");
+    await expect(disclosure).toBeFocused();
+    expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).not.toMatch(/wait|progress/);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(disclosure).toBeFocused();
+    held.release();
+    await expect(page.getByTestId("cache-add-rule")).toBeVisible();
+    await expect(page.getByTestId("inspector.cache-loading")).toHaveCount(0);
+    await expect(disclosure).toBeFocused();
+  } finally {
+    held.release();
+  }
+});
 
 test("simulation keyboard setup waits for the independently held identity and rename focus", async ({ page }) => {
   let release!: () => void;

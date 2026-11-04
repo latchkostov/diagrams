@@ -66,7 +66,7 @@ test("cache and edge cache search find the plain-language Black Friday promise",
     await page.getByTestId("examples-search").fill(query);
     await expect(page.getByTestId("example-card-black-friday-commerce")).toBeVisible();
     await expect(page.getByTestId("example-card-black-friday-commerce")).toContainText(
-      "A sale surge: the edge answers repeat product requests so fewer reach the services behind it.",
+      "The edge answers repeat requests.",
     );
   }
 });
