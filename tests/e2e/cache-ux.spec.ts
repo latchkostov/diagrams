@@ -8,9 +8,50 @@ import {
   waitForSelectionSettled,
   savedDiagram,
   STORAGE_KEYS,
+  openDiagramProperties,
 } from "./fixtures";
 import { cacheFixture } from "../../src/lab/cacheFixture";
 import { runKeyboardTutorial } from "./keyboard-tutorial-driver";
+
+test("Black Friday Order status names its routed destination without attributing aggregate offload", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=black-friday-commerce&live=1&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(3000);
+  await page.getByTestId("live-play").click();
+  await page.clock.resume();
+  await openLiveNodeDetails(page, "cdn", "cache");
+  await page.getByTestId("cache-live-rules-toggle").click();
+  const orders = page.getByTestId("cache-live-rule-orders");
+  await expect(orders).toContainText("Configured destinations: \u2068API gateway\u2069.");
+  await expect(orders).not.toContainText("Event collector");
+  await expect(orders).not.toContainText("requests reached");
+  await expect(page.getByTestId("cache-offload-counts")).toContainText(
+    "Requests kept away from services behind this cache:",
+  );
+  await expect(page.getByTestId("cache-offload-counts")).not.toContainText("Event collector");
+});
+
+for (const revision of ["p3-w2", "p3-w3"] as const) {
+  test(`${revision} legacy export shows behavioural losses before Technical details opens`, async ({ page }) => {
+    const diagram = cacheFixture();
+    diagram.planning = { ...diagram.planning, revision };
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      diagram,
+    });
+    await gotoCanvas(page, "blocking-call");
+    await openDiagramProperties(page);
+    await page.getByTestId("planning-preview").click();
+    await expect(page.getByTestId("planning-legacy-details")).not.toHaveAttribute("open", "");
+    await expect(page.getByTestId("planning-legacy-resilience-loss")).toBeVisible();
+    await expect(page.getByTestId("planning-legacy-waits-loss")).toBeVisible();
+    if (revision === "p3-w3") await expect(page.getByTestId("planning-legacy-cache-loss")).toBeVisible();
+  });
+}
 
 for (const id of ["property-sheet", "command-palette"]) {
   test(`${id} keyboard lesson opens the compact Description before writing`, async ({ page, consoleErrors }) => {

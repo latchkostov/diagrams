@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimState } from "../sim/types";
 import type { CacheTable } from "../model/caching";
@@ -9,6 +10,9 @@ import { configuredPlanning } from "../planning/cache";
 import { planningHost } from "./planningHost";
 import { ReadoutDisclosure } from "./ReadoutDisclosure";
 import { isolate } from "./bidi";
+import { cacheOriginIndex } from "./cacheOrigins";
+import { cacheDestinations } from "./cacheDestinations";
+import { formatList } from "../i18n/format";
 
 /** Shared by the hover card and docked Live details. */
 export function CacheDetails({
@@ -23,17 +27,19 @@ export function CacheDetails({
   properties?: Record<string, unknown>;
 }) {
   const readout = cacheReadout(s);
-  const table = (properties?.cache ?? diagram.nodes.find((n) => n.id === id)?.props?.cache) as CacheTable | undefined;
+  const node = useMemo(() => diagram.nodes.find((n) => n.id === id), [diagram, id]);
+  const table = (properties?.cache ?? node?.props?.cache) as CacheTable | undefined;
+  const routeTable = properties?.routeTable ?? node?.props?.routeTable;
+  const index = useMemo(() => cacheOriginIndex(diagram), [diagram]);
+  const destinations = useMemo(
+    () => cacheDestinations(diagram, id, index, table, routeTable),
+    [diagram, id, index, table, routeTable],
+  );
   const live = planningHost.get();
   const planned = configuredPlanning(diagram, live?.controller.getState())?.analysis.cacheDemand?.[id];
   const w = s.cacheDetails?.window;
   const latency = s.cacheDetails?.latency;
   const rate = (n: number) => cacheRate(n / (w?.seconds ?? 10));
-  const origin =
-    diagram.edges
-      .filter((edge) => edge.from === id && edge.kind === "sync" && (!edge.relation || edge.relation === "flow"))
-      .map((edge) => diagram.nodes.find((node) => node.id === edge.to)?.label ?? edge.to)
-      .join(", ") || t("cache.origin");
   const rules = table && [
     ...table.rules,
     ...(table.default ? [{ id: "", label: t("cache.everythingElse"), policy: table.default }] : []),
@@ -47,7 +53,11 @@ export function CacheDetails({
         {!counts?.requests
           ? t("cache.ruleNoRequests", { name })
           : rule.policy.noStore
-            ? t("cache.ruleNotCached", { name, count: isolate(formatNumber(counts.requests)), origin: isolate(origin) })
+            ? t("cache.ruleNotCached", {
+                name,
+                count: isolate(formatNumber(counts.requests)),
+                origin: formatList((destinations.rules.get(rule.id) ?? []).map(isolate)) || t("cache.origin"),
+              })
             : t("cache.ruleMeasured", {
                 name,
                 policy: isolate(policyWords(rule.policy)),
@@ -67,12 +77,17 @@ export function CacheDetails({
           <p data-testid="cache-window-counts">
             {t("cache.counts", {
               hits: rate(w.hits),
-              misses: rate(w.misses),
+              misses: rate(w.fetches),
               notCached: rate(Math.max(0, w.requests - w.hits - w.misses)),
             })}
           </p>
           <p data-testid="cache-offload-counts">
-            {t("cache.keptAway", { node: isolate(origin), rate: rate(Math.max(0, w.requests - w.fetches)) })}
+            {destinations.singleOrigin
+              ? t("cache.keptAway", {
+                  node: isolate(destinations.singleOrigin),
+                  rate: rate(Math.max(0, w.requests - w.fetches)),
+                })
+              : t("cache.keptAwayAggregate", { rate: rate(Math.max(0, w.requests - w.fetches)) })}
           </p>
         </>
       )}

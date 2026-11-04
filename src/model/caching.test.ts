@@ -76,7 +76,7 @@ it("new diagrams choose W3; upgrades and legacy stripping preserve the original"
 
 it("upgrade previews exclude dormant/no-store tables and include saved storing overrides", () => {
   const d = cacheFixture();
-  expect(cacheUpgradeNodes(d)).toEqual([{ node: "Edge cache" }]);
+  expect(cacheUpgradeNodes(d)).toEqual([{ nodeId: "cache", node: "Edge cache" }]);
   d.nodes[1].props!.cache = { rules: [], default: { noStore: true } };
   expect(cacheUpgradeNodes(d)).toEqual([]);
   d.simulations = [
@@ -87,7 +87,7 @@ it("upgrade previews exclude dormant/no-store tables and include saved storing o
       setup: { props: { cache: { cache: { rules: [], default: { ttlMs: 1000 } } } } },
     },
   ];
-  expect(cacheUpgradeNodes(d)).toEqual([{ node: "Edge cache", simulation: "Warm" }]);
+  expect(cacheUpgradeNodes(d)).toEqual([{ nodeId: "cache", node: "Edge cache", simulation: "Warm" }]);
   d.edges = d.edges.filter((e) => e.id !== "fetch");
   expect(cacheUpgradeNodes(d)).toEqual([]);
 });

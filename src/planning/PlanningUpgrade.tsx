@@ -73,18 +73,13 @@ export function PlanningUpgrade({
   const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
   const legacy = preview === "legacy" && d?.planning ? legacyExport(d) : undefined;
   const cacheNodes = d && caching ? cacheUpgradeNodes(d) : [];
-  const cacheLabels = new Set(cacheNodes.map((row) => row.node));
+  const cacheIds = new Set(cacheNodes.map((row) => row.nodeId));
   const nodesById = new Map(d?.nodes.map((n) => [n.id, n]));
   const origins = d
     ? formatList([
         ...new Set(
           d.edges
-            .filter(
-              (e) =>
-                e.kind === "sync" &&
-                (!e.relation || e.relation === "flow") &&
-                cacheLabels.has(nodesById.get(e.from)?.label ?? ""),
-            )
+            .filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow") && cacheIds.has(e.from))
             .map((e) => isolate(nodesById.get(e.to)?.label ?? e.to)),
         ),
       ])
@@ -300,17 +295,19 @@ export function PlanningUpgrade({
         {preview === "legacy" && upgradeContent}
         {legacy && (
           <div data-testid="planning-legacy-preview">
-            {revisionAtLeast(d?.planning?.revision, "p3-w3") && <p>{t("cache.exportLoss")}</p>}
+            {revisionAtLeast(d?.planning?.revision, "p3-w3") && (
+              <p data-testid="planning-legacy-cache-loss">{t("cache.exportLoss")}</p>
+            )}
             {revisionAtLeast(d?.planning?.revision, "p3-w3") && <p>{t("cache.originalUnchanged")}</p>}
+            {revisionAtLeast(d?.planning?.revision, "p3-w2") && (
+              <p data-testid="planning-legacy-resilience-loss">{t("resilience.exportLoss")}</p>
+            )}
+            {revisionAtLeast(d?.planning?.revision, "p3-w1") && (
+              <p data-testid="planning-legacy-waits-loss">{t("threads.exportLoss")}</p>
+            )}
+            {d?.planning?.revision === "p3" && <p>{t("broker.exportLoss")}</p>}
             <ReadoutDisclosure title={t("cache.technicalDetails")} testId="planning-legacy-details">
-              {revisionAtLeast(d?.planning?.revision, "p3-w2") && <p>{t("resilience.exportLoss")}</p>}
-              {revisionAtLeast(d?.planning?.revision, "p3-w1") && <p>{t("threads.exportLoss")}</p>}
-              <p>
-                {d?.planning?.revision === "p3"
-                  ? t("broker.exportLoss")
-                  : t("planning.losses", { fields: formatList(legacy.losses) })}
-              </p>
-              {d?.planning?.revision === "p3" && <p>{formatList(legacy.losses)}</p>}
+              <p>{t("planning.losses", { fields: formatList(legacy.losses) })}</p>
             </ReadoutDisclosure>
             <button
               className={next ? "btn" : "btn btn-primary"}
