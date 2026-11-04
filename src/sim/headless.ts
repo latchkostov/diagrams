@@ -13,6 +13,11 @@ import { SIM_TICK_MS } from "./scheduler";
 import { resolveMultiplier, resolveScale } from "./units";
 import { WorkBudgetError } from "./engine";
 
+// Node/headless consumers can call the synchronous planner as soon as its module
+// is ready. In the browser, this graph is also prefetched with AI: its async entry
+// points prepare cache playback only when a diagram needs it.
+if (import.meta.env?.SSR !== false) await import("./cache/cacheRuntime");
+
 /**
  * What one arrival at each node can become: itself, plus what every connection it sends a copy down becomes
  * (an upper bound: a route that picks one connection still counts them all). Fan-out compounds through every stage.

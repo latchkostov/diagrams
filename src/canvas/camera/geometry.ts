@@ -126,10 +126,12 @@ export function focusSelectionViewport(
   const live = root.closest?.(".is-live");
   const frame = visibleCanvas(root);
   const insets = {
-    top: frame.y + 32,
+    // Focus clipping includes the card's top decoration. Reserve it in screen
+    // pixels too, or a vertically constrained fit hides its own first card.
+    top: frame.y + 32 + FRAME_CARD_SPACE.top,
     left: frame.x + (rtl ? 56 : 32),
     right: root.clientWidth - frame.x - frame.width + (rtl ? 32 : 56),
-    bottom: root.clientHeight - frame.y - frame.height + (live ? 32 : 72),
+    bottom: root.clientHeight - frame.y - frame.height + (live ? 32 : 72) + FRAME_CARD_SPACE.top,
   };
   const fit = fitAvoiding(rects, { width: root.clientWidth, height: root.clientHeight }, overlayRects(root), {
     margin: 0,

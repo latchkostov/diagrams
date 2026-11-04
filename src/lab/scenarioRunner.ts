@@ -17,7 +17,7 @@ const engineModules = import.meta.glob<{ createEngine?: CreateEngine }>("../sim/
 export async function loadCreateEngine(): Promise<CreateEngine | null> {
   const load = engineModules["../sim/engine.ts"];
   if (!load) return null;
-  const mod = await load();
+  const [mod] = await Promise.all([load(), import("../sim/cache/cacheRuntime")]);
   return typeof mod.createEngine === "function" ? mod.createEngine : null;
 }
 

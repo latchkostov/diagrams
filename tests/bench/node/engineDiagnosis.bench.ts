@@ -2,6 +2,7 @@
 // ENGINE_DIAG=work|profile|memory|seek ENGINE_DIAG_RING=on|off|free ENGINE_DIAG_OUT=<directory>
 // fnm exec --using 24 -- node node_modules/vitest/vitest.mjs run --config tests/bench/vitest.config.ts
 //   tests/bench/node/engineDiagnosis.bench.ts
+import "../../../src/sim/cache/cacheRuntime";
 import { it, vi } from "vitest";
 import * as resources from "../../../src/sim/engine/resources";
 import * as revisions from "../../../src/model/revisions";

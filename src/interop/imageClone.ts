@@ -244,15 +244,25 @@ async function cloneIFrameElement(iframe: HTMLIFrameElement, options: Options, s
   return iframe.cloneNode(false) as HTMLIFrameElement;
 }
 
-async function cloneSingleNode(node: HTMLElement, options: Options, slicer: Slicer): Promise<HTMLElement> {
+async function cloneSingleNode(node: HTMLElement, options: CloneOptions, slicer: Slicer): Promise<HTMLElement> {
   if (isInstanceOfElement(node, HTMLCanvasElement)) return slicer.wait(cloneCanvasElement(node, slicer));
   if (isInstanceOfElement(node, HTMLVideoElement)) return slicer.wait(cloneVideoElement(node, options, slicer));
   if (isInstanceOfElement(node, HTMLIFrameElement)) return cloneIFrameElement(node, options, slicer);
   const clone = node.cloneNode(isSVGElement(node)) as HTMLElement;
+  // Track loads before the paint walk can yield or be cancelled.
   if (clone instanceof HTMLImageElement) slicer.trackImage(clone);
   if (clone instanceof SVGImageElement) slicer.trackImage(clone);
   if (isSVGElement(clone))
     for (const image of clone.querySelectorAll<SVGImageElement>("image")) slicer.trackImage(image);
+  if (isSVGElement(clone) && options.svgPaint) {
+    const originals = [node, ...node.getElementsByTagName("*")];
+    const copies = [clone, ...clone.getElementsByTagName("*")];
+    for (const [i, original] of originals.entries()) {
+      const paint = options.svgPaint.get(original);
+      if (paint) for (const [name, value] of paint) if (value) (copies[i] as SVGElement).style.setProperty(name, value);
+      await slicer.breathe();
+    }
+  }
   return clone;
 }
 
@@ -286,7 +296,11 @@ async function cloneChildren(
 
 /** PNG declarations stay in capture order, outside native CSSOM until style sharing. */
 export type RasterStyles = WeakMap<Element, Map<string, string>>;
-type CloneOptions = Options & { rasterStyles?: RasterStyles };
+type CloneOptions = Options & {
+  rasterStyles?: RasterStyles;
+  /** Computed SVG paint, captured before cloning without mutating the live drawing. */
+  svgPaint?: WeakMap<Element, readonly (readonly [string, string])[]>;
+};
 const RESOURCE_STYLE = /^(font-family$|background|-webkit-mask|mask)/;
 
 function readStyle(style: CSSStyleDeclaration, record = new Map<string, string>()) {

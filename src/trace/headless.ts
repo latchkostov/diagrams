@@ -1,6 +1,7 @@
 // Trace one message without the live view: for the Lab's sequence presets and for tests. Runs the
 // same engine (or a saved simulation) to the point where the followed message is done.
 
+import "../sim/cache/cacheRuntime";
 import { flowEdges } from "../model/relations";
 import type { DiagramFile, SimRole, Simulation } from "../model/types";
 import { createEngine } from "../sim/engine";

@@ -218,13 +218,14 @@ async function captureDiagramImage(kind: "png" | "svg", opts: ImageOptions, view
     // html-to-image copies computed styles onto HTML elements only; SVG children (edge paths, arrow
     // heads, annotation shapes) keep just their attributes, so their CSS fills and strokes would be
     // lost (black blobs). Write the computed paint onto them for the shot.
-    await paint.apply(viewport, slicer);
+    await paint.read(viewport, slicer);
     // Embedding web fonts is the slow part (fetch + inline every @font-face): do it once per session.
     fontCss ??= getWebFontCSS(viewport, {}).catch(() => "");
     const fontEmbedCSS = await slicer.wait(fontCss);
     slicer.progress(0.15);
     const options = {
       fontEmbedCSS,
+      svgPaint: paint.values,
       width,
       height,
       pixelRatio: scale,
@@ -249,7 +250,6 @@ async function captureDiagramImage(kind: "png" | "svg", opts: ImageOptions, view
   } finally {
     slicer?.dispose();
     releaseInput();
-    paint.restore();
     unselect();
     defsClone?.remove();
     header?.remove();
@@ -325,36 +325,24 @@ const SVG_PAINT = [
 ] as const;
 
 /**
- * Each SVG child's computed paint, written into its style attribute for the shot, and put back by `restore`. Every
- * value is read before any is written, so one write can't change what a later read sees; both run in slices (a big
- * diagram has thousands of edge parts), and `restore` undoes whatever was written, even if a cancel stopped it.
+ * Each SVG child's computed paint, read before cloning and applied only to its detached copy.
+ * Mutating the live SVG invalidates the drawing's style/layout and wakes observers during every
+ * capture. The clone receives the same native writes, in the same order, without that work.
  */
 class SvgPaint {
-  private saved: [SVGElement, string | null][] = [];
+  readonly values = new WeakMap<Element, readonly (readonly [string, string])[]>();
 
-  async apply(root: HTMLElement, slicer: { breathe(): Promise<void>; progress(done: number): void }) {
+  async read(root: HTMLElement, slicer: { breathe(): Promise<void>; progress(done: number): void }) {
     const els = [...root.querySelectorAll<SVGElement>("svg *")];
-    const values: (readonly (readonly [string, string])[])[] = [];
-    for (const el of els) {
-      const cs = getComputedStyle(el);
-      values.push(SVG_PAINT.map((p) => [p, cs.getPropertyValue(p)] as const));
-      slicer.progress(0.02 + (0.1 * values.length) / Math.max(1, els.length * 2));
-      await slicer.breathe();
-    }
     for (const [i, el] of els.entries()) {
-      this.saved.push([el, el.getAttribute("style")]);
-      for (const [p, v] of values[i]) if (v) el.style.setProperty(p, v);
-      slicer.progress(0.07 + (0.05 * (i + 1)) / Math.max(1, els.length));
+      const cs = getComputedStyle(el);
+      this.values.set(
+        el,
+        SVG_PAINT.map((p) => [p, cs.getPropertyValue(p)] as const),
+      );
+      slicer.progress(0.02 + (0.1 * (i + 1)) / Math.max(1, els.length));
       await slicer.breathe();
     }
-  }
-
-  restore() {
-    for (const [el, style] of this.saved) {
-      if (style === null) el.removeAttribute("style");
-      else el.setAttribute("style", style);
-    }
-    this.saved = [];
   }
 }
 

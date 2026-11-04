@@ -155,6 +155,9 @@ export function createLocalPeerPractice() {
           editor.updateNode("worker", { label: t("tutorials.workTogether.edited") });
         } else if (action === "watch") {
           const diagram = host.diagram!;
+          const { ensureCacheRuntime } = await import("../sim/cache/cacheBridge");
+          await Promise.all([ensureCacheRuntime(diagram), ensureCacheRuntime(peer.diagram!)]);
+          signal.throwIfAborted();
           const a = new LiveController(diagram),
             b = new LiveController(peer.diagram!);
           controllers.push(a, b);

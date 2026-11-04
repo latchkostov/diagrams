@@ -6,6 +6,7 @@ import type { DiagramFile, Simulation } from "../../src/model/types";
 import { snapshotDigest } from "../../src/sim/digest";
 import { LiveController } from "../../src/live/controller";
 import { tickTime } from "../../src/live/controlLog";
+import { ensureCacheRuntime } from "../../src/sim/cache/cacheBridge";
 
 /** A run's digest, from the controller's detached digest inputs (as shared Live computes it). */
 const digestOf = (c: LiveController) => {
@@ -20,7 +21,8 @@ export interface EngineRun {
 }
 
 /** Plays `simulation` to `untilMs` (or its end) in 1 s frames, with the same ops every time. */
-export function playDigests(diagram: DiagramFile, simulation: Simulation, untilMs: number): EngineRun {
+export async function playDigests(diagram: DiagramFile, simulation: Simulation, untilMs: number): Promise<EngineRun> {
+  await ensureCacheRuntime(diagram);
   const c = new LiveController(diagram, { replayDelayMs: 0 });
   c.selectSimulation(simulation);
   c.setPlaying(true);

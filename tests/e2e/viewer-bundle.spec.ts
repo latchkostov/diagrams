@@ -16,6 +16,52 @@ import { autoscalingFixture } from "../../src/lab/autoscalingFixture";
 import { hpaLesson } from "../../src/model/autoscalingLessons";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
 import { exportHtml } from "../../src/export/inject";
+import { cacheFixture } from "../../src/lab/cacheFixture";
+
+for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
+  test(`${viewer}: a fresh viewer loads the cache runtime before playback`, async ({ page }) => {
+    const diagram = cacheFixture();
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.clock.install();
+    if (viewer === "bundle") {
+      // The same CSP and viewer bundle used by Confluence Forge.
+      await openViewer(page);
+      await page.evaluate((d) => window.liveDiagramsViewer.load(d), diagram);
+    } else {
+      const template = readFileSync(
+        viewer === "skill"
+          ? "skills/livediagrams/scripts/lib/viewer-template.html"
+          : join(E2E_PROFILES.e2e.outDir, "skill/scripts/lib/viewer-template.html"),
+        "utf8",
+      );
+      const file = test.info().outputPath("cache.html");
+      writeFileSync(
+        file,
+        exportHtml(template, {
+          diagram,
+          iconSvgs: Object.fromEntries(
+            ["client-browser", "generic-cdn", "generic-database"].map((name) => [
+              name,
+              readFileSync(`src/stencils/icons/${name}.svg`, "utf8"),
+            ]),
+          ),
+          theme: "light",
+          startSimulation: null,
+        }),
+      );
+      await page.goto(pathToFileURL(file).href);
+    }
+    await expect(page.getByTestId("node-cache")).toBeVisible();
+    await waitForCameraIdle(page);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await pauseClock(page);
+    await advanceSetupClock(page, 3000);
+    await expect(page.getByTestId("node-cache-cache")).toContainText("% hits");
+    expect(errors).toEqual([]);
+  });
+}
 
 /** Set up engine state before capture without drawing every idle frame. */
 async function advanceSetupClock(page: Page, duration: number) {

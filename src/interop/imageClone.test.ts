@@ -24,6 +24,26 @@ function computed(values: Record<string, string>) {
   return { includeStyleProperties: Object.keys(values) };
 }
 
+it("applies captured SVG paint to the deep clone in native order without touching its source", async () => {
+  computed({});
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const path = document.createElementNS(svg.namespaceURI, "path");
+  path.setAttribute("d", "M0 0h10");
+  svg.append(path);
+  const paint = [
+    ["fill", "none"],
+    ["stroke", "rgb(1, 2, 3)"],
+    ["opacity", "0.5"],
+  ] as const;
+  const svgPaint = new WeakMap<Element, typeof paint>([[path, paint]]);
+  const reference = svg.cloneNode(true) as SVGSVGElement;
+  for (const [name, value] of paint) (reference.firstElementChild as SVGElement).style.setProperty(name, value);
+  const clone = await cloneNode(svg as unknown as HTMLElement, { svgPaint }, new Slicer(2), true);
+  const serialize = (node: Node) => new XMLSerializer().serializeToString(node);
+  expect(serialize(clone!)).toBe(serialize(reference));
+  expect(path.getAttribute("style")).toBeNull();
+});
+
 it("captures PNG declarations without complete native writes or read-back", async () => {
   const values = Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`--capture-${i}`, `${i}`]));
   Object.assign(values, { "font-size": "14.8px", "font-family": "Example", "background-image": "none" });
