@@ -1,5 +1,6 @@
 import "../../styles/inspector-layout.css";
-import { useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import "../../styles/readout.css";
+import { memo, useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { t, useLocale } from "../../i18n";
 import { stencilLabel, vendorLabel } from "../../i18n/stencils";
@@ -11,7 +12,6 @@ import { useInteraction } from "../interaction/useInteraction";
 import type { DiagramFlowNode } from "../types";
 import { Section, CopyId, Field } from "./fields";
 import { PairedFields } from "./Layout";
-import { ReadoutDisclosure } from "../../live/ReadoutDisclosure";
 import type { InspectorProps } from "./types";
 import type { useNameFields } from "./useNameFields";
 
@@ -25,19 +25,24 @@ type NodeIdentityProps = Pick<InspectorProps, "editor" | "groups" | "connection"
   setPicker: (anchor: { x: number; y: number }) => void;
 };
 
-function Description({ filled, children }: { filled: boolean; children: ReactNode }) {
+// The memoized description field stays identical while label/subtitle edits update NodeIdentity.
+const Description = memo(function Description({ filled, children }: { filled: boolean; children: ReactNode }) {
   // Native disclosure owns subsequent toggles. Typing or clearing must never close the editor.
   const [initialOpen] = useState(filled);
+  // Keep this hot path's native markup inline, as for the label field below. Wrapping
+  // both the disclosure and its field in components adds two renders per description key.
   return (
-    <ReadoutDisclosure
-      title={filled ? t("inspector.description") : t("inspector.addDescription")}
-      testId="inspector-node-description"
-      open={initialOpen}
-    >
-      {children}
-    </ReadoutDisclosure>
+    <details className="readout-disclosure" data-testid="inspector-node-description" open={initialOpen}>
+      <summary className="readout-row" data-testid="inspector-node-description-toggle">
+        <span>{filled ? t("inspector.description") : t("inspector.addDescription")}</span>
+        <Icon name="chevron-right" size={12} />
+      </summary>
+      <div className="readout-disclosure-body" data-testid="inspector-node-description-body">
+        {children}
+      </div>
+    </details>
   );
-}
+});
 
 export function NodeIdentity({
   node,
@@ -122,7 +127,8 @@ export function NodeIdentity({
   );
   const descriptionField = useMemo(
     () => (
-      <Field label={t("inspector.description")} group>
+      <div className="insp-field">
+        <span className="insp-label">{t("inspector.description")}</span>
         <MarkdownEditor
           value={node.data.description ?? ""}
           placeholder={t("inspector.writeSomething")}
@@ -140,7 +146,7 @@ export function NodeIdentity({
           ariaLabel={t("inspector.description")}
           testId="inspector-field-node-description"
         />
-      </Field>
+      </div>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
     [node.data.description, node.id, editor, onDescriptionFocus, onDescriptionBlur, locale],
