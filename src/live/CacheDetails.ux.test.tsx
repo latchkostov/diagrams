@@ -7,6 +7,89 @@ import { cacheLatency } from "../planning/cacheWords";
 import { cacheRuntime } from "../sim/cache/cacheRuntime";
 import blackFriday from "../examples/black-friday-commerce.json";
 import type { DiagramFile } from "../model/types";
+import { cacheDestinations } from "./cacheDestinations";
+import { cacheOriginIndex } from "./cacheOrigins";
+import type { CacheTable } from "../model/caching";
+
+function splitDestinations() {
+  const diagram = cacheFixture();
+  diagram.nodes[2].label = "Static service";
+  diagram.nodes.push({ ...diagram.nodes[2], id: "api", label: "API" });
+  diagram.edges.push({ id: "api-fetch", from: "cache", to: "api", kind: "sync" });
+  return diagram;
+}
+
+it("a storing /assets/* rule followed by a no-store Default lists only the API for Default", () => {
+  const diagram = splitDestinations();
+  diagram.planning!.requestRoutes = [
+    { id: "asset", address: { method: "GET", path: "/assets/a" } },
+    { id: "orders", address: { method: "GET", path: "/api/orders" } },
+  ];
+  const table: CacheTable = {
+    rules: [{ id: "assets", match: { path: { kind: "prefix", value: "/assets/" } }, policy: { ttlMs: 1000 } }],
+    default: { noStore: true },
+  };
+  diagram.nodes[1].props!.cache = table;
+  diagram.nodes[1].props!.routeTable = {
+    rules: [{ id: "assets", match: table.rules[0].match, targets: [{ edgeId: "fetch", weight: 1 }] }],
+    default: { targets: [{ edgeId: "api-fetch", weight: 1 }] },
+  };
+  const destinations = cacheDestinations(
+    diagram,
+    "cache",
+    cacheOriginIndex(diagram),
+    table,
+    diagram.nodes[1].props!.routeTable,
+  );
+  expect(destinations.rules.get("assets")).toEqual(["Static service"]);
+  expect(destinations.rules.get("")).toEqual(["API"]);
+  const engine = createEngine({ seed: 7 });
+  engine.load(diagram);
+  const s = engine.snapshot().nodes.cache;
+  s.cache!.rules[""] = { requests: 30, hits: 0, misses: 0, notCached: 30, fetches: 30, fills: 0 };
+  const html = plain(renderToStaticMarkup(<CacheDetails diagram={diagram} id="cache" s={s} />));
+  expect(paragraph(html, "cache-live-rule-")).toBe(
+    "Everything else: Not cached · 30 requests since restart. Configured destinations: API.",
+  );
+});
+
+it.each([false, true])("resolves message-type predicates in first-match order (addressed: %s)", (addressed) => {
+  const diagram = splitDestinations();
+  if (addressed) diagram.planning!.requestRoutes = [{ id: "get", address: { method: "GET", path: "/" } }];
+  diagram.edges[1].props = { filter: ["Asset*"] };
+  diagram.edges[2].props = { filter: ["Api*"] };
+  const table: CacheTable = {
+    rules: [
+      { id: "exact", match: { types: ["Asset"] }, policy: { ttlMs: 1000 } },
+      { id: "assets", match: { types: ["Asset*"] }, policy: { ttlMs: 1000 } },
+      { id: "shadowed", match: { types: ["Asset*"] }, policy: { noStore: true } },
+    ],
+    default: { noStore: true },
+  };
+  const destinations = cacheDestinations(diagram, "cache", cacheOriginIndex(diagram), table);
+  expect(destinations.rules.get("exact")).toEqual(["Static service"]);
+  expect(destinations.rules.get("assets")).toEqual(["Static service"]);
+  expect(destinations.rules.get("shadowed")).toEqual([]);
+  expect(destinations.rules.get("")).toEqual(["API"]);
+});
+
+it("uses neutral wording when a rule has no resolved destination", () => {
+  const diagram = splitDestinations();
+  diagram.edges[1].props = { filter: ["Asset*"] };
+  diagram.edges[2].props = { filter: ["Asset*"] };
+  diagram.nodes[1].props!.cache = {
+    rules: [{ id: "assets", match: { types: ["Asset*"] }, policy: { ttlMs: 1000 } }],
+    default: { noStore: true },
+  };
+  const engine = createEngine({ seed: 7 });
+  engine.load(diagram);
+  const s = engine.snapshot().nodes.cache;
+  s.cache!.rules[""] = { requests: 30, hits: 0, misses: 0, notCached: 30, fetches: 30, fills: 0 };
+  const html = plain(renderToStaticMarkup(<CacheDetails diagram={diagram} id="cache" s={s} />));
+  expect(paragraph(html, "cache-live-rule-")).toBe(
+    "Everything else: Not cached · 30 requests since restart. Configured destinations: the origin.",
+  );
+});
 
 const plain = (html: string) => html.replace(/[\u2068\u2069]/g, "");
 const paragraph = (html: string, id: string) =>
