@@ -1,4 +1,6 @@
 import { cacheFixture } from "../lab/cacheFixture";
+import "../sim/cache/cacheRuntime";
+import { createSimulationRun } from "../sim/simulation";
 import { faultTimelineProblem } from "../model/faultRuntime";
 import { faultStepDiagrams } from "./faults";
 import { expect, it } from "vitest";
@@ -127,7 +129,7 @@ it("checks every editable property using its shared upper bound", () => {
 
 it("validates purge rules in stable playback order and shares the effective configuration with the step editor", () => {
   const d = cacheFixture();
-  const cache = { rules: [{ id: "new", match: {}, policy: { ttlMs: 1000, keys: 1 } }] };
+  const cache = { rules: [{ id: "new", match: { types: ["Page"] }, policy: { ttlMs: 1000, keys: 1 } }] };
   const draft: Simulation = {
     id: "timeline-rules",
     title: "Timeline rules",
@@ -140,6 +142,11 @@ it("validates purge rules in stable playback order and shares the effective conf
   expect(faultTimelineProblem(d, draft)).toBeUndefined();
   expect(simulationFieldErrors(draft, d)).toEqual([]);
   expect(faultStepDiagrams(d, draft).get(0)!.nodes[1].props!.cache).toEqual(cache);
+  const run = createSimulationRun(d, draft, { maxParticles: 0 });
+  run.step(2100);
+  run.engine.inject("source", 1, { type: "Page" });
+  run.engine.step(500);
+  expect(run.engine.snapshot().nodes.cache.cache!.rules.new.misses).toBe(1);
   const repeated: Simulation = {
     ...draft,
     timeline: [

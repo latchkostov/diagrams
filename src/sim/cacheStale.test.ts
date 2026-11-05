@@ -337,6 +337,7 @@ it("each purge restarts aggregate and per-type latency windows", () => {
 
 it("statistical refresh dispatch uses one weighted batch per sampled arrival", () => {
   const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 1000000;
   d.nodes[1].props!.cache = {
     rules: [],
     default: { ttlMs: 100, keys: 1000000, popularity: "even", staleWhileRevalidateMs: 60000 },
