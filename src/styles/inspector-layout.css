@@ -416,6 +416,9 @@
   .inspector .insp-field > .insp-note {
     margin: 0;
   }
+  .inspector .insp-field:has(.cache-aside-when) > :not(.insp-label) {
+    grid-column: 1 / -1;
+  }
   /* Pairs become ledger rows. */
   .inspector .insp-paired,
   .inspector .insp-row2 {

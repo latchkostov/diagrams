@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "53a2313d5b397cb67b7e7f6ed67ba64baa7a210c31fea5d2bcc0863cb3e8edb5",
-    "bytes": 335253,
+    "sha256": "abce6540454051dc59a2c468ab40301a692a4d87c6a356e2d72a70817b4db8fa",
+    "bytes": 335443,
     "inlined": {
       "airflow": "airflow bb347b1c98e3b7d4",
       "argocd": "argo f05272f641716862",
@@ -461,7 +461,10 @@
             "sublabel": "ElastiCache",
             "x": 2340,
             "y": 500,
-            "props": { "latencyMs": 0 },
+            "props": {
+              "latencyMs": 0,
+              "cache": { "rules": [], "default": { "ttlMs": 600000, "keys": 50000, "popularity": "typical" } }
+            },
             "group": "stores"
           },
           {
@@ -1011,7 +1014,7 @@
             "to": "catalog-db",
             "label": "Cache miss",
             "kind": "sync",
-            "props": { "share": 0.1, "caller": { "wait": "non-blocking", "replyMs": 0 } }
+            "props": { "caller": { "onMiss": "catalog-bff--product-cache", "wait": "non-blocking", "replyMs": 0 } }
           },
           {
             "id": "catalog-bff--reco",

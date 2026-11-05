@@ -81,7 +81,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "8e366844c931377995579635f5118512a6129c3e939bc48e95817297e3766095", "bytes": 42137 },
+    "decoded": { "sha256": "0218d6d219e31a80a4410c79430cc9b4e307b326477514b338dcc2132892ef03", "bytes": 42247 },
     "sameAsFile": true,
     "warned": true
   },
@@ -513,7 +513,10 @@
             "label": "Product cache",
             "sublabel": "ElastiCache",
             "group": "stores",
-            "props": { "latencyMs": 0 },
+            "props": {
+              "latencyMs": 0,
+              "cache": { "rules": [], "default": { "ttlMs": 600000, "keys": 50000, "popularity": "typical" } }
+            },
             "x": 2340,
             "y": 500
           },
@@ -1064,7 +1067,7 @@
             "to": "catalog-db",
             "kind": "sync",
             "label": "Cache miss",
-            "props": { "share": 0.1, "caller": { "wait": "non-blocking", "replyMs": 0 } }
+            "props": { "caller": { "onMiss": "catalog-bff--product-cache", "wait": "non-blocking", "replyMs": 0 } }
           },
           {
             "id": "catalog-bff--reco",

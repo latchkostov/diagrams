@@ -1,0 +1,133 @@
+{
+  "run": {
+    "time": 10000,
+    "totalMs": 10000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "reads" },
+      { "atMs": 1000, "kind": "fault", "label": "Purge: Product cache" },
+      { "atMs": 8000, "kind": "traffic", "label": "reads ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "readers": { "replicas": [1, 1, 0] },
+        "catalog": { "replicas": [1, 1, 0] },
+        "cache": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": { "": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 } }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "database": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "readers": { "processed": 1600, "throughput": 28.73721495551997, "replicas": [1, 1, 0] },
+        "catalog": { "processed": 1600, "throughput": 28.73721495551997, "replicas": [1, 1, 0] },
+        "cache": {
+          "processed": 1600,
+          "throughput": 28.33690936225963,
+          "cache": {
+            "requests": 1600,
+            "hits": 1440,
+            "misses": 160,
+            "notCached": 0,
+            "fetches": 160,
+            "fills": 8,
+            "hitRatio": 0.9,
+            "originOffload": 0.9,
+            "rules": {
+              "": { "requests": 1600, "hits": 1440, "misses": 160, "notCached": 0, "fetches": 160, "fills": 8 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "database": { "processed": 160, "throughput": 3.842963281684809, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10000,
+    "inSystem": 0,
+    "real": {
+      "readers": { "processed": 1600, "throughput": 28.73721495551997, "replicas": [1, 1, 0] },
+      "catalog": { "processed": 1600, "throughput": 28.73721495551997, "replicas": [1, 1, 0] },
+      "cache": {
+        "processed": 1600,
+        "throughput": 28.33690936225963,
+        "cache": {
+          "requests": 1600,
+          "hits": 1440,
+          "misses": 160,
+          "notCached": 0,
+          "fetches": 160,
+          "fills": 8,
+          "hitRatio": 0.9,
+          "originOffload": 0.9,
+          "rules": {
+            "": { "requests": 1600, "hits": 1440, "misses": 160, "notCached": 0, "fetches": 160, "fills": 8 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "database": { "processed": 160, "throughput": 3.842963281684809, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 1600, "lookup": 1600, "fetch": 160 }
+  },
+  "events": {
+    "total": 9921,
+    "byKind": { "inject": 1600, "deliver": 3360, "process": 4960, "status": 1 },
+    "byNode": {
+      "readers": { "inject": 1600, "process": 1600 },
+      "catalog": { "deliver": 1600, "process": 1600 },
+      "cache": { "deliver": 1600, "process": 1600, "status": 1 },
+      "database": { "deliver": 160, "process": 160 }
+    },
+    "perSecond": [
+      "125759de66fc",
+      "9c67755f4b47",
+      "347bfb81ab51",
+      "4ccaae2196e5",
+      "27dfd57ab045",
+      "fb94d2a38a2b",
+      "555e723b3c76",
+      "b635f8798734",
+      "d95e3206e62e",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1600, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1600, "min": 40, "mean": 55.5, "p50": 40, "p90": 150, "max": 150 },
+    "waitMs": {
+      "catalog": { "count": 1600, "min": 0, "mean": 4.5, "p50": 0, "p90": 20, "max": 50 },
+      "cache": { "count": 1600, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "database": { "count": 160, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "catalog": { "count": 1600, "min": 30, "mean": 41, "p50": 30, "p90": 140, "max": 140 },
+      "cache": { "count": 1600, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "database": { "count": 160, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 }
+    }
+  }
+}

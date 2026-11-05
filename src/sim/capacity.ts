@@ -332,6 +332,7 @@ export function analyzeCapacity(
     }
   }
   let cacheDemand: NonNullable<CapacityAnalysis["cacheDemand"]> = {};
+  const hitMemo = new WeakMap<import("../model/caching").CachePolicy, { rate: number; fetchMs: number; hit: number }>();
   let asideMissShares: Record<string, number> = {};
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
   const compiled = options.topology ?? compileTopology(diagram);
@@ -806,7 +807,12 @@ export function analyzeCapacity(
         for (const [ruleId, policy] of policies) {
           const item = byRule[ruleId];
           item.fetchMs /= item.rate;
-          item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
+          const prior = hitMemo.get(policy);
+          if (prior?.rate === item.rate && prior.fetchMs === item.fetchMs) item.hitRatio = prior.hit;
+          else {
+            item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
+            hitMemo.set(policy, { rate: item.rate, fetchMs: item.fetchMs, hit: item.hitRatio });
+          }
         }
         cacheDemand[id] = byRule;
       }

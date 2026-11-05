@@ -23,7 +23,11 @@ const examples = readdirSync("src/examples", { withFileTypes: true })
     diagram: JSON.parse(readFileSync(join("src/examples", name), "utf8")) as DiagramFile,
   }));
 
-const runs = examples.flatMap(({ slug, diagram }) =>
+const cacheAside = {
+  slug: "corpus-w3-cache-aside",
+  diagram: JSON.parse(readFileSync("tests/parity/corpus/w3-cache-aside.diagram.json", "utf8")) as DiagramFile,
+};
+const runs = [...examples, cacheAside].flatMap(({ slug, diagram }) =>
   (diagram.simulations ?? []).map((simulation) => ({ name: `${slug} / ${simulation.id}`, diagram, simulation })),
 );
 

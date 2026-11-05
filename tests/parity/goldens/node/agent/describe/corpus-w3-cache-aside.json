@@ -1,0 +1,199 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Look up, then fetch\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 2 simulations\nnodes:\n  \"readers\" \"client.browser\" (\"Web Browser\") \"Readers\" props={\"ratePerSec\":200} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"input\",\"peer\":\"catalog\"}] explanation=undefined\n  \"catalog\" \"generic.service\" (\"Service\") \"Catalog\" props={\"latencyMs\":10,\"concurrency\":20,\"failureRate\":0,\"jitter\":0} arrivingTypes=[\"Readers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"lookup\",\"peer\":\"cache\"},{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"database\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":22.66375545851528,\"threadHoldMs\":32.66375545851528,\"memoryResidenceMs\":32.66375545851528,\"slots\":20,\"ceiling\":612.2994652406418},\"id\":\"catalog\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":612.2994652406418,\"offered\":200,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":20,\"seconds\":0.032663755458515284,\"utilization\":0.3266375545851528,\"growth\":0,\"contributors\":[{\"edge\":\"input\",\"node\":\"readers\",\"label\":\"Readers\",\"rate\":200}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":20,\"holdMs\":32.66375545851528,\"ceilingPerSec\":612.2994652406418} queue={\"limit\":null,\"order\":\"fifo\",\"whenFull\":\"reject-new\",\"maxWaitMs\":null,\"waitCeilingMs\":null}\n  \"cache\" \"generic.cache\" (\"Cache\") \"Product cache\" props={\"latencyMs\":10,\"jitter\":0,\"cache\":{\"rules\":[],\"default\":{\"ttlMs\":1000,\"keys\":1}}} arrivingTypes=[\"Readers\"] capabilities=[] explanation=undefined cache={\"rules\":[],\"default\":{\"ttlMs\":1000,\"keys\":1},\"origin\":[\"fetch\"]}\n  \"database\" \"generic.database\" (\"Database\") \"Catalog database\" props={\"latencyMs\":100,\"jitter\":0} arrivingTypes=[\"Readers\"] capabilities=[] explanation=undefined\nconnections:\n  \"input\" \"readers\" -> \"catalog\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\n  \"lookup\" \"catalog\" -> \"cache\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\n  \"fetch\" \"catalog\" -> \"database\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nsimulation \"misses\" \"Look up before fetching\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":8000} from \"readers\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"purge\",\"node\":\"cache\",\"mode\":\"hard\"}}}]; expectations=[]\nsimulation \"lease\" \"One reader fetches for the others\": {\"kind\":\"constant\",\"ratePerSec\":2000,\"durationMs\":8000} from \"readers\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"purge\",\"node\":\"cache\",\"mode\":\"hard\"}}}]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Look up, then fetch",
+      "direction": "LR",
+      "planning": { "revision": "p3-w3" },
+      "nodes": [
+        {
+          "id": "readers",
+          "stencil": "client.browser",
+          "label": "Readers",
+          "x": 0,
+          "y": 100,
+          "props": { "ratePerSec": 200 },
+          "arrivingTypes": [],
+          "capabilities": [{ "kind": "calls", "edge": "input", "peer": "catalog" }]
+        },
+        {
+          "id": "catalog",
+          "stencil": "generic.service",
+          "label": "Catalog",
+          "x": 280,
+          "y": 100,
+          "props": { "latencyMs": 10, "concurrency": 20, "failureRate": 0, "jitter": 0 },
+          "arrivingTypes": ["Readers"],
+          "capabilities": [
+            { "kind": "calls", "edge": "lookup", "peer": "cache" },
+            { "kind": "calls", "edge": "fetch", "peer": "database" }
+          ],
+          "explanation": {
+            "waits": { "workMs": 10, "callMs": 22.66375545851528, "threadHoldMs": 32.66375545851528, "memoryResidenceMs": 32.66375545851528, "slots": 20, "ceiling": 612.2994652406418 },
+            "id": "catalog",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 612.2994652406418,
+            "offered": 200,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 20,
+            "seconds": 0.032663755458515284,
+            "utilization": 0.3266375545851528,
+            "growth": 0,
+            "contributors": [{ "edge": "input", "node": "readers", "label": "Readers", "rate": 200 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          },
+          "requestsWait": { "threads": 20, "holdMs": 32.66375545851528, "ceilingPerSec": 612.2994652406418 },
+          "queue": { "limit": null, "order": "fifo", "whenFull": "reject-new", "maxWaitMs": null, "waitCeilingMs": null }
+        },
+        {
+          "id": "cache",
+          "stencil": "generic.cache",
+          "label": "Product cache",
+          "x": 560,
+          "y": 0,
+          "props": { "latencyMs": 10, "jitter": 0, "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 1 } } },
+          "arrivingTypes": ["Readers"],
+          "capabilities": [],
+          "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 1 }, "origin": ["fetch"] }
+        },
+        {
+          "id": "database",
+          "stencil": "generic.database",
+          "label": "Catalog database",
+          "x": 560,
+          "y": 220,
+          "props": { "latencyMs": 100, "jitter": 0 },
+          "arrivingTypes": ["Readers"],
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "input",
+          "from": "readers",
+          "to": "catalog",
+          "kind": "sync",
+          "props": { "travelMs": 10 },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        },
+        {
+          "id": "lookup",
+          "from": "catalog",
+          "to": "cache",
+          "kind": "sync",
+          "props": { "travelMs": 10, "caller": { "wait": "blocking" } },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        },
+        {
+          "id": "fetch",
+          "from": "catalog",
+          "to": "database",
+          "kind": "sync",
+          "props": { "travelMs": 10, "caller": { "wait": "blocking", "onMiss": "lookup" } },
+          "carriedTypes": ["Readers"],
+          "resilience": {
+            "attempts": 1,
+            "backoff": { "baseMs": 0, "growth": 1, "capMs": 0, "jitter": 0 },
+            "retryOn": [],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 1, "worst": 1 }
+          }
+        }
+      ],
+      "messageTypesComplete": true,
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "misses",
+          "title": "Look up before fetching",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 10000,
+          "traffic": [
+            {
+              "id": "reads",
+              "node": "readers",
+              "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "fault", "fault": { "kind": "purge", "node": "cache", "mode": "hard" } }
+            }
+          ]
+        },
+        {
+          "id": "lease",
+          "title": "One reader fetches for the others",
+          "seed": 7,
+          "scale": 10,
+          "durationMs": 10000,
+          "setup": {
+            "props": {
+              "cache": { "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 1, "coalesce": true } } }
+            }
+          },
+          "traffic": [
+            {
+              "id": "reads",
+              "node": "readers",
+              "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 8000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "fault", "fault": { "kind": "purge", "node": "cache", "mode": "hard" } }
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Look up, then fetch\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\nnodes:\n  \"readers\" \"client.browser\" (\"Web Browser\") \"Readers\" props={\"ratePerSec\":200} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"input\",\"peer\":\"catalog\"}] explanation=undefined\n  \"catalog\" \"generic.service\" (\"Service\") \"Catalog\" props={\"latencyMs\":10,\"concurrency\":20,\"failureRate\":0,\"jitter\":0} arrivingTypes=[\"Readers\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"lookup\",\"peer\":\"cache\"},{\"kind\":\"calls\",\"edge\":\"fetch\",\"peer\":\"database\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":22.66375545851528,\"threadHoldMs\":32.66375545851528,\"memoryResidenceMs\":32.66375545851528,\"slots\":20,\"ceiling\":612.2994652406418},\"id\":\"catalog\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":612.2994652406418,\"offered\":200,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":20,\"seconds\":0.032663755458515284,\"utilization\":0.3266375545851528,\"growth\":0,\"contributors\":[{\"edge\":\"input\",\"node\":\"readers\",\"label\":\"Readers\",\"rate\":200}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":20,\"holdMs\":32.66375545851528,\"ceilingPerSec\":612.2994652406418} queue={\"limit\":null,\"order\":\"fifo\",\"whenFull\":\"reject-new\",\"maxWaitMs\":null,\"waitCeilingMs\":null}\nconnections:\n  \"input\" \"readers\" -> \"catalog\" sync carriedTypes=[\"Readers\"] resilience={\"attempts\":1,\"backoff\":{\"baseMs\":0,\"growth\":1,\"capMs\":0,\"jitter\":0},\"retryOn\":[],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":1,\"worst\":1}}\nsimulation \"misses\" \"Look up before fetching\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":8000} from \"readers\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"purge\",\"node\":\"cache\",\"mode\":\"hard\"}}}]; expectations=[]\nsimulation \"lease\" \"One reader fetches for the others\": {\"kind\":\"constant\",\"ratePerSec\":2000,\"durationMs\":8000} from \"readers\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"purge\",\"node\":\"cache\",\"mode\":\"hard\"}}}]; expectations=[]"
+  }
+}
