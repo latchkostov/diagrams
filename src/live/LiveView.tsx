@@ -53,6 +53,7 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
+  announce?: (text: string) => void;
   caption?: HTMLElement | null;
   transport?: HTMLElement | null;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */

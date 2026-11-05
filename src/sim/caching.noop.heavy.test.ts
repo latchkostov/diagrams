@@ -28,6 +28,10 @@ for (const { name, diagram } of [
   for (const simulation of old.simulations ?? []) {
     for (const props of Object.values(simulation.setup?.props ?? {})) delete props.cache;
     for (const step of simulation.timeline ?? []) if (step.action.do === "props") delete step.action.props.cache;
+    // A purge has no valid target after removing its cache. Retain every other event and the authored duration.
+    simulation.timeline = simulation.timeline?.filter(
+      (step) => step.action.do !== "fault" || step.action.fault.kind !== "purge",
+    );
   }
   // Keep the W1/W2 corpus as authored. Older public examples also exercise
   // their W2 interpretation; their original revisions remain pinned by parity.

@@ -1,3 +1,6 @@
+import "./cachePurgeAnnouncement";
+import "../sim/cache/cacheRuntime";
+import { cacheFixture } from "../lab/cacheFixture";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import type { DiagramFile } from "../model/types";
@@ -213,3 +216,65 @@ it.each(["menu", "palette"] as const)(
     }
   },
 );
+
+it("announces accepted hard, soft, per-rule and deploy purges, including repeated instant actions", async () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = {
+    rules: [{ id: "pages", label: "Pages", match: { types: ["Page"] }, policy: { ttlMs: 1000, keys: 1 } }],
+    default: { ttlMs: 1000, keys: 1 },
+  };
+  const controller = new LiveController(d);
+  const announce = vi.fn();
+  const host: LiveActionsHost = {
+    controller,
+    announce,
+    slowMotionActive: () => false,
+    openInject: vi.fn(),
+    startStorm: vi.fn(),
+    showEvents: vi.fn(),
+    trace: vi.fn(),
+    tracing: () => null,
+    traceNext: vi.fn(),
+    traceSlowest: vi.fn(),
+    traceDeadLettered: vi.fn(),
+    slowMotion: vi.fn(),
+    slowMotionTrace: vi.fn(),
+    canReplayTrace: () => false,
+    endTrace: vi.fn(),
+    tracingMessage: () => false,
+    saveTweaks: vi.fn(),
+    messageType: () => "Page",
+    openRecord: vi.fn(),
+  };
+  const registry = new ActionRegistry();
+  registry.register(liveActions(host));
+  const context: ActionContext = {
+    target: "node",
+    nodeId: "cache",
+    mode: "live",
+    editor: {} as EditorApi,
+    selection: { nodeIds: ["cache"], edgeIds: [], groupIds: [] },
+  };
+  try {
+    for (const [id, detail] of [
+      ["sim.purge:hard:all", "Empty the cache: All rules"],
+      ["sim.purge:hard:all", "Empty the cache: All rules"],
+      ["sim.purge:soft:rule:pages", "Soft purge: Pages"],
+      ["sim.purge:soft:all", "Soft purge: All rules"],
+      ["sim.deploy-purge", "Deploy: All rules"],
+    ]) {
+      const before = announce.mock.calls.length;
+      items(registry.build(context)).find((r) => r.id === id)!.run!();
+      await vi.waitFor(() => expect(announce).toHaveBeenCalledTimes(before + 1));
+      const text = String(announce.mock.lastCall![0]).replace(/[\u2068\u2069]/g, "");
+      expect(text).toContain("Edge cache cache purged");
+      expect(text).toContain(detail);
+    }
+    vi.spyOn(controller, "setFault").mockReturnValue(false);
+    const before = announce.mock.calls.length;
+    items(registry.build(context)).find((r) => r.id === "sim.purge:hard:all")!.run!();
+    expect(announce).toHaveBeenCalledTimes(before);
+  } finally {
+    controller.dispose();
+  }
+});

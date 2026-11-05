@@ -8,7 +8,7 @@
     "expectations": [
       { "id": "backlog", "label": "Product API backlog < 50, always", "status": "pass", "value": 0 },
       { "id": "latency", "label": "Shoppers p95 < 300 ms at the end", "status": "pass", "value": 258.0376694910721 },
-      { "id": "fetches", "label": "Launch page fetches in flight < 5, always", "status": "pass", "value": 0 }
+      { "id": "fetches", "label": "Most fetches in flight for one item < 5, always", "status": "pass", "value": 0 }
     ],
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "shoppers" },

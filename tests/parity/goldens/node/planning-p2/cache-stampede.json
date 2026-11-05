@@ -57,8 +57,26 @@
     "origin": { "replicas": 1, "concurrency": 4, "latencyMs": 60, "jitter": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Product API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "db": { "latencyMs": 20, "jitter": 0, "ratePerSec": 2, "replicas": 1, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Catalog DB", "healthChecks": false }
   },
-  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "planning.requestRoutes", "shoppers.props.trafficMix", "cdn.props.cache", "origin.props.preset", "origin.props.presetRevision", "one-fetch.setup.props.cdn.cache", "requests.props.networkDelayMs", "fetch.props.caller", "fetch.props.networkDelayMs", "read.props.caller"] },
-  "autoScale": { "freePlay": 10, "ttl-only": 10, "one-fetch": 10 },
+  "legacyExport": {
+    "format": "diagrams/v1",
+    "losses": [
+      "planning.revision",
+      "planning.requestRoutes",
+      "shoppers.props.trafficMix",
+      "cdn.props.cache",
+      "origin.props.preset",
+      "origin.props.presetRevision",
+      "one-fetch.setup.props.cdn.cache",
+      "serve-stale.setup.props.cdn.cache",
+      "hard-purge.setup.props.cdn.cache",
+      "soft-purge.setup.props.cdn.cache",
+      "requests.props.networkDelayMs",
+      "fetch.props.caller",
+      "fetch.props.networkDelayMs",
+      "read.props.caller"
+    ]
+  },
+  "autoScale": { "freePlay": 10, "ttl-only": 10, "one-fetch": 10, "serve-stale": 10, "hard-purge": 10, "soft-purge": 10 },
   "brokerAssignments": { "brokers": {}, "consumers": {} },
   "edit": {
     "configured": true,
@@ -172,7 +190,10 @@
   },
   "simulations": {
     "ttl-only": { "configured": "(same as edit)", "simulation": "ttl-only", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
-    "one-fetch": { "configured": "(same as edit)", "simulation": "one-fetch", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+    "one-fetch": { "configured": "(same as edit)", "simulation": "one-fetch", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "serve-stale": { "configured": "(same as edit)", "simulation": "serve-stale", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "hard-purge": { "configured": "(same as edit)", "simulation": "free-play", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "soft-purge": { "configured": "(same as edit)", "simulation": "free-play", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
   },
   "capacity": {
     "freePlay": {
@@ -284,6 +305,60 @@
       }
     },
     "one-fetch": {
+      "tone": "over",
+      "top": "origin",
+      "headline": "Product API is over capacity",
+      "detail": "600% · 400/s of 67/s",
+      "fix": {
+        "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+        "label": "Product API 1 → 11 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["over", "600% · 400/s of 67/s"],
+        "db": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "serve-stale": {
+      "tone": "over",
+      "top": "origin",
+      "headline": "Product API is over capacity",
+      "detail": "600% · 400/s of 67/s",
+      "fix": {
+        "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+        "label": "Product API 1 → 11 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["over", "600% · 400/s of 67/s"],
+        "db": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "hard-purge": {
+      "tone": "over",
+      "top": "origin",
+      "headline": "Product API is over capacity",
+      "detail": "600% · 400/s of 67/s",
+      "fix": {
+        "changes": [{ "nodeId": "origin", "key": "replicas", "from": 1, "to": 11, "label": "Product API" }],
+        "label": "Product API 1 → 11 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shoppers": ["idle", "400/s · no limit", { "modeled": false }],
+        "cdn": ["idle", "400/s · no limit", { "modeled": false }],
+        "origin": ["over", "600% · 400/s of 67/s"],
+        "db": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "soft-purge": {
       "tone": "over",
       "top": "origin",
       "headline": "Product API is over capacity",

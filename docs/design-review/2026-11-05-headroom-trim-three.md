@@ -13,3 +13,7 @@ annotation links while editing keys remain inert.
 
 The full parity suite must retain every golden. Review the Live, low-zoom, narration,
 presentation, Inspector, workbench, skill and Interactive HTML suites in Linux before release.
+
+Post-#435 production measurements free 6,687 bytes of Live gzip and 6,947 bytes of the skill ZIP.
+Canvas first view changes by six bytes in generated chunk references, with no additional drawing
+modules in its static closure. No budget, reserve, cap or visual behavior changes.

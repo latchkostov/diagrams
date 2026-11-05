@@ -2917,6 +2917,255 @@
           "when": "end"
         }
       ]
+    },
+    {
+      "id": "edge-deploy",
+      "title": "A deploy empties the edge",
+      "description": "At a steady peak, a hard deploy discards the warm cache. Compare a later soft deploy of Product pages: stale copies answer while they refresh. Checkout and fulfilment keep their fixed initial fleets; this read-only story sends neither orders nor checkout traffic.",
+      "seed": 15,
+      "scale": 50,
+      "durationMs": 35000,
+      "setup": {
+        "props": {
+          "web": {
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [
+                {
+                  "routeId": "doorbuster",
+                  "share": 0.9
+                },
+                {
+                  "routeId": "browse",
+                  "share": 0.08
+                },
+                {
+                  "routeId": "search",
+                  "share": 0.02
+                }
+              ]
+            }
+          },
+          "app": {
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [
+                {
+                  "routeId": "doorbuster",
+                  "share": 0.9
+                },
+                {
+                  "routeId": "browse",
+                  "share": 0.08
+                },
+                {
+                  "routeId": "search",
+                  "share": 0.02
+                }
+              ]
+            }
+          },
+          "checkout-api": {
+            "autoscaling": {
+              "mode": "off"
+            }
+          },
+          "fulfilment": {
+            "autoscaling": {
+              "mode": "off"
+            }
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "web-traffic",
+          "node": "web",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 900,
+            "durationMs": 35000
+          }
+        },
+        {
+          "id": "app-traffic",
+          "node": "app",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 550,
+            "durationMs": 35000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 1000,
+          "action": {
+            "do": "note",
+            "text": "The edge serves a steady peak of 1,450 cacheable requests/s: 90% view the doorbuster, 8% other products and 2% search. A deploy will empty the warm cache: watch the origin queue and shopper p95.",
+            "focus": ["cdn", "gateway", "catalog-bff"]
+          }
+        },
+        {
+          "atMs": 6000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "purge",
+              "node": "cdn",
+              "reason": "deploy"
+            }
+          }
+        },
+        {
+          "atMs": 6100,
+          "action": {
+            "do": "note",
+            "text": "The hard deploy removed the cached copies. The origin must refill them while shoppers wait; the cold tail takes time to warm.",
+            "focus": ["cdn", "gateway", "catalog-bff"]
+          }
+        },
+        {
+          "atMs": 20000,
+          "action": {
+            "do": "props",
+            "node": "cdn",
+            "props": {
+              "cache": {
+                "rules": [
+                  {
+                    "id": "doorbuster",
+                    "policy": {
+                      "ttlMs": 10000,
+                      "keys": 1,
+                      "staleWhileRevalidateMs": 60000
+                    },
+                    "label": "Doorbuster",
+                    "match": {
+                      "path": {
+                        "kind": "exact",
+                        "value": "/products/doorbuster-tv"
+                      },
+                      "methods": ["GET"]
+                    }
+                  },
+                  {
+                    "id": "products",
+                    "policy": {
+                      "keys": 50000,
+                      "ttlMs": 300000,
+                      "popularity": "typical",
+                      "staleWhileRevalidateMs": 60000
+                    },
+                    "label": "Product pages",
+                    "match": {
+                      "path": {
+                        "kind": "template",
+                        "value": "/products/{id}"
+                      },
+                      "methods": ["GET"]
+                    }
+                  },
+                  {
+                    "id": "search",
+                    "policy": {
+                      "keys": 200000,
+                      "ttlMs": 60000,
+                      "popularity": "steep",
+                      "staleWhileRevalidateMs": 60000
+                    },
+                    "label": "Search",
+                    "match": {
+                      "path": {
+                        "kind": "prefix",
+                        "value": "/search/"
+                      },
+                      "methods": ["GET"]
+                    }
+                  },
+                  {
+                    "id": "orders",
+                    "policy": {
+                      "noStore": true
+                    },
+                    "label": "Order status",
+                    "match": {
+                      "path": {
+                        "kind": "template",
+                        "value": "/orders/{id}"
+                      },
+                      "methods": ["GET"]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "atMs": 20000,
+          "action": {
+            "do": "note",
+            "text": "Every storing rule may now serve stale for one minute. The next deploy soft-purges those rules instead of removing their copies.",
+            "focus": ["cdn", "gateway", "catalog-bff"]
+          }
+        },
+        {
+          "atMs": 22000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "purge",
+              "node": "cdn",
+              "mode": "soft",
+              "reason": "deploy"
+            }
+          }
+        },
+        {
+          "atMs": 22100,
+          "action": {
+            "do": "note",
+            "text": "The soft deploy keeps product copies. Shoppers get stale replies while background fetches refresh them; no new cold surge is needed.",
+            "focus": ["cdn", "gateway", "catalog-bff"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "edge-offload",
+          "label": "Edge offload ≥ 70% at the end",
+          "metric": {
+            "node": "cdn",
+            "field": "originOffload"
+          },
+          "op": ">=",
+          "value": 70,
+          "when": "end"
+        },
+        {
+          "id": "shopper-p95",
+          "label": "Shoppers p95 < 400 ms at the end",
+          "metric": {
+            "node": "web",
+            "field": "p95"
+          },
+          "op": "<",
+          "value": 400,
+          "when": "end"
+        },
+        {
+          "id": "catalog-drops",
+          "label": "Catalog BFF drops nothing, always",
+          "metric": {
+            "node": "catalog-bff",
+            "field": "dropped"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
     }
   ]
 }

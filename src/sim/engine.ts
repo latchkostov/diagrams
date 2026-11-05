@@ -2116,8 +2116,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** A cache fetch owns no shopper's deadline. Each parked request answers its own caller, even if late. */
   function finishCacheFlight(node: Node, work: Work, cause: OutcomeKind): void {
     const flight = work.cacheFlight!;
-    work.cacheOwner!.flights!.delete(flight.key);
-    cacheRuntime!.invalidateSummary(work.cacheOwner!);
+    cacheRuntime!.forgetFlight(work);
     for (const waiter of flight.waiters) {
       waiter.failureCode = work.failureCode;
       waiter.timeoutOrigin = work.timeoutOrigin;
@@ -2171,13 +2170,27 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       settleWork(node, work, "error");
       return;
     }
-    if (work.cache?.outcome === "hit") {
+    if (work.cache?.revalidate) {
+      const lookup = work.cache;
+      const cache = work.cacheOwner!;
+      if (cacheRuntime!.refreshReady(cache, lookup, time, 100_000 - calls.size)) {
+        spend();
+        const fetch = cacheRuntime!.flight(work, time, nextMessage++, true);
+        inSystem++;
+        if (!beginCall(node, fetch)) {
+          cacheRuntime!.forgetFlight(fetch);
+          gone(node, fetch.message, "drop", "cache refresh has no origin");
+        }
+      }
+    }
+
+    if (work.cache?.outcome === "hit" || work.cache?.outcome === "stale") {
       settleWork(node, work, "success");
       return;
     }
     if (work.cache?.outcome === "miss" && work.cache.rule?.policy.coalesce && work.cache.item >= 0) {
       const cache = work.cacheOwner!;
-      const key = `${work.cache.rule.id}:${work.cache.item}`;
+      const key = cacheRuntime!.flightKey(work.cache.rule.id, work.cache.item);
       const flights = (cache.flights ??= new Map());
       let fetch = flights.get(key);
       // A miss can finish its local hop after the first fetch has already filled.
@@ -2201,30 +2214,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.message = { ...work.message, represented: sizeOf(work.message) };
       if (!fetch) {
         spend();
-        const id = nextMessage++;
+        fetch = cacheRuntime!.flight(work, time, nextMessage++);
         inSystem++;
-        fetch = {
-          message: {
-            ...work.message,
-            id,
-            represented: 1,
-            width: undefined,
-            returnCall: undefined,
-            family: {
-              root: id,
-              bornAt: time,
-              alive: 1,
-              parked: 0,
-              routesDone: work.message.request ? [work.message.request.id] : [],
-            },
-          },
-          remaining: 0,
-          route: work.route,
-          cache: { ...work.cache },
-          cacheOwner: cache,
-          cacheFlight: { key, waiters: [], waiting: 0 },
-        };
-        flights.set(key, fetch);
       }
       work.cache.outcome = "coalesced";
       if (work.message.family.trace) step(work.message, "cache", node.id, { cache: cacheTrace(node, work) });
@@ -2232,7 +2223,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       fetch.cacheFlight!.waiting += sizeOf(work.message);
       cacheRuntime!.invalidateSummary(cache);
       if (fetch.waitingCall === undefined && !beginCall(node, fetch)) {
-        flights.delete(key);
+        cacheRuntime!.forgetFlight(fetch);
         for (const waiter of fetch.cacheFlight!.waiters) settleWork(node, waiter, "call-limit", false);
         gone(node, fetch.message, "drop", "cache fetch has no origin");
       }
@@ -2284,9 +2275,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           recorder,
           work.cache.outcome === "not-cached"
             ? undefined
-            : work.cache.outcome === "coalesced"
-              ? "miss"
-              : work.cache.outcome,
+            : work.cache.outcome === "stale"
+              ? "hit"
+              : work.cache.outcome === "coalesced"
+                ? "miss"
+                : work.cache.outcome,
           time - work.cacheAt!,
           0,
           0,
@@ -2303,7 +2296,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     processed(node, work.message, work.cache ? cacheTrace(node, work) : undefined);
-    if (work.cache?.outcome === "hit" || work.cache?.outcome === "coalesced") {
+    if (work.cache?.outcome === "hit" || work.cache?.outcome === "stale" || work.cache?.outcome === "coalesced") {
       gone(node, work.message, "end", "cached");
       return;
     }
@@ -4059,9 +4052,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             : !nodes.has(fault.node)
       )
         return;
+      if (fault.kind === "purge") {
+        const cache = nodes.get(fault.node)!.cache;
+        if (!cache || (fault.rule !== undefined && !cache.rules.some((r) => r.id === fault.rule))) return;
+      }
       const key = faultKey(fault);
       const previous = faults.get(key);
-      if (!previous && !faultActive(fault)) return;
+      if (fault.kind !== "purge" && !previous && !faultActive(fault)) return;
       const magnitude = (value: Fault) =>
         value.kind === "boundary"
           ? value.down
@@ -4069,7 +4066,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             ? value.cut
             : value.kind === "slow"
               ? value.factor
-              : value.rate;
+              : value.kind === "fail"
+                ? value.rate
+                : undefined;
       if (previous && magnitude(previous) === magnitude(fault)) return;
       if (latencySinceFault) {
         latencyBudget = createLatencyBudget();
@@ -4082,7 +4081,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));
       else faults.delete(faultKey(fault));
-      if (fault.kind === "link") {
+      if (fault.kind === "purge") {
+        const node = nodes.get(fault.node)!;
+        cacheRuntime!.purge(node.cache!, time, fault.rule, fault.mode);
+        log("status", node, undefined, fault.reason === "deploy" ? "cache deploy" : "cache purge");
+      } else if (fault.kind === "link") {
         const edge = faultEdges.get(fault.edge)!;
         edge.cut = fault.cut;
       } else if (fault.kind === "fail") {

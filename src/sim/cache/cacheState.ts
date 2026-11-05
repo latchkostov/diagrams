@@ -10,6 +10,8 @@ export interface CacheCounts {
   notCached: number;
   fetches: number;
   fills: number;
+  staleHits?: number;
+  revalidations?: number;
 }
 export interface CacheReadout extends Omit<CacheCounts, "coalesced"> {
   coalesced?: number;
@@ -27,6 +29,15 @@ export interface CacheItemObservation {
   edge?: string;
 }
 export interface CacheDetails {
+  purge?: {
+    atMs: number;
+    peakFetchRate: number;
+    recoveredAfterMs?: number;
+    tailItems: number;
+    refillMs: number;
+    hard: boolean;
+    edge?: string;
+  };
   sinceFault?: import("../types").LatencyMetrics["sinceFault"];
   herdThreshold?: number;
   itemFetches?: number;
@@ -49,18 +60,36 @@ export interface CacheRuleState {
   popularity?: PopularityTable;
   stream: number;
   tracked: number;
+  /** Signed (expiry + 1): zero means absent; negative means origin progress failed. */
   statisticalUntil: number;
   statisticalCredit: number;
   statisticalPending: number;
   statisticalDue: number;
+  /** -1 means absent; zero is a valid expiry after an instant soft purge. */
   freshUntil: Float64Array;
   fetching: Float64Array;
   rate: { buckets: Float64Array; second: number; planned: number };
   fetchMs: { samples: Float64Array; cursor: number; count: number; sum: number; planned: number };
   counts: CacheCounts;
   warmSince?: number;
+  purgedAt?: number;
+  revalidationCredit?: number;
 }
 export interface NodeCache {
+  cold?: {
+    atMs: number;
+    at: number;
+    requests: number;
+    hits: number;
+    fetches: number;
+    peakFetchRate: number;
+    recoveredAfterMs?: number;
+    tailItems: number;
+    refillMs: number;
+    hard: boolean;
+    edge?: string;
+    mixedOrigins?: boolean;
+  };
   herds?: Map<string, { expiredAt: number; edge?: string }>;
   herdThreshold: number;
   peakHerd?: { rule: string; item: number; fetches: number; edge?: string };
@@ -75,8 +104,9 @@ export interface CacheLookup {
   origin?: string;
   rule?: CacheRuleState;
   item: number;
-  outcome: "hit" | "miss" | "coalesced" | "not-cached";
+  outcome: "hit" | "stale" | "miss" | "coalesced" | "not-cached";
   at: number;
   freshUntil?: number;
   fetching?: true;
+  revalidate?: number;
 }

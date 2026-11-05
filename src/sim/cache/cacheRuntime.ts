@@ -66,6 +66,20 @@ function windowBucket(cache: NodeCache, now: number): number {
   return (second % 10) * 4;
 }
 
+function observeCold(cache: NodeCache, now: number) {
+  const cold = cache.cold;
+  if (!cold || now - cold.at < 1000) return;
+  const elapsed = (now - cold.at) / 1000;
+  cold.peakFetchRate = Math.max(cold.peakFetchRate, (cache.counts.fetches - cold.fetches) / elapsed);
+  const requests = cache.counts.requests - cold.requests;
+  if (cold.recoveredAfterMs === undefined && requests > 0 && (cache.counts.hits - cold.hits) / requests > 0.8)
+    cold.recoveredAfterMs = now - cold.atMs;
+  cold.at = now;
+  cold.requests = cache.counts.requests;
+  cold.hits = cache.counts.hits;
+  cold.fetches = cache.counts.fetches;
+}
+
 const zeroCounts: CacheCounts = Object.freeze({
   requests: 0,
   hits: 0,
@@ -119,11 +133,66 @@ function rate(rule: CacheRuleState, now: number, size: number): number {
   return ring.buckets.reduce((a, b) => a + b, 0) / Math.max(0.01, ring.planned > 0 ? span : Math.min(span, now / 1000));
 }
 export const cacheRuntime: CacheRuntime = {
+  flightKey: (rule, item, refreshId) =>
+    JSON.stringify(refreshId === undefined ? ["item", rule, item] : ["refresh", rule, refreshId]),
+  refreshReady(cache, lookup, now, capacity) {
+    const rule = lookup.rule!;
+    if (
+      lookup.item >= 0 &&
+      (cache.flights?.has(cacheRuntime.flightKey(rule.id, lookup.item)) ||
+        rule.fetching[lookup.item] ||
+        now < rule.freshUntil[lookup.item])
+    )
+      return false;
+    if (capacity <= 0) {
+      if (lookup.item < 0) rule.revalidationCredit = (rule.revalidationCredit ?? 0) + lookup.revalidate!;
+      return false;
+    }
+    return true;
+  },
+  flight(work, now, id, refresh = false) {
+    const lookup = work.cache!;
+    const fetch: import("../engine/model").Work = {
+      message: {
+        ...work.message,
+        id,
+        represented: refresh && lookup.item < 0 ? lookup.revalidate! : 1,
+        width: undefined,
+        returnCall: undefined,
+        family: {
+          root: id,
+          bornAt: now,
+          alive: 1,
+          parked: 0,
+          routesDone: work.message.request ? [work.message.request.id] : [],
+        },
+      },
+      remaining: 0,
+      route: work.route,
+      cache: refresh ? { ...lookup, outcome: "stale" } : { ...lookup },
+      cacheOwner: work.cacheOwner,
+      cacheFlight: {
+        key: cacheRuntime.flightKey(lookup.rule!.id, lookup.item, refresh && lookup.item < 0 ? id : undefined),
+        waiters: [],
+        waiting: 0,
+      },
+    };
+    (work.cacheOwner!.flights ??= new Map()).set(fetch.cacheFlight!.key, fetch);
+    return fetch;
+  },
+  forgetFlight(work) {
+    work.cacheOwner!.flights!.delete(work.cacheFlight!.key);
+    cacheRuntime.invalidateSummary(work.cacheOwner!);
+  },
   reconfigure(cache, value) {
     checkCache(value);
     const table = value as CacheTable;
     const next = [...table.rules, ...(table.default ? [{ id: "", match: undefined, policy: table.default }] : [])];
-    if (!cache.rules.some((r) => r.policy.coalesce) && !next.some((r) => r.policy.coalesce)) return false;
+    if (
+      !cache.rules.some((r) => r.policy.coalesce || r.policy.staleWhileRevalidateMs) &&
+      !next.some((r) => r.policy.coalesce || r.policy.staleWhileRevalidateMs)
+    )
+      return false;
     if (next.length !== cache.rules.length) return false;
     for (let i = 0; i < next.length; i++) {
       const before = cache.rules[i],
@@ -145,6 +214,42 @@ export const cacheRuntime: CacheRuntime = {
     // Keep the same rule identities: in-flight fills and parked waiters still own them.
     for (let i = 0; i < next.length; i++) cache.rules[i].policy = next[i].policy;
     return true;
+  },
+  purge(cache, now, id, mode = "hard") {
+    const coldRules = cache.rules.filter(
+      (r) =>
+        (id === undefined || r.id === id) && !r.policy.noStore && (mode === "hard" || !r.policy.staleWhileRevalidateMs),
+    );
+    const tail = coldRules.reduce<(typeof coldRules)[number] | undefined>(
+      (largest, rule) => (!largest || (rule.policy.keys ?? 1000) > (largest.policy.keys ?? 1000) ? rule : largest),
+      undefined,
+    );
+    if (tail)
+      cache.cold = {
+        atMs: now,
+        at: now,
+        requests: cache.counts.requests,
+        hits: cache.counts.hits,
+        fetches: cache.counts.fetches,
+        peakFetchRate: 0,
+        hard: mode === "hard",
+        tailItems: tail.policy.keys ?? 1000,
+        refillMs: tail.rate.planned > 0 ? ((tail.policy.keys ?? 1000) / tail.rate.planned) * 1000 : 0,
+      };
+    for (const rule of cache.rules) {
+      if (id !== undefined && rule.id !== id) continue;
+      const soft = mode === "soft" && !!rule.policy.staleWhileRevalidateMs;
+      for (let i = 0; i < rule.tracked; i++)
+        rule.freshUntil[i] = soft && rule.freshUntil[i] >= 0 ? Math.min(rule.freshUntil[i], now) : -1;
+      rule.purgedAt = now;
+      // Statistical deadlines encode expiry + 1; zero means no copies.
+      if (soft && rule.statisticalUntil)
+        rule.statisticalUntil = Math.sign(rule.statisticalUntil) * Math.min(Math.abs(rule.statisticalUntil), now + 1);
+      else rule.statisticalUntil = 0;
+      if (!soft) rule.warmSince = now;
+      rule.revalidationCredit = undefined;
+    }
+    summaries.delete(cache);
   },
   compile(value, node, seed, scale, remaining, rates) {
     checkCache(value);
@@ -174,7 +279,7 @@ export const cacheRuntime: CacheRuntime = {
             tracked++;
             remaining.value--;
           }
-          const freshUntil = new Float64Array(tracked);
+          const freshUntil = new Float64Array(tracked).fill(-1);
           let warm = streamSeed(seed, node, `cache-warm:${rule.id}`);
           for (let i = 0; i < tracked; i++) {
             const hit = drawStream(warm);
@@ -192,7 +297,7 @@ export const cacheRuntime: CacheRuntime = {
             popularity,
             stream: streamSeed(seed, node, `cache:${rule.id}`),
             tracked,
-            statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) : 0,
+            statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) + 1 : 0,
             statisticalCredit: drawStream(streamSeed(seed, node, `cache-credit:${rule.id}`)).value * scale,
             statisticalPending: 0,
             statisticalDue: 0,
@@ -227,13 +332,14 @@ export const cacheRuntime: CacheRuntime = {
     cache.expected = total ? expected / total : 0;
   },
   lookup(cache, type, request, sync, now, size) {
+    observeCold(cache, now);
     const rule = cache.rules.find(
       (r) => !r.match || ((!r.address || matchesRequest(r.match, request)) && acceptsType(r.types, type)),
     );
     if (rule && Object.isFrozen(rule.counts)) rule.counts = counts();
     const add = (key: keyof CacheCounts) => {
-      cache.counts[key] += size;
-      if (rule) rule.counts[key] += size;
+      cache.counts[key] = (cache.counts[key] ?? 0) + size;
+      if (rule) rule.counts[key] = (rule.counts[key] ?? 0) + size;
     };
     add("requests");
     const bucket = windowBucket(cache, now);
@@ -256,7 +362,9 @@ export const cacheRuntime: CacheRuntime = {
       item = band.first < rule.tracked ? band.first : -1;
     const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
     const itemRate = (currentRate * band.share) / band.count;
-    const steady = itemHitShare(itemRate, rule.policy.ttlMs!, mean);
+    const staleMs = rule.policy.staleWhileRevalidateMs ?? 0;
+    const freshShare = itemHitShare(itemRate, rule.policy.ttlMs!, mean);
+    const steady = staleMs ? itemHitShare(itemRate, rule.policy.ttlMs!, mean, staleMs) : freshShare;
     const share =
       rule.warmSince === undefined
         ? steady
@@ -264,11 +372,14 @@ export const cacheRuntime: CacheRuntime = {
     // Healthy statistical bands already include expiry in the shared formula.
     // Sparse sampled misses need not refill once per TTL. Once pending fills
     // stop making progress on their expected clock (or fail), use only the TTL
-    // of the last successful fill. New arrivals never extend either deadline.
+    // of the last successful fill. A pending refresh cannot borrow its longer
+    // fetch clock past that fill's stale deadline. New arrivals extend neither.
     // Without planned demand, isolated injections retain fill-bounded expiry.
     const healthy =
-      rule.rate.planned > 0 && rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
-    const available = healthy || now < Math.abs(rule.statisticalUntil);
+      rule.rate.planned > 0 &&
+      rule.statisticalUntil > 0 &&
+      (!rule.statisticalPending || (now <= rule.statisticalDue && now < rule.statisticalUntil - 1 + staleMs));
+    const available = healthy || (!!rule.statisticalUntil && now < Math.abs(rule.statisticalUntil) - 1 + staleMs);
     // Stratify statistical outcomes: the shared formula already includes item
     // expiry. Independent whole-dot draws can leave artificial gaps between
     // successful fills at coarse scales and charge that expiry a second time.
@@ -281,24 +392,63 @@ export const cacheRuntime: CacheRuntime = {
         ? now < rule.freshUntil[item]
         : available && (stratified ? rule.statisticalCredit >= size : sample < share);
     if (item < 0 && stratified) rule.statisticalCredit = Math.min(size, rule.statisticalCredit - (hit ? size : 0));
-    add(hit ? "hits" : "misses");
-    cache.window!.buckets[bucket + (hit ? 1 : 2)] += size;
+    const stale =
+      staleMs > 0 &&
+      (item >= 0
+        ? !hit && rule.freshUntil[item] >= 0 && now < rule.freshUntil[item] + staleMs
+        : hit && sample >= freshShare);
+    let revalidate = 0;
+    if (stale && item >= 0 && !rule.fetching[item]) revalidate = 1;
+    if (item < 0 && staleMs && available) {
+      const q = 1 - expNeg((itemRate * staleMs) / 1000);
+      // Statistical bands share their rule's origin and fill clock. Their fluid
+      // rates add linearly, so one remainder retains all expected refresh work
+      // without allocating hundreds of per-band doubles at the 256-rule limit.
+      const credit =
+        (rule.revalidationCredit ?? 0) + (size * q) / (1 + (itemRate * (mean + rule.policy.ttlMs!)) / 1000);
+      revalidate = Math.floor(credit);
+      rule.revalidationCredit = credit - revalidate;
+    }
+    add(hit || stale ? "hits" : "misses");
+    if (stale) add("staleHits");
+    cache.window!.buckets[bucket + (hit || stale ? 1 : 2)] += size;
     return {
       rule,
       item,
-      outcome: hit ? "hit" : "miss",
+      outcome: stale ? "stale" : hit ? "hit" : "miss",
       at: now,
+      ...(revalidate ? { revalidate } : {}),
       ...(item >= 0 ? { freshUntil: rule.freshUntil[item] } : {}),
     };
   },
   start(cache, lookup, size, now) {
     if (lookup.fetching || lookup.outcome === "hit") return;
     lookup.fetching = true;
+    // A queued lookup may straddle a purge before its origin call starts. Keep
+    // the new empty/stale cycle even though the fetch clock starts later.
+    const rule = lookup.rule;
+    if (
+      rule &&
+      lookup.item >= 0 &&
+      lookup.at <= (rule.purgedAt ?? -1) &&
+      rule.freshUntil[lookup.item] <= rule.purgedAt!
+    )
+      lookup.freshUntil = rule.freshUntil[lookup.item];
     if (now !== undefined) lookup.at = now;
     cache.counts.fetches += size;
+    if (cache.cold && lookup.origin && !cache.cold.mixedOrigins) {
+      if (cache.cold.edge && cache.cold.edge !== lookup.origin) {
+        cache.cold.edge = undefined;
+        cache.cold.mixedOrigins = true;
+      } else cache.cold.edge = lookup.origin;
+    }
     const bucket = windowBucket(cache, now ?? lookup.at);
     cache.window!.buckets[bucket + 3] += size;
     if (lookup.rule) lookup.rule.counts.fetches += size;
+    if (lookup.revalidate) {
+      cache.counts.revalidations = (cache.counts.revalidations ?? 0) + size;
+      if (lookup.rule) lookup.rule.counts.revalidations = (lookup.rule.counts.revalidations ?? 0) + size;
+    }
     if (lookup.rule && lookup.item >= 0) {
       const fetches = (lookup.rule.fetching[lookup.item] += size);
       const state = summaryState(cache);
@@ -312,13 +462,13 @@ export const cacheRuntime: CacheRuntime = {
         cache.peakHerd = { rule: lookup.rule.id, item: lookup.item + 1, fetches, edge: lookup.origin };
       if (fetches >= cache.herdThreshold && fetches - size < cache.herdThreshold) {
         (cache.herds ??= new Map()).set(`${lookup.rule.id}:${lookup.item}`, {
-          expiredAt: lookup.freshUntil ?? lookup.at,
+          expiredAt: Math.max(0, lookup.freshUntil ?? lookup.at),
           edge: lookup.origin,
         });
         return fetches;
       }
     }
-    if (lookup.rule && lookup.item < 0 && lookup.outcome === "miss") {
+    if (lookup.rule && lookup.item < 0 && (lookup.outcome === "miss" || lookup.revalidate)) {
       const rule = lookup.rule;
       if (!rule.statisticalPending) {
         const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
@@ -332,7 +482,7 @@ export const cacheRuntime: CacheRuntime = {
     lookup.fetching = undefined;
     const rule = lookup.rule;
     if (!rule) return;
-    if (lookup.item < 0 && lookup.outcome === "miss") rule.statisticalPending--;
+    if (lookup.item < 0 && (lookup.outcome === "miss" || lookup.revalidate)) rule.statisticalPending--;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
     if (lookup.item >= 0) {
       const state = summaryState(cache);
@@ -340,8 +490,8 @@ export const cacheRuntime: CacheRuntime = {
       state.value = undefined;
     }
     if (lookup.item >= 0 && !rule.fetching[lookup.item]) cache.herds?.delete(`${rule.id}:${lookup.item}`);
-    if (!ok || lookup.outcome !== "miss") {
-      if (!ok && lookup.item < 0 && lookup.outcome === "miss" && rule.statisticalUntil > 0)
+    if (!ok || (lookup.outcome !== "miss" && !lookup.revalidate)) {
+      if (!ok && lookup.item < 0 && (lookup.outcome === "miss" || lookup.revalidate) && rule.statisticalUntil > 0)
         rule.statisticalUntil = -rule.statisticalUntil;
       return;
     }
@@ -356,12 +506,17 @@ export const cacheRuntime: CacheRuntime = {
     // A successful reply is progress for the shared statistical band. Keep one
     // bounded progress clock even when many sampled fetches remain in flight.
     if (lookup.item < 0) {
-      rule.statisticalUntil = now + rule.policy.ttlMs!;
+      rule.statisticalUntil = now + rule.policy.ttlMs! + 1;
       rule.statisticalDue = now + mean.sum / mean.count;
     }
     // Replies belong to the expiry they observed. A duplicate from an older
     // fetch cycle must not refill again after the first fill has itself expired.
-    if (lookup.item >= 0 && lookup.freshUntil === rule.freshUntil[lookup.item] && now >= rule.freshUntil[lookup.item]) {
+    if (
+      lookup.item >= 0 &&
+      (lookup.freshUntil === rule.freshUntil[lookup.item] ||
+        (lookup.at <= (rule.purgedAt ?? -1) && rule.freshUntil[lookup.item] <= rule.purgedAt!)) &&
+      now >= rule.freshUntil[lookup.item]
+    ) {
       rule.freshUntil[lookup.item] = now + rule.policy.ttlMs!;
       rule.counts.fills++;
       cache.counts.fills++;
@@ -389,14 +544,14 @@ export const cacheRuntime: CacheRuntime = {
     if (!rule || !Number.isInteger(item) || item < 1 || item > rule.tracked) return;
     const index = item - 1,
       key = `${id}:${index}`,
-      flight = cache.flights?.get(key),
+      flight = cache.flights?.get(cacheRuntime.flightKey(id, index)),
       episode = cache.herds?.get(key);
     return {
       rule: id,
       item,
       fetches: rule.fetching[index],
       waiting: flight?.cacheFlight?.waiting ?? 0,
-      expiredAt: episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[index],
+      expiredAt: Math.max(0, episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[index]),
       edge: episode?.edge ?? flight?.cache?.origin,
     };
   },
@@ -419,6 +574,19 @@ export const cacheRuntime: CacheRuntime = {
     const { herd, itemFetches } = summary(cache);
     const window = cacheRuntime.window(cache, now);
     return {
+      ...(cache.cold
+        ? {
+            purge: {
+              atMs: cache.cold.atMs,
+              peakFetchRate: cache.cold.peakFetchRate,
+              tailItems: cache.cold.tailItems,
+              refillMs: cache.cold.refillMs,
+              hard: cache.cold.hard,
+              ...(cache.cold.edge ? { edge: cache.cold.edge } : {}),
+              ...(cache.cold.recoveredAfterMs === undefined ? {} : { recoveredAfterMs: cache.cold.recoveredAfterMs }),
+            },
+          }
+        : {}),
       ...(sinceFault ? { sinceFault } : {}),
       expected: cache.expected,
       herdThreshold: cache.herdThreshold,

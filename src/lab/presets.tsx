@@ -13,6 +13,7 @@ import inlineRateLimit from "../examples/inline-rate-limit.json";
 import recommendations from "../examples/recommendations-feature-store.json";
 import { waitingFixture } from "./waitingFixture";
 import { cacheFixture } from "./cacheFixture";
+import { staleCalloutFixture, purgeEditorFixture } from "./cachePurgeFixture";
 import stampede from "../examples/cache-stampede.json";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
@@ -425,6 +426,22 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "TTL herds and the same-seed one-fetch comparison.",
     diagram: () => structuredClone(stampede) as DiagramFile,
+  },
+  {
+    kind: "diagram",
+    id: "cache-stale-callout",
+    title: "Stale-serving fix",
+    group: "Diagrams",
+    description: "A slow origin where sharing one fetch still leaves shoppers waiting.",
+    diagram: () => staleCalloutFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "cache-purge-editor",
+    title: "Purge scope",
+    group: "Diagrams",
+    description: "Simulation-only cache rules and unrestricted rule IDs.",
+    diagram: purgeEditorFixture,
   },
   {
     kind: "diagram",

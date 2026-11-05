@@ -214,8 +214,14 @@ describe("simulation evidence on the public examples", () => {
         "dropped:cdn",
       ]);
       expect(shown.result.findings.filter((f) => f.evidence?.length).map((f) => f.evidence)).toEqual([
-        [{ simulation: "TTL only", what: "dropped", count: 7908 }],
-        [{ simulation: "TTL only", what: "dropped", count: 7914 }],
+        [
+          { simulation: "TTL only", what: "dropped", count: 7908 },
+          { simulation: "A purge at the peak", what: "dropped", count: 1482 },
+        ],
+        [
+          { simulation: "TTL only", what: "dropped", count: 7914 },
+          { simulation: "A purge at the peak", what: "dropped", count: 1484 },
+        ],
       ]);
       expect(shown.counted).toBe(2);
     } else if (slug === "zone-outage-drill") {

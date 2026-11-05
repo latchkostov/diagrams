@@ -31,6 +31,8 @@ it("C3: arbitrary overlapping cohorts own at most one real fetch, including fail
           e.step(110);
           e.inject("source", requests, { spreadMs: 200 });
           for (let tick = 0; tick < 100; tick++) {
+            if (tick === 20 || tick === 40)
+              e.setFault({ kind: "purge", node: "cache", mode: tick === 20 ? "hard" : "soft" });
             e.step(10);
             for (const node of watch.sources[0][0].values()) {
               if (!node.cache) continue;

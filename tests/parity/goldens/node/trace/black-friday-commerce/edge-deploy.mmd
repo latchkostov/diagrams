@@ -1,0 +1,8 @@
+---
+title: "Shoppers on the web #1 · 50 ms end to end · 1 copy"
+---
+sequenceDiagram
+  participant web as Shoppers on the web
+  participant cdn as Edge CDN
+  web->>cdn: Shoppers on the web (+0.00 s)<br/>HTTPS
+  cdn-->>web: reply (+0.03 s)

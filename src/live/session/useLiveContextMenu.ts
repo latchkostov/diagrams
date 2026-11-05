@@ -14,6 +14,7 @@ import type { TraceActions, TraceSlowMotion, TraceSpotlight } from "./useTraceSp
 
 import type { SessionProps } from "../LiveSession";
 export function useLiveContextMenu({
+  announce,
   session,
   commands,
   capacity: capacityInputs,
@@ -24,7 +25,7 @@ export function useLiveContextMenu({
   editor,
   store,
   onPanelChange,
-}: Pick<SessionProps, "editor" | "onPanelChange"> & {
+}: Pick<SessionProps, "editor" | "onPanelChange" | "announce"> & {
   session: LiveSessionState;
   commands: LiveCommands;
   capacity: CapacityInputs;
@@ -76,6 +77,7 @@ export function useLiveContextMenu({
     if (!editor) return;
     return actionRegistry.register([
       ...liveActions({
+        announce,
         controller,
         slowMotionActive: () => !!slowRef.current?.session.active,
         openInject: (nodeId, at) => {
@@ -145,6 +147,7 @@ export function useLiveContextMenu({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     locale,
+    announce,
     editor,
     controller,
     store,

@@ -14,8 +14,21 @@ replacement remain available. Every skill file stays in the ZIP.
 The final measurements below use production gzip at level 9 and the deterministic skill ZIP,
 against master including caching PR #435. Budgets, reserves and the ZIP cap are unchanged.
 
-Measurements will be filled after #435 lands. No output golden is intentionally changed;
-this change must leave the full parity suite unchanged.
+Measured against post-#435 master (`58a3a05e1`), with both builds using the same build metadata:
+
+| Output                                 | Before (bytes) | After (bytes) | Freed (bytes) |
+| -------------------------------------- | -------------: | ------------: | ------------: |
+| Live session, beyond the canvas (gzip) |        128,771 |       122,084 |         6,687 |
+| Skill ZIP                              |        826,342 |       819,395 |         6,947 |
+| Canvas first view (gzip)               |        367,813 |       367,819 |            -6 |
+
+The six-byte canvas difference comes from generated chunk references; none of the deferred drawing
+modules moves into its first view. `MainThreadLoop` now owns the main-thread renderer, particle and
+march drawing, canvas fonts and calm sampler. The shared frame loop, geometry and hit testing stay
+available to the worker path. Viewer-only adapters remove editing history and clipboard code.
+
+No output golden is intentionally changed; the full parity suite must remain unchanged. No
+goldens were re-recorded for this trim.
 
 Rejected: deferring cache readout panels again (they already load on demand, with too little
 remaining eager code to meet this trim), and removing playback, recording or read-only keyboard

@@ -11,6 +11,7 @@ export const arbCacheDiagram = fc
       popularity: fc.constantFrom("even" as const, "gentle" as const, "typical" as const, "steep" as const),
       noStore: fc.boolean(),
       coalesce: fc.boolean(),
+      staleWhileRevalidateMs: fc.integer({ min: 0, max: 5000 }),
     }),
   )
   .map(([base, policy]) => {
@@ -31,7 +32,13 @@ export const arbCacheDiagram = fc
           rules: [],
           default: policy.noStore
             ? { noStore: true }
-            : { ttlMs: policy.ttlMs, keys: policy.keys, popularity: policy.popularity, coalesce: policy.coalesce },
+            : {
+                ttlMs: policy.ttlMs,
+                keys: policy.keys,
+                popularity: policy.popularity,
+                coalesce: policy.coalesce,
+                staleWhileRevalidateMs: policy.staleWhileRevalidateMs,
+              },
         },
       },
     });

@@ -193,6 +193,42 @@ describe("large showcases", () => {
     expect(run.state().expectations.map((e) => e.status)).toEqual(["pass", "pass", "pass"]);
   });
 
+  it.each([1, 7, 17, 42, 99])("Black Friday: hard deploy refills; soft deploy serves stale (seed %s)", (seed) => {
+    const d = diagram("black-friday-commerce");
+    const sim = { ...simulation("black-friday-commerce", "edge-deploy"), seed };
+    const run = createSimulationRun(d, sim, { maxParticles: 0 });
+    let hardBacklog = 0,
+      softBacklog = 0,
+      hardP95 = 0;
+    while (!run.state().done) {
+      if (run.state().waiting) run.resume();
+      run.step(10);
+      const s = run.engine.snapshot();
+      if (s.time >= 6000 && s.time < 20000) {
+        hardBacklog = Math.max(hardBacklog, s.nodes["catalog-bff"].backlog * 50);
+        hardP95 = Math.max(hardP95, s.nodes.web.latency?.p95 ?? 0);
+      }
+      if (s.time >= 22000) softBacklog = Math.max(softBacklog, s.nodes["catalog-bff"].backlog * 50);
+    }
+    const end = run.engine.snapshot();
+    console.info(
+      "deploy bands",
+      JSON.stringify({
+        seed,
+        hardBacklog,
+        softBacklog,
+        hardP95,
+        cache: end.nodes.cdn.cache,
+        p95: end.nodes.web.latency?.p95,
+        expectations: run.state().expectations,
+      }),
+    );
+    expect(hardBacklog).toBeGreaterThan(softBacklog);
+    expect(end.nodes.cdn.cache!.staleHits).toBeGreaterThan(0);
+    expect(end.nodes.cdn.cache!.revalidations).toBeGreaterThan(0);
+    expect(run.state().expectations.map((e) => e.status)).toEqual(["pass", "pass", "pass"]);
+  });
+
   it("Cells: a dark region's travellers move to the other two, and every booking replicates", () => {
     const { end, samples } = play("cell-based-bookings", "region-evacuation");
     const during = between(samples, 6000, 18000);

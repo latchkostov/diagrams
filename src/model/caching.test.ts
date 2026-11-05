@@ -33,12 +33,17 @@ it.each([
   { ttlMs: 1000, keys: 1_000_001 },
   { ttlMs: 1000, popularity: "custom" },
   { ttlMs: 1000, coalesce: "yes" },
-  { ttlMs: 1000, staleWhileRevalidateMs: 1000 },
+  { ttlMs: 1000, staleWhileRevalidateMs: -1 },
+  { ttlMs: 1000, staleWhileRevalidateMs: 86_400_001 },
+  { ttlMs: 1000, staleWhileRevalidateMs: "yes" },
 ])("rejects unsupported cache policy %j", (policy) => {
   expect(cacheProblem({ rules: [], default: policy })).toBeDefined();
 });
 it.each([true, false])("accepts the explicit coalescing option %s", (coalesce) => {
   expect(cacheProblem({ rules: [], default: { ttlMs: 1000, coalesce } })).toBeUndefined();
+});
+it.each([0, 1000, 86_400_000])("accepts a bounded stale window of %s ms", (staleWhileRevalidateMs) => {
+  expect(cacheProblem({ rules: [], default: { ttlMs: 1000, staleWhileRevalidateMs } })).toBeUndefined();
 });
 it("validates bounds and every persisted setup/timeline context", () => {
   const d = cacheFixture();
