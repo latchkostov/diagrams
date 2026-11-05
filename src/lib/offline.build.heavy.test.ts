@@ -41,7 +41,8 @@ for (const source of ["shell", ".env.production"])
         ).toEqual([]);
         expect(
           output.chunks
-            .filter((chunk) => /room/i.test(chunk.fileName))
+            // The chunk's name, not its file name: a content hash such as "ui-BciROoM5.js" can spell "room".
+            .filter((chunk) => /room/i.test(chunk.name))
             .map((chunk) => ({ fileName: chunk.fileName, modules: Object.keys(chunk.modules) })),
         ).toEqual([]);
         const code = output.chunks.map((chunk) => chunk.code).join("\n");
