@@ -79,6 +79,7 @@ export function waitingPlan(
   requestRates: Readonly<Record<string, number>> = {},
   graph = compileWaitingPlan(diagram),
   missShares: Readonly<Record<string, number>> = {},
+  fetchShares: Readonly<Record<string, number>> = missShares,
 ) {
   const result = new Map<string, WaitCapacity>();
   const amplification = new Map<string, { policy: RetryPolicy; probability: number }>();
@@ -150,12 +151,13 @@ export function waitingPlan(
         duration = duration * expected.attempts + expected.backoffMs;
       }
       const share = parent.onMiss ? (missShares[parent.edge] ?? 1) : 1;
+      const poolShare = parent.onMiss ? (fetchShares[parent.edge] ?? share) : 1;
       if (parent.policy.pool)
         pools.set(
           parent.node,
           Math.min(
             pools.get(parent.node) ?? Infinity,
-            (parent.policy.pool * 1000) / Math.max(1e-9, Math.max(10, poolDuration) * share),
+            (parent.policy.pool * 1000) / Math.max(1e-9, Math.max(10, poolDuration) * poolShare),
           ),
         );
       if (outcome.failed) failures.set(parent.node, Math.min(failures.get(parent.node) ?? Infinity, duration));
@@ -175,7 +177,10 @@ export function waitingPlan(
           r.count += share;
         }
         if (parent.policy.pool)
-          r.pool = Math.min(r.pool, (parent.policy.pool * 1000) / Math.max(1e-9, Math.max(10, poolDuration) * share));
+          r.pool = Math.min(
+            r.pool,
+            (parent.policy.pool * 1000) / Math.max(1e-9, Math.max(10, poolDuration) * poolShare),
+          );
         replies.set(parent.node, r);
       }
       const count = remaining.get(parent.node)! - 1;

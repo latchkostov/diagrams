@@ -335,6 +335,7 @@ export function analyzeCapacity(
   let cacheDemand: NonNullable<CapacityAnalysis["cacheDemand"]> = {};
   const hitMemo = new WeakMap<import("../model/caching").CachePolicy, { rate: number; fetchMs: number; hit: number }>();
   let asideMissShares: Record<string, number> = {};
+  let asideFetchShares: Record<string, number> = {};
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
   const compiled = options.topology ?? compileTopology(diagram);
   const compiledEdges = new Map(compiled.edges.map((e) => [e.id, e]));
@@ -741,6 +742,15 @@ export function analyzeCapacity(
           const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
           const cached = rule && cacheDemand[lookup.to]?.[rule.id];
           missShare = cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0);
+          missShare *= forwardingShare(
+            entry.role,
+            lookup,
+            type,
+            injected ? "injected" : "output",
+            undefined,
+            undefined,
+            cacheMatchers.has(id),
+          );
         }
         send(next, edge, type, rate * share * missShare, branchRoute(edge, route));
       }
@@ -846,15 +856,25 @@ export function analyzeCapacity(
     let asideWaitChanged = false;
     if (aside.size) {
       const shares: Record<string, number> = {};
+      const fetchShares: Record<string, number> = {};
       for (const [edge, lookup] of aside) {
         const cache = edgeInputs.get(lookup)!.to;
         const rules = Object.values(cacheDemand[cache] ?? {});
         const requestRate = total(rates.get(cache));
         const hit = requestRate ? rules.reduce((s, r) => s + r.rate * r.hitRatio, 0) / requestRate : 0;
         shares[edge] = 1 - hit;
+        fetchShares[edge] = requestRate
+          ? Math.max(
+              0,
+              1 - rules.reduce((s, r) => s + r.rate * (1 - (r.fetchShare ?? 1 - r.hitRatio)), 0) / requestRate,
+            )
+          : 1;
       }
-      asideWaitChanged = Object.entries(shares).some(([id, value]) => value !== asideMissShares[id]);
+      asideWaitChanged =
+        Object.entries(shares).some(([id, value]) => value !== asideMissShares[id]) ||
+        Object.entries(fetchShares).some(([id, value]) => value !== asideFetchShares[id]);
       asideMissShares = shares;
+      asideFetchShares = fetchShares;
     }
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
@@ -872,7 +892,7 @@ export function analyzeCapacity(
     }
     rates = next;
     if (asideWaitSensitive && asideWaitChanged) {
-      waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares);
+      waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares, asideFetchShares);
       applyAsideWaiting();
     }
     if (hasRetryBudget) {
@@ -882,7 +902,7 @@ export function analyzeCapacity(
       error = Math.max(error, retryError);
       if (retryError) {
         priorRetryRequests = retryRequests;
-        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares);
+        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares, asideFetchShares);
         for (const [id, wait] of waiting.nodes)
           if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
         if (aside.size) applyAsideWaiting();
@@ -897,7 +917,7 @@ export function analyzeCapacity(
   if (aside.size && !asideWaitSensitive) {
     // Zero-cost calls cannot change demand or response times. Resolve their reply
     // counts once after rates settle instead of re-walking the graph every pass.
-    waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares);
+    waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares, asideFetchShares);
     applyAsideWaiting();
   }
   const incoming = new Map<string, CompiledEdge[]>();

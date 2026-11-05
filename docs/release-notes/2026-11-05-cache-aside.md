@@ -22,7 +22,7 @@ controls fail their regressions. The ledger/outcome oracles also cover shared le
 and replay covers readers joining a refresh after its stale window closes.
 
 All 306 cross-engine digest cases pass in Chromium, Firefox and WebKit. The bundle
-and skill preflight passes 216 tests with all existing reserves and ZIP limits.
+and skill preflight passes 217 tests with all existing reserves and ZIP limits.
 The largest of the three lease checkpoints is 130,836 B, below the unchanged 130 KiB
 bound. The public showcase retains its generated `caching` tag and demonstrates real
 hits and misses within ten seconds.
@@ -32,6 +32,13 @@ either arrival order, including failures. Refresh observations include both wait
 queues. Analysis keeps a service's cache lookup local even when that cache also has
 its own origin, and counts only one total origin demand. Focused thread, replay and
 property checks pass; temporarily reverting these fixes fails nine regressions.
+Database demand also follows the referenced lookup's traffic share; its two
+regressions fail when that propagation is removed. The cache-aside conservation
+property additionally passes 4,000 cases across the four requested sweep seeds at
+twenty times its usual run count.
+Coalesced readers share database pool usage as well as fetches. Analytic pool
+ceilings use the fetch share, while blocking thread hold time still uses the miss
+share. Both blocking and non-blocking pool regressions fail without that split.
 Full parity passes 1,995 Node tests and 112 Linux browser tests: all 3,376 records
 are unchanged by this follow-up.
 
@@ -51,19 +58,22 @@ Unchanged cache inputs now reuse popularity math while the capacity solver settl
 unrelated paths. An operation-count regression grows that path eightfold and
 requires cache-math work to remain constant; it fails without this memoization.
 
-A same-process comparison imports clean master and current planner code, uses the
-public diagram before and after conversion, and alternates execution order. After
-twelve warm-up pairs, twenty-four measured pairs currently give medians of
-454.212 ms before and 488.211 ms after (1.074853×). The planning performance
-requirement remains open at this checkpoint; the final PR must report the resolved
-measurement. Both inputs use four planning runs. Correct sequential misses change
-11,248 ticks / 25,218 messages to 11,253 ticks / 25,485 messages; no planner limit
-changes.
+A same-process comparison bundles clean master and current planner code with the
+same Vite production settings, uses the public diagram before and after conversion,
+and alternates execution order. Two rounds each discard twelve warm-up pairs and
+measure twenty-four pairs. Across all 48 samples, means are 428.048 ms before and
+426.046 ms after; the paired median ratio is 1.000572×. Independent medians are
+404.198 ms and 410.838 ms. These shared-machine measurements show flat sizing cost
+within their variation. Both inputs use four planning runs. Correct sequential
+misses change 11,248 ticks / 25,218 messages to 11,253 ticks / 25,485 messages; no
+planner limit changes. The earlier oracle-enabled Vitest comparison measured
+454.212 ms to 488.211 ms; production bundles omit that test-only oracle code.
 
-Before the shared-lease follow-up, the build measured Live at 123,134 B gzip versus the 122,084 B starting
-baseline: 11,866 B headroom against 135,000 B, including 5,722 B beyond the fixed
-6,144 B reserve. The cache runtime is 4,690 B, leaving 430 B below its unchanged
-5,120 B cap. The PR reports refreshed final measurements and complete Linux gate results.
+The final build measures Live at 123,459 B gzip versus the synced merge-base's
+122,094 B: 11,541 B headroom against 135,000 B, including 5,397 B beyond the fixed
+6,144 B reserve. The cache runtime is 4,689 B, leaving 431 B below its unchanged
+5,120 B cap. Startup is 162,473 B across the same six chunks. All four bundle gates
+pass. The PR reports complete Linux gate results.
 
 ## Shared-load verification
 

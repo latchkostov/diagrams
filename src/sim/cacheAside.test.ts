@@ -8,6 +8,46 @@ import { analyzeCapacity } from "./capacity";
 import { resourceLesson } from "../model/autoscalingLessons";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
 
+it.each(["blocking", "non-blocking"] as const)(
+  "coalesced fetches consume pool capacity once, with %s database calls",
+  (wait) => {
+    const d = cacheAsideFixture();
+    (d.nodes[2].props!.cache as CacheTable).default!.coalesce = true;
+    d.edges[2].props!.caller = { onMiss: "lookup", wait, poolConnections: 1 };
+    const a = analyzeCapacity(d);
+    const fetchShare = a.cacheDemand!.cache[""].fetchShare!;
+    expect(a.nodes.service.waits!.poolCeiling).toBeCloseTo(1000 / (100 * fetchShare), 6);
+    const miss = 1 - a.cacheDemand!.cache[""].hitRatio;
+    expect(fetchShare).toBeLessThan(miss / 2);
+    if (wait === "blocking") expect(a.nodes.service.waits!.threadHoldMs).toBeCloseTo(10 + 20 + 100 * miss, 8);
+  },
+);
+
+it.each([0, 0.5, 1])("database demand follows the lookup's %s traffic share as well as its misses", (share) => {
+  const d = cacheAsideFixture();
+  d.edges[1].props!.share = share;
+  d.edges[2].props!.share = 0.5;
+  const a = analyzeCapacity(d);
+  const miss = 1 - (a.cacheDemand?.cache?.[""]?.hitRatio ?? 0);
+  expect(a.nodes.database.offered).toBeCloseTo(a.nodes.cache.offered * miss * 0.5, 8);
+});
+
+it("a sampled lookup invokes the database only for requests that actually looked up the cache", () => {
+  const d = cacheAsideFixture();
+  d.edges[1].props!.share = 0.5;
+  d.nodes[2].props!.cache = { rules: [], default: { noStore: true } };
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 100, { spreadMs: 1000 });
+  e.step(3000);
+  const s = e.snapshot();
+  expect(s.nodes.cache.processed).toBeGreaterThan(0);
+  expect(s.nodes.cache.processed).toBeLessThan(100);
+  expect(s.nodes.database.processed).toBe(s.nodes.cache.processed);
+  expect(s.nodes.source.processed).toBe(100);
+  expect(s.inSystem).toBe(0);
+});
+
 it.each([false, true])("one lookup joins every database branch before filling (coalesce %s)", (coalesce) => {
   const d = cacheAsideFixture();
   (d.nodes[2].props!.cache as CacheTable).default!.coalesce = coalesce;
