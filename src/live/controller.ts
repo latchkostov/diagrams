@@ -1426,8 +1426,10 @@ export class LiveController {
     return this.#diagram.nodes.filter((n) => !targets.has(n.id) && edges.some((e) => e.from === n.id)).map((n) => n.id);
   }
 
-  setFault(fault: Fault): void {
+  setFault(fault: Fault): boolean {
+    const seq = this.#seq;
     this.#apply({ kind: "fault", fault });
+    return this.#seq !== seq;
   }
 
   setNodeStatus(nodeId: string, status: NodeStatus): void {

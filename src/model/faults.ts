@@ -5,9 +5,16 @@ export type Fault =
   | { kind: "boundary"; boundary: string; down: boolean }
   | { kind: "slow"; node: string; factor: 1 | 2 | 5 | 10 }
   | { kind: "fail"; node: string; rate: 0 | 0.1 | 0.5 }
+  | { kind: "purge"; node: string; rule?: string; mode?: "hard" | "soft"; reason?: "purge" | "deploy" }
   | { kind: "link"; edge: string; cut: boolean };
 
-export const DRILL_PRESETS = ["zone-outage", "region-connectivity", "slow-dependency", "error-spike"] as const;
+export const DRILL_PRESETS = [
+  "zone-outage",
+  "region-connectivity",
+  "slow-dependency",
+  "error-spike",
+  "cold-cache",
+] as const;
 export type DrillPreset = (typeof DRILL_PRESETS)[number];
 
 export const faultTarget = (fault: Fault): string =>
@@ -22,7 +29,9 @@ export function faultProblem(value: unknown): string | undefined {
         ? ["kind", "edge", "cut"]
         : f.kind === "slow"
           ? ["kind", "node", "factor"]
-          : ["kind", "node", "rate"];
+          : f.kind === "purge"
+            ? ["kind", "node", "rule", "mode", "reason"]
+            : ["kind", "node", "rate"];
   if (Object.keys(f).some((key) => !fields.includes(key))) return "unexpected fault property";
   const target = f.kind === "boundary" ? f.boundary : f.kind === "link" ? f.edge : f.node;
   if (typeof target !== "string" || !target.length) return "a fault needs a target id";
@@ -30,11 +39,30 @@ export function faultProblem(value: unknown): string | undefined {
   if (f.kind === "link" && typeof f.cut === "boolean") return;
   if (f.kind === "slow" && [1, 2, 5, 10].includes(f.factor as number)) return;
   if (f.kind === "fail" && [0, 0.1, 0.5].includes(f.rate as number)) return;
+  if (
+    f.kind === "purge" &&
+    (f.rule === undefined || typeof f.rule === "string") &&
+    (f.mode === undefined || f.mode === "hard" || f.mode === "soft") &&
+    (f.reason === undefined || f.reason === "purge" || f.reason === "deploy")
+  )
+    return;
   return "invalid fault kind or magnitude";
 }
 
 export const faultSchema: JsonSchema = {
   oneOf: [
+    {
+      type: "object",
+      required: ["kind", "node"],
+      additionalProperties: false,
+      properties: {
+        kind: { const: "purge" },
+        node: { type: "string", minLength: 1 },
+        rule: { type: "string" },
+        mode: { enum: ["hard", "soft"] },
+        reason: { enum: ["purge", "deploy"] },
+      },
+    },
     {
       type: "object",
       required: ["kind", "boundary", "down"],

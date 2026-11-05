@@ -1,0 +1,288 @@
+{
+  "run": {
+    "time": 40000,
+    "totalMs": 40000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "backlog", "label": "Product API backlog < 50, always", "status": "fail", "value": 825 },
+      { "id": "latency", "label": "Shoppers p95 < 300 ms at the end", "status": "fail", "value": 2050 },
+      { "id": "fetches", "label": "Most fetches in flight for one item < 5, always", "status": "fail", "value": 2 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "shoppers" },
+      { "atMs": 1000, "kind": "note", "label": "Both rules can serve stale copies while refreshing. A hard purge removes those copies; a soft purge keeps them." },
+      { "atMs": 15000, "kind": "fault", "label": "Purge: Edge CDN" },
+      { "atMs": 15100, "kind": "note", "label": "The hard purge empties the cache. Refilling 20,000 other products takes minutes: the four-thread API stays far behind through this run. Both backlog and shopper p95 fail. Compare Soft purge: stale copies serve while refreshing and every chip passes." },
+      { "atMs": 40000, "kind": "traffic", "label": "shoppers ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shoppers": { "replicas": [1, 1, 0] },
+        "cdn": {
+          "cache": {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "notCached": 0,
+            "fetches": 0,
+            "fills": 0,
+            "hitRatio": 0,
+            "originOffload": 0,
+            "rules": {
+              "launch": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 },
+              "products": { "requests": 0, "hits": 0, "misses": 0, "notCached": 0, "fetches": 0, "fills": 0 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "replicas": [1, 1, 0] },
+        "db": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 52,
+      "nodes": {
+        "shoppers": { "processed": 3973, "throughput": 397.9389513758047, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 3981,
+          "inFlight": 4,
+          "throughput": 397.9698622921012,
+          "cache": {
+            "requests": 3992,
+            "hits": 3744,
+            "misses": 248,
+            "notCached": 0,
+            "fetches": 279,
+            "fills": 6,
+            "staleHits": 162,
+            "revalidations": 41,
+            "hitRatio": 0.9378757515030061,
+            "originOffload": 0.9301102204408818,
+            "rules": {
+              "launch": { "requests": 3194, "hits": 3194, "misses": 0, "notCached": 0, "fetches": 2, "fills": 2, "staleHits": 140, "revalidations": 2 },
+              "products": { "requests": 798, "hits": 550, "misses": 248, "notCached": 0, "fetches": 277, "fills": 4, "staleHits": 22, "revalidations": 39 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 274, "inFlight": 3, "throughput": 27.925779038995945, "replicas": [1, 1, 0] },
+        "db": { "processed": 274, "backlog": 1, "throughput": 27.925779038995945, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 513,
+      "nodes": {
+        "shoppers": { "processed": 7749, "failed": 88, "dropped": 88, "throughput": 339.50811347278244, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 7755,
+          "failed": 90,
+          "dropped": 90,
+          "inFlight": 4,
+          "throughput": 338.7258004108741,
+          "cache": {
+            "requests": 7992,
+            "hits": 7187,
+            "misses": 739,
+            "notCached": 0,
+            "fetches": 801,
+            "fills": 41,
+            "staleHits": 259,
+            "revalidations": 88,
+            "coalesced": 66,
+            "hitRatio": 0.8992742742742743,
+            "originOffload": 0.8997747747747747,
+            "rules": {
+              "launch": { "requests": 6394, "hits": 6327, "misses": 1, "notCached": 0, "fetches": 4, "fills": 4, "staleHits": 207, "revalidations": 3, "coalesced": 66 },
+              "products": { "requests": 1598, "hits": 860, "misses": 738, "notCached": 0, "fetches": 797, "fills": 37, "staleHits": 52, "revalidations": 85 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 611, "backlog": 182, "inFlight": 4, "throughput": 40.37228944924886, "replicas": [1, 1, 0] },
+        "db": { "processed": 611, "throughput": 40.37228944924886, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 841,
+      "nodes": {
+        "shoppers": { "processed": 11043, "failed": 800, "dropped": 800, "throughput": 330.9245549579685, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 11049,
+          "failed": 802,
+          "dropped": 802,
+          "inFlight": 4,
+          "throughput": 330.31220774240256,
+          "cache": {
+            "requests": 11992,
+            "hits": 10481,
+            "misses": 1445,
+            "notCached": 0,
+            "fetches": 1539,
+            "fills": 41,
+            "staleHits": 3395,
+            "revalidations": 146,
+            "coalesced": 66,
+            "hitRatio": 0.8739993328885924,
+            "originOffload": 0.8716644429619747,
+            "rules": {
+              "launch": { "requests": 9594, "hits": 9527, "misses": 1, "notCached": 0, "fetches": 9, "fills": 4, "staleHits": 3343, "revalidations": 8, "coalesced": 66 },
+              "products": { "requests": 2398, "hits": 954, "misses": 1444, "notCached": 0, "fetches": 1530, "fills": 37, "staleHits": 52, "revalidations": 138 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1011, "backlog": 520, "inFlight": 4, "throughput": 40.487823754580766, "replicas": [1, 1, 0] },
+        "db": { "processed": 1011, "throughput": 40.487823754580766, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 1127,
+      "nodes": {
+        "shoppers": { "processed": 14370, "failed": 1482, "dropped": 1482, "throughput": 334.7769118159767, "replicas": [1, 1, 0] },
+        "cdn": {
+          "processed": 14376,
+          "failed": 1484,
+          "dropped": 1484,
+          "inFlight": 4,
+          "throughput": 334.08828282372633,
+          "cache": {
+            "requests": 15992,
+            "hits": 13808,
+            "misses": 2118,
+            "notCached": 0,
+            "fetches": 2244,
+            "fills": 41,
+            "staleHits": 6595,
+            "revalidations": 202,
+            "coalesced": 66,
+            "hitRatio": 0.863431715857929,
+            "originOffload": 0.85967983991996,
+            "rules": {
+              "launch": { "requests": 12794, "hits": 12727, "misses": 1, "notCached": 0, "fetches": 14, "fills": 4, "staleHits": 6543, "revalidations": 13, "coalesced": 66 },
+              "products": { "requests": 3198, "hits": 1081, "misses": 2117, "notCached": 0, "fetches": 2230, "fills": 37, "staleHits": 52, "revalidations": 189 }
+            }
+          },
+          "replicas": [1, 1, 0]
+        },
+        "origin": { "processed": 1411, "backlog": 825, "inFlight": 4, "throughput": 40.48782899983011, "replicas": [1, 1, 0] },
+        "db": { "processed": 1411, "throughput": 40.48782899983011, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 40000,
+    "inSystem": 1127,
+    "real": {
+      "shoppers": { "processed": 14370, "failed": 1482, "dropped": 1482, "throughput": 334.7769118159767, "replicas": [1, 1, 0] },
+      "cdn": {
+        "processed": 14376,
+        "failed": 1484,
+        "dropped": 1484,
+        "inFlight": 4,
+        "throughput": 334.08828282372633,
+        "cache": {
+          "requests": 15992,
+          "hits": 13808,
+          "misses": 2118,
+          "notCached": 0,
+          "fetches": 2244,
+          "fills": 41,
+          "staleHits": 6595,
+          "revalidations": 202,
+          "coalesced": 66,
+          "hitRatio": 0.863431715857929,
+          "originOffload": 0.85967983991996,
+          "rules": {
+            "launch": { "requests": 12794, "hits": 12727, "misses": 1, "notCached": 0, "fetches": 14, "fills": 4, "staleHits": 6543, "revalidations": 13, "coalesced": 66 },
+            "products": { "requests": 3198, "hits": 1081, "misses": 2117, "notCached": 0, "fetches": 2230, "fills": 37, "staleHits": 52, "revalidations": 189 }
+          }
+        },
+        "replicas": [1, 1, 0]
+      },
+      "origin": { "processed": 1411, "backlog": 825, "inFlight": 4, "throughput": 40.48782899983011, "replicas": [1, 1, 0] },
+      "db": { "processed": 1411, "throughput": 40.48782899983011, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 15992, "fetch": 2240, "read": 1411 }
+  },
+  "events": {
+    "total": 73144,
+    "byKind": { "inject": 16000, "deliver": 19643, "process": 31568, "status": 1, "fail": 2966, "drop": 2966 },
+    "byNode": {
+      "shoppers": { "inject": 16000, "process": 14370, "fail": 1482, "drop": 1482 },
+      "cdn": { "deliver": 15992, "process": 14376, "status": 1, "fail": 1484, "drop": 1484 },
+      "origin": { "deliver": 2240, "process": 1411 },
+      "db": { "deliver": 1411, "process": 1411 }
+    },
+    "perSecond": [
+      "a9c34efe7cf7",
+      "27da973061fd",
+      "bc6bcccf6c11",
+      "9d7173ac070a",
+      "d83d728767f5",
+      "23920d03c185",
+      "ee9c5d0f1839",
+      "76eae3e81dc7",
+      "96bb93863f8c",
+      "02709b3858d2",
+      "12d35bbe04b6",
+      "bae1ef430225",
+      "08a4f70a86aa",
+      "4d9d858f1c83",
+      "dea5c471dd5d",
+      "4b430fe73d52",
+      "c69e2bbbad74",
+      "ab3f208dfc73",
+      "ece1600ab04d",
+      "fbcb4169a093",
+      "51f8479218e8",
+      "5580583a657f",
+      "239968937a35",
+      "2a6be3a16a94",
+      "5d9cb5d281ac",
+      "c44befe65bbc",
+      "c4301e87d655",
+      "72649820fa4b",
+      "6888b7684f07",
+      "dd5d4d3f4b5b",
+      "d7c73cbdaa80",
+      "8a699c49e5c9",
+      "a3be1bd11949",
+      "57372b346a2c",
+      "efc446dca549",
+      "75366d2523df",
+      "8326735bfdbf",
+      "c8e17cb81e7b",
+      "67063aac704a",
+      "692761a93968",
+      "6343acbd770d"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Both rules can serve stale copies while refreshing. A hard purge removes those copies; a soft purge keeps them.", "focus": ["cdn"] },
+    { "atMs": 15100, "text": "The hard purge empties the cache. Refilling 20,000 other products takes minutes: the four-thread API stays far behind through this run. Both backlog and shopper p95 fail. Compare Soft purge: stale copies serve while refreshing and every chip passes.", "focus": ["cdn", "origin"] }
+  ],
+  "latency": {
+    "journeys": { "done": 6992, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 6992, "min": 50, "mean": 61.57608695652174, "p50": 50, "p90": 50, "max": 340 },
+    "waitMs": {
+      "cdn": { "count": 6992, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "origin": { "count": 374, "min": 0, "mean": 10.37433155080214, "p50": 0, "p90": 40, "max": 100 },
+      "db": { "count": 374, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "cdn": { "count": 6992, "min": 10, "mean": 21.57608695652174, "p50": 10, "p90": 10, "max": 300 },
+      "origin": { "count": 374, "min": 90, "mean": 90, "p50": 90, "p90": 90, "max": 90 },
+      "db": { "count": 374, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

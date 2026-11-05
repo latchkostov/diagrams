@@ -1353,6 +1353,7 @@ function CanvasInner({
         {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
         {(nodeCount > 0 || live) && (
           <LiveView
+            announce={ui.announce}
             caption={caption}
             transport={transport ?? localTransport}
             readOnly={readOnly}

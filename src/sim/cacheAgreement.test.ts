@@ -43,9 +43,12 @@ export function agreement(
   rate = 1000,
   fetchMs = 60,
   coalesce = false,
+  staleWhileRevalidateMs = 0,
 ) {
   const d = agreementDiagram(keys, ttlMs, popularity, rate, fetchMs);
   if (coalesce) (d.nodes[1].props!.cache as CacheTable).default!.coalesce = true;
+  if (staleWhileRevalidateMs)
+    (d.nodes[1].props!.cache as CacheTable).default!.staleWhileRevalidateMs = staleWhileRevalidateMs;
   if (scale === "auto") scale = autoScale(explanationSimulation(d), d);
   const legacyExpected = analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))).cacheDemand!.cache[""]
     .hitRatio;
@@ -166,6 +169,19 @@ it.fails.each([1, 10, "auto"] as const)(
     expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(result.scale === 1 ? 0.02 : 0.03);
   },
 );
+
+it.each([0, 1, 2, 3, 4])("A1: stale serving agrees for tracked items and statistical tails (batch %i)", (batch) => {
+  fc.assert(
+    fc.property(fc.integer(), fc.constantFrom(1, 10), fc.constantFrom(1, 1000), (seed, scale, keys) => {
+      const result = agreement(seed, scale, keys, 1000, "typical", 1000, 60, true, 5000);
+      expect(result.error, JSON.stringify(result)).toBeLessThanOrEqual(scale === 1 ? 0.02 : 0.03);
+    }),
+    {
+      numRuns: propertyRuns(1),
+      ...(fc.readConfigureGlobal().seed === undefined ? {} : { seed: (fc.readConfigureGlobal().seed! + batch) | 0 }),
+    },
+  );
+});
 
 // Keep Nightly's full case count without putting every simulation under one test-runner timeout.
 it.each([0, 1, 2, 3, 4])("A1: random rule sizes and TTLs preserve steady-state agreement (batch %i)", (batch) => {
@@ -344,3 +360,26 @@ it.each([1, 7, 17, 42, 99])("coalesced fills preserve Expected/Live fresh-hit ag
     }
   }
 });
+
+for (const mode of [1, 10, "auto"] as const) {
+  for (const keys of [1, 1000]) {
+    const runs: ReturnType<typeof agreement>[] = [];
+    it.each([1, 7, 17, 42, 99])(
+      `A1: short stale window observation (scale ${mode}, ${keys} items, seed %i)`,
+      (seed) => {
+        runs.push(agreement(seed, mode, keys, 1000, "even", 1000, 5000, true, 1000));
+      },
+    );
+    it(`A1: stale windows shorter than fetches agree (scale ${mode}, ${keys} items)`, () => {
+      expect(runs).toHaveLength(5);
+      const requests = runs.reduce((sum, r) => sum + r.requests, 0);
+      const observed = runs.reduce((sum, r) => sum + r.observed * r.requests, 0) / requests;
+      const error = Math.abs(observed - runs[0].expected);
+      console.info(
+        "short stale window agreement",
+        JSON.stringify({ mode, scale: runs[0].scale, keys, expected: runs[0].expected, observed, error, requests }),
+      );
+      expect(error, JSON.stringify(runs)).toBeLessThanOrEqual(runs[0].scale === 1 ? 0.02 : 0.03);
+    });
+  }
+}

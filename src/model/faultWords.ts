@@ -13,6 +13,8 @@ export function drillName(preset: DrillPreset): string {
       return t("fault.slowDependency");
     case "error-spike":
       return t("fault.errorSpike");
+    case "cold-cache":
+      return t("cache.coldCache");
   }
 }
 
@@ -30,11 +32,15 @@ export function faultLabel(fault: Fault, preset?: DrillPreset, diagram?: Diagram
           : t("fault.reconnect")
         : fault.kind === "slow"
           ? t("fault.slow")
-          : t("fault.fail");
+          : fault.kind === "purge"
+            ? fault.reason === "deploy"
+              ? t("chrome.deployment")
+              : t("cache.purge")
+            : t("fault.fail");
   return t("fault.marker", { action, target: faultTargetLabel(fault, diagram) || faultTarget(fault) });
 }
 
-function faultTargetLabel(fault: Fault, diagram?: DiagramFile, ids = true): string | undefined {
+export function faultTargetLabel(fault: Fault, diagram?: DiagramFile, ids = true): string | undefined {
   const id = faultTarget(fault);
   return fault.kind === "boundary"
     ? diagram?.groups?.find((g) => g.id === id)?.label
@@ -85,23 +91,4 @@ export function nodeFaultLabels(faults: readonly Fault[] = NO_FAULTS): ReadonlyM
 
 export function nodeFaultLabel(node: string, faults?: readonly Fault[]): string {
   return nodeFaultLabels(faults).get(node) ?? "";
-}
-
-/** One translated clause for the hover's single scope line. */
-export function faultWindowLabel(fault: Fault, diagram?: DiagramFile): string {
-  const label = faultTargetLabel(fault, diagram, false) || t("fault.unnamedTarget");
-  switch (fault.kind) {
-    case "boundary":
-      return fault.down ? t("latency.windowDown", { label }) : t("latency.windowRestored", { label });
-    case "link":
-      return fault.cut ? t("latency.windowCut", { label }) : t("latency.windowRestored", { label });
-    case "slow":
-      return fault.factor === 1
-        ? t("latency.windowRestored", { label })
-        : t("latency.windowSlow", { label, factor: fault.factor });
-    case "fail":
-      return fault.rate === 0
-        ? t("latency.windowRestored", { label })
-        : t("latency.windowFail", { label, rate: fault.rate * 100 });
-  }
 }

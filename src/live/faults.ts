@@ -1,11 +1,49 @@
-import type { DiagramFile } from "../model/types";
+import { timelineConfigurations } from "../model/timelineConfiguration";
+import type { DiagramFile, Simulation } from "../model/types";
 import { type DrillPreset, type Fault } from "../model/faults";
-import { faultTopology } from "../model/faultRuntime";
+import { faultTopology, MAX_FAULT_WORK } from "../model/faultRuntime";
 import { stencilRole } from "../stencils/roles";
+import { cacheEnabled, type CacheTable } from "../model/caching";
 
 export { drillName } from "../model/faultWords";
 
 const targetCache = new WeakMap<DiagramFile, Map<Fault["kind"], { id: string; label: string }[]>>();
+const setups = new WeakMap<DiagramFile, WeakMap<object, DiagramFile>>();
+export function faultDiagram(diagram: DiagramFile, simulation: Simulation): DiagramFile {
+  const props = simulation.setup?.props;
+  if (!props) return diagram;
+  const cache = setups.get(diagram) ?? new WeakMap<object, DiagramFile>();
+  setups.set(diagram, cache);
+  let effective = cache.get(props);
+  if (!effective) {
+    effective = {
+      ...diagram,
+      nodes: diagram.nodes.map((n) => (props[n.id] ? { ...n, props: { ...n.props, ...props[n.id] } } : n)),
+    };
+    cache.set(props, effective);
+  }
+  return effective;
+}
+export interface PurgeConfiguration {
+  targets: { id: string; label: string }[];
+  table?: CacheTable;
+}
+export function faultStepCaches(diagram: DiagramFile, simulation: Simulation): Map<number, PurgeConfiguration> {
+  const result = new Map<number, PurgeConfiguration>();
+  let work = diagram.nodes.length + (simulation.timeline?.length ?? 0);
+  // Only the editor retains target lists, one per Fault step: any step's Kind can change to Purge, so
+  // each needs the purge targets in effect at that point. Admit their worst-case size before the walk.
+  for (const { action } of simulation.timeline ?? []) if (action.do === "fault") work += diagram.nodes.length;
+  if (work > MAX_FAULT_WORK) return result;
+  for (const [fault, caches, index] of timelineConfigurations(diagram, simulation))
+    result.set(index, {
+      targets: diagram.nodes.filter((n) =>
+        cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), caches.get(n.id)),
+      ),
+      table: fault.kind === "purge" ? caches.get(fault.node) : undefined,
+    });
+  return result;
+}
 export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {
   let cache = targetCache.get(diagram);
   if (!cache) targetCache.set(diagram, (cache = new Map()));
@@ -16,6 +54,10 @@ export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: s
   return targets;
 }
 function buildTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {
+  if (kind === "purge")
+    return diagram.nodes.filter((n) =>
+      cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), n.props?.cache),
+    );
   if (kind === "boundary") return diagram.groups ?? [];
   if (kind === "link") {
     const { nodes, links } = faultTopology(diagram);
@@ -31,6 +73,7 @@ export function defaultFault(kind: Fault["kind"], diagram: DiagramFile): Fault {
   const target = faultTargets(diagram, kind);
   if (kind === "boundary") return { kind, boundary: target[0]?.id ?? "", down: true };
   if (kind === "link") return { kind, edge: target[0]?.id ?? "", cut: true };
+  if (kind === "purge") return { kind, node: target[0]?.id ?? "", mode: "hard" };
   const roles = new Map(diagram.nodes.map((node) => [node.id, stencilRole(node.stencil)]));
   const node =
     target.find((n) => roles.get(n.id) === "processor")?.id ??
@@ -46,6 +89,7 @@ export function drillFault(preset: DrillPreset, diagram: DiagramFile): Fault {
 }
 
 export function drillKind(preset: DrillPreset): Fault["kind"] {
+  if (preset === "cold-cache") return "purge";
   return preset === "zone-outage"
     ? "boundary"
     : preset === "region-connectivity"

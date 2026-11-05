@@ -136,7 +136,7 @@ export interface SimulationMatch {
   note?: { focus: string; pause: boolean; atMs: number };
   notes?: readonly { focus: string; pause: boolean; atMs: number }[];
   expectation?: Pick<Expectation, "metric" | "op" | "value" | "when" | "atMs">;
-  fault?: { node: string; atMs: number; kind?: "slow" | "fail" };
+  fault?: { node: string; atMs: number; kind?: "slow" | "fail" | "purge" };
   seed?: number;
   scale?: number;
   durationMs?: number;

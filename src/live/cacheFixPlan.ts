@@ -5,16 +5,19 @@ import { simulationEdges } from "../sim/topology";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
 import { estimateTotalMs } from "../sim/simulation";
 import { realSnapshot } from "../sim/units";
-import { coalesceRule } from "../sim/cachePresets";
+import { coalesceRule, staleRule } from "../sim/cachePresets";
 import { THREAD_FIX_LIMITS, THREAD_FIX_WORK, threadFixWork } from "./threadFixPlan";
 import type { TroubleAction } from "./observedTrouble";
 import { herdThreshold } from "./cacheHerd";
 
-export function cacheLadder(table: CacheTable, rule: string) {
+export function cacheLadder(table: CacheTable, rule: string, fetchMs = 0) {
   const policy = rule === "" ? table.default : table.rules.find((r) => r.id === rule)?.policy;
-  return !policy || policy.noStore || policy.coalesce
-    ? []
-    : [{ step: "coalesce" as const, cache: coalesceRule(table, rule) }];
+  if (!policy || policy.noStore) return [];
+  const collapsed = coalesceRule(table, rule);
+  return [
+    ...(!policy.coalesce ? [{ step: "coalesce" as const, cache: collapsed }] : []),
+    ...(!policy.staleWhileRevalidateMs ? [{ step: "stale" as const, cache: staleRule(collapsed, rule, fetchMs) }] : []),
+  ];
 }
 
 export interface CacheFixEvidence {
@@ -26,6 +29,7 @@ export interface CacheFixEvidence {
   maxP95: number;
   expiries: number;
   herd: boolean;
+  fetchMs?: number;
 }
 export function cacheRecovers(before: CacheFixEvidence, after: CacheFixEvidence): boolean {
   return (
@@ -99,6 +103,7 @@ export function confirmedCacheFix({
     };
     const expiries = new Set<number>();
     let previousFlight = 0,
+      fetchStarted = 0,
       lastBacklog = 0,
       lastP95 = 0,
       measured = false;
@@ -110,6 +115,8 @@ export function confirmedCacheFix({
           target = s.nodes[origin];
         const herd = run.engine.observeCacheItem(node, rule, item);
         const flight = herd?.fetches ?? 0;
+        if (flight && !previousFlight) fetchStarted = s.time;
+        if (!flight && previousFlight) out.fetchMs = Math.max(out.fetchMs ?? 0, s.time - fetchStarted);
         const p95 = Math.max(0, ...sources.map((source) => s.nodes[source.id]?.latency?.p95 ?? 0));
         if (s.time <= time && flight >= herdThreshold(s.scale) && previousFlight < herdThreshold(s.scale)) {
           out.preBacklog = lastBacklog;
@@ -138,7 +145,7 @@ export function confirmedCacheFix({
   try {
     const before = measure(sim);
     if (!before) return;
-    for (const candidate of ladder) {
+    for (const candidate of cacheLadder(table, rule, before.fetchMs)) {
       const next = structuredClone(sim);
       next.setup = {
         ...next.setup,

@@ -5,6 +5,42 @@ import { faultTrouble } from "./faultTrouble";
 import type { Trouble } from "./observedTrouble";
 import { type Fault } from "../model/faults";
 import { boundaryOutage, outageMembership } from "../model/faultRuntime";
+import { cacheFixture } from "../lab/cacheFixture";
+
+it("names a cold origin's observed purge without offering Clear faults for an instant action", () => {
+  const diagram = cacheFixture();
+  const trouble: Trouble = {
+    key: "lag:origin",
+    kind: "lag",
+    node: "origin",
+    headline: "Origin behind",
+    announce: "Origin behind",
+    detail: "Requests are queued.",
+    action: { kind: "events", node: "origin" },
+  };
+  const nodes = {
+    cache: {
+      dropped: 0,
+      cacheDetails: {
+        purge: {
+          atMs: 1000,
+          peakFetchRate: 100,
+          tailItems: 20000,
+          refillMs: 250000,
+          hard: true,
+          edge: diagram.edges[1].id,
+        },
+      },
+    },
+  };
+  const result = faultTrouble(trouble, diagram, [], nodes, 4000);
+  expect(result?.detail).toContain("Edge cache");
+  expect(result?.detail).toContain("purge");
+  expect(result?.detail).toContain("3");
+  expect(result?.action).toEqual(trouble.action);
+  expect(faultTrouble({ ...trouble, node: "source" }, diagram, [], nodes, 4000)).toBeTruthy();
+  expect(faultTrouble({ ...trouble, node: "source" }, diagram, [], nodes, 4000)?.detail).toBe(trouble.detail);
+});
 
 const down: Trouble = {
   key: "down:worker",

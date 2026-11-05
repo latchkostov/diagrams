@@ -24,6 +24,70 @@ const noState = () => null;
 const presets = [10_000, 60_000, 300_000, 3_600_000];
 let cacheEdit = 0;
 
+function StaleWindow({
+  id,
+  policy,
+  set,
+}: {
+  id: string;
+  policy: CachePolicy;
+  set(p: CachePolicy, field?: string): void;
+}) {
+  const [custom, setCustom] = useState(false);
+  const value = policy.staleWhileRevalidateMs ?? 0;
+  const isCustom = custom || ![0, 10_000, 60_000, 300_000].includes(value);
+  return (
+    <>
+      <label className="insp-field">
+        <span className="insp-label">{t("cache.staleWindow")}</span>
+        <select
+          className="insp-input"
+          data-testid={`${id}-stale-window`}
+          value={isCustom ? "custom" : value}
+          aria-describedby={`${id}-stale-hint`}
+          onChange={(e) => {
+            const next = e.currentTarget.value;
+            setCustom(next === "custom");
+            if (next !== "custom") {
+              const { staleWhileRevalidateMs: _old, ...rest } = policy;
+              set(Number(next) ? { ...policy, staleWhileRevalidateMs: Number(next) } : rest);
+            }
+          }}
+        >
+          <option value={0}>{t("cache.off")}</option>
+          {[10_000, 60_000, 300_000].map((ms) => (
+            <option key={ms} value={ms}>
+              {cacheDuration(ms)}
+            </option>
+          ))}
+          <option value="custom">{t("cache.custom")}</option>
+        </select>
+      </label>
+      {isCustom && (
+        <label className="insp-field">
+          <span className="insp-label">{t("cache.staleMs")}</span>
+          <input
+            type="number"
+            className="insp-input"
+            data-testid={`${id}-stale-ms`}
+            min={0}
+            max={86_400_000}
+            value={value}
+            onChange={(e) => {
+              const next = Number(e.currentTarget.value);
+              if (Number.isFinite(next) && next >= 0 && next <= 86_400_000)
+                set({ ...policy, staleWhileRevalidateMs: next }, "stale");
+            }}
+          />
+        </label>
+      )}
+      <p className="insp-note" id={`${id}-stale-hint`}>
+        {t("cache.staleHint")}
+      </p>
+    </>
+  );
+}
+
 function MessagePatterns({ types, id, set }: { types?: string[]; id: string; set: (types?: string[]) => void }) {
   const external = types?.join(", ") ?? "";
   const [draft, setDraft] = useState({ text: external, external });
@@ -187,6 +251,7 @@ function CachePolicyFields({
               {t("cache.coalescingAction", { mode: "coalesce" })}
             </label>
             <p className="insp-note">{t("cache.coalesceHint")}</p>
+            <StaleWindow id={id} policy={p} set={set} />
           </ReadoutDisclosure>
         </>
       )}

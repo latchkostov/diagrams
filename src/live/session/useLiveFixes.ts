@@ -96,6 +96,7 @@ export function useLiveFixes({
     controller.currentDiagram,
     session.state.snapshot.faults,
     session.state.snapshot.nodes,
+    session.state.snapshot.time,
   );
   const runTroubleAction = useCallback(
     (action: TroubleAction, label: string, applyFix?: ApplyThreadFix) => {

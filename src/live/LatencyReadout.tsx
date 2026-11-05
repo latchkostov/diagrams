@@ -1,5 +1,5 @@
 import type { DiagramFile } from "../model/types";
-import { faultWindowLabel } from "../model/faultWords";
+import { faultWindowLabel } from "./faultWindowWords";
 import { t } from "../i18n";
 import { formatPercent } from "../i18n/format";
 import type { LatencyMetrics } from "../sim/types";

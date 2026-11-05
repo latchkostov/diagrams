@@ -474,7 +474,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
             ? f.edge === id && f.cut && (!check.fault || check.fault === "cut")
             : f.node === id &&
               (!check.fault || check.fault === f.kind) &&
-              (f.kind === "slow" ? f.factor > 1 : f.rate > 0),
+              (f.kind === "slow" ? f.factor > 1 : f.kind === "fail" && f.rate > 0),
       );
       const active = ((!check.fault || check.fault === "down") && down) || !!matches;
       return check.absent ? !active : active;
