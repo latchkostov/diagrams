@@ -1,9 +1,17 @@
 import { familyOf } from "../../stencils/profileFamilies";
 import { msg } from "../../i18n";
 import { cachingPractice } from "../../lab/cachingPractice";
-import type { Tutorial } from "../types";
-import { cacheEdit, cacheProperties, cachingSubjects, rulePath } from "./cachingSteps";
+import type { Demo, Tutorial } from "../types";
+import { cacheEdit, cacheProperties, cachingSubjects, ensureCacheRule, rulePath } from "./cachingSteps";
+import { productCache } from "../../lab/cachingPractice";
 import { runStep } from "./waitingSteps";
+
+const dontStore: Demo = {
+  kind: "patch",
+  subject: "edge",
+  patches: [ensureCacheRule(productCache().rules[0]), { op: "set", path: rulePath(), value: { noStore: true } }],
+  runs: ["cache-traffic"],
+};
 
 export const cacheLatency: Tutorial = {
   id: "cache-latency",
@@ -60,16 +68,7 @@ export const cacheLatency: Tutorial = {
         done: msg("tutorials.cacheLatency.noStoreDone"),
       },
       { kind: "prop", subject: "edge", prop: rulePath("noStore"), effective: true, op: "=", value: true },
-      [
-        {
-          kind: "patch",
-          subject: "edge",
-          patches: [
-            { op: "set", path: ["cache", "rules", { where: { id: "products" } }, "policy"], value: { noStore: true } },
-          ],
-          runs: ["cache-traffic"],
-        },
-      ],
+      [dontStore],
       "cache-rule-products-no-store",
       [...cacheProperties, { click: "cache-rule-products" }, { click: "cache-rule-products-no-store" }],
     ),
@@ -89,7 +88,7 @@ export const cacheLatency: Tutorial = {
         ],
       },
       targets: [{ testId: "live-restart", tip: msg("tutorials.cacheLatency.restartTitle") }],
-      demo: [{ kind: "runSimulation", id: "cache-traffic" }],
+      demo: [dontStore, { kind: "runSimulation", id: "cache-traffic" }],
       solution: [{ click: "live-restart" }, { playing: true }],
     },
     {

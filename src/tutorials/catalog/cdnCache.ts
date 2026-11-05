@@ -1,7 +1,7 @@
 import { msg } from "../../i18n";
 import { cachingPractice } from "../../lab/cachingPractice";
 import type { Tutorial } from "../types";
-import { cachingSubjects } from "./cachingSteps";
+import { cachingSubjects, rulePath, storingCheck, storingRule } from "./cachingSteps";
 import { runStep } from "./waitingSteps";
 
 export const cdnCache: Tutorial = {
@@ -36,21 +36,7 @@ export const cdnCache: Tutorial = {
       sticky: true,
       check: {
         kind: "all",
-        checks: [
-          {
-            kind: "prop",
-            subject: "edge",
-            prop: [
-              "cache",
-              "rules",
-              { where: { match: { methods: ["GET"], path: { kind: "template", value: "/products/{id}" } } } },
-              "policy",
-              "ttlMs",
-            ],
-            op: ">=",
-            value: 1000,
-          },
-        ],
+        checks: [storingCheck(), { kind: "prop", subject: "edge", prop: rulePath("ttlMs"), op: ">=", value: 1000 }],
       },
       targets: [
         { testId: "context-menu-item-node.add-cache-rules", tip: msg("tutorials.cdnCache.ruleTitle") },
@@ -62,45 +48,8 @@ export const cdnCache: Tutorial = {
           kind: "patch",
           subject: "edge",
           patches: [
-            {
-              op: "ensureItem",
-              uniqueId: true,
-              path: ["cache", "rules"],
-              match: { match: { methods: ["GET"], path: { kind: "template", value: "/products/{id}" } } },
-              with: { id: "products", policy: { ttlMs: 300000, keys: 50000, popularity: "typical" } },
-            },
-            {
-              op: "unset",
-              path: [
-                "cache",
-                "rules",
-                { where: { match: { methods: ["GET"], path: { kind: "template", value: "/products/{id}" } } } },
-                "policy",
-                "noStore",
-              ],
-            },
-            {
-              op: "setIfMissing",
-              path: [
-                "cache",
-                "rules",
-                { where: { match: { methods: ["GET"], path: { kind: "template", value: "/products/{id}" } } } },
-                "policy",
-                "ttlMs",
-              ],
-              value: 300000,
-            },
-            {
-              op: "atLeast",
-              path: [
-                "cache",
-                "rules",
-                { where: { match: { methods: ["GET"], path: { kind: "template", value: "/products/{id}" } } } },
-                "policy",
-                "ttlMs",
-              ],
-              value: 300000,
-            },
+            ...storingRule({ ttlMs: 300000, keys: 50000, popularity: "typical" }),
+            { op: "atLeast", path: rulePath("ttlMs"), value: 300000 },
           ],
         },
       ],

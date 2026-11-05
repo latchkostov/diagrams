@@ -3,6 +3,9 @@ import "../sim/cache/cacheRuntime";
 import { describe, expect, it } from "vitest";
 import { LiveController } from "../live/controller";
 import { cachingPractice } from "../lab/cachingPractice";
+import stampede from "../examples/cache-stampede.json";
+import { checkCache, type CacheTable } from "../model/caching";
+import type { DiagramFile } from "../model/types";
 import { holds, metricBaseline, metricValue, resolveSubjects, type SandboxView } from "./checks";
 import { cdnCache } from "./catalog/cdnCache";
 import { derivedHitRatio } from "./catalog/derivedHitRatio";
@@ -11,19 +14,168 @@ import { cacheStampede } from "./catalog/cacheStampede";
 import { staleWhileRevalidate } from "./catalog/staleWhileRevalidate";
 import { coldCache } from "./catalog/coldCache";
 import { authoredSimulation, matchesSimulation } from "./simulations";
+import { repairedRun } from "./repair";
 import { patchProps } from "./paths";
-import type { Check, MetricValue } from "./types";
+import type { Check, MetricValue, Tutorial } from "./types";
 import { createMachine } from "../lib/machine";
 import { runnerInitial, runnerMachine } from "./machine";
 import { buildBlueprint } from "./blueprint";
 
 export const cachingLessons = [cdnCache, derivedHitRatio, cacheLatency, cacheStampede, staleWhileRevalidate, coldCache];
 
+function start(lesson: Tutorial): DiagramFile {
+  if (typeof lesson.start !== "function") throw new Error("Expected a local exercise");
+  return lesson.start();
+}
+
 describe("cache lesson contracts", () => {
+  const repairs = [
+    [derivedHitRatio, "longer-ttl"],
+    [staleWhileRevalidate, "stale-window"],
+    [cacheLatency, "dont-store"],
+  ] as const;
+
+  it.each(repairs)(
+    "%s repairs disabled, replacement and missing product rules in the diagram and saved override",
+    (lesson, stepId) => {
+      for (const edit of ["disabled", "replacement", "missing"] as const) {
+        const d = start(lesson);
+        const table = d.nodes[1].props!.cache as CacheTable;
+        table.rules[0].id = "cache-1";
+        if (edit === "disabled") table.rules[0].policy = { noStore: true };
+        if (edit === "missing") table.rules = [];
+        const sibling = { id: "products", match: { methods: ["HEAD" as const] }, policy: { noStore: true as const } };
+        table.rules.push(sibling);
+        d.nodes[1].props!.custom = 17;
+        const sim = d.simulations![0];
+        sim.setup = { props: { edge: { cache: structuredClone(table), custom: 23 } } };
+        const step = lesson.steps.find((s) => s.id === stepId)!;
+        const patches = step.demo.flatMap((demo) => (demo.kind === "patch" ? demo.patches : []));
+        d.nodes[1].props = { ...d.nodes[1].props, ...patchProps(d.nodes[1].props, patches) };
+        const run = repairedRun(d, sim, { node: "edge" }, patches);
+        for (const props of [d.nodes[1].props, run.setup!.props!.edge]) {
+          const repaired = props.cache as CacheTable;
+          expect(() => checkCache(repaired)).not.toThrow();
+          expect(repaired.rules).toHaveLength(2);
+          expect(repaired.rules).toContainEqual(sibling);
+          expect(patchProps(props, patches)).toBeNull();
+        }
+        expect(d.nodes[1].props.custom).toBe(17);
+        expect(run.setup!.props!.edge.custom).toBe(23);
+        const c = new LiveController(d);
+        try {
+          expect(c.selectSimulation(run)).toBe("selected");
+          c.setInputs({ ...c.getState().inputs, traffic: 0.2 });
+          c.publish();
+          expect(
+            holds(
+              step.check,
+              { diagram: d, live: true, session: c.getState(), processed: () => 0 },
+              resolveSubjects(lesson, d),
+            ),
+            edit,
+          ).toBe(true);
+        } finally {
+          c.dispose();
+        }
+      }
+    },
+  );
+
+  it.each([
+    [derivedHitRatio, "longer-ttl", { noStore: true, ttlMs: 60000 }],
+    [staleWhileRevalidate, "stale-window", { noStore: true, staleWhileRevalidateMs: 10000 }],
+  ] as const)("%s rejects disabled caching even when the requested field is present", (lesson, stepId, policy) => {
+    const d = start(lesson);
+    const c = new LiveController(d);
+    try {
+      const session = structuredClone(c.getState());
+      session.inputs.traffic = 0.2;
+      (session.configuration.edge.cache as CacheTable).rules[0].policy = { ...policy };
+      const step = lesson.steps.find((s) => s.id === stepId)!;
+      expect(
+        holds(step.check, { diagram: d, live: true, session, processed: () => 0 }, resolveSubjects(lesson, d)),
+      ).toBe(false);
+    } finally {
+      c.dispose();
+    }
+  });
+
+  it.each(["disabled", "replacement", "missing"] as const)(
+    "stampede and purge assistance recover %s rules without erasing other edits",
+    (edit) => {
+      for (const [lesson, stepId, d] of [
+        [cacheStampede, "one-fetch", structuredClone(stampede) as DiagramFile],
+        [cacheStampede, "replay", structuredClone(stampede) as DiagramFile],
+        [coldCache, "soft-result", start(coldCache)],
+      ] as const) {
+        const edge = d.nodes[1];
+        const table = edge.props!.cache as CacheTable;
+        const count = table.rules.length;
+        for (const rule of table.rules) {
+          rule.id = `my-${rule.id}`;
+          if (edit === "disabled") rule.policy = { noStore: true };
+        }
+        if (edit === "missing") table.rules = [];
+        edge.props!.custom = 17;
+        const sim = d.simulations![0];
+        sim.setup = { props: { [edge.id]: { cache: structuredClone(table), custom: 23 } } };
+        const patches = lesson.steps
+          .find((s) => s.id === stepId)!
+          .demo.flatMap((demo) => (demo.kind === "patch" ? demo.patches : []));
+        edge.props = { ...edge.props, ...patchProps(edge.props, patches) };
+        const run = repairedRun(d, sim, { node: edge.id }, patches);
+        for (const props of [edge.props, run.setup!.props![edge.id]]) {
+          const repaired = props.cache as CacheTable;
+          expect(() => checkCache(repaired)).not.toThrow();
+          expect(repaired.rules).toHaveLength(count);
+          for (const rule of repaired.rules) expect(rule.policy.noStore).toBeUndefined();
+          const launch = repaired.rules.find((r) => r.match.path?.value === "/launch")!;
+          expect(launch.policy).toMatchObject({ ttlMs: 5000, keys: 1, coalesce: true });
+          expect(launch.policy.noStore).toBeUndefined();
+          if (lesson === coldCache)
+            for (const rule of repaired.rules) {
+              expect(rule.policy.noStore).toBeUndefined();
+              expect(rule.policy.staleWhileRevalidateMs).toBe(30000);
+            }
+          expect(patchProps(props, patches)).toBeNull();
+        }
+        expect(edge.props.custom).toBe(17);
+        expect(run.setup!.props![edge.id].custom).toBe(23);
+      }
+    },
+  );
+
+  it.each([
+    [cacheLatency, "restart-uncached", { noStore: true }],
+    [staleWhileRevalidate, "refresh", { ttlMs: 1000, keys: 1, coalesce: true, staleWhileRevalidateMs: 10000 }],
+  ] as const)("%s repairs a changed policy again before %s", (lesson, stepId, expected) => {
+    const d = start(lesson);
+    const table = d.nodes[1].props!.cache as CacheTable;
+    table.rules[0].id = "cache-1";
+    if (lesson === staleWhileRevalidate) table.rules[0].policy = { noStore: true };
+    const sim = d.simulations![0];
+    sim.setup = { props: { edge: { cache: structuredClone(table), custom: 23 } } };
+    const patches = lesson.steps
+      .find((s) => s.id === stepId)!
+      .demo.flatMap((demo) => (demo.kind === "patch" ? demo.patches : []));
+    d.nodes[1].props = { ...d.nodes[1].props, ...patchProps(d.nodes[1].props, patches) };
+    const run = repairedRun(d, sim, { node: "edge" }, patches);
+    for (const props of [d.nodes[1].props, run.setup!.props!.edge]) {
+      const repaired = props.cache as CacheTable;
+      expect(() => checkCache(repaired)).not.toThrow();
+      expect(repaired.rules).toHaveLength(1);
+      expect(repaired.rules[0].id).toBe("cache-1");
+      expect(repaired.rules[0].policy).toEqual(expected);
+      expect(patchProps(props, patches)).toBeNull();
+    }
+    expect(run.setup!.props!.edge.custom).toBe(23);
+  });
+
   it("previews one stale-window edit and describes a matched rule in plain route terms", () => {
-    const board = buildBlueprint(staleWhileRevalidate, cachingPractice());
+    const board = buildBlueprint(staleWhileRevalidate, start(staleWhileRevalidate));
     expect(board.changes.filter((change) => change.step === 3)).toEqual([
-      expect.objectContaining({ detail: "products", before: undefined, after: 10000 }),
+      expect.objectContaining({ detail: "GET /products/{id}", before: undefined, after: 10000 }),
     ]);
     const intro = buildBlueprint(cdnCache, cachingPractice(false));
     expect(intro.changes.some((change) => change.detail === "GET /products/{id}")).toBe(true);

@@ -5,6 +5,18 @@ import { holds } from "./checks";
 import type { DiagramFile } from "../model/types";
 import type { Check, PropPatch } from "./types";
 
+it("returns top-level unsets as undefined for the editor's deletion convention", () => {
+  const props = { custom: 17, sibling: 23 };
+  const edits: PropPatch[] = [{ op: "unset", path: ["custom"] }];
+  const patch = patchProps(props, edits);
+  expect(patch).toEqual({ custom: undefined });
+  expect(props).toEqual({ custom: 17, sibling: 23 });
+  // setNodeProps removes undefined keys after its shallow merge.
+  const applied = Object.fromEntries(Object.entries({ ...props, ...patch }).filter(([, value]) => value !== undefined));
+  expect(applied).toEqual({ sibling: 23 });
+  expect(patchProps(applied, edits)).toBeNull();
+});
+
 it("unsets only an own object key without removing array items or touching siblings", () => {
   const rule = { id: "products", policy: { noStore: true, keys: 17 } };
   const props = { cache: { rules: [rule] }, custom: 23 };

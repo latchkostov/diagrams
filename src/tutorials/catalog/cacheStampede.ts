@@ -1,11 +1,25 @@
 import { msg } from "../../i18n";
-import type { Tutorial } from "../types";
-import { cachingSubjects, rulePath } from "./cachingSteps";
+import example from "../../examples/cache-stampede.json";
+import { familyOf } from "../../stencils/profileFamilies";
+import type { CacheTable } from "../../model/caching";
+import type { Demo, Tutorial } from "../types";
+import { cacheRuleStoringCheck, cachingSubjects, repairCacheRule, rulePath } from "./cachingSteps";
 import { runStep } from "./waitingSteps";
 import { herdThreshold } from "../../live/cacheHerd";
 
 // Public example expectation identifiers, independent of their displayed labels.
 const outcomes = { fetches: "fetches", backlog: "backlog", latency: "latency" };
+const cache = example.nodes.find((n) => familyOf(n.stencil) === "edge")!.props.cache as CacheTable;
+const oneFetch: Demo = {
+  kind: "patch",
+  subject: "edge",
+  patches: [
+    ...cache.rules.flatMap(repairCacheRule),
+    { op: "set", path: rulePath("keys", "launch"), value: 1 },
+    { op: "set", path: rulePath("coalesce", "launch"), value: true },
+  ],
+  runs: ["ttl-only"],
+};
 
 export const cacheStampede: Tutorial = {
   id: "cache-stampede",
@@ -51,25 +65,24 @@ export const cacheStampede: Tutorial = {
       done: msg("tutorials.cacheStampede.fixDone"),
       sticky: true,
       check: {
-        kind: "prop",
-        subject: "edge",
-        prop: rulePath("coalesce", "launch"),
-        effective: true,
-        op: "=",
-        value: true,
+        kind: "all",
+        checks: [
+          ...cache.rules.map(cacheRuleStoringCheck),
+          {
+            kind: "prop",
+            subject: "edge",
+            prop: rulePath("coalesce", "launch"),
+            effective: true,
+            op: "=",
+            value: true,
+          },
+        ],
       },
       targets: [
         { testId: "trouble-action", tip: msg("tutorials.cacheStampede.fixTitle") },
         { testId: "node-cache-{edge}", tip: msg("tutorials.cacheStampede.herdTitle") },
       ],
-      demo: [
-        {
-          kind: "patch",
-          subject: "edge",
-          patches: [{ op: "set", path: rulePath("coalesce", "launch"), value: true }],
-          runs: ["ttl-only"],
-        },
-      ],
+      demo: [oneFetch],
       solution: [{ click: "trouble-action" }],
     },
     {
@@ -93,7 +106,7 @@ export const cacheStampede: Tutorial = {
         { testId: "live-restart", tip: msg("tutorials.cacheStampede.replayTitle") },
         { testId: "live-timeline", tip: msg("tutorials.cacheStampede.replayTitle") },
       ],
-      demo: [{ kind: "runSimulation", id: "ttl-only" }],
+      demo: [oneFetch, { kind: "runSimulation", id: "ttl-only" }],
       solution: [{ select: "live-speed", value: "4" }, { click: "live-restart" }, { playing: true }],
     },
   ],

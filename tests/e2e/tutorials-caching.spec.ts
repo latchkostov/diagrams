@@ -10,7 +10,7 @@ import {
   runPointerSkipAll,
 } from "./pointer-tutorial-driver";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
-import { holdChunk } from "./chunk";
+import { holdChunk, releaseAndEvaluate } from "./chunk";
 import { surfaceChunk } from "./lazy-surface-helpers";
 
 const cachingIds = [
@@ -144,7 +144,7 @@ test("Exit cancels a superseded caching runtime load", async ({ page, consoleErr
     await page.getByTestId("live-toggle").click();
     await expect.poll(held.requested).toBe(true);
     await page.getByTestId("tutorial-exit").click();
-    held.release();
+    await releaseAndEvaluate(page, surfaceChunk("live.cache"), held.release);
     await expect(page.getByTestId("tutorials-view")).toBeVisible();
     await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
@@ -170,7 +170,91 @@ const properties: ResolvedUiStep[] = [
   { open: "inspector-section-node-cache" },
   { click: "cache-rule-products" },
 ];
-const nearMisses: { id: string; index: number; step: string; actions: ResolvedUiStep[] }[] = [
+
+async function continueAt(page: import("@playwright/test").Page, id: string, index: number, step: string) {
+  await page.clock.install();
+  await page.addInitScript(
+    ({ id, index }) =>
+      localStorage.setItem(
+        "diagrams.tutorials.v1",
+        JSON.stringify({ progress: { [id]: { version: 1, step: index, completed: false } } }),
+      ),
+    { id, index },
+  );
+  await openTutorial(page, id);
+  await page.getByTestId("tutorial-start").click();
+  await pauseClock(page);
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === step);
+  await page.clock.resume();
+}
+
+for (const assistance of ["Skip", "Do it for me"] as const)
+  for (const example of [
+    { id: "derived-hit-ratio", index: 3, step: "longer-ttl" },
+    { id: "stale-while-revalidate", index: 2, step: "stale-window" },
+  ])
+    test(`${example.id}: Don't store then ${assistance} restores caching and completes`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      test.slow();
+      await continueAt(page, example.id, example.index, example.step);
+      for (const action of properties) await play(page, action);
+      await page.getByTestId("cache-rule-products-no-store").check();
+      await expect(strip(page)).toHaveAttribute("data-step", example.step);
+      if (assistance === "Do it for me") {
+        await page.getByTestId("coach-hint").click();
+        await page.getByTestId("tutorial-show-me").click();
+        await expect(page.getByTestId("tutorial-skip")).toHaveText("Do it for me");
+      } else await expect(page.getByTestId("tutorial-skip")).toHaveAttribute("title", "Do this step for me");
+      await pauseClock(page);
+      await page.getByTestId("tutorial-skip").click();
+      await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== example.step);
+      if (example.id === "stale-while-revalidate") {
+        await expect(strip(page)).toHaveAttribute("data-step", "refresh");
+        // Complete the actual refresh check, rather than skipping the observation.
+        const solution = await page.evaluate(() => {
+          if (!window.__tutorial) throw new Error("Expected the active tutorial");
+          return window.__tutorial.solution();
+        });
+        await page.clock.resume();
+        for (const action of solution) await play(page, action);
+        await pauseClock(page);
+        await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-phase")) === "finished");
+      } else await skipAll(page, true);
+      await expect(page.getByTestId("tutorial-handoff-recap")).toBeVisible();
+      await expectNothingSaved(page);
+      expectNoErrors(consoleErrors);
+    });
+
+for (const example of [
+  { id: "derived-hit-ratio", index: 3, step: "longer-ttl", field: "ttl-60000" },
+  { id: "stale-while-revalidate", index: 2, step: "stale-window", field: "stale-window" },
+  { id: "cache-latency", index: 2, step: "dont-store", field: "no-store" },
+])
+  for (const edit of ["replacement", "missing"] as const)
+    test(`${example.id}: a ${edit} rule can be completed or repaired`, async ({ page, consoleErrors }) => {
+      test.slow();
+      await continueAt(page, example.id, example.index, example.step);
+      for (const action of properties) await play(page, action);
+      await play(page, { open: "cache-rule-products-actions" });
+      await page.getByTestId("cache-rule-products-delete").click();
+      await expect(strip(page)).toHaveAttribute("data-step", example.step);
+      if (edit === "replacement") {
+        await page.getByTestId("cache-add-rule").click();
+        if (example.field === "stale-window") {
+          await play(page, { open: "cache-rule-cache-1-expires-toggle" });
+          await page.getByTestId("cache-rule-cache-1-stale-window").selectOption("10000");
+        } else await page.getByTestId(`cache-rule-cache-1-${example.field}`).click();
+      } else await page.getByTestId("tutorial-skip").click();
+      await pauseClock(page);
+      await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== example.step);
+      await skipAll(page, true);
+      await expectNothingSaved(page);
+      expectNoErrors(consoleErrors);
+    });
+
+const nearMisses: { id: string; name?: string; index: number; step: string; actions: ResolvedUiStep[] }[] = [
   { id: "cdn-cache", index: 1, step: "rule", actions: [{ rightclick: "node-edge" }, { press: "Escape" }] },
   {
     id: "derived-hit-ratio",
@@ -225,9 +309,41 @@ const nearMisses: { id: string; index: number; step: string; actions: ResolvedUi
       { click: "sim-panel-save" },
     ],
   },
+  ...[
+    { id: "cache-stampede", index: 2, step: "one-fetch" },
+    { id: "cache-stampede", index: 3, step: "replay" },
+    { id: "cold-cache", index: 3, step: "soft-purge" },
+    { id: "cold-cache", index: 4, step: "soft-result" },
+  ].map((example) => ({
+    ...example,
+    name: `${example.id} ${example.step} with both rules set to Don't store`,
+    actions: [
+      { dblclick: "node-cdn" },
+      { open: "dock-edit-properties" },
+      { open: "inspector-section-node-cache" },
+      { click: "cache-rule-launch" },
+      { click: "cache-rule-launch-no-store" },
+      { click: "cache-rule-products" },
+      { click: "cache-rule-products-no-store" },
+    ] satisfies ResolvedUiStep[],
+  })),
+  {
+    id: "stale-while-revalidate",
+    name: "stale refresh with Don't store",
+    index: 3,
+    step: "refresh",
+    actions: [...properties, { click: "cache-rule-products-no-store" }],
+  },
+  {
+    id: "cache-latency",
+    name: "uncached replay after restoring storage",
+    index: 3,
+    step: "restart-uncached",
+    actions: [...properties, { click: "cache-rule-products-no-store" }, { click: "cache-rule-products-ttl-60000" }],
+  },
 ];
 for (const example of nearMisses)
-  test(`${example.id}: Continue reconstructs, a near miss stays active, and escalating help repairs it`, async ({
+  test(`${example.name ?? example.id}: Continue reconstructs, a near miss stays active, and escalating help repairs it`, async ({
     page,
     consoleErrors,
   }) => {

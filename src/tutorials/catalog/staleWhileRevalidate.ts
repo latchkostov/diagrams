@@ -3,7 +3,7 @@ import { msg } from "../../i18n";
 import { cachingPractice } from "../../lab/cachingPractice";
 import type { CacheTable } from "../../model/caching";
 import type { Tutorial } from "../types";
-import { cacheEdit, cacheProperties, cachingSubjects, rulePath } from "./cachingSteps";
+import { cacheEdit, cacheProperties, cachingSubjects, rulePath, storingCheck, storingRule } from "./cachingSteps";
 import { runStep } from "./waitingSteps";
 
 export const staleWhileRevalidate: Tutorial = {
@@ -59,18 +59,27 @@ export const staleWhileRevalidate: Tutorial = {
         done: msg("tutorials.staleRefresh.windowDone"),
       },
       {
-        kind: "prop",
-        subject: "edge",
-        prop: rulePath("staleWhileRevalidateMs"),
-        effective: true,
-        op: ">=",
-        value: 10000,
+        kind: "all",
+        checks: [
+          storingCheck(),
+          {
+            kind: "prop",
+            subject: "edge",
+            prop: rulePath("staleWhileRevalidateMs"),
+            effective: true,
+            op: ">=",
+            value: 10000,
+          },
+        ],
       },
       [
         {
           kind: "patch",
           subject: "edge",
-          patches: [{ op: "set", path: rulePath("staleWhileRevalidateMs"), value: 10000 }],
+          patches: [
+            ...storingRule({ ttlMs: 1000, keys: 1, coalesce: true }),
+            { op: "set", path: rulePath("staleWhileRevalidateMs"), value: 10000 },
+          ],
           runs: ["cache-traffic"],
         },
       ],
@@ -102,7 +111,20 @@ export const staleWhileRevalidate: Tutorial = {
         { testId: "node-cache-{edge}", tip: msg("tutorials.staleRefresh.refreshTitle") },
         { testId: "live-restart", tip: msg("tutorials.staleRefresh.refreshTitle") },
       ],
-      demo: [{ kind: "runSimulation", id: "cache-traffic" }],
+      demo: [
+        {
+          kind: "patch",
+          subject: "edge",
+          patches: [
+            ...storingRule({ ttlMs: 1000, keys: 1, coalesce: true, staleWhileRevalidateMs: 10000 }),
+            { op: "set", path: rulePath("keys"), value: 1 },
+            { op: "set", path: rulePath("coalesce"), value: true },
+            { op: "atLeast", path: rulePath("staleWhileRevalidateMs"), value: 10000 },
+          ],
+          runs: ["cache-traffic"],
+        },
+        { kind: "runSimulation", id: "cache-traffic" },
+      ],
       solution: [{ click: "live-restart" }, { playing: true }, { hover: "node-{edge}" }],
     },
   ],

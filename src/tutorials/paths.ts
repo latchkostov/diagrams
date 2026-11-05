@@ -124,6 +124,8 @@ export function patchProps(
     const result = update(next, patch.path, edit);
     if (result !== SKIP) next = result as Record<string, unknown>;
   }
-  const changed = Object.keys(next).filter((key) => next[key] !== before[key]);
+  const changed = [...new Set([...Object.keys(before), ...Object.keys(next)])].filter(
+    (key) => next[key] !== before[key],
+  );
   return changed.length ? Object.fromEntries(changed.map((key) => [key, next[key]])) : null;
 }

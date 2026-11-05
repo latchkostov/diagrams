@@ -1,7 +1,7 @@
 import { msg } from "../../i18n";
 import { cachingPractice } from "../../lab/cachingPractice";
 import type { Tutorial } from "../types";
-import { cacheEdit, cacheProperties, cachingSubjects, rulePath } from "./cachingSteps";
+import { cacheEdit, cacheProperties, cachingSubjects, rulePath, storingCheck, storingRule } from "./cachingSteps";
 import { runStep } from "./waitingSteps";
 
 export const derivedHitRatio: Tutorial = {
@@ -77,6 +77,7 @@ export const derivedHitRatio: Tutorial = {
       {
         kind: "all",
         checks: [
+          storingCheck(),
           { kind: "prop", subject: "edge", prop: rulePath("ttlMs"), effective: true, op: "=", value: 60000 },
           { kind: "inputs", input: "traffic", op: "=", value: 0.2 },
         ],
@@ -85,7 +86,10 @@ export const derivedHitRatio: Tutorial = {
         {
           kind: "patch",
           subject: "edge",
-          patches: [{ op: "set", path: rulePath("ttlMs"), value: 60000 }],
+          patches: [
+            ...storingRule({ ttlMs: 1000, keys: 20, popularity: "even" }),
+            { op: "set", path: rulePath("ttlMs"), value: 60000 },
+          ],
           runs: ["cache-traffic"],
         },
         { kind: "inputs", input: "traffic", value: 0.2 },

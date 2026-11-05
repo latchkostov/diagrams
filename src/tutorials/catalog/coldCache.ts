@@ -1,7 +1,9 @@
 import { msg } from "../../i18n";
 import { coldCachePractice } from "../../lab/cachingPractice";
+import { familyOf } from "../../stencils/profileFamilies";
+import type { CacheTable } from "../../model/caching";
 import type { Demo, SimulationMatch, Tutorial } from "../types";
-import { cachingSubjects } from "./cachingSteps";
+import { cachingSubjects, repairCacheRule } from "./cachingSteps";
 import { runStep } from "./waitingSteps";
 
 const match = (mode: "hard" | "soft"): SimulationMatch => ({
@@ -15,6 +17,14 @@ const save = (mode: "hard" | "soft"): Demo => ({
   durationMs: 10000,
   drills: [{ preset: "cold-cache", target: "edge", atMs: 0, mode }],
 });
+// Authoring a purge cannot rescue a rule the learner removed or set to Don't store.
+const cache = coldCachePractice().nodes.find((n) => familyOf(n.stencil) === "edge")!.props!.cache as CacheTable;
+const restoreCache: Demo = {
+  kind: "patch",
+  subject: "edge",
+  patches: cache.rules.flatMap(repairCacheRule),
+  runs: ["serve-stale", "simulation", { selected: true }],
+};
 
 export const coldCache: Tutorial = {
   id: "cold-cache",
@@ -56,7 +66,7 @@ export const coldCache: Tutorial = {
         { testId: "context-menu-item-sim.purge", tip: msg("tutorials.coldCache.faultTip") },
         { testId: "live-more", tip: msg("tutorials.coldCache.openEditor") },
       ],
-      demo: [save("hard")],
+      demo: [save("hard"), restoreCache],
       solution: [
         { click: "live-more" },
         { click: "live-edit-sims" },
@@ -92,6 +102,7 @@ export const coldCache: Tutorial = {
       ],
       demo: [
         save("hard"),
+        restoreCache,
         { kind: "openView", view: "simulations", open: false },
         { kind: "runSimulation", id: "simulation" },
         { kind: "traffic", on: true },
@@ -117,7 +128,7 @@ export const coldCache: Tutorial = {
         { testId: "context-menu-item-sim.soft-purge", tip: msg("tutorials.coldCache.faultTip") },
         { testId: "live-more", tip: msg("tutorials.coldCache.openEditor") },
       ],
-      demo: [save("soft")],
+      demo: [save("soft"), restoreCache],
       solution: [
         { click: "live-more" },
         { click: "live-edit-sims" },
@@ -148,6 +159,7 @@ export const coldCache: Tutorial = {
         { testId: "node-{origin}", tip: msg("tutorials.coldCache.resultTitle") },
       ],
       demo: [
+        restoreCache,
         { kind: "openView", view: "simulations", open: false },
         { kind: "runSimulation", id: "simulation" },
         { kind: "traffic", on: true },
