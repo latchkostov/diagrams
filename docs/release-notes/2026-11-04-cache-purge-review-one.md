@@ -1,7 +1,9 @@
 ## Cache purge review round one (#435)
 
 Purge validation and the simulation editor now walk the same stable playback
-order, including setup and earlier property edits. Deleted rule IDs remain
+order, including setup and earlier property edits.
+Configuration snapshots are shared between property edits, so repeated fault
+steps do not copy every node again. Deleted rule IDs remain
 visible as unresolved choices with a linked field error, so choosing All rules
 explicitly repairs the step. Accepted hard, soft, per-rule and deploy menu
 purges announce completion through the canvas live region in all 38 languages.
@@ -22,7 +24,7 @@ discriminated key helper, including delimiter-bearing rule IDs.
 
 ## Regression evidence and unchanged limits
 
-Every finding has a failing mutation check: 13 rejected mutations cover the
+Every finding has a failing mutation check: 14 rejected mutations cover the
 11 findings, including separate zero-time tracked/statistical cases and the
 missing-rule placeholder/error. The named latency regression covers two hard
 and two soft purges, aggregate and per-type windows, cumulative counters and

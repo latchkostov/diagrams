@@ -26,12 +26,16 @@ export function faultDiagram(diagram: DiagramFile, simulation: Simulation): Diag
 }
 export function faultStepDiagrams(diagram: DiagramFile, simulation: Simulation): Map<number, DiagramFile> {
   const result = new Map<number, DiagramFile>();
+  let effective: DiagramFile | undefined;
   for (const { step, index, props } of timelineConfigurations(diagram, simulation)) {
-    if (step.action.do === "fault")
-      result.set(index, {
+    if (step.action.do === "props") effective = undefined;
+    else if (step.action.do === "fault") {
+      effective ??= {
         ...diagram,
         nodes: diagram.nodes.map((n) => ({ ...n, props: props.get(n.id) })),
-      });
+      };
+      result.set(index, effective);
+    }
   }
   return result;
 }

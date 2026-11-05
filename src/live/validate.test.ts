@@ -140,6 +140,20 @@ it("validates purge rules in stable playback order and shares the effective conf
   expect(faultTimelineProblem(d, draft)).toBeUndefined();
   expect(simulationFieldErrors(draft, d)).toEqual([]);
   expect(faultStepDiagrams(d, draft).get(0)!.nodes[1].props!.cache).toEqual(cache);
+  const repeated: Simulation = {
+    ...draft,
+    timeline: [
+      draft.timeline![0],
+      { atMs: 2001, action: draft.timeline![0].action },
+      { atMs: 2002, action: { do: "props", node: "cache", props: { latencyMs: 5 } } },
+      { atMs: 2003, action: draft.timeline![0].action },
+    ],
+  };
+  const configurations = faultStepDiagrams(d, repeated);
+  expect(configurations.get(1)).toBe(configurations.get(0));
+  expect(configurations.get(3)).not.toBe(configurations.get(0));
+  expect(configurations.get(0)!.nodes[1].props!.latencyMs).toBe(0);
+  expect(configurations.get(3)!.nodes[1].props!.latencyMs).toBe(5);
   draft.timeline!.push({
     atMs: 2000,
     action: { do: "props", node: "cache", props: { cache: { rules: [], default: { ttlMs: 1000, keys: 1 } } } },
