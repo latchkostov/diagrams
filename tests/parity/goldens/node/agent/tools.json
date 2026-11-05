@@ -1480,6 +1480,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {
@@ -4487,6 +4488,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {
@@ -7490,6 +7492,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {
@@ -10664,6 +10667,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {
@@ -13795,6 +13799,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {
@@ -16797,6 +16802,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {
@@ -19795,6 +19801,7 @@
                 "type": ["object", "null"],
                 "additionalProperties": false,
                 "properties": {
+                  "onMiss": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "null" }] },
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
                   "deadlineMs": {

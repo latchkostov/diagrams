@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Look up, then fetch",
+    "direction": "LR",
+    "nodes": [
+      { "id": "readers", "stencil": "generic.service", "label": "Readers", "x": 40, "y": 100 },
+      { "id": "catalog", "stencil": "generic.service", "label": "Catalog", "x": 400, "y": 100 },
+      { "id": "cache", "stencil": "generic.database", "label": "Product cache", "x": 760, "y": 40 },
+      { "id": "database", "stencil": "generic.database", "label": "Catalog database", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-readers-catalog", "from": "readers", "to": "catalog", "kind": "sync" },
+      { "id": "e2-catalog-cache", "from": "catalog", "to": "cache", "kind": "sync" },
+      { "id": "e3-catalog-database", "from": "catalog", "to": "database", "kind": "sync" }
+    ]
+  }
+}

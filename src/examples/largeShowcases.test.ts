@@ -7,6 +7,7 @@ import { loadExample } from "./index";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { NOTE_FIT } from "../canvas/camera/geometry";
 import type { KedaConfig } from "../model/autoscaling";
+import { exampleMetadata } from "./metadata";
 
 // The large public showcases (docs/EXAMPLES.md): each tells its saved stories on a realistic, invented system.
 // Public fixtures only: this shallow glob never descends into local-only examples.
@@ -153,6 +154,7 @@ describe("large showcases", () => {
   });
 
   it("Black Friday: the product cache performs real lookups and only misses read the catalog database", () => {
+    expect(exampleMetadata["black-friday-commerce"].shows).toContain("caching");
     const d = diagram("black-friday-commerce");
     const cache = d.nodes.find((n) => n.id === "product-cache")!;
     const lookup = d.edges.find((e) => e.id === "catalog-bff--product-cache")!;

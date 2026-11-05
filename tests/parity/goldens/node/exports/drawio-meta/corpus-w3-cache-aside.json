@@ -1,0 +1,119 @@
+{
+  "withIcons": {
+    "sha256": "45f33df11ff55b7f249e163571bf140817ab67860202064835c6b79a67c0d29a",
+    "bytes": 7176,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.cache": "generic-cache da1ea7485f4f757b", "generic.database": "generic-database e85b3d97d2e8de44", "generic.service": "generic-service 6ec0da29f56c9e80" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-w3" },
+        "title": "Look up, then fetch",
+        "nodes": [
+          {
+            "id": "readers",
+            "stencil": "client.browser",
+            "label": "Readers",
+            "x": 0,
+            "y": 100,
+            "props": { "ratePerSec": 200 }
+          },
+          {
+            "id": "catalog",
+            "stencil": "generic.service",
+            "label": "Catalog",
+            "x": 280,
+            "y": 100,
+            "props": { "latencyMs": 10, "concurrency": 20, "failureRate": 0, "jitter": 0 }
+          },
+          {
+            "id": "cache",
+            "stencil": "generic.cache",
+            "label": "Product cache",
+            "x": 560,
+            "y": 0,
+            "props": {
+              "latencyMs": 10,
+              "jitter": 0,
+              "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 1 } }
+            }
+          },
+          {
+            "id": "database",
+            "stencil": "generic.database",
+            "label": "Catalog database",
+            "x": 560,
+            "y": 220,
+            "props": { "latencyMs": 100, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "input", "from": "readers", "to": "catalog", "kind": "sync", "props": { "travelMs": 10 } },
+          {
+            "id": "lookup",
+            "from": "catalog",
+            "to": "cache",
+            "kind": "sync",
+            "props": { "travelMs": 10, "caller": { "wait": "blocking" } }
+          },
+          {
+            "id": "fetch",
+            "from": "catalog",
+            "to": "database",
+            "kind": "sync",
+            "props": { "travelMs": 10, "caller": { "wait": "blocking", "onMiss": "lookup" } }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "misses",
+            "title": "Look up before fetching",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 10000,
+            "traffic": [
+              {
+                "id": "reads",
+                "node": "readers",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "fault", "fault": { "kind": "purge", "node": "cache", "mode": "hard" } }
+              }
+            ]
+          },
+          {
+            "id": "lease",
+            "title": "One reader fetches for the others",
+            "seed": 7,
+            "scale": 10,
+            "durationMs": 10000,
+            "setup": {
+              "props": {
+                "cache": { "cache": { "rules": [], "default": { "ttlMs": 1000, "keys": 1, "coalesce": true } } }
+              }
+            },
+            "traffic": [
+              {
+                "id": "reads",
+                "node": "readers",
+                "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "fault", "fault": { "kind": "purge", "node": "cache", "mode": "hard" } }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

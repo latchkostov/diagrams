@@ -18,6 +18,7 @@ for (const locale of ["en", "ar"]) {
     await waitForBackgroundChecks(page);
     await page.getByTestId("edge-fetch").dblclick();
     await waitForSelectionSettled(page);
+    await page.getByTestId("inspector-section-edge-simulation").click();
     const details = page.getByTestId("inspector-section-call-advanced");
     await expect(details).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByTestId("inspector-summary-call-advanced")).toContainText("\u2068Product cache\u2069");
@@ -27,6 +28,10 @@ for (const locale of ["en", "ar"]) {
     await expect(when).toHaveAccessibleName(locale === "en" ? "When" : "متى");
     await expect(when).toHaveValue("lookup");
     await expect(when).toContainText("\u2068Product cache\u2069");
+    const full = await page.getByTestId("inspector-unit-onMiss").boundingBox();
+    const control = await when.boundingBox();
+    expect(full).not.toBeNull();
+    expect(control?.width).toBeGreaterThan((full?.width ?? Infinity) * 0.9);
     await page.screenshot({ path: test.info().outputPath(`cache-aside-${locale}.png`) });
     await when.selectOption("");
     await expect

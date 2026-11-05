@@ -5,6 +5,7 @@ import "./cache/cacheRuntime";
 import type { CacheTable } from "../model/caching";
 import { analyzeCapacity } from "./capacity";
 import { resourceLesson } from "../model/autoscalingLessons";
+import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
 
 it("looks up before fetching, holds the thread across both phases and writes back implicitly", () => {
   const e = createEngine({ seed: 7, maxParticles: 0 });
@@ -141,4 +142,41 @@ it("CPU planning charges non-blocking reply work only for database calls that ru
   const a = analyzeCapacity(d);
   const miss = 1 - a.cacheDemand!.cache[""].hitRatio;
   expect(a.resolved.service.resources!.cpuMsPerMessage).toBeCloseTo(10 + 1 + miss, 8);
+});
+
+it("readers whose stale window ends join the existing refresh lease", () => {
+  const d = cacheAsideFixture();
+  (d.nodes[2].props!.cache as CacheTable).default = {
+    ttlMs: 1000,
+    keys: 1,
+    coalesce: true,
+    staleWhileRevalidateMs: 100,
+  };
+  const e = createEngine({
+    seed: 7,
+    maxParticles: 0,
+    verifyLedger: assertLedgerInvariants,
+    verifyOutcomes: assertOutcomeInvariants,
+  });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1200);
+  e.setNodeProps("database", { latencyMs: 1500 });
+  e.inject("source", 1);
+  e.step(100);
+  e.inject("source", 20, { spreadMs: 100 });
+  e.step(200);
+  expect(e.snapshot().nodes.cache.cacheDetails!.itemFetches).toBe(1);
+  expect(e.threadUsage("service")!.waiting).toBe(20);
+  const token = e.checkpoint();
+  const suffix = () => {
+    e.step(3000);
+    return e.snapshot();
+  };
+  const result = suffix();
+  expect(result.nodes.database.processed).toBe(2);
+  expect(result.nodes.cache.cache).toMatchObject({ revalidations: 1, coalesced: 20, fills: 2 });
+  expect(result.inSystem).toBe(0);
+  e.restore(token);
+  expect(suffix()).toEqual(result);
 });
