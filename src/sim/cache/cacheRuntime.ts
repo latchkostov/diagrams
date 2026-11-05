@@ -1,6 +1,6 @@
 import { checkCache, CACHE_LIMITS, type CacheTable } from "../../model/caching";
-import { compileMatch, matchesRequest, drawStream, streamSeed } from "../routeMatching";
-import { acceptsType } from "../topology";
+import { compileMatch, drawStream, streamSeed } from "../routeMatching";
+import { firstCacheRule } from "./selectRule";
 import { cacheHitShare, itemHitShare, expNeg } from "./cacheMath";
 import { popularityTable } from "./popularity";
 import { installCacheRuntime, type CacheRuntime } from "./cacheBridge";
@@ -333,9 +333,7 @@ export const cacheRuntime: CacheRuntime = {
   },
   lookup(cache, type, request, sync, now, size) {
     observeCold(cache, now);
-    const rule = cache.rules.find(
-      (r) => !r.match || ((!r.address || matchesRequest(r.match, request)) && acceptsType(r.types, type)),
-    );
+    const rule = firstCacheRule(cache.rules, type, request);
     if (rule && Object.isFrozen(rule.counts)) rule.counts = counts();
     const add = (key: keyof CacheCounts) => {
       cache.counts[key] = (cache.counts[key] ?? 0) + size;

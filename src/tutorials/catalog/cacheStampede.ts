@@ -14,7 +14,7 @@ const oneFetch: Demo = {
   kind: "patch",
   subject: "edge",
   patches: [
-    ...cache.rules.flatMap(repairCacheRule),
+    ...cache.rules.flatMap((rule) => repairCacheRule(rule, "Shoppers")),
     { op: "set", path: rulePath("keys", "launch"), value: 1 },
     { op: "set", path: rulePath("coalesce", "launch"), value: true },
   ],
@@ -67,7 +67,7 @@ export const cacheStampede: Tutorial = {
       check: {
         kind: "all",
         checks: [
-          ...cache.rules.map(cacheRuleStoringCheck),
+          ...cache.rules.map((rule) => cacheRuleStoringCheck(rule, "Shoppers")),
           {
             kind: "prop",
             subject: "edge",

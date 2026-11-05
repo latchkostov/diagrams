@@ -29,6 +29,125 @@ function start(lesson: Tutorial): DiagramFile {
 }
 
 describe("cache lesson contracts", () => {
+  it.each([
+    [cdnCache, "rule"],
+    [derivedHitRatio, "longer-ttl"],
+    [cacheLatency, "dont-store"],
+    [cacheStampede, "one-fetch"],
+    [staleWhileRevalidate, "stale-window"],
+    [coldCache, "soft-result"],
+  ] as const)("%s repairs the first widened serving rule in place at %s", (lesson, stepId) => {
+    const d = lesson === cacheStampede ? (structuredClone(stampede) as DiagramFile) : start(lesson);
+    const edge = d.nodes[1];
+    const table = (edge.props!.cache ??= { rules: [] }) as CacheTable;
+    table.rules.unshift({
+      id: "learner",
+      label: "Keep my match",
+      match: { methods: ["GET"] },
+      policy: { noStore: true },
+    });
+    const siblings = table.rules.slice(1);
+    const step = lesson.steps.find((s) => s.id === stepId)!;
+    const patches = step.demo.flatMap((demo) => (demo.kind === "patch" ? demo.patches : []));
+    const sim = d.simulations![0];
+    sim.setup = { props: { [edge.id]: { cache: structuredClone(table), custom: 23 } } };
+    edge.props = { ...edge.props, ...patchProps(edge.props, patches) };
+    const run = repairedRun(d, sim, { node: edge.id }, patches);
+    for (const props of [edge.props, run.setup!.props![edge.id]]) {
+      const repaired = props.cache as CacheTable;
+      expect(repaired.rules).toHaveLength(siblings.length + 1);
+      expect(repaired.rules[0]).toMatchObject({ id: "learner", label: "Keep my match", match: { methods: ["GET"] } });
+      expect(repaired.rules.slice(1)).toEqual(siblings);
+      expect(repaired.rules[0].policy.noStore).toBe(lesson === cacheLatency ? true : undefined);
+      expect(() => checkCache(repaired)).not.toThrow();
+      expect(patchProps(props, patches)).toBeNull();
+    }
+    if (lesson !== coldCache) {
+      const c = new LiveController(d);
+      try {
+        c.selectSimulation(run);
+        c.setInputs({ ...c.getState().inputs, traffic: 0.2 });
+        c.publish();
+        expect(
+          holds(
+            step.check,
+            { diagram: d, live: true, session: c.getState(), processed: () => 0 },
+            resolveSubjects(lesson, d),
+          ),
+        ).toBe(true);
+      } finally {
+        c.dispose();
+      }
+    }
+    expect(run.setup!.props![edge.id].custom).toBe(23);
+  });
+
+  it("Any path then assistance completes the actual refresh check", () => {
+    const d = start(staleWhileRevalidate);
+    const edge = d.nodes[1];
+    const table = edge.props!.cache as CacheTable;
+    delete table.rules[0].match.path;
+    const window = staleWhileRevalidate.steps.find((s) => s.id === "stale-window")!;
+    const patches = window.demo.flatMap((demo) => (demo.kind === "patch" ? demo.patches : []));
+    edge.props = { ...edge.props, ...patchProps(edge.props, patches) };
+    const c = new LiveController(d);
+    try {
+      c.selectSimulation(repairedRun(d, d.simulations![0], { node: edge.id }, patches));
+      const generation = c.getState().generation;
+      c.restart();
+      c.step(10000);
+      c.publish();
+      expect(
+        holds(
+          staleWhileRevalidate.steps.find((s) => s.id === "refresh")!.check,
+          {
+            diagram: d,
+            live: true,
+            sessionId: 1,
+            session: c.getState(),
+            processed: (id) => c.getState().snapshot.nodes[id]?.processed ?? 0,
+            baseline: { newRun: [0, generation, 1] },
+          },
+          resolveSubjects(staleWhileRevalidate, d),
+        ),
+      ).toBe(true);
+      expect((edge.props.cache as CacheTable).rules).toHaveLength(1);
+    } finally {
+      c.dispose();
+    }
+  });
+
+  it.each([derivedHitRatio, staleWhileRevalidate, cacheLatency])(
+    "%s checks the serving rule rather than a correct shadowed rule",
+    (lesson) => {
+      const d = start(lesson);
+      const table = d.nodes[1].props!.cache as CacheTable;
+      table.rules[0].policy =
+        lesson === cacheLatency ? { noStore: true } : { ttlMs: 60000, staleWhileRevalidateMs: 10000 };
+      table.rules.unshift({
+        id: "first",
+        match: { methods: ["GET"] },
+        policy: lesson === cacheLatency ? { ttlMs: 1000 } : { noStore: true },
+      });
+      const c = new LiveController(d);
+      try {
+        const stepId =
+          lesson === derivedHitRatio ? "longer-ttl" : lesson === cacheLatency ? "dont-store" : "stale-window";
+        const session = structuredClone(c.getState());
+        session.inputs.traffic = 0.2;
+        expect(
+          holds(
+            lesson.steps.find((s) => s.id === stepId)!.check,
+            { diagram: d, live: true, session, processed: () => 0 },
+            resolveSubjects(lesson, d),
+          ),
+        ).toBe(false);
+      } finally {
+        c.dispose();
+      }
+    },
+  );
+
   const repairs = [
     [derivedHitRatio, "longer-ttl"],
     [staleWhileRevalidate, "stale-window"],
@@ -38,12 +157,13 @@ describe("cache lesson contracts", () => {
   it.each(repairs)(
     "%s repairs disabled, replacement and missing product rules in the diagram and saved override",
     (lesson, stepId) => {
-      for (const edit of ["disabled", "replacement", "missing"] as const) {
+      for (const edit of ["disabled", "replacement", "missing", "widened"] as const) {
         const d = start(lesson);
         const table = d.nodes[1].props!.cache as CacheTable;
         table.rules[0].id = "cache-1";
         if (edit === "disabled") table.rules[0].policy = { noStore: true };
         if (edit === "missing") table.rules = [];
+        if (edit === "widened") table.rules[0].match = { methods: ["GET"] };
         const sibling = { id: "products", match: { methods: ["HEAD" as const] }, policy: { noStore: true as const } };
         table.rules.push(sibling);
         d.nodes[1].props!.custom = 17;
@@ -218,8 +338,17 @@ describe("cache lesson contracts", () => {
     table.rules[0].id = "my-own-rule";
     expect(holds(check, view, subjects)).toBe(true);
     for (const match of [
-      { methods: ["POST"], path: { kind: "template", value: "/products/{id}" } },
       { methods: ["GET"], path: { kind: "exact", value: "/products/example" } },
+      { methods: ["GET"], path: { kind: "prefix", value: "/products/" } },
+      { methods: ["GET"], types: ["Product*"] },
+    ]) {
+      table.rules[0].match = match;
+      expect(holds(check, view, subjects)).toBe(true);
+    }
+    for (const match of [
+      { methods: ["POST"], path: { kind: "template", value: "/products/{id}" } },
+      { methods: ["GET"], path: { kind: "exact", value: "/products/another-item" } },
+      { methods: ["GET"], types: ["Another reader"] },
     ]) {
       table.rules[0].match = match;
       expect(holds(check, view, subjects)).toBe(false);
@@ -238,7 +367,7 @@ describe("cache lesson contracts", () => {
     d.nodes[1].props = { ...props, ...patch };
     const rules = (patch.cache as { rules: object[] }).rules;
     expect(rules).toHaveLength(2);
-    expect(rules[0]).toEqual(props.cache.rules[0]);
+    expect(rules[1]).toBe(props.cache.rules[0]);
     expect(d.nodes[1].props.custom).toBe(17);
     expect(patchProps(d.nodes[1].props, demo.patches)).toBeNull();
     expect(
@@ -332,7 +461,7 @@ describe("cache lesson contracts", () => {
     const demo = cdnCache.steps[1].demo[0];
     if (demo.kind !== "patch") throw new Error("Expected patch");
     const patch = patchProps(props, demo.patches)!;
-    expect((patch.cache as { rules: { id: string }[] }).rules.map((r) => r.id)).toEqual(["products", "products-2"]);
+    expect((patch.cache as { rules: { id: string }[] }).rules.map((r) => r.id)).toEqual(["products-2", "products"]);
   });
 });
 

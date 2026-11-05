@@ -189,43 +189,48 @@ async function continueAt(page: import("@playwright/test").Page, id: string, ind
 }
 
 for (const assistance of ["Skip", "Do it for me"] as const)
-  for (const example of [
-    { id: "derived-hit-ratio", index: 3, step: "longer-ttl" },
-    { id: "stale-while-revalidate", index: 2, step: "stale-window" },
-  ])
-    test(`${example.id}: Don't store then ${assistance} restores caching and completes`, async ({
-      page,
-      consoleErrors,
-    }) => {
-      test.slow();
-      await continueAt(page, example.id, example.index, example.step);
-      for (const action of properties) await play(page, action);
-      await page.getByTestId("cache-rule-products-no-store").check();
-      await expect(strip(page)).toHaveAttribute("data-step", example.step);
-      if (assistance === "Do it for me") {
-        await page.getByTestId("coach-hint").click();
-        await page.getByTestId("tutorial-show-me").click();
-        await expect(page.getByTestId("tutorial-skip")).toHaveText("Do it for me");
-      } else await expect(page.getByTestId("tutorial-skip")).toHaveAttribute("title", "Do this step for me");
-      await pauseClock(page);
-      await page.getByTestId("tutorial-skip").click();
-      await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== example.step);
-      if (example.id === "stale-while-revalidate") {
-        await expect(strip(page)).toHaveAttribute("data-step", "refresh");
-        // Complete the actual refresh check, rather than skipping the observation.
-        const solution = await page.evaluate(() => {
-          if (!window.__tutorial) throw new Error("Expected the active tutorial");
-          return window.__tutorial.solution();
-        });
-        await page.clock.resume();
-        for (const action of solution) await play(page, action);
+  for (const edit of ["Don't store", "Any path"] as const)
+    for (const example of [
+      { id: "derived-hit-ratio", index: 3, step: "longer-ttl" },
+      { id: "stale-while-revalidate", index: 2, step: "stale-window" },
+    ])
+      test(`${example.id}: ${edit} then ${assistance} restores caching and completes`, async ({
+        page,
+        consoleErrors,
+      }) => {
+        test.slow();
+        await continueAt(page, example.id, example.index, example.step);
+        for (const action of properties) await play(page, action);
+        if (edit === "Don't store") await page.getByTestId("cache-rule-products-no-store").check();
+        else {
+          await play(page, { open: "cache-rule-products-edit-match" });
+          await page.getByTestId("cache-rule-products-match-kind").selectOption("any");
+        }
+        await expect(strip(page)).toHaveAttribute("data-step", example.step);
+        if (assistance === "Do it for me") {
+          await page.getByTestId("coach-hint").click();
+          await page.getByTestId("tutorial-show-me").click();
+          await expect(page.getByTestId("tutorial-skip")).toHaveText("Do it for me");
+        } else await expect(page.getByTestId("tutorial-skip")).toHaveAttribute("title", "Do this step for me");
         await pauseClock(page);
-        await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-phase")) === "finished");
-      } else await skipAll(page, true);
-      await expect(page.getByTestId("tutorial-handoff-recap")).toBeVisible();
-      await expectNothingSaved(page);
-      expectNoErrors(consoleErrors);
-    });
+        await page.getByTestId("tutorial-skip").click();
+        await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== example.step);
+        if (example.id === "stale-while-revalidate") {
+          await expect(strip(page)).toHaveAttribute("data-step", "refresh");
+          // Complete the actual refresh check, rather than skipping the observation.
+          const solution = await page.evaluate(() => {
+            if (!window.__tutorial) throw new Error("Expected the active tutorial");
+            return window.__tutorial.solution();
+          });
+          await page.clock.resume();
+          for (const action of solution) await play(page, action);
+          await pauseClock(page);
+          await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-phase")) === "finished");
+        } else await skipAll(page, true);
+        await expect(page.getByTestId("tutorial-handoff-recap")).toBeVisible();
+        await expectNothingSaved(page);
+        expectNoErrors(consoleErrors);
+      });
 
 for (const example of [
   { id: "derived-hit-ratio", index: 3, step: "longer-ttl", field: "ttl-60000" },

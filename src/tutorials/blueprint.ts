@@ -170,7 +170,11 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
           demo.kind === "prop"
             ? Object.keys(demo.props).map((key) => [key] as const)
             : demo.patches
-                .filter((p) => p.op !== "ensureItem" || readPath(before, [...p.path, { where: p.match }]) === undefined)
+                .filter(
+                  (p) =>
+                    p.op !== "ensureItem" ||
+                    readPath(before, [...p.path, { where: p.match, serving: p.serving }]) === undefined,
+                )
                 .map((p) => p.path);
         for (const path of paths) {
           const a = readPath(before, path),

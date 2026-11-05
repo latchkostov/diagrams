@@ -13,6 +13,7 @@ import type { EditorModeValue } from "../canvas/interaction/mode";
 import type { DrillPreset } from "../model/faults";
 import type { ProductObservations } from "../lib/observations";
 import type { KeyboardUiStep } from "./keyboard";
+import type { RequestAddress } from "../model/requestRouting";
 
 /**
  * The tutorial format: typed data, no code. A tutorial is a starting diagram plus steps; each step says what to do
@@ -53,11 +54,14 @@ export type FaultKind = "down" | "slow" | "fail" | "cut";
 /** A value a path matches or a patch writes: JSON, or a catalog message (a setting key in the learner's language). */
 export type PathLiteral = string | number | boolean | null | Words;
 export type PatchValue = PathLiteral | readonly PatchValue[] | { readonly [key: string]: PatchValue };
+export type CacheExerciseRequest = RequestAddress & { type: string };
 /**
  * One step into props: an own object key, a whole-number array index, or `where`: the first array item whose fields
- * equal these. Never the prototype: `constructor`, `__proto__` or an array's `length` aren't keys (the lint says so).
+ * equal these. With `serving`, use the runtime's first matching cache rule instead; `where` describes it in previews.
+ * Never the prototype: `constructor`, `__proto__` or an array's `length` aren't keys (the lint says so).
  */
-export type PathSegment = string | number | { where: Readonly<Record<string, PatchValue>> };
+export type PathSegment =
+  string | number | { where: Readonly<Record<string, PatchValue>>; serving?: CacheExerciseRequest };
 /** A path into a node's or edge's props (src/tutorials/paths.ts), from a top-level key: `["settings", 4, "secret"]`. */
 export type PropPath = readonly [string, ...PathSegment[]];
 /** `measure: "length"` compares the length of the list at the path (missing, or not a list: the check fails). */
@@ -79,7 +83,7 @@ export type PropPatch =
   | { op: "set"; path: PropPath; value: PatchValue }
   /** Like set, only while nothing is at the path. */
   | { op: "setIfMissing"; path: PropPath; value: PatchValue }
-  /** The list at the path (made if missing) has an item matching `match`; else `{ ...match, ...with }` is appended. */
+  /** Ensure a matching item, appending `{ ...match, ...with }` when absent (prepending for `serving`). */
   | {
       op: "ensureItem";
       path: PropPath;
@@ -87,6 +91,8 @@ export type PropPatch =
       with?: Readonly<Record<string, PatchValue>>;
       /** When appending an id-bearing item, keep the learner's existing ids unique. */
       uniqueId?: true;
+      /** Resolve the runtime's first serving rule; insert a missing rule first. */
+      serving?: CacheExerciseRequest;
     }
   /** A number at the path below this one is raised to it; nothing, null (none) or a larger number stays. */
   | { op: "atLeast"; path: PropPath; value: number };

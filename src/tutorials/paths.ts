@@ -1,4 +1,5 @@
 import type { PatchValue, PathSegment, PropPatch, PropPath } from "./types";
+import { servingCacheRule } from "./cacheRules";
 
 /**
  * Paths into props, for prop checks and edit-preserving demo patches (types.ts: PropPath, PropPatch). Pure and data
@@ -42,7 +43,9 @@ const indexIn = (list: readonly unknown[], segment: Exclude<PathSegment, string>
     ? Number.isInteger(segment) && segment >= 0 && segment < list.length
       ? segment
       : -1
-    : list.findIndex((item) => matches(item, segment.where));
+    : segment.serving
+      ? servingCacheRule(list, segment.serving)
+      : list.findIndex((item) => matches(item, segment.where));
 
 /** The value at the path, or undefined when any step of it isn't there. */
 export function readPath(props: unknown, path: PropPath): unknown {
@@ -97,14 +100,15 @@ const edits: { [K in PropPatch["op"]]: (patch: Extract<PropPatch, { op: K }>) =>
   ensureItem: (patch) => (current) => {
     if (current !== undefined && !Array.isArray(current)) return SKIP;
     const list = current ?? [];
-    if (list.some((item) => matches(item, patch.match))) return SKIP;
+    if (patch.serving ? servingCacheRule(list, patch.serving) >= 0 : list.some((item) => matches(item, patch.match)))
+      return SKIP;
     const item = resolve({ ...patch.match, ...patch.with });
     if (patch.uniqueId && isRecord(item) && typeof item.id === "string") {
       const base = item.id;
       let n = 2;
       while (list.some((existing) => isRecord(existing) && existing.id === item.id)) item.id = `${base}-${n++}`;
     }
-    return [...list, item];
+    return patch.serving ? [item, ...list] : [...list, item];
   },
   atLeast: (patch) => (current) => (typeof current === "number" && current < patch.value ? patch.value : SKIP),
 };

@@ -14,10 +14,22 @@ const matches = {
   launch: { path: { kind: "exact", value: "/launch" } },
 } satisfies Record<string, CacheRule["match"]>;
 type RuleName = keyof typeof matches;
+// The requests sent by the public caching exercises, independent of learner rule ids/matches.
+const exerciseRequest = (rule: CacheRule, type = "Product readers") => ({
+  type,
+  method: "GET" as const,
+  path: rule.match.path?.value === "/launch" ? "/launch" : "/products/example",
+});
 export const rulePath = (field?: string, rule: RuleName = "products"): PropPath => [
   "cache",
   "rules",
-  { where: { match: matches[rule] } },
+  {
+    where: { match: matches[rule] },
+    serving: exerciseRequest(
+      { id: rule, match: matches[rule], policy: {} },
+      rule === "launch" ? "Shoppers" : "Product readers",
+    ),
+  },
   "policy",
   ...(field ? [field] : []),
 ];
@@ -26,19 +38,25 @@ const ruleMatch = (rule: CacheRule) => {
   const { path, ...rest } = rule.match;
   return { ...rest, ...(path ? { path: { ...path } } : {}) };
 };
-export const ensureCacheRule = (rule: CacheRule): PropPatch => ({
+export const ensureCacheRule = (rule: CacheRule, type = "Product readers"): PropPatch => ({
   op: "ensureItem",
   uniqueId: true,
+  serving: exerciseRequest(rule, type),
   path: ["cache", "rules"],
   match: { match: ruleMatch(rule) },
   with: { id: rule.id, policy: { ...rule.policy } },
 });
 
 /** Restore missing policy defaults while keeping learner settings and unrelated rules. */
-export function repairCacheRule(rule: CacheRule): PropPatch[] {
-  const policy: PropPath = ["cache", "rules", { where: { match: ruleMatch(rule) } }, "policy"];
+export function repairCacheRule(rule: CacheRule, type = "Product readers"): PropPatch[] {
+  const policy: PropPath = [
+    "cache",
+    "rules",
+    { where: { match: ruleMatch(rule) }, serving: exerciseRequest(rule, type) },
+    "policy",
+  ];
   return [
-    ensureCacheRule(rule),
+    ensureCacheRule(rule, type),
     { op: "unset", path: [...policy, "noStore"] },
     ...Object.entries(rule.policy).map(([field, value]): PropPatch => ({
       op: "setIfMissing",
@@ -51,20 +69,32 @@ export function repairCacheRule(rule: CacheRule): PropPatch[] {
 export const storingRule = (policy: CachePolicy, rule: RuleName = "products") =>
   repairCacheRule({ id: rule, match: matches[rule], policy });
 
-export const cacheRuleStoringCheck = (rule: CacheRule): Check => ({
+export const cacheRuleStoringCheck = (rule: CacheRule, type = "Product readers"): Check => ({
   kind: "all",
   checks: [
     {
       kind: "prop",
       subject: "edge",
-      prop: ["cache", "rules", { where: { match: ruleMatch(rule) } }, "policy", "noStore"],
+      prop: [
+        "cache",
+        "rules",
+        { where: { match: ruleMatch(rule) }, serving: exerciseRequest(rule, type) },
+        "policy",
+        "noStore",
+      ],
       effective: true,
       op: "falsy",
     },
     {
       kind: "prop",
       subject: "edge",
-      prop: ["cache", "rules", { where: { match: ruleMatch(rule) } }, "policy", "ttlMs"],
+      prop: [
+        "cache",
+        "rules",
+        { where: { match: ruleMatch(rule) }, serving: exerciseRequest(rule, type) },
+        "policy",
+        "ttlMs",
+      ],
       effective: true,
       op: ">=",
       value: 100,

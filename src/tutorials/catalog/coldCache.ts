@@ -22,7 +22,7 @@ const cache = coldCachePractice().nodes.find((n) => familyOf(n.stencil) === "edg
 const restoreCache: Demo = {
   kind: "patch",
   subject: "edge",
-  patches: cache.rules.flatMap(repairCacheRule),
+  patches: cache.rules.flatMap((rule) => repairCacheRule(rule, "Shoppers")),
   runs: ["serve-stale", "simulation", { selected: true }],
 };
 
