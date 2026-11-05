@@ -9,7 +9,8 @@ for (const workerFails of [false, true])
     page,
   }) => {
     const held = await holdChunk(page, FALLBACK);
-    if (workerFails) await page.route(/\/assets\/particleWorker-[\w-]+\.js$/, (route) => route.abort("failed"));
+    // Build serves /assets/particleWorker-<hash>.js; Dev serves the source module. Match both.
+    if (workerFails) await page.route(/particleWorker/, (route) => route.abort("failed"));
     try {
       await gotoLive(
         page,
