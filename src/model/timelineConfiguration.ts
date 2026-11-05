@@ -1,15 +1,21 @@
 import type { DiagramFile, Simulation } from "./types";
+import type { CacheTable } from "./caching";
 
-/** Stable playback order, including array order for simultaneous steps.
- * The yielded map is the current configuration; consume it before advancing.
+/** Fault configurations in stable playback order, including simultaneous array order.
+ * Only cache tables matter to purge validation. Consume the map before advancing.
+ * Callers admit nodes + timeline length against MAX_FAULT_WORK before advancing.
  */
 export function* timelineConfigurations(diagram: DiagramFile, simulation: Simulation) {
-  const props = new Map(diagram.nodes.map((n) => [n.id, { ...n.props, ...simulation.setup?.props?.[n.id] }]));
-  const steps = (simulation.timeline ?? []).map((step, index) => ({ step, index }));
-  steps.sort((a, b) => a.step.atMs - b.step.atMs || a.index - b.index);
-  for (const entry of steps) {
-    yield { ...entry, props };
-    const a = entry.step.action;
-    if (a.do === "props" && props.has(a.node)) props.set(a.node, { ...props.get(a.node), ...a.props });
+  const caches = new Map<string, CacheTable | undefined>();
+  for (const node of diagram.nodes) {
+    const { cache } = { ...node.props, ...simulation.setup?.props?.[node.id] };
+    if (cache) caches.set(node.id, cache as CacheTable);
+  }
+  const steps = simulation.timeline ?? [];
+  const order = Array.from(steps.keys()).sort((a, b) => steps[a].atMs - steps[b].atMs);
+  for (const index of order) {
+    const a = steps[index].action;
+    if (a.do === "fault") yield [a.fault, caches, index] as const;
+    else if (a.do === "props" && "cache" in a.props) caches.set(a.node, a.props.cache as CacheTable | undefined);
   }
 }

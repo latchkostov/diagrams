@@ -1,9 +1,9 @@
 import { timelineConfigurations } from "../model/timelineConfiguration";
 import type { DiagramFile, Simulation } from "../model/types";
 import { type DrillPreset, type Fault } from "../model/faults";
-import { faultTopology } from "../model/faultRuntime";
+import { faultTopology, MAX_FAULT_WORK } from "../model/faultRuntime";
 import { stencilRole } from "../stencils/roles";
-import { cacheEnabled } from "../model/caching";
+import { cacheEnabled, type CacheTable } from "../model/caching";
 
 export { drillName } from "../model/faultWords";
 
@@ -24,18 +24,25 @@ export function faultDiagram(diagram: DiagramFile, simulation: Simulation): Diag
   }
   return effective;
 }
-export function faultStepDiagrams(diagram: DiagramFile, simulation: Simulation): Map<number, DiagramFile> {
-  const result = new Map<number, DiagramFile>();
-  let effective: DiagramFile | undefined;
-  for (const { step, index, props } of timelineConfigurations(diagram, simulation)) {
-    if (step.action.do === "props") effective = undefined;
-    else if (step.action.do === "fault") {
-      effective ??= {
-        ...diagram,
-        nodes: diagram.nodes.map((n) => ({ ...n, props: props.get(n.id) })),
-      };
-      result.set(index, effective);
-    }
+export interface PurgeConfiguration {
+  targets: { id: string; label: string }[];
+  table?: CacheTable;
+}
+export function faultStepCaches(diagram: DiagramFile, simulation: Simulation): Map<number, PurgeConfiguration> {
+  const result = new Map<number, PurgeConfiguration>();
+  let work = diagram.nodes.length + (simulation.timeline?.length ?? 0);
+  // Only the editor retains target lists. Admit their worst-case size before the walk.
+  for (const { action } of simulation.timeline ?? [])
+    if (action.do === "fault" && action.fault.kind === "purge") work += diagram.nodes.length;
+  if (work > MAX_FAULT_WORK) return result;
+  for (const [fault, caches, index] of timelineConfigurations(diagram, simulation)) {
+    if (fault.kind === "purge")
+      result.set(index, {
+        targets: diagram.nodes.filter((n) =>
+          cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), caches.get(n.id)),
+        ),
+        table: caches.get(fault.node),
+      });
   }
   return result;
 }

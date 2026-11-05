@@ -2,22 +2,24 @@ import { ValidationSelect } from "./validationFields";
 import { t, useLocale } from "../i18n";
 import { faultTarget, type Fault } from "../model/faults";
 import type { DiagramFile } from "../model/types";
-import { defaultFault, faultTargets } from "./faults";
+import { defaultFault, faultTargets, type PurgeConfiguration } from "./faults";
 import type { CacheTable } from "../model/caching";
 
 export function FaultStep({
   fault,
   diagram,
+  purge,
   testId,
   onChange,
 }: {
   fault: Fault;
   diagram: DiagramFile;
+  purge?: PurgeConfiguration;
   testId: string;
   onChange(fault: Fault): void;
 }) {
   useLocale();
-  const targets = faultTargets(diagram, fault.kind);
+  const targets = purge?.targets ?? faultTargets(diagram, fault.kind);
   const target = faultTarget(fault);
   const value =
     fault.kind === "boundary"
@@ -31,7 +33,9 @@ export function FaultStep({
             : String(fault.rate);
   const table =
     fault.kind === "purge"
-      ? (diagram.nodes.find((n) => n.id === fault.node)?.props?.cache as CacheTable | undefined)
+      ? purge
+        ? purge.table
+        : (diagram.nodes.find((n) => n.id === fault.node)?.props?.cache as CacheTable | undefined)
       : undefined;
   const missingRule =
     fault.kind === "purge" &&
@@ -59,7 +63,7 @@ export function FaultStep({
           <option value="fail" disabled={!faultTargets(diagram, "fail").length}>
             {t("fault.fail")}
           </option>
-          <option value="purge" disabled={!faultTargets(diagram, "purge").length}>
+          <option value="purge" disabled={!(purge?.targets ?? faultTargets(diagram, "purge")).length}>
             {t("cache.purge")}
           </option>
         </ValidationSelect>

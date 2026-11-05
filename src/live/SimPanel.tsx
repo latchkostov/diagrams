@@ -13,7 +13,8 @@ import {
   drillName,
   faultTargets,
   faultDiagram as configuredFaultDiagram,
-  faultStepDiagrams,
+  faultStepCaches,
+  type PurgeConfiguration,
 } from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
@@ -197,8 +198,8 @@ export function SimPanel({
   const interaction = useInteraction();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
-  const stepDiagrams = useMemo(
-    () => (sim ? faultStepDiagrams(diagram, sim) : new Map<number, DiagramFile>()),
+  const stepCaches = useMemo(
+    () => (sim ? faultStepCaches(diagram, sim) : new Map<number, PurgeConfiguration>()),
     [diagram, sim],
   );
   const faultDiagram = sim ? configuredFaultDiagram(diagram, sim) : diagram;
@@ -358,7 +359,8 @@ export function SimPanel({
                   key={i}
                   index={i}
                   step={step}
-                  diagram={stepDiagrams.get(i) ?? faultDiagram}
+                  diagram={diagram}
+                  purge={stepCaches.get(i)}
                   types={types}
                   warnings={warnings.filter((w) => w.where === `timeline:${i}`)}
                   onChange={(next) => edit((d) => void (d.timeline![i] = next))}
@@ -1119,6 +1121,7 @@ interface StepRowProps {
   index: number;
   step: TimelineStep;
   diagram: DiagramFile;
+  purge?: PurgeConfiguration;
   types: string[];
   warnings: SimWarning[];
   onChange: (s: TimelineStep) => void;
@@ -1126,7 +1129,7 @@ interface StepRowProps {
   onPick: (label: string, apply: (id: string) => void) => void;
 }
 
-function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, onPick }: StepRowProps) {
+function StepRow({ index, step, diagram, purge, types, warnings, onChange, onRemove, onPick }: StepRowProps) {
   const t = `sim-panel-step-${index}`;
   const a = step.action;
   const setAction = (action: TimelineAction) => onChange({ ...step, action });
@@ -1183,6 +1186,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           <FaultStep
             fault={a.fault}
             diagram={diagram}
+            purge={purge}
             testId={t}
             onChange={(fault) =>
               setAction({ do: "fault", fault, ...(fault.kind === a.fault.kind && a.drill ? { drill: a.drill } : {}) })

@@ -2,8 +2,8 @@ import type { DiagramFile, Simulation } from "./types";
 import { isDependency } from "./relations";
 import { t } from "../i18n/core";
 import { faultProblem, faultTarget, type Fault } from "./faults";
-import { cacheEnabled } from "./caching";
 import { timelineConfigurations } from "./timelineConfiguration";
+import { cacheEnabled } from "./caching";
 import { stencilRole } from "../stencils/roles";
 
 // Fault playback and outage lookup load with Live; opening a file only needs the fault grammar.
@@ -99,37 +99,33 @@ export function faultTopology(diagram: DiagramFile) {
 export const MAX_FAULT_WORK = 1_000_000;
 export class FaultTimelineError extends Error {}
 export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulation): string | undefined {
-  const steps = simulation.timeline?.filter((s) => s.action.do === "fault") ?? [];
-  if (!steps.length) return;
-  const topology = faultTopology(diagram);
-  const active = new Map<string, number | boolean>();
-  let work = 0;
-  for (const {
-    step: { action },
-    props,
-  } of timelineConfigurations(diagram, simulation)) {
-    if (action.do !== "fault") continue;
-    const f = action.fault;
+  let work = diagram.nodes.length + (simulation.timeline?.length ?? 0);
+  if (work > MAX_FAULT_WORK) return t("fault.workBudget");
+  // Admit validation separately; preserve the existing playback update allowance.
+  work = 0;
+  let topology: ReturnType<typeof faultTopology> | undefined;
+  const active = new Map<string, number | boolean | undefined>();
+  for (const [f, caches] of timelineConfigurations(diagram, simulation)) {
     const problem = faultProblem(f);
     if (problem) return problem;
-    const range = f.kind === "boundary" ? topology.ranges.get(f.boundary) : undefined;
-    if (f.kind === "boundary" ? !range : f.kind === "link" ? !topology.links.has(f.edge) : !topology.nodes.has(f.node))
+    topology ??= faultTopology(diagram);
+    const target = faultTarget(f);
+    const node = topology.nodes.get(target);
+    const range = f.kind === "boundary" && topology.ranges.get(target);
+    if (f.kind === "boundary" ? !range : f.kind === "link" ? !topology.links.has(target) : !node)
       return t("fault.repairTarget");
     if (f.kind === "purge") {
-      const node = topology.nodes.get(f.node)!;
-      const effective = props.get(f.node)!;
+      const cache = caches.get(target);
       if (
-        !cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), effective.cache) ||
-        (f.rule !== undefined &&
-          !(f.rule === "" ? effective.cache.default : effective.cache.rules.some((r) => r.id === f.rule)))
+        !cacheEnabled(diagram.planning, node!.stencil, stencilRole(node!.stencil), cache) ||
+        (f.rule !== undefined && !(f.rule === "" ? cache.default : cache.rules.some((r) => r.id === f.rule)))
       )
         return t("fault.repairTarget");
     }
     const key = faultKey(f),
       value = faultActive(f) ? (f.kind === "slow" ? f.factor : f.kind === "fail" ? f.rate : true) : undefined;
     if (f.kind !== "purge" && active.get(key) === value) continue;
-    if (value) active.set(key, value);
-    else active.delete(key);
+    active.set(key, value);
     // Drill fault changes also reset every node's latency recorder.
     work += topology.nodes.size + (range ? range.end - range.start : 1);
     if (work > MAX_FAULT_WORK) return t("fault.workBudget");

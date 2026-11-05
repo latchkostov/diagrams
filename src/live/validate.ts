@@ -6,7 +6,7 @@ import { t } from "../i18n";
 
 import type { DiagramFile, Simulation } from "../model/types";
 import { LIMITS } from "../interop/native";
-import { faultTargets, faultStepDiagrams } from "./faults";
+import { faultTargets, faultStepCaches } from "./faults";
 import { editableProperties } from "./editableProperties";
 
 export interface SimFieldError {
@@ -78,23 +78,22 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
       }
     }
   });
-  const stepDiagrams = faultStepDiagrams(diagram, sim);
+  const stepCaches = faultStepCaches(diagram, sim);
   sim.timeline?.forEach((step, i) => {
     const id = `sim-panel-step-${i}`;
     const label = `Timeline ${i + 1}`;
     time(`${id}-time`, `${label}: Time (s)`, step.atMs);
     const a = step.action;
     if (a.do === "fault") {
-      const effective = stepDiagrams.get(i)!;
+      const effective = stepCaches.get(i);
       target(
         `${id}-fault-target`,
         `${label}: Target`,
-        faultTargets(effective, a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
+        (effective?.targets ?? faultTargets(diagram, a.fault.kind)).some((n) => n.id === faultTarget(a.fault)),
       );
       const fault = a.fault;
       if (fault.kind === "purge" && fault.rule !== undefined) {
-        const table = effective.nodes.find((n) => n.id === fault.node)?.props?.cache as
-          import("../model/caching").CacheTable | undefined;
+        const table = effective?.table;
         target(
           `${id}-fault-rule`,
           t("cache.purgeRule"),
