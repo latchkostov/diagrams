@@ -390,6 +390,26 @@ describe("production bundle split", () => {
       ),
     ).toEqual([]);
   });
+  it("downloads main-thread drawing only when the worker path needs its fallback", () => {
+    const b = plain();
+    const fallback = b.chunks.find((c) =>
+      Object.entries(c.modules).some(
+        ([id, m]) => /[/\\]src[/\\]live[/\\]mainThreadRenderer\.ts$/.test(id) && m.renderedLength > 0,
+      ),
+    );
+    expect(fallback).toBeDefined();
+    expect(fallback!.name).toBe("MainThreadLoop");
+    const modules = [
+      ["main-thread particle renderer", /[/\\]src[/\\]live[/\\]particleRenderer\.ts$/],
+      ["main-thread renderer host", /[/\\]src[/\\]live[/\\]mainThreadRenderer\.ts$/],
+      ["march drawing", /[/\\]src[/\\]live[/\\]marchRenderer\.ts$/],
+      ["main-thread canvas fonts", /[/\\]src[/\\]live[/\\]canvasFonts\.ts$/],
+    ] satisfies [string, RegExp][];
+    expect(found(bundled(closure([liveChunk(b)], b)), modules)).toEqual([]);
+    expect(found(bundled(closure([fallback!], b)), modules)).toEqual(modules.map(([name]) => name));
+    // The worker draws the exact same implementation, already delivered in its own asset.
+    expect(assets.some((asset) => /particleWorker-.*\.js$/.test(asset.fileName))).toBe(true);
+  });
   it("loads the cache runtime separately from Live and keeps it below 5 KiB gzip", () => {
     const b = plain();
     const cache = b.chunks.find((chunk) =>

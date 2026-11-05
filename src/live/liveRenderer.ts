@@ -1,4 +1,3 @@
-import { loadCanvasFonts } from "./canvasFonts";
 // The live view's particle renderer, as the frame loop sees it. Two implementations share every line
 // of drawing code (ParticleRenderer, SlowPainter, MarchRenderer):
 //
@@ -16,19 +15,12 @@ import { loadCanvasFonts } from "./canvasFonts";
 // Either way the main thread places the canvases over the pane (CSS size and the inverse viewport
 // transform), with the transform the frame was drawn with.
 
+import { hitTestPoints } from "./particleStyle";
 import type { PlacedLabel } from "./traceLabels";
 import type { PaintedLabel, SlowOverlay } from "./slowmo/overlay";
 import type { SlowFrame } from "./slowmo/script";
 import { LiveScene, type FlowStoreLike } from "./liveScene";
-import { MarchRenderer, type MarchEdge } from "./marchRenderer";
-import {
-  ParticleRenderer,
-  hitTestPoints,
-  type Obstacles,
-  type Rect,
-  type RenderOptions,
-  type RenderSnapshot,
-} from "./particleRenderer";
+import { type Obstacles, type Rect, type RenderOptions, type RenderSnapshot } from "./particleRenderer";
 import {
   SnapshotPacker,
   postablePaths,
@@ -36,7 +28,6 @@ import {
   type FromWorker,
   type Layer,
   type ToWorker,
-  type ViewState,
 } from "./renderProtocol";
 
 export type RendererKind = "worker" | "main";
@@ -151,26 +142,17 @@ export function canRenderInWorker(): boolean {
   return module;
 }
 
-// ------------------------------------------------------------------ the march canvas
-
-/** Marks the root while a canvas draws the marching ants (live.css stops the SVG's own march). */
-const MARCH_ATTR = "data-live-march";
-
-/**
- * The marching ants' canvas: last in React Flow's edge layer, so it paints above the edges and below
- * the nodes (the particle canvases sit above the nodes). Null when there's no edge layer.
- */
-function mountMarchCanvas(root: HTMLElement): HTMLCanvasElement | null {
-  const layer = root.querySelector(".react-flow__edges");
-  if (!layer) return null;
-  const el = document.createElement("canvas");
-  el.className = "lv-canvas lv-canvas-march";
-  el.dataset.testid = "live-canvas-march";
-  el.setAttribute("aria-hidden", "true");
-  layer.appendChild(el);
-  return el;
-}
-
+export { CanvasPlacement } from "./rendererShared";
+import {
+  CanvasPlacement,
+  mountMarchCanvas,
+  keepLast,
+  viewOf,
+  deviceRect,
+  probeResult,
+  NO_PIXELS,
+  MARCH_ATTR,
+} from "./rendererShared";
 /** Marks the root while the worker draws the Live toggle's breathing glow (live.css stops `lv-breathe`). */
 const GLOW_ATTR = "data-live-glow";
 
@@ -188,187 +170,8 @@ function mountGlowCanvas(root: HTMLElement): HTMLCanvasElement | null {
   return el;
 }
 
-/** Keeps the march canvas last in the edge layer (edges mounted later would paint over it). */
-function keepLast(el: HTMLCanvasElement | null, root: HTMLElement): void {
-  if (!el) return;
-  const layer = root.querySelector(".react-flow__edges");
-  if (layer && (el.parentElement !== layer || el.nextSibling)) layer.appendChild(el);
-}
-
-// ------------------------------------------------------------------ placement
-
-/**
- * The canvases live inside React Flow's viewport (so DOM order puts them between the nodes and the
- * badges); this undoes the viewport transform so they cover exactly the visible pane.
- */
-export class CanvasPlacement {
-  #els: readonly (HTMLCanvasElement | null)[];
-
-  #sizeKey = "";
-  #key = "";
-  constructor(els: readonly (HTMLCanvasElement | null)[]) {
-    this.#els = els;
-  }
-
-  place(v: ViewState): void {
-    const sizeKey = `${v.width}|${v.height}`;
-    if (sizeKey !== this.#sizeKey) {
-      this.#sizeKey = sizeKey;
-      for (const el of this.#els) {
-        if (!el) continue;
-        el.style.width = `${v.width}px`;
-        el.style.height = `${v.height}px`;
-      }
-    }
-    const key = `${v.x}|${v.y}|${v.zoom}`;
-    if (key !== this.#key) {
-      this.#key = key;
-      const t = `translate(${-v.x / v.zoom}px, ${-v.y / v.zoom}px) scale(${1 / v.zoom})`;
-      for (const el of this.#els) if (el) el.style.transform = t;
-    }
-  }
-}
-
-function viewOf(scene: LiveScene): ViewState {
-  const [x, y, zoom] = scene.transform();
-  const { width, height } = scene.size();
-  return { x, y, zoom, width, height, dpr: scene.dpr() };
-}
-
-/** Client CSS px → the layer's device px. */
-function deviceRect(
-  canvas: HTMLCanvasElement,
-  dpr: number,
-  r: { x: number; y: number; width: number; height: number },
-) {
-  const box = canvas.getBoundingClientRect();
-  // The canvas box is the pane in CSS px (the inverse transform cancels the zoom).
-  const sx = box.width ? (canvas.style.width ? parseFloat(canvas.style.width) / box.width : 1) * dpr : dpr;
-  const sy = box.height ? (canvas.style.height ? parseFloat(canvas.style.height) / box.height : 1) * dpr : dpr;
-  return {
-    x: Math.max(0, Math.floor((r.x - box.left) * sx)),
-    y: Math.max(0, Math.floor((r.y - box.top) * sy)),
-    w: Math.max(1, Math.floor(r.width * sx)),
-    h: Math.max(1, Math.floor(r.height * sy)),
-    left: box.left,
-    top: box.top,
-    scale: sx,
-  };
-}
-
-function probeResult(data: Uint8ClampedArray, r: ReturnType<typeof deviceRect>): ProbeResult {
-  return { data, width: r.w, height: r.h, x: r.left + r.x / r.scale, y: r.top + r.y / r.scale, scale: r.scale };
-}
-
-const NO_PIXELS: ProbeResult = { data: new Uint8ClampedArray(), width: 0, height: 0, x: 0, y: 0, scale: 1 };
-
-export function createLiveRenderer(kind: RendererKind, setup: RendererSetup): LiveRenderer {
-  return kind === "worker" ? new WorkerRenderer(setup) : new MainThreadRenderer(setup);
-}
-
-// ------------------------------------------------------------------ main thread (fallback)
-
-class MainThreadRenderer implements LiveRenderer {
-  #setup: RendererSetup;
-
-  readonly kind = "main";
-  #scene: LiveScene;
-  #core: ParticleRenderer;
-  #placement: CanvasPlacement;
-  #slow: SlowOverlay | undefined;
-  #marchCanvas: HTMLCanvasElement | null;
-  #march: MarchRenderer | null = null;
-  #marchEdges: readonly MarchEdge[] | null = null;
-  #reduced: boolean;
-
-  constructor(setup: RendererSetup) {
-    this.#setup = setup;
-
-    void loadCanvasFonts(document.fonts)
-      .then(() => this.#core.invalidate())
-      .catch(() => {});
-    this.#scene = new LiveScene(setup.root, setup.store, () => {
-      setup.overlay.hidden = true;
-      delete setup.canvas.dataset.traceLabels;
-    });
-    const scene = this.#scene;
-    this.#reduced = setup.options.reducedMotion;
-    this.#marchCanvas = mountMarchCanvas(setup.root);
-    if (this.#marchCanvas) {
-      this.#march = new MarchRenderer(this.#marchCanvas);
-      setup.root.setAttribute(MARCH_ATTR, "canvas");
-    }
-    this.#placement = new CanvasPlacement([setup.canvas, setup.overlay, this.#marchCanvas]);
-    this.#core = new ParticleRenderer(
-      setup.canvas,
-      {
-        transform: () => scene.transform(),
-        size: () => scene.size(),
-        dpr: () => scene.dpr(),
-        samples: (id) => scene.samples(id),
-        pathsVersion: () => scene.pathsVersion,
-        edgeInk: (id) => scene.ink.get(id),
-        nodeRect: (id) => scene.nodeRect(id),
-        obstacles: () => scene.obstacles(),
-        labelRects: () => setup.labelRects(),
-      },
-      setup.options,
-      setup.overlay,
-    );
-  }
-
-  setOptions(opts: RenderOptions): void {
-    this.#reduced = opts.reducedMotion;
-    this.#core.setOptions(opts);
-  }
-  reset(): void {
-    this.#core.reset();
-  }
-  frame(f: FrameInput): void {
-    this.#scene.refresh();
-    const view = viewOf(this.#scene);
-    this.#placement.place(view);
-    this.#slow = f.slow;
-    this.#core.draw(f.snap, f.now, f.focus, f.slow, f.speed);
-    this.#setup.overlay.hidden = false;
-    if (this.#march) {
-      if (this.#scene.march !== this.#marchEdges) this.#march.setEdges((this.#marchEdges = this.#scene.march));
-      this.#march.draw(view, f.march, this.#reduced);
-    }
-  }
-  tick(): void {
-    this.#scene.refresh();
-    keepLast(this.#marchCanvas, this.#setup.root);
-  }
-  hitTest(x: number, y: number, radius?: number): number | undefined {
-    return this.#core.hitTest(x, y, radius);
-  }
-  get drawn(): number {
-    return this.#core.drawn;
-  }
-  get frames(): number {
-    return this.#core.frames;
-  }
-  get labels(): readonly PlacedLabel[] {
-    return this.#setup.overlay.hidden ? [] : this.#core.labels;
-  }
-  get slowLabels(): readonly PaintedLabel[] {
-    return this.#setup.overlay.hidden ? [] : (this.#slow?.labels ?? []);
-  }
-  probe(layer: Layer, rect: { x: number; y: number; width: number; height: number }): Promise<ProbeResult> {
-    if (!TEST_HOOKS) return Promise.resolve(NO_PIXELS);
-    const el = layer === "over" ? this.#setup.overlay : layer === "march" ? this.#marchCanvas : this.#setup.canvas;
-    if (!el) return Promise.resolve(NO_PIXELS);
-    const r = deviceRect(el, this.#scene.dpr(), rect);
-    const data = el.getContext("2d")?.getImageData(r.x, r.y, r.w, r.h).data;
-    return Promise.resolve(data ? probeResult(data, r) : NO_PIXELS);
-  }
-  dispose(): void {
-    this.#scene.dispose();
-    this.#setup.overlay.hidden = false;
-    this.#marchCanvas?.remove();
-    this.#setup.root.removeAttribute(MARCH_ATTR);
-  }
+export function createWorkerRenderer(setup: RendererSetup): LiveRenderer {
+  return new WorkerRenderer(setup);
 }
 
 // ------------------------------------------------------------------ worker

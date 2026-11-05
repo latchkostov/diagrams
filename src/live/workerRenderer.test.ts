@@ -70,12 +70,12 @@ const particle: Particle = {
 };
 
 async function start(transfer: "ok" | "throw" = "ok") {
-  const { createLiveRenderer } = await import("./liveRenderer");
-  return startWith(createLiveRenderer, transfer);
+  const { createWorkerRenderer } = await import("./liveRenderer");
+  return startWith(createWorkerRenderer, transfer);
 }
 
 function startWith(
-  createLiveRenderer: typeof import("./liveRenderer").createLiveRenderer,
+  createWorkerRenderer: typeof import("./liveRenderer").createWorkerRenderer,
   transfer: "ok" | "throw" = "ok",
 ) {
   const onFail = vi.fn();
@@ -83,7 +83,7 @@ function startWith(
   const overlay = canvas();
   const root = document.createElement("div");
   const labelRects: readonly [] = [];
-  const renderer = createLiveRenderer("worker", {
+  const renderer = createWorkerRenderer({
     canvas: base,
     overlay,
     root,
@@ -135,9 +135,9 @@ describe("worker startup failures hand over to the main thread", () => {
 
   it("a Worker constructor that throws (CSP, disabled workers)", async () => {
     mode = "throw-constructor";
-    const { createLiveRenderer } = await import("./liveRenderer");
+    const { createWorkerRenderer } = await import("./liveRenderer");
     let started: ReturnType<typeof startWith> | undefined;
-    expect(() => (started = startWith(createLiveRenderer))).not.toThrow();
+    expect(() => (started = startWith(createWorkerRenderer))).not.toThrow();
     const { renderer, onFail } = started!;
     expect(onFail).not.toHaveBeenCalled(); // after the effect finishes setting up
     await Promise.resolve();

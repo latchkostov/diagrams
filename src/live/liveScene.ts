@@ -11,7 +11,8 @@
 // waits for the next frame, so an imported diagram with huge edges can't freeze the tab.
 
 import { OVERLAY_SELECTOR } from "../canvas/useOverlayFit";
-import { parseDash, type MarchEdge } from "./marchRenderer";
+import { parseDash } from "./marchStyle";
+import type { MarchEdge } from "./marchRenderer";
 import { SAMPLE_SPACING, samplePath, type PathLike, type PathSamples } from "./pathSampler";
 import type { Obstacles, Rect } from "./particleRenderer";
 

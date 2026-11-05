@@ -83,6 +83,18 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     stub: (root) =>
       `export { useEditor } from ${JSON.stringify(normalizePath(resolve(root, "src/export/viewer/readOnlyEditor.ts")))};`,
   },
+  {
+    name: "document editing history",
+    path: "/src/editor/useHistory.ts",
+    stub: (root) =>
+      `export { useHistory } from ${JSON.stringify(normalizePath(resolve(root, "src/export/viewer/readOnlyHistory.ts")))};`,
+  },
+  {
+    name: "document editing shortcuts and clipboard",
+    path: "/src/editor/useCanvasShortcuts.ts",
+    stub: (root) =>
+      `export { useCanvasShortcuts, inCanvas } from ${JSON.stringify(normalizePath(resolve(root, "src/export/viewer/readOnlyShortcuts.ts")))};`,
+  },
   // The shared planning barrel also exports authoring controls. A file can inspect
   // capacity, but cannot edit admission policies or upgrade the saved model.
   {
@@ -397,7 +409,6 @@ const pathPattern = (path: string) => new RegExp(`${path.replace(/[.]/g, "\\.").
 FORBIDDEN.push(...EDITOR_ONLY.map(({ name, path }): [string, RegExp] => [name, pathPattern(path)]));
 
 const NO_LOCAL = "\0interactive-viewer:no-local-examples";
-const WORKER = 'new Worker(new URL("./particleWorker.ts", import.meta.url), { type: "module", name: "particles" })';
 
 /** The swaps that make the app's modules fit a file with no network (see the header). */
 export function viewerSwaps(root: string): Plugin {
@@ -474,17 +485,16 @@ export function viewerSwaps(root: string): Plugin {
         return `${code.slice(0, start)}${code.slice(end)}`.replace("  return spaceHeld;", "  return false;");
       }
       if (!own(id, "/src/live/liveRenderer.ts")) return null;
-      if (!code.includes(WORKER))
-        this.error("interactive viewer: liveRenderer.ts no longer creates its worker as expected; update WORKER.");
-      // Exported viewers always draw on the main thread. Specialize the factory as well as the
-      // capability check, so the worker host/protocol and its scene bookkeeping can tree-shake.
-      const factory = 'return kind === "worker" ? new WorkerRenderer(setup) : new MainThreadRenderer(setup);';
       const pick = 'return canRenderInWorker() ? "worker" : "main";';
-      if (!code.includes(factory) || !code.includes(pick)) this.error("interactive viewer: renderer factory changed");
-      return code
-        .replace(factory, "return new MainThreadRenderer(setup);")
-        .replace(pick, 'return "main";')
-        .replace(WORKER, '(() => { throw new Error("The exported file draws on the main thread."); })()');
+      if (!code.includes(pick)) this.error("interactive viewer: renderer capability check changed");
+      // Worker construction is unreachable in a file. The main renderer has its own module,
+      // so the worker host/protocol can disappear from the single-file build entirely.
+      const factory = code.indexOf("export function createWorkerRenderer(");
+      if (factory < 0) this.error("interactive viewer: worker factory changed");
+      return (
+        code.slice(0, factory).replace(pick, 'return "main";') +
+        'export const createWorkerRenderer = () => { throw new Error("The exported file draws on the main thread."); };'
+      );
     },
     generateBundle(_options, bundle) {
       for (const out of Object.values(bundle)) {

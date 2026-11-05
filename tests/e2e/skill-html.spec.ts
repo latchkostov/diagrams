@@ -100,6 +100,20 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await expectPlaying(viewer.page);
     await expect(viewer.page.getByTestId("viewer-banner")).toHaveText(BANNER);
     await expect(viewer.page.getByTestId("viewer-footer")).toContainText("Exported from Live Diagrams on");
+    // Playback checks leave their fake clock paused; keyboard focus needs its normal frame delivery.
+    await viewer.page.clock.resume();
+    // Live keeps the canvas's Tab order even though authoring history and clipboard code are absent.
+    const shopper = viewer.page.getByTestId("node-shopper");
+    await shopper.evaluate((el) => el.parentElement?.focus());
+    await expect.poll(() => shopper.evaluate((el) => el.parentElement === document.activeElement)).toBe(true);
+    await viewer.page.keyboard.press("Tab");
+    await expect(viewer.page.getByTestId("node-detail-shopper")).toBeFocused();
+    await viewer.page.keyboard.press("Shift+Tab");
+    await expect
+      .poll(() => viewer.page.evaluate(() => document.activeElement?.getAttribute("data-id")))
+      .toBe("shopper");
+    for (const key of ["Delete", "ControlOrMeta+z", "ControlOrMeta+v"]) await viewer.page.keyboard.press(key);
+    await expect(shopper).toBeVisible();
     expect(viewer.requests.filter((r) => !r.startsWith("data:"))).toEqual([url]);
     expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
     expect(viewer.errors).toEqual([]);
