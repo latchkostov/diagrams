@@ -13,10 +13,40 @@ import { coldCache } from "./catalog/coldCache";
 import { authoredSimulation, matchesSimulation } from "./simulations";
 import { patchProps } from "./paths";
 import type { Check, MetricValue } from "./types";
+import { createMachine } from "../lib/machine";
+import { runnerInitial, runnerMachine } from "./machine";
+import { buildBlueprint } from "./blueprint";
 
 export const cachingLessons = [cdnCache, derivedHitRatio, cacheLatency, cacheStampede, staleWhileRevalidate, coldCache];
 
 describe("cache lesson contracts", () => {
+  it("previews one stale-window edit and describes a matched rule in plain route terms", () => {
+    const board = buildBlueprint(staleWhileRevalidate, cachingPractice());
+    expect(board.changes.filter((change) => change.step === 3)).toEqual([
+      expect.objectContaining({ detail: "products", before: undefined, after: 10000 }),
+    ]);
+    const intro = buildBlueprint(cdnCache, cachingPractice(false));
+    expect(intro.changes.some((change) => change.detail === "GET /products/{id}")).toBe(true);
+    expect(JSON.stringify(intro)).not.toContain("[object Object]");
+  });
+  it("does not bank a soft-purge near miss before the hard-purge comparison", () => {
+    const machine = createMachine({
+      ...runnerMachine,
+      initial: runnerInitial(
+        coldCache.steps.map((step) => !!step.sticky || !step.demo.length),
+        {
+          highlights: true,
+          resumeAt: 0,
+          stepIds: coldCache.steps.map((step) => step.id),
+        },
+      ),
+    });
+    machine.send({ type: "observe", met: [false, false, false, true, false], settled: [true, true, true, true, true] });
+    machine.send({ type: "start" });
+    machine.send({ type: "observe", met: [true, true, true, false, false], settled: [true, true, true, true, true] });
+    expect(machine.state.stepIds[machine.state.index]).toBe("soft-purge");
+    expect(machine.state.latched[3]).toBe(false);
+  });
   it("uses family selectors with interchangeable vendors and renamed node ids", () => {
     const d = cachingPractice();
     for (const [index, stencil] of ["client.user", "cloudflare", "service.go"].entries()) {

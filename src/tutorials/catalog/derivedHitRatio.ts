@@ -97,6 +97,18 @@ export const derivedHitRatio: Tutorial = {
         { click: "cache-rule-products" },
         { click: "cache-rule-products-ttl-60000" },
       ],
+      "products",
+      [
+        { close: "capacity-close" },
+        { focus: "node-{edge}" },
+        { press: "F2" },
+        { open: "dock-edit-properties" },
+        { open: "inspector-section-node-cache" },
+        { activate: "cache-rule-products" },
+        { focus: "cache-rule-products-ttl-custom" },
+        { press: "ArrowRight" },
+        { press: "ArrowRight" },
+      ],
     ),
     {
       id: "explanation",

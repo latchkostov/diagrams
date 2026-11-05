@@ -70,10 +70,7 @@ export const staleWhileRevalidate: Tutorial = {
         {
           kind: "patch",
           subject: "edge",
-          patches: [
-            { op: "setIfMissing", path: rulePath("staleWhileRevalidateMs"), value: 10000 },
-            { op: "atLeast", path: rulePath("staleWhileRevalidateMs"), value: 10000 },
-          ],
+          patches: [{ op: "set", path: rulePath("staleWhileRevalidateMs"), value: 10000 }],
           runs: ["cache-traffic"],
         },
       ],

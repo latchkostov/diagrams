@@ -29,6 +29,7 @@ export function cacheEdit(
   field: string,
   solution: readonly UiStep[],
   rule = "products",
+  keyboardSolution?: TutorialStep["keyboardSolution"],
 ): TutorialStep {
   return {
     id,
@@ -46,5 +47,6 @@ export function cacheEdit(
       { testId: "node-{edge}", tip: msg("tutorials.caching.selectEdge") },
     ],
     solution,
+    ...(keyboardSolution ? { keyboardSolution } : {}),
   };
 }

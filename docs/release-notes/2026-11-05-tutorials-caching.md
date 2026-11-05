@@ -22,4 +22,4 @@ all 38 catalog records gain 106 tutorial messages and a new tutorial fingerprint
 supplies those messages; untranslated locales retain their English fallback. Other namespace
 fingerprints, the fixed message samples, route catalogs and all diagram-output goldens stay
 unchanged. The complete Node parity comparison checked 3,223 goldens before recording this
-catalog change. Final browser and commit-gate results will be recorded after admission.
+catalog change.

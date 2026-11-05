@@ -1,5 +1,7 @@
 import { t } from "../i18n";
 import { stencilLabel } from "../i18n/stencils";
+import { matchText } from "../model/routingAppearance";
+import type { RouteMatch } from "../model/requestRouting";
 import type { DiagramEdge, DiagramFile } from "../model/types";
 import { splitEdge } from "../model/edgeSplit";
 import { getStencil } from "../stencils/registry";
@@ -170,8 +172,13 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
           const a = readPath(before, path),
             b = readPath(after, path);
           const selector = path.find((part) => typeof part === "object");
+          const match = typeof selector === "object" ? resolve(selector.where.match) : undefined;
           const detail =
-            typeof selector === "object" ? Object.values(selector.where).map(resolve).join(" · ") : undefined;
+            match && typeof match === "object"
+              ? matchText(match as RouteMatch)
+              : typeof selector === "object"
+                ? Object.values(selector.where).map(resolve).join(" · ")
+                : undefined;
           recordChange(number, step.title(), a, b, detail);
         }
         props.set(key, after);

@@ -48,7 +48,7 @@ export const coldCache: Tutorial = {
       targets: [
         { testId: "sim-panel-duration", priority: "field", tip: msg("tutorials.coldCache.authorTitle") },
         { testId: "sim-panel-step-0-fault-target", priority: "field", tip: msg("tutorials.coldCache.authorTitle") },
-        { testId: "sim-panel-step-0-at", priority: "field", tip: msg("tutorials.coldCache.authorTitle") },
+        { testId: "sim-panel-step-0-time", priority: "field", tip: msg("tutorials.coldCache.authorTitle") },
         { testId: "sim-panel-save", tip: msg("tutorials.coldCache.authorTitle") },
         { testId: "sim-panel-add-step", tip: msg("tutorials.coldCache.authorTitle") },
         { testId: "sim-panel-new", tip: msg("tutorials.coldCache.authorTitle") },
@@ -65,7 +65,7 @@ export const coldCache: Tutorial = {
         { click: "sim-panel-section-timeline" },
         { select: "sim-panel-add-step", value: "cold-cache" },
         { select: "sim-panel-step-0-fault-target", value: "{edge}" },
-        { fill: "sim-panel-step-0-at", text: "0" },
+        { fill: "sim-panel-step-0-time", text: "0" },
         { click: "sim-panel-section-details" },
         { fill: "sim-panel-duration", text: "10" },
         { click: "sim-panel-save" },
@@ -101,6 +101,7 @@ export const coldCache: Tutorial = {
         { select: "live-sim-picker", value: "simulation" },
         { click: "live-more" },
         { click: "live-traffic" },
+        { press: "Escape" },
         { hover: "node-{origin}" },
       ],
     },
@@ -110,7 +111,6 @@ export const coldCache: Tutorial = {
       title: msg("tutorials.coldCache.softTitle"),
       goal: msg("tutorials.coldCache.softGoal"),
       done: msg("tutorials.coldCache.softDone"),
-      sticky: true,
       check: { kind: "savedSimulation", match: match("soft") },
       targets: [
         { testId: "sim-panel-step-0-fault-value", tip: msg("tutorials.coldCache.softTitle") },

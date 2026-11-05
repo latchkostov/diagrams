@@ -14,6 +14,8 @@ import { type ResolvedKeyboardStep } from "../../src/tutorials/keyboard";
 import { chooseNativeSelect } from "./native-select";
 import { CATCH_UP_MS } from "../../src/live/frameClock";
 import { tutorialKey } from "../../scripts/e2e-keys";
+import { installThreadVerification } from "./thread-verification";
+import { waitForTutorialCacheAction } from "./tutorial-cache-action";
 
 export class CompletedStep extends Error {}
 
@@ -337,7 +339,14 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
     await (await chooser).setFiles("public/tutorial-status-compose.yaml");
     return;
   }
-  if ("activate" in action) return activate(page, action.activate);
+  if ("activate" in action) {
+    if (
+      action.activate === "trouble-action" &&
+      (await page.getByTestId("tutorial-app").getAttribute("data-tutorial")) === "cache-stampede"
+    )
+      await waitForTutorialCacheAction(page, (on) => play(page, { playing: on }));
+    return activate(page, action.activate);
+  }
   if ("focus" in action) return focus(page, action.focus);
   if ("read" in action) {
     const step = await page.getByTestId("tutorial-step").getAttribute("data-step");
@@ -504,6 +513,7 @@ export async function play(page: Page, action: ResolvedKeyboardStep) {
 }
 
 export async function runKeyboardTutorial(page: Page, consoleErrors: string[], id: string) {
+  if (id === "cache-stampede") await installThreadVerification(page);
   if (id === "import-and-review")
     await page.addInitScript(() =>
       Object.defineProperty(window, "showOpenFilePicker", { value: undefined, configurable: true }),

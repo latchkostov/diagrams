@@ -2,6 +2,8 @@ import "../sim/cache/cacheRuntime";
 import { expect, it } from "vitest";
 import { LiveController, type LiveState } from "../live/controller";
 import { herdThreshold } from "../live/cacheHerd";
+import { TroubleTracker } from "../live/troubleTracker";
+import { confirmedCacheFix } from "../live/cacheFixPlan";
 import type { DiagramFile } from "../model/types";
 import type { CacheTable } from "../model/caching";
 import stampede from "../examples/cache-stampede.json";
@@ -13,6 +15,43 @@ import { staleWhileRevalidate } from "./catalog/staleWhileRevalidate";
 import { patchProps } from "./paths";
 
 const seeds = [7, 17, 42, 101, 2026];
+
+it.each(seeds)("the observed stampede offers the lesson's one-fetch action (seed %i)", async (seed) => {
+  const d = structuredClone(stampede) as DiagramFile;
+  const c = new LiveController(d);
+  c.selectSimulation({ ...d.simulations![0], seed });
+  const tracker = new TroubleTracker(
+    c,
+    async (request) => {
+      if (request.trouble.action.kind !== "cache") return;
+      return confirmedCacheFix({
+        context: request.context,
+        node: request.trouble.action.node,
+        rule: request.trouble.action.rule,
+        item: request.trouble.action.item,
+        edge: request.trouble.action.edge,
+        time: request.time,
+      });
+    },
+    () => {},
+  );
+  const stop = tracker.subscribe(() => {});
+  let action = tracker.current()?.action;
+  try {
+    c.setPlaying(true);
+    for (let at = 0; at < 18000 && action?.kind !== "cache"; at += 100) {
+      c.advance(100);
+      c.publish();
+      await Promise.resolve();
+      action = tracker.current()?.action;
+    }
+    expect(action).toMatchObject({ kind: "cache", step: "coalesce" });
+  } finally {
+    stop();
+    c.dispose();
+  }
+});
+
 function play(d: DiagramFile, seed: number, run: string, duration: number, observe?: (state: LiveState) => void) {
   const c = new LiveController(d);
   const sim = { ...d.simulations!.find((s) => s.id === run)!, seed };

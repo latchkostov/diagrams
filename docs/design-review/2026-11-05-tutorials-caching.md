@@ -19,6 +19,11 @@ keyboard routes with key chips, including Home, F2 and Shift+F10. Cold-cache aut
 offers time, target, duration and Save anchors; matching distinguishes hard/soft and all-rule
 purges. The replay checks use a new run rather than reusing the previous outcome.
 
+The browser walkthrough exposed a soft-purge near miss being banked before the hard-purge
+comparison. Its later step now reads the current saved Drill, so assistance cannot skip the
+required change. The native TTL radio group has an explicit keyboard route. Preview changes
+name a matched rule by its method and path, and the stale-window edit appears only once.
+
 ## Evidence and limitations
 
 The code review checked acts, observed results, caveats, Skip, escalating help, keyboard
@@ -27,5 +32,10 @@ the introduction, demand/TTL estimate, p95, stampede, stale refresh and purge co
 The public cache-stampede example supplies the reference comparison; small exercises live
 in the Lab. Arabic instructions retain public example names exactly as the canvas shows them.
 
-This fragment will be updated with browser and screenshot results after Linux admission.
-The designer review itself was code-based and does not claim a visual walkthrough.
+All six introductory coaches and all six finish sheets were captured from Linux Chromium and
+visually inspected. Cards, primary actions, chapter totals and next-lesson numbering remain
+readable without overlapping controls. Captures are in the owner's requested
+`tutorials-hub-2026-10/caching/` folder. The initial designer review was code-based; browser
+walkthroughs and the screenshot inspection supply the separate visual evidence.
+The final read-only designer pass found no remaining P1 issue. The authoring panel's
+scroll boundaries clip peripheral field captions; its highlighted target, Save and Run remain visible.
