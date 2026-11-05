@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { chunk, holdChunk } from "./chunk";
-import { test, expect, gotoLive } from "./fixtures";
+import { test, expect, gotoLive, waitForStableViewport } from "./fixtures";
 
 const FALLBACK = chunk("MainThreadLoop", "src/live/session/MainThreadLoop.tsx");
 
@@ -46,6 +46,15 @@ for (const workerFails of [false, true])
       const file = await download;
       expect(readFileSync(await file.path(), "utf8")).toContain('data-testid="node-badge-payments"');
       await expect(play).toHaveAttribute("data-state", "paused");
+      const frames = async () => Number(await page.getByTestId("live-canvas").getAttribute("data-frames"));
+      await expect.poll(frames).toBeGreaterThan(0);
+      const before = await frames();
+      // An unchanged paused scene skips painting. A real view change must still redraw after the held load.
+      await page.getByTestId("live-view-menu").click();
+      await page.getByTestId("zoom-in-button").click();
+      await waitForStableViewport(page);
+      await expect(play).toHaveAttribute("data-state", "paused");
+      await expect.poll(frames).toBeGreaterThan(before);
       await expect
         .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-frames")))
         .toBeGreaterThan(1);

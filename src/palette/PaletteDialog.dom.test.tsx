@@ -5,12 +5,64 @@ import { expect, it, vi } from "vitest";
 import { PaletteDialog } from "./PaletteDialog";
 import { paletteHost, publish } from "./host";
 import type { Command } from "./rank";
+import { captureModalTypeAhead } from "../canvas/typeAhead";
 
 const source = vi.hoisted(() => ({ commands: [] as Command[] }));
 
 vi.mock("./sources", () => ({
   collectCommands: () => source.commands,
 }));
+
+it("keeps the typed prefix until the search actually takes focus and runs the whole query", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const run = vi.fn();
+  const close = vi.fn();
+  source.commands = [{ id: "action:properties", label: "Diagram properties", group: "actions", idle: true, run }];
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const capture = captureModalTypeAhead(close);
+  const focus = HTMLInputElement.prototype.focus;
+  const delayedFocus = vi.spyOn(HTMLInputElement.prototype, "focus").mockImplementation(function (
+    this: HTMLInputElement,
+  ) {
+    if (this.getAttribute("data-testid") === "command-input")
+      for (const key of "diagra")
+        window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    focus.call(this);
+  });
+  try {
+    await act(() =>
+      root.render(
+        <PaletteDialog view="canvas" diagrams={[]} onOpenDiagram={() => {}} onClose={close} typeAhead={capture.stop} />,
+      ),
+    );
+    const input = document.querySelector<HTMLInputElement>('[data-testid="command-input"]');
+    if (!input) throw new Error("Missing palette search");
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("diagra");
+    await act(() => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      if (!setValue) throw new Error("Missing native text setter");
+      setValue.call(input, input.value + "m properties");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(input.value).toBe("diagram properties");
+    await act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    await act(() => vi.runAllTimers());
+    expect(close).toHaveBeenCalledOnce();
+    expect(run).toHaveBeenCalledOnce();
+  } finally {
+    capture.stop();
+    delayedFocus.mockRestore();
+    await act(() => root.unmount());
+    host.remove();
+    paletteHost.reset();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
 
 it("keeps the keyboard's highlighted command when the canvas context republishes", async () => {
   source.commands = ["First", "Second", "Third"].map((label) => ({

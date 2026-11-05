@@ -297,7 +297,8 @@ export function PaletteDialog({
   // Keys typed before the search had focus start it; an Enter among them runs the best match, an Esc closes.
   const typed = useRef(typeAhead);
   const tookTyped = useRef(false);
-  useLayoutEffect(() => {
+  // Keep capture through the passive focus setup above; layout can precede the pending dialog's cleanup.
+  useEffect(() => {
     if (tookTyped.current) return;
     tookTyped.current = true;
     const t = typed.current?.();
