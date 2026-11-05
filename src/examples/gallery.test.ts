@@ -134,7 +134,7 @@ describe("example gallery", () => {
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
-      "cache-stampede": ["caching", "requestsWait"],
+      "cache-stampede": ["caching", "requestsWait", "faultDrills"],
       "vendor-edge-storefront": ["vendorStencils"],
       "scale-on-busy-threads": ["requestsWait", "autoscaling"],
       "slow-payment-provider": ["requestsWait", "resilience", "runHistory", "faultDrills"],
@@ -152,6 +152,8 @@ describe("example gallery", () => {
         "caching",
         "requestsWait",
         "resilience",
+        "runHistory",
+        "faultDrills",
         "partitions",
         "rateLimits",
         "autoscaling",
