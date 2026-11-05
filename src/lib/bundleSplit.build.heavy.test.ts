@@ -399,6 +399,8 @@ describe("production bundle split", () => {
     );
     expect(fallback).toBeDefined();
     expect(fallback!.name).toBe("MainThreadLoop");
+    // Moving the fallback must preserve the production probe exclusion too.
+    expect(fallback!.code).not.toContain(".getImageData(");
     const modules = [
       ["main-thread particle renderer", /[/\\]src[/\\]live[/\\]particleRenderer\.ts$/],
       ["main-thread renderer host", /[/\\]src[/\\]live[/\\]mainThreadRenderer\.ts$/],
