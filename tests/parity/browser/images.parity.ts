@@ -12,6 +12,7 @@ import { expectGolden, expectGoldenText } from "../lib/golden";
 import { sha256 } from "../lib/hash";
 import { openExample } from "./canvas";
 import { expectGoldenPng } from "./png";
+import { chunk, holdChunk } from "../../e2e/chunk";
 
 const EXAMPLES = [
   "corpus-hand-shaped-lines",
@@ -20,7 +21,7 @@ const EXAMPLES = [
   "aks-app-config-key-vault",
 ];
 
-async function exportImage(page: Page, kind: "png" | "svg"): Promise<Buffer> {
+async function exportImage(page: Page, kind: "png" | "svg", heldTip = false): Promise<Buffer> {
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-more-formats").click();
   await expect(page.getByTestId("file-more-formats-menu")).toBeVisible();
@@ -29,7 +30,24 @@ async function exportImage(page: Page, kind: "png" | "svg"): Promise<Buffer> {
   await page.getByTestId("image-options-toggle").click();
   await page.getByTestId(`image-format-${kind}`).click();
   if (kind === "png") await page.getByTestId("image-scale-1").click();
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("image-export").click()]);
+  if (heldTip) {
+    const outside = await page.getByTestId("file-button").boundingBox();
+    if (!outside) throw new Error("Missing File button");
+    await page.mouse.move(outside.x + outside.width / 2, outside.y + outside.height / 2);
+  }
+  if (heldTip) {
+    await expect
+      .poll(async () => {
+        await page.getByTestId("edge-label-api-db").dispatchEvent("pointerover");
+        return page.getByTestId("edge.message-tip-loading").count();
+      })
+      .toBe(1);
+  }
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    heldTip ? page.getByTestId("image-export").press("Enter") : page.getByTestId("image-export").click(),
+  ]);
+  if (heldTip) await expect(page.getByTestId("edge.message-tip-loading")).toHaveCount(1);
   return readFileSync(await download.path());
 }
 
@@ -149,15 +167,32 @@ async function svgDigest(page: Page, svg: string) {
 for (const slug of EXAMPLES)
   for (const theme of ["light", "dark"] as const)
     test(`image export: ${slug} (${theme})`, async ({ page }) => {
-      await page.addInitScript(
-        (t) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ theme: t })),
-        theme,
-      );
-      await openExample(page, slug);
-      const svg = (await exportImage(page, "svg")).toString("utf8");
-      const { structure, ...digest } = await svgDigest(page, svg);
-      expectGolden(`images/${slug}.${theme}.svg.json`, digest);
-      expectGoldenText(`images/${slug}.${theme}.svg.txt`, structure);
-      const size = await expectGoldenPng(page, `images/${slug}.${theme}.png`, await exportImage(page, "png"));
-      expectGolden(`images/${slug}.${theme}.png.json`, { size });
+      // This golden has no incidental hover metadata: holding the reader's chunk
+      // must leave every byte of its recorded drawing unchanged.
+      const held =
+        slug === "corpus-hand-shaped-lines" && theme === "dark"
+          ? await holdChunk(page, chunk("carriedTypes", "src/canvas/edges/carriedTypes.ts"))
+          : undefined;
+      try {
+        await page.addInitScript(
+          (t) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ theme: t })),
+          theme,
+        );
+        await openExample(page, slug);
+        if (slug === "branch-to-datacentre") {
+          // These goldens include the loaded hover reader's title. Make that
+          // prerequisite explicit; the held-chunk case above owns pending UI.
+          await page.getByTestId("edge-leaf-adc").hover();
+          await expect(page.getByTestId("edge-leaf-adc")).toContainText("Message types: Checkout, BackOffice");
+        }
+        const svg = (await exportImage(page, "svg", !!held)).toString("utf8");
+        expect(svg).not.toMatch(/data-testid="[^"]*-loading"/);
+        const { structure, ...digest } = await svgDigest(page, svg);
+        expectGolden(`images/${slug}.${theme}.svg.json`, digest);
+        expectGoldenText(`images/${slug}.${theme}.svg.txt`, structure);
+        const size = await expectGoldenPng(page, `images/${slug}.${theme}.png`, await exportImage(page, "png", !!held));
+        expectGolden(`images/${slug}.${theme}.png.json`, { size });
+      } finally {
+        held?.release();
+      }
     });

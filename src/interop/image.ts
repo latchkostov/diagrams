@@ -275,6 +275,8 @@ async function unlessCancelled<T>(promise: Promise<T>, signal?: AbortSignal): Pr
 }
 
 const EDITING_ONLY = [
+  // Pending/failed lazy shells never depict the drawing, including export-skipped tips.
+  "lazy-surface-loading",
   "react-flow__handle",
   "react-flow__resize-control",
   "ann-placeholder",

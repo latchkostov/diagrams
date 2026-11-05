@@ -535,10 +535,16 @@ test.describe("Interactive HTML with a password", () => {
     await page.getByTestId("html-export-options-toggle").click();
     await page.getByTestId("html-export-banner").fill(BANNER);
     await requirePassword(page, PASSWORD);
-    const { download: file, path, html } = await download(page);
+    const {
+      download: file,
+      path,
+      html,
+    } = await download(page, async () => {
+      // Observe the outcome before saving the file can outlive its notification.
+      await expect(page.getByTestId("toast").last()).toContainText("Only people with the password can open it");
+    });
     // Named and titled for nothing in it.
     expect(file.suggestedFilename()).toMatch(LOCKED_NAME);
-    await expect(page.getByTestId("toast").last()).toContainText("Only people with the password can open it");
 
     // Nothing of the diagram in the clear: not its title, banner, node or simulation names, or the icons it uses.
     expect(html).toContain("<title>Diagram (password protected)</title>");
