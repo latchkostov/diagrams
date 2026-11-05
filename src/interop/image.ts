@@ -376,6 +376,8 @@ export async function svgToPng(svg: string, width: number, height: number, scale
 /** Editing chrome is never part of the exported picture. */
 export function imageNodeFilter(node: Node): boolean {
   return (
+    // Shared DOM convention: never import optional surfaces to identify their shells.
+    !((node instanceof HTMLElement || node instanceof SVGElement) && node.hasAttribute("data-lazy-shell")) &&
     !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))) &&
     !(node instanceof SVGElement && EDITING_ONLY_SVG.some((cls) => node.classList.contains(cls)))
   );

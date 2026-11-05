@@ -137,6 +137,7 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
     if (options.placeholder.render) return options.placeholder.render(props, status);
     return (
       <span
+        data-lazy-shell=""
         data-testid={options.placeholder.testId ?? `${options.id}-loading`}
         style={options.placeholder.size}
         aria-busy={!status.failed}
