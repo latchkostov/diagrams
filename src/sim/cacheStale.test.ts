@@ -302,6 +302,25 @@ it.each(["down", "paused"] as const)("statistical background refreshes expire wh
   expect(e.snapshot().nodes.cache.cache).toEqual(after);
 });
 
+it("stalled refreshes cannot outlive TTL plus the stale window while awaiting a slower fetch", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 1000;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 1, staleWhileRevalidateMs: 100 } };
+  d.nodes[2].props!.latencyMs = 990;
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(d, { cache: { "": { rate: 1000, fetchMs: 1000 } } });
+  e.setTraffic(true);
+  e.step(5000);
+  expect(e.snapshot().nodes.cache.cache!.revalidations).toBeGreaterThan(0);
+  e.setNodeStatus("origin", "paused");
+  e.step(500);
+  const before = e.snapshot().nodes.cache.cache!;
+  e.step(200);
+  const after = e.snapshot().nodes.cache.cache!;
+  expect(after.hits).toBe(before.hits);
+  expect(after.misses - before.misses).toBeGreaterThan(0);
+});
+
 it("each purge restarts aggregate and per-type latency windows", () => {
   const d = cacheFixture();
   d.nodes[1].props!.cache = table(5000);

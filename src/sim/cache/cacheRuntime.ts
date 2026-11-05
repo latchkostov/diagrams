@@ -372,10 +372,13 @@ export const cacheRuntime: CacheRuntime = {
     // Healthy statistical bands already include expiry in the shared formula.
     // Sparse sampled misses need not refill once per TTL. Once pending fills
     // stop making progress on their expected clock (or fail), use only the TTL
-    // of the last successful fill. New arrivals never extend either deadline.
+    // of the last successful fill. A pending refresh cannot borrow its longer
+    // fetch clock past that fill's stale deadline. New arrivals extend neither.
     // Without planned demand, isolated injections retain fill-bounded expiry.
     const healthy =
-      rule.rate.planned > 0 && rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
+      rule.rate.planned > 0 &&
+      rule.statisticalUntil > 0 &&
+      (!rule.statisticalPending || (now <= rule.statisticalDue && now < rule.statisticalUntil - 1 + staleMs));
     const available = healthy || (!!rule.statisticalUntil && now < Math.abs(rule.statisticalUntil) - 1 + staleMs);
     // Stratify statistical outcomes: the shared formula already includes item
     // expiry. Independent whole-dot draws can leave artificial gaps between

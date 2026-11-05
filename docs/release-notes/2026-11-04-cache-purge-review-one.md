@@ -15,6 +15,8 @@ copies; a hard purge is the negative control. Soft invalidation preserves the
 statistical refill clock and cannot create missing copies. Background refreshes
 participate in pending/failure accounting; failed or stalled origin work cannot
 extend the last successful fill's freshness plus stale deadline.
+This also holds when a stalled fetch takes longer than TTL plus the stale window;
+the pending fetch's expected duration cannot extend the stale deadline.
 
 Statistical refresh credit dispatches one weighted batch per sampled arrival,
 preserving real-unit origin work. Dispatch stops before allocating at the existing
@@ -24,7 +26,7 @@ discriminated key helper, including delimiter-bearing rule IDs.
 
 ## Regression evidence and unchanged limits
 
-Every finding has a failing mutation check: 14 rejected mutations cover the
+Every finding has a failing mutation check: 19 rejected mutations cover the
 11 findings, including separate zero-time tracked/statistical cases and the
 missing-rule placeholder/error. The named latency regression covers two hard
 and two soft purges, aggregate and per-type windows, cumulative counters and
@@ -33,8 +35,8 @@ The statistical ownership oracle checks each batch's exact credited weight;
 tracked-flight ownership remains exactly one real request.
 
 No agreement bound, example chip threshold, budget, reserve or checkpoint limit
-was raised. Live measures 128,779 bytes gzip, 37 fewer than the starting head,
-leaving 77 bytes under its 128,856-byte reserve. The lazy cache runtime is 4,681
+was raised. Live measures 128,767 bytes gzip, 49 fewer than the starting head,
+leaving 89 bytes under its 128,856-byte reserve. The lazy cache runtime is 4,684
 bytes against 5,120. Arabic core is 37,980 bytes against 38,000.
 
 ## Intentional golden changes
@@ -63,7 +65,7 @@ explicitly; no assertion or tolerance was weakened to absorb them.
 
 ## Focused verification
 
-The 56 focused cache/editor/action regressions pass, including failed and stalled
+The 57 focused cache/editor/action regressions pass, including failed and stalled
 origin refreshes and removed default-rule choices. All 18 cache-scenario
 engine digests agree on Chromium, Firefox and WebKit. The short-stale-window
 agreement regression uses five seeds and 100,000 requests per case. Its maximum
