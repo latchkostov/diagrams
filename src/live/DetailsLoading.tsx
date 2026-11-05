@@ -24,7 +24,7 @@ export function DetailsLoading({
   }, [pinned, focusClaim, interaction]);
   return (
     <span
-      className="lazy-surface-loading"
+      data-lazy-shell=""
       ref={ref}
       tabIndex={pinned ? 0 : -1}
       role={pinned ? "region" : "tooltip"}

@@ -39,7 +39,11 @@ for (const source of ["shell", ".env.production"])
             .flatMap((chunk) => Object.keys(chunk.modules))
             .filter((id) => /[/\\]src[/\\]collab[/\\]/.test(id)),
         ).toEqual([]);
-        expect(output.chunks.filter((chunk) => /room/i.test(chunk.fileName))).toEqual([]);
+        expect(
+          output.chunks
+            .filter((chunk) => /room/i.test(chunk.fileName))
+            .map((chunk) => ({ fileName: chunk.fileName, modules: Object.keys(chunk.modules) })),
+        ).toEqual([]);
         const code = output.chunks.map((chunk) => chunk.code).join("\n");
         const headers = String(output.assets.find((asset) => asset.fileName === "headers.json")?.source);
         for (const text of [code, headers])

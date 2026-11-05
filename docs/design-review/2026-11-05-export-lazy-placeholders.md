@@ -2,7 +2,7 @@
 
 Exports keep the natural diagram, without adding controls or changing focus,
 layout, chrome or loading recovery. Default lazy shells and the custom Live
-readout shell carry one shared exclusion class consumed by the image clone filter.
+readout shell carry the shared `data-lazy-shell` marker consumed by the image clone filter.
 Pending and failed optional UI is skipped immediately; it cannot delay export
 indefinitely. Awaiting optional tooltip downloads would add unnecessary latency.
 Output-bearing surfaces retain their existing readiness and cancellation behavior.
