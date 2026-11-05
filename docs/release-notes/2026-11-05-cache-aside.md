@@ -42,9 +42,26 @@ not a new time budget or an isolated hardware comparison. Both inputs use four
 planning runs. Correct sequential misses change 11,248 ticks / 25,218 messages to
 11,253 ticks / 25,485 messages; no planner limit changes.
 
-Before the final math memo, Live measured 123,122 B gzip versus the 122,084 B starting
-baseline: 11,878 B headroom against 135,000 B, including 5,734 B beyond the fixed
-6,144 B reserve. Final bundle and complete Linux gate results are reported on the PR.
+The final build measures Live at 123,134 B gzip versus the 122,084 B starting
+baseline: 11,866 B headroom against 135,000 B, including 5,722 B beyond the fixed
+6,144 B reserve. The cache runtime is 4,690 B, leaving 430 B below its unchanged
+5,120 B cap. Complete Linux gate results are reported on the PR.
+
+## Shared-load verification
+
+An initial five-repeat Linux run used six workers on three CPUs and finished with
+1,067 passed, 43 failed and zero flaky cases. Both new cache-aside tests passed in
+every repeat. Failures were whole-test timeouts in annotations, multi-page Inspector
+layout cases and Live accessibility cases; no assertion or timeout was weakened.
+
+The three failing spec files were run twice on a clean `origin/master` snapshot,
+`9cb33865770b2b89aebf9c5fc7b5146900e0bca3`, with the same worker and CPU settings.
+Its result was 232 passed, 10 failed and zero flaky cases: both annotation cases
+failed twice and all six locale/width layout cases failed in the second repeat.
+The Live accessibility cases passed there, so they are not claimed as pre-existing.
+The follow-up is recorded in
+`docs/backlog/2026-11-05-shared-load-ui-timeouts.md`. The PR reports the subsequent
+six-worker/six-CPU repeats and full Linux Build and Dev results.
 
 ## Intentional parity inventory
 
