@@ -19,7 +19,9 @@ export function FaultStep({
   onChange(fault: Fault): void;
 }) {
   useLocale();
-  const targets = purge?.targets ?? faultTargets(diagram, fault.kind);
+  // `purge` carries the purge targets in effect at this step (setup and earlier edits included).
+  const purgeTargets = purge?.targets ?? faultTargets(diagram, "purge");
+  const targets = fault.kind === "purge" ? purgeTargets : faultTargets(diagram, fault.kind);
   const target = faultTarget(fault);
   const value =
     fault.kind === "boundary"
@@ -49,7 +51,12 @@ export function FaultStep({
           value={fault.kind}
           aria-label={t("fault.kind")}
           data-testid={`${testId}-fault-kind`}
-          onChange={(e) => onChange(defaultFault(e.target.value as Fault["kind"], diagram))}
+          onChange={(e) => {
+            const kind = e.target.value as Fault["kind"];
+            onChange(
+              kind === "purge" ? { kind, node: purgeTargets[0]?.id ?? "", mode: "hard" } : defaultFault(kind, diagram),
+            );
+          }}
         >
           <option value="boundary" disabled={!faultTargets(diagram, "boundary").length}>
             {t("fault.boundary")}
@@ -63,7 +70,7 @@ export function FaultStep({
           <option value="fail" disabled={!faultTargets(diagram, "fail").length}>
             {t("fault.fail")}
           </option>
-          <option value="purge" disabled={!(purge?.targets ?? faultTargets(diagram, "purge")).length}>
+          <option value="purge" disabled={!purgeTargets.length}>
             {t("cache.purge")}
           </option>
         </ValidationSelect>

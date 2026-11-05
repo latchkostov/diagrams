@@ -89,7 +89,10 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
       target(
         `${id}-fault-target`,
         `${label}: Target`,
-        (effective?.targets ?? faultTargets(diagram, a.fault.kind)).some((n) => n.id === faultTarget(a.fault)),
+        // The effective targets are purge targets; every other Fault kind targets the diagram itself.
+        (a.fault.kind === "purge" && effective ? effective.targets : faultTargets(diagram, a.fault.kind)).some(
+          (n) => n.id === faultTarget(a.fault),
+        ),
       );
       const fault = a.fault;
       if (fault.kind === "purge" && fault.rule !== undefined) {

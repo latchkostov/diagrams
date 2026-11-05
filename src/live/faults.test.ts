@@ -127,3 +127,35 @@ describe("fault targets", () => {
     },
   );
 });
+
+describe("purge availability for every Fault step", () => {
+  // Any step's Kind can change to Purge, so each Fault row needs the purge targets in effect at that point.
+  it("offers caches supplied only by the saved setup to a non-purge step", async () => {
+    const { purgeEditorFixture } = await import("../lab/cachePurgeFixture");
+    const { faultStepCaches } = await import("./faults");
+    const d = purgeEditorFixture(),
+      simulation = d.simulations![0];
+    simulation.timeline = [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "origin", factor: 5 } } }];
+    expect(
+      faultStepCaches(d, simulation)
+        .get(0)
+        ?.targets.map((n) => n.id),
+    ).toContain("cdn");
+  });
+  it("offers caches enabled by an earlier property edit to a later non-purge step", async () => {
+    const { purgeEditorFixture } = await import("../lab/cachePurgeFixture");
+    const { faultStepCaches } = await import("./faults");
+    const d = purgeEditorFixture(),
+      simulation = d.simulations![0];
+    const cache = simulation.setup!.props!.cdn!.cache;
+    delete simulation.setup;
+    simulation.timeline = [
+      { atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "origin", factor: 5 } } },
+      { atMs: 1000, action: { do: "props", node: "cdn", props: { cache } } },
+      { atMs: 2000, action: { do: "fault", fault: { kind: "slow", node: "origin", factor: 5 } } },
+    ];
+    const caches = faultStepCaches(d, simulation);
+    expect(caches.get(0)?.targets.map((n) => n.id)).not.toContain("cdn");
+    expect(caches.get(2)?.targets.map((n) => n.id)).toContain("cdn");
+  });
+});

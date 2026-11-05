@@ -31,19 +31,17 @@ export interface PurgeConfiguration {
 export function faultStepCaches(diagram: DiagramFile, simulation: Simulation): Map<number, PurgeConfiguration> {
   const result = new Map<number, PurgeConfiguration>();
   let work = diagram.nodes.length + (simulation.timeline?.length ?? 0);
-  // Only the editor retains target lists. Admit their worst-case size before the walk.
-  for (const { action } of simulation.timeline ?? [])
-    if (action.do === "fault" && action.fault.kind === "purge") work += diagram.nodes.length;
+  // Only the editor retains target lists, one per Fault step: any step's Kind can change to Purge, so
+  // each needs the purge targets in effect at that point. Admit their worst-case size before the walk.
+  for (const { action } of simulation.timeline ?? []) if (action.do === "fault") work += diagram.nodes.length;
   if (work > MAX_FAULT_WORK) return result;
-  for (const [fault, caches, index] of timelineConfigurations(diagram, simulation)) {
-    if (fault.kind === "purge")
-      result.set(index, {
-        targets: diagram.nodes.filter((n) =>
-          cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), caches.get(n.id)),
-        ),
-        table: caches.get(fault.node),
-      });
-  }
+  for (const [fault, caches, index] of timelineConfigurations(diagram, simulation))
+    result.set(index, {
+      targets: diagram.nodes.filter((n) =>
+        cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), caches.get(n.id)),
+      ),
+      table: fault.kind === "purge" ? caches.get(fault.node) : undefined,
+    });
   return result;
 }
 export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {
