@@ -33,8 +33,8 @@ The statistical ownership oracle checks each batch's exact credited weight;
 tracked-flight ownership remains exactly one real request.
 
 No agreement bound, example chip threshold, budget, reserve or checkpoint limit
-was raised. Live measures 128,782 bytes gzip, 34 fewer than the starting head,
-leaving 74 bytes under its 128,856-byte reserve. The lazy cache runtime is 4,679
+was raised. Live measures 128,779 bytes gzip, 37 fewer than the starting head,
+leaving 77 bytes under its 128,856-byte reserve. The lazy cache runtime is 4,681
 bytes against 5,120. Arabic core is 37,980 bytes against 38,000.
 
 ## Intentional golden changes
@@ -72,3 +72,8 @@ scale 10 and 0.6123 at automatic scale, below the unchanged 2/3-point bounds.
 The exact independent 48-seed sweep and complete Linux Build/Dev gates remain
 required for the final branch verification; their final results accompany the
 pushed revision report.
+
+CI's existing Arabic catalog regression caught missing isolation marks around
+the new confirmation's name placeholder. Arabic and Hebrew catalogs now retain
+those marks explicitly; the regression fails before the repair and passes after
+it. Catalog validation, production build and every size budget pass after repair.
