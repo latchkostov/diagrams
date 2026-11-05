@@ -155,6 +155,10 @@ it("stale hits and refreshes use the approved cycle formula", () => {
   const p = { ttlMs: 10000, keys: 1, staleWhileRevalidateMs: 5000 };
   expect(itemHitShare(900, p.ttlMs, 300, p.staleWhileRevalidateMs)).toBe(1);
   expect(cacheFetchShare(p, 900, 300)).toBeCloseTo(1 / 9271, 12);
+  const short = { ttlMs: 1000, keys: 1, staleWhileRevalidateMs: 1000 };
+  expect(itemHitShare(100, short.ttlMs, 5000, short.staleWhileRevalidateMs)).toBeCloseTo(200 / 601, 12);
+  expect(cacheFetchShare(short, 100, 5000)).toBeCloseTo(402 / 601, 12);
+  expect(cacheFetchShare({ ...short, coalesce: true }, 100, 5000)).toBeCloseTo(1 / 601, 12);
 });
 
 it("purge evidence names the purged tail and observed origin, not an untouched larger rule", () => {
