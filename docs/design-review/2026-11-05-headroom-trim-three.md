@@ -11,9 +11,12 @@ start a real SVG export and require it to wait. The generated surface contract c
 and Retry without losing the session. The read-only viewer retains Live's Tab order and
 annotation links while editing keys remain inert.
 
-The full parity suite must retain every golden. Review the Live, low-zoom, narration,
-presentation, Inspector, workbench, skill and Interactive HTML suites in Linux before release.
+The Live, low-zoom, narration, presentation, Inspector, workbench, skill and Interactive HTML
+suites passed both Linux runs: 624 passed, 22 skipped, zero failed or flaky. Both new held-renderer
+cases passed in each run. Full parity retained all 3,358 goldens, with 112 browser cases passing.
+The broader full gate's download-file timeout remains unclassified after a passing master replay;
+see [the verification follow-up](../backlog/2026-11-05-headroom-trim-three-svg-download.md).
 
 Post-#435 production measurements free 6,687 bytes of Live gzip and 6,947 bytes of the skill ZIP.
-Canvas first view changes by six bytes in generated chunk references, with no additional drawing
+Canvas first view changes by six bytes with lazy-surface registration and generated chunk references, with no additional drawing
 modules in its static closure. No budget, reserve, cap or visual behavior changes.
