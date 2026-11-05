@@ -23,7 +23,7 @@ and replay covers readers joining a refresh after its stale window closes.
 
 All 306 cross-engine digest cases pass in Chromium, Firefox and WebKit. The bundle
 and skill preflight passes 216 tests with all existing reserves and ZIP limits.
-The largest of the three lease checkpoints is 132,028 B, below the unchanged 130 KiB
+The largest of the three lease checkpoints is 130,836 B, below the unchanged 130 KiB
 bound. The public showcase retains its generated `caching` tag and demonstrates real
 hits and misses within ten seconds.
 
@@ -35,20 +35,30 @@ property checks pass; temporarily reverting these fixes fails nine regressions.
 Full parity passes 1,995 Node tests and 112 Linux browser tests: all 3,376 records
 are unchanged by this follow-up.
 
+Several database Requests may depend on the same lookup. They run together on a
+miss and share one fill after every branch succeeds; a failed sibling prevents a
+partial write-back. Coalesced readers wait for that whole group. Properties cover
+fan-out, mixed access, cancellation, retries and replay. Temporarily restoring the
+old fill handling fails both fan-out regressions and the conservation property.
+
+Database branch records are created only after a miss. Retry and breaker clocks
+start at dispatch rather than during the lookup, and completed deferred queues do
+not incur repeated empty traversals. A warm hit creates no database bookkeeping.
+
 ## Planning work and bundle headroom
 
 Unchanged cache inputs now reuse popularity math while the capacity solver settles
 unrelated paths. An operation-count regression grows that path eightfold and
 requires cache-math work to remain constant; it fails without this memoization.
 
-A same-process comparison uses the public diagram before and after the conversion,
-the same final engine, fresh uncached planner invocations, and the repository's
-`growth()` sampling. Its fastest warmed samples are 450.108 ms before and 454.051 ms
-after (1.008744×); the shared machine also produced samples above 500 ms, so the
-0.9% difference is below this run's timing variation. This is a local measurement,
-not a new time budget or an isolated hardware comparison. Both inputs use four
-planning runs. Correct sequential misses change 11,248 ticks / 25,218 messages to
-11,253 ticks / 25,485 messages; no planner limit changes.
+A same-process comparison imports clean master and current planner code, uses the
+public diagram before and after conversion, and alternates execution order. After
+twelve warm-up pairs, twenty-four measured pairs currently give medians of
+454.212 ms before and 488.211 ms after (1.074853×). The planning performance
+requirement remains open at this checkpoint; the final PR must report the resolved
+measurement. Both inputs use four planning runs. Correct sequential misses change
+11,248 ticks / 25,218 messages to 11,253 ticks / 25,485 messages; no planner limit
+changes.
 
 Before the shared-lease follow-up, the build measured Live at 123,134 B gzip versus the 122,084 B starting
 baseline: 11,866 B headroom against 135,000 B, including 5,722 B beyond the fixed

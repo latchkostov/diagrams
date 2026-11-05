@@ -244,7 +244,7 @@ export interface Node {
   targets: Map<string, Edge>;
 }
 export interface Call extends LogicalCall {
-  deferred?: Edge[];
+  deferred?: { edge: Edge; lookup: string }[];
   aside?: Map<string, import("../cache/cacheAside").AsideFetch>;
   attempt: Attempt<Message>;
   replyMs?: number;

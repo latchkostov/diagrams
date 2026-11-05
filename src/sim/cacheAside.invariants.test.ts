@@ -6,6 +6,8 @@ import { watchCheckpoints } from "../test/checkpointProbe";
 import { createEngine } from "./engine";
 import { assertCacheInvariants } from "./cacheInvariants";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
+import { assertResilienceInvariants } from "./resilienceInvariants";
+import type { RetryPolicy } from "../model/admission";
 import "./cache/cacheRuntime";
 
 it("cache-aside conserves requests and leases, fills only successful calls, drains and replays", () => {
@@ -22,6 +24,8 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
         purge: fc.boolean(),
         mixed: fc.boolean(),
         directFirst: fc.boolean(),
+        retry: fc.boolean(),
+        fanout: fc.boolean(),
       }),
       (p) => {
         const d = cacheAsideFixture();
@@ -34,7 +38,15 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
           d.nodes[3].stencil = "generic.service";
           d.nodes[3].props = { latencyMs: 100, failureRate: 1, jitter: 0, concurrency: 1000 };
         }
-        d.edges[2].props!.caller = { onMiss: "lookup", wait: "blocking", ...(p.timeout ? { deadlineMs: 30 } : {}) };
+        const retry: RetryPolicy | undefined = p.retry
+          ? { maxAttempts: 2, backoffMs: 10, strategy: "fixed", retryOn: ["timeout", "transient"] }
+          : undefined;
+        const originCaller = { ...(p.timeout ? { deadlineMs: 30 } : {}), ...(retry ? { retry } : {}) };
+        d.edges[2].props!.caller = { onMiss: "lookup", wait: "blocking", ...originCaller };
+        if (p.fanout) {
+          d.nodes.push({ ...d.nodes[3], id: "other-database", props: { ...d.nodes[3].props, latencyMs: 150 } });
+          d.edges.push({ ...d.edges[2], id: "other-fetch", to: "other-database" });
+        }
         if (p.mixed) {
           d.nodes.push({ id: "direct", stencil: "client.browser", label: "Direct readers", x: 0, y: -100 });
           d.edges.push(
@@ -44,9 +56,17 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
               from: "cache",
               to: "database",
               kind: "sync",
-              ...(p.timeout ? { props: { caller: { deadlineMs: 30 } } } : {}),
+              props: { caller: originCaller },
             },
           );
+          if (p.fanout)
+            d.edges.push({
+              id: "cache-other-origin",
+              from: "cache",
+              to: "other-database",
+              kind: "sync",
+              props: { caller: originCaller },
+            });
         }
         const watch = watchCheckpoints();
         try {
@@ -56,6 +76,7 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
             maxParticles: 0,
             verifyLedger: assertLedgerInvariants,
             verifyOutcomes: assertOutcomeInvariants,
+            verifyResilience: assertResilienceInvariants,
           });
           e.load(d, { cache: { "": { rate: 5000, fetchMs: 130 } } });
           e.step(1010);

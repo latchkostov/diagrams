@@ -34,7 +34,6 @@ export interface LogicalCall {
 }
 
 export interface LogicalBranch {
-  lookup?: string;
   breakerPermit?: import("./breaker").BreakerPermit;
   /** Real requests this branch still carries after a half-open breaker narrowed it to its test calls;
    * its attempts, retries and successes are sized by it. Undefined: the caller's whole cohort. */

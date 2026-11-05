@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { cacheAsideFixture } from "../lab/cacheAsideFixture";
+import { watchCheckpoints } from "../test/checkpointProbe";
 import { createEngine, randomDraws } from "./engine";
 import "./cache/cacheRuntime";
 import type { CacheTable } from "../model/caching";
@@ -7,25 +8,186 @@ import { analyzeCapacity } from "./capacity";
 import { resourceLesson } from "../model/autoscalingLessons";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
 
-it("looks up before fetching, holds the thread across both phases and writes back implicitly", () => {
+it.each([false, true])("one lookup joins every database branch before filling (coalesce %s)", (coalesce) => {
+  const d = cacheAsideFixture();
+  (d.nodes[2].props!.cache as CacheTable).default!.coalesce = coalesce;
+  d.nodes.push({ ...d.nodes[3], id: "slow-database", props: { latencyMs: 300, jitter: 0 } });
+  d.edges.push({ ...d.edges[2], id: "slow-fetch", to: "slow-database" });
+  const e = createEngine({
+    seed: 7,
+    maxParticles: 0,
+    verifyLedger: assertLedgerInvariants,
+    verifyOutcomes: assertOutcomeInvariants,
+  });
+  e.load(d);
+  e.inject("source", 20);
+  e.step(250);
+  expect(e.snapshot().nodes.cache.cache).toMatchObject({ fetches: coalesce ? 1 : 20, fills: 0 });
+  expect(e.snapshot().nodes.source.processed).toBe(0);
+  const token = e.checkpoint();
+  e.step(1000);
+  const result = e.snapshot();
+  expect(result.nodes.cache.cache).toMatchObject({
+    misses: coalesce ? 1 : 20,
+    fetches: coalesce ? 1 : 20,
+    fills: 1,
+  });
+  expect(result.nodes.cache.cache!.coalesced ?? 0).toBe(coalesce ? 19 : 0);
+  expect(result.nodes.database.processed).toBe(coalesce ? 1 : 20);
+  expect(result.nodes["slow-database"].processed).toBe(coalesce ? 1 : 20);
+  expect(result.nodes.source.processed).toBe(20);
+  expect(result.inSystem).toBe(0);
+  e.restore(token);
+  e.step(1000);
+  expect(e.snapshot()).toEqual(result);
+});
+
+it("an unrelated first-phase reply cannot dispatch the database before its cache lookup", () => {
+  const d = cacheAsideFixture();
+  d.nodes[2].props!.latencyMs = 100;
+  d.nodes.push({ ...d.nodes[3], id: "fast", props: { latencyMs: 1, jitter: 0 } });
+  d.edges.push({ id: "unrelated", from: "service", to: "fast", kind: "sync", props: { travelMs: 1 } });
   const e = createEngine({ seed: 7, maxParticles: 0 });
-  e.load(cacheAsideFixture());
+  e.load(d);
   e.inject("source", 1);
-  e.step(20);
-  expect(e.snapshot().nodes.database.processed).toBe(0);
+  e.step(60);
+  expect(e.snapshot().nodes.fast.processed).toBe(1);
   expect(e.snapshot().edges.fetch.calls!.inFlight).toBe(0);
-  e.step(40);
-  expect(e.snapshot().edges.fetch.calls!.inFlight).toBe(1);
-  expect(e.threadUsage("service")!.waiting).toBe(1);
-  e.step(200);
-  expect(e.snapshot().nodes.cache.cache).toMatchObject({ misses: 1, fetches: 1, fills: 1 });
-  expect(e.snapshot().nodes.source.processed).toBe(1);
-  e.inject("source", 1);
-  e.step(200);
-  expect(e.snapshot().nodes.cache.cache).toMatchObject({ hits: 1, fetches: 1 });
+  e.step(300);
   expect(e.snapshot().nodes.database.processed).toBe(1);
+  expect(e.snapshot().nodes.source.processed).toBe(1);
+});
+
+it("a failed sibling prevents a partial write-back and releases every joined reader", () => {
+  const d = cacheAsideFixture();
+  (d.nodes[2].props!.cache as CacheTable).default!.coalesce = true;
+  d.nodes.push({
+    ...d.nodes[3],
+    id: "failed-database",
+    stencil: "generic.service",
+    props: { latencyMs: 300, jitter: 0, failureRate: 1 },
+  });
+  d.edges.push({ ...d.edges[2], id: "failed-fetch", to: "failed-database" });
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 20);
+  e.step(1000);
+  expect(e.snapshot().nodes.cache.cache).toMatchObject({ misses: 1, fetches: 1, fills: 0 });
+  expect(e.snapshot().nodes.source.failed).toBe(20);
   expect(e.snapshot().inSystem).toBe(0);
 });
+
+it("completed deferred dispatches require no empty traversal when replies settle", () => {
+  const watch = watchCheckpoints();
+  try {
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(cacheAsideFixture());
+    e.inject("source", 1);
+    e.step(60);
+    e.checkpoint();
+    const call = [...watch.sources[0][0].get("service")!.calls.values()][0];
+    expect(call.deferred).toBeUndefined();
+    let enumerations = 0;
+    call.deferred = new Proxy([], {
+      get(target, key, receiver) {
+        if (key === Symbol.iterator) enumerations++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    e.step(200);
+    expect(enumerations).toBe(0);
+    expect(e.snapshot().inSystem).toBe(0);
+  } finally {
+    watch.stop();
+  }
+});
+
+it("origin retry and breaker clocks start when the miss dispatches, after the lookup", () => {
+  const watch = watchCheckpoints();
+  try {
+    const d = cacheAsideFixture();
+    d.nodes[2].props!.latencyMs = 1000;
+    d.nodes[3].props!.latencyMs = 2000;
+    d.edges[2].props!.caller = {
+      onMiss: "lookup",
+      wait: "blocking",
+      retry: { maxAttempts: 2, backoffMs: 100, strategy: "fixed", retryOn: ["transient"] },
+      breaker: { minimumCalls: 1, openMs: 1000 },
+    };
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(d);
+    e.inject("source", 1);
+    e.step(500);
+    const token = e.checkpoint();
+    const call = [...watch.sources[0][0].get("service")!.calls.values()][0];
+    expect(call.branches.get("fetch")).toBeUndefined();
+    e.step(600);
+    const branch = call.branches.get("fetch")!;
+    expect(branch.countedAt).toBeGreaterThan(call.startedAt + 1000);
+    expect(branch.attemptStartedAt).toBeGreaterThan(call.startedAt + 1000);
+    e.step(3000);
+    const result = e.snapshot();
+    expect(result.inSystem).toBe(0);
+    e.restore(token);
+    e.step(3600);
+    expect(e.snapshot()).toEqual(result);
+  } finally {
+    watch.stop();
+  }
+});
+
+it("a hit never creates database-call bookkeeping", () => {
+  const watch = watchCheckpoints();
+  try {
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(cacheAsideFixture());
+    e.inject("source", 1);
+    e.step(500);
+    e.inject("source", 1);
+    e.step(20);
+    e.checkpoint();
+    const call = [...watch.sources[0][0].get("service")!.calls.values()][0];
+    expect(call.branches.size).toBe(1);
+    expect(call.outstanding.size).toBe(1);
+    e.step(200);
+    expect(call.branches.has("fetch")).toBe(false);
+    expect(e.snapshot().nodes.database.processed).toBe(1);
+    expect(e.snapshot().nodes.source.processed).toBe(2);
+  } finally {
+    watch.stop();
+  }
+});
+
+it.each(["blocking", "non-blocking"] as const)(
+  "holds across a %s lookup and a blocking miss, then writes back",
+  (wait) => {
+    const e = createEngine({
+      seed: 7,
+      maxParticles: 0,
+      verifyLedger: assertLedgerInvariants,
+      verifyOutcomes: assertOutcomeInvariants,
+    });
+    const d = cacheAsideFixture();
+    d.edges[1].props!.caller = { wait };
+    e.load(d);
+    e.inject("source", 1);
+    e.step(20);
+    expect(e.snapshot().nodes.database.processed).toBe(0);
+    expect(e.snapshot().edges.fetch.calls!.inFlight).toBe(0);
+    expect(e.threadUsage("service")!.waiting).toBe(1);
+    e.step(40);
+    expect(e.snapshot().edges.fetch.calls!.inFlight).toBe(1);
+    expect(e.threadUsage("service")!.waiting).toBe(1);
+    e.step(200);
+    expect(e.snapshot().nodes.cache.cache).toMatchObject({ misses: 1, fetches: 1, fills: 1 });
+    expect(e.snapshot().nodes.source.processed).toBe(1);
+    e.inject("source", 1);
+    e.step(200);
+    expect(e.snapshot().nodes.cache.cache).toMatchObject({ hits: 1, fetches: 1 });
+    expect(e.snapshot().nodes.database.processed).toBe(1);
+    expect(e.snapshot().inSystem).toBe(0);
+  },
+);
 
 it.each([1, 10, 50])("one lease serves overlapping callers and replays at scale %s", (scale) => {
   const d = cacheAsideFixture();
