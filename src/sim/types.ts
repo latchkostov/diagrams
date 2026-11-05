@@ -299,6 +299,8 @@ export interface EdgeSimProps {
   priority?: QueuePriority;
   endpointId?: string;
   caller?: {
+    /** W3: this call runs only after the same caller's cache lookup misses. */
+    onMiss?: string | null;
     wait?: "blocking" | "non-blocking";
     replyMs?: number;
     deadlineMs?: number | null;

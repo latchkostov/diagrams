@@ -56,6 +56,10 @@ it("partitions agreement cases exactly once and keeps every observation with its
   expect(owners("A1: analysis and Live agree over a steady 20 s window, seed 1")).toEqual([0]);
   expect(owners("automatic short-TTL scale preserves Expected/Live agreement (20 items)")).toEqual([0]);
   for (let batch = 0; batch < 5; batch++) {
+    expect(owners(`A1: cache-aside observation (batch ${batch}, scale 10, 1000 items, coalesce true, seed 7)`)).toEqual(
+      [batch],
+    );
+    expect(owners(`A1: cache-aside agreement (batch ${batch}, scale 10, 1000 items, coalesce true)`)).toEqual([batch]);
     expect(owners(`A1: random rule sizes and TTLs preserve steady-state agreement (batch ${batch})`)).toEqual([batch]);
     for (const kind of ["general", "short TTL"]) {
       for (const scale of [1, 10, "auto"]) {

@@ -10,6 +10,32 @@ import { callerSchema } from "../model/admissionSchema";
 import type { EdgeSimProps } from "../sim/types";
 import { commit, createHistory, present, redo, undo } from "./history";
 import { recommendedRetry } from "../sim/resiliencePresets";
+import { cacheAsideFixture } from "../lab/cacheAsideFixture";
+
+it("Every request explicitly clears a diagram cache condition in a saved simulation", () => {
+  const d = cacheAsideFixture();
+  d.simulations = [{ id: "reads", title: "Reads", traffic: [] }];
+  const controller = new LiveController(d);
+  controller.selectSimulation(d.simulations[0]);
+  const editor = {
+    getDiagram: () => d,
+    getEdge: (id: string) => d.edges.find((e) => e.id === id),
+    getNode: (id: string) => d.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn<EditorApi["updateMeta"]>((meta) => Object.assign(d, meta)),
+    setEdgeProps: vi.fn(),
+  };
+  const live = { controller, slowmo: { active: false } };
+  try {
+    effectiveCallerPolicy(editor, "fetch", live)!.set({ onMiss: undefined });
+    const current = effectiveCallerPolicy(editor, "fetch", live)!;
+    expect(current.caller.onMiss).toBeNull();
+    expect(current.override!.onMiss).toBeNull();
+    expect(d.edges[2].props!.caller).toMatchObject({ onMiss: "lookup" });
+    expect(() => checkJsonSchema(current.override, callerSchema)).not.toThrow();
+  } finally {
+    controller.dispose();
+  }
+});
 
 it("request controls read the current render before the imperative store catches up", () => {
   const previous = waitingFixture();

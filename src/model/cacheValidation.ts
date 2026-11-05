@@ -1,9 +1,12 @@
 import { cacheCapable, checkCache, CACHE_LIMITS, type CacheTable } from "./caching";
 import type { RoutingDocument } from "./requestRouting";
 import { stencilRole } from "../stencils/roles";
+import { cacheAsideProblem } from "./cacheAside";
 
 /** Files, transactions, paste and saved patches share this path; old revisions preserve dormant rules. */
 export function validateCacheDocument(d: RoutingDocument): string | undefined {
+  const aside = cacheAsideProblem(d);
+  if (aside) return aside;
   try {
     const nodes = new Map(d.nodes.map((n) => [n.id, n]));
     const check = (id: string, props: Record<string, unknown> | undefined): number => {
@@ -22,6 +25,20 @@ export function validateCacheDocument(d: RoutingDocument): string | undefined {
     };
     limit(base);
     for (const sim of d.simulations ?? []) {
+      const overrides = sim.setup?.edges;
+      if (overrides) {
+        const problem = cacheAsideProblem({
+          ...d,
+          edges: d.edges.map((e) => ({
+            ...e,
+            props: {
+              ...e.props,
+              ...(overrides[e.id] ? { caller: { ...(e.props?.caller as object), ...overrides[e.id].caller } } : {}),
+            },
+          })),
+        });
+        if (problem) throw new Error(problem);
+      }
       const sizes = new Map(base);
       for (const [id, props] of Object.entries(sim.setup?.props ?? {}))
         if (props.cache !== undefined) sizes.set(id, check(id, props));

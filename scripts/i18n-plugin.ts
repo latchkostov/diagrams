@@ -124,6 +124,7 @@ const simulationPrefixes = [
   "inspector.howManyConsumers",
 ];
 export function catalogBucket(key: string): CatalogBucket {
+  if (key === "cache.conditionNotCopied") return "selection";
   const namespace = key.split(".")[0];
   const matches = Object.entries(catalogBuckets).filter(([, prefixes]) =>
     (prefixes as readonly string[]).includes(namespace),

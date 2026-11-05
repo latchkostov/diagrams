@@ -56,6 +56,7 @@ if (!files.length) {
     "src/sim/caching.invariants.test.ts",
     "src/sim/cacheStale.test.ts",
     "src/sim/cacheAgreement.test.ts",
+    "src/sim/cacheAside.invariants.test.ts",
   );
 }
 const used = new Set(seeds);
