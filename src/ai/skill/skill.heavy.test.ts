@@ -766,6 +766,19 @@ describe("the downloadable skill", () => {
     expect(modules.some((id) => id.endsWith("/src/export/viewer/readOnlyEditor.ts"))).toBe(true);
     expect(modules.filter((id) => /\/src\/editor\/(?:useEditor|arrange|layout)\.ts$/.test(id))).toEqual([]);
   }, 30_000);
+  it("keeps authoring history and clipboard out while retaining the viewer's Live keyboard navigation", async () => {
+    const { modules } = await buildViewer(root);
+    expect(
+      modules.filter((id) =>
+        /\/src\/editor\/(?:useHistory|historyController|clipboard|useCanvasShortcuts)\.ts$/.test(id),
+      ),
+    ).toEqual([]);
+    for (const adapter of ["readOnlyHistory", "readOnlyShortcuts"])
+      expect(
+        modules.some((id) => id.endsWith(`/src/export/viewer/${adapter}.ts`)),
+        adapter,
+      ).toBe(true);
+  }, 30_000);
   it("excludes planning authoring and connection affordances from the read-only viewer", async () => {
     const { modules } = await buildViewer(root);
     expect(

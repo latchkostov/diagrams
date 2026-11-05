@@ -162,6 +162,9 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
     return;
   }
   switch (id) {
+    case "live.main-renderer":
+      await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1&renderer=main`);
+      return;
     case "live.session":
     case "live.cache":
       await page.goto(`./?view=canvas&example=${SLUG}&live=1&paused=1`);

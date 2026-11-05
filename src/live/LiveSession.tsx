@@ -190,7 +190,7 @@ export function RunningLiveSession({
 
   useLivePanelLayout(session);
 
-  const { setCanvas, setOverlay, rendererKind } = useFrameLoop({
+  const { setCanvas, setOverlay, rendererKind, loop } = useFrameLoop({
     controller,
     store,
     theme,
@@ -402,6 +402,7 @@ export function RunningLiveSession({
     <LiveContext.Provider value={ui}>
       {!capturing && <RouteLegend routes={controller.currentDiagram.planning?.requestRoutes ?? []} />}
       {showCapacity && !capacityOpen && <CapacityAnalysis panel={false} onClose={closeCapacity} />}
+      {loop}
       <ViewportPortal>
         <canvas
           key={`base-${rendererKind}`}
