@@ -196,10 +196,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const remaining = { value: CACHE_LIMITS.totalTracked - retained };
     for (const node of nodes.values()) {
       if (only && node.id !== only) continue;
-      if (
-        cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache) &&
-        (node.outgoing.some((e) => e.sync && !e.dlq) || edges.some((e) => e.to === node && e.asideLookup))
-      ) {
+      const caching = cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache);
+      const aside = caching && edges.some((e) => e.to === node && e.asideLookup);
+      if (caching && (node.outgoing.some((e) => e.sync && !e.dlq) || aside)) {
         cacheRuntime ??= requireCacheRuntime();
         if (!only || !node.cache || !cacheRuntime.reconfigure(node.cache, node.rawProps.cache)) {
           const peak = node.cache?.peakHerd;
@@ -213,6 +212,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           );
           if (peak) node.cache.peakHerd = peak;
         }
+        if (aside) node.cache.aside = true;
+        else delete node.cache.aside;
       } else node.cache = undefined;
       if (node.role === "store") node.waits = !!node.cache;
       for (const edge of node.outgoing) initializeCall(edge, !!node.cache);
@@ -1269,6 +1270,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const requests = outgoing.filter(
       (edge) => edge.sync && (work.cacheFlight || !edge.onMiss || outgoing.some((e) => e.id === edge.onMiss)),
     );
+    const joinCacheLease =
+      work.cache?.outcome === "coalesced" &&
+      work.cacheOwner?.leases?.has(cacheRuntime!.flightKey(work.cache.rule!.id, work.cache.item));
+    // A shared fill answers the cache request without dispatching any of its origins.
+    if (joinCacheLease) requests.splice(1);
     if (!requests.length) return false;
     // Capture only admission's fractional carry before local work advances segmentActive.
     const admissibleActive = executionAdmissibleActive(node, work);
@@ -1283,7 +1289,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (work.cacheOwner && work.cache) {
       work.cache.origin = requests[0].id;
-      const herd = cacheRuntime!.start(work.cacheOwner, work.cache, sizeOf(work.message), time);
+      const herd = !joinCacheLease && cacheRuntime!.start(work.cacheOwner, work.cache, sizeOf(work.message), time);
       if (herd) log("status", node, undefined, "cache herd", { ...cacheTrace(node, work), fetches: herd });
     }
     const call: Call = {
@@ -1319,7 +1325,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       branches: call.branches,
     };
     calls.set(call.id, call);
-    if (work.cacheFlight && work.cache?.aside && work.cache.item >= 0 && work.cache.rule?.policy.coalesce) {
+    if (
+      work.cacheFlight &&
+      work.cache &&
+      work.cacheOwner?.aside &&
+      work.cache.item >= 0 &&
+      work.cache.rule?.policy.coalesce
+    ) {
       const cache = work.cacheOwner!;
       (cache.leases ??= new Map()).set(work.cacheFlight.key, { owner: call, waiting: 0, waiters: [] });
       call.aside = new Map([
@@ -1345,7 +1357,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (call.held) threadPhase(node, ledger.get<Group>(work.thread), "wait");
     for (const edge of requests)
-      if (work.cacheFlight || !edge.onMiss) startCallBranch(call, edge, message, admissibleActive);
+      if (joinCacheLease)
+        prepareAside(
+          call,
+          edge,
+          { cache: work.cacheOwner!, lookup: { ...work.cache!, outcome: "miss" } },
+          sizeOf(message),
+          time,
+          cacheRuntime!,
+        );
+      else if (work.cacheFlight || !edge.onMiss) startCallBranch(call, edge, message, admissibleActive);
     return true;
   }
 
@@ -2279,6 +2300,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (work.cache?.outcome === "miss" && work.cache.rule?.policy.coalesce && work.cache.item >= 0) {
       const cache = work.cacheOwner!;
       const key = cacheRuntime!.flightKey(work.cache.rule.id, work.cache.item);
+      if (cache.leases?.has(key)) {
+        work.cache.outcome = "coalesced";
+        if (!beginCall(node, work)) settleWork(node, work, "call-limit", false);
+        return;
+      }
       const flights = (cache.flights ??= new Map());
       let fetch = flights.get(key);
       // A miss can finish its local hop after the first fetch has already filled.

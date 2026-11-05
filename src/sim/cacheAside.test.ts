@@ -168,6 +168,7 @@ it("readers whose stale window ends join the existing refresh lease", () => {
   e.step(200);
   expect(e.snapshot().nodes.cache.cacheDetails!.itemFetches).toBe(1);
   expect(e.threadUsage("service")!.waiting).toBe(20);
+  expect(e.observeCacheItem("cache", "", 1)?.waiting).toBe(20);
   const token = e.checkpoint();
   const suffix = () => {
     e.step(3000);
@@ -179,4 +180,83 @@ it("readers whose stale window ends join the existing refresh lease", () => {
   expect(result.inSystem).toBe(0);
   e.restore(token);
   expect(suffix()).toEqual(result);
+});
+
+for (const failed of [false, true])
+  it.each(["read-through", "cache-aside"])(
+    `%s and the other access path share one ${failed ? "failed" : "successful"} item lease`,
+    (first) => {
+      const d = cacheAsideFixture();
+      (d.nodes[2].props!.cache as CacheTable).default!.coalesce = true;
+      d.nodes.push({ id: "direct", stencil: "client.browser", label: "Direct readers", x: 0, y: -100 });
+      d.edges.push(
+        { id: "direct-lookup", from: "direct", to: "cache", kind: "sync", props: { travelMs: 10 } },
+        { id: "cache-origin", from: "cache", to: "database", kind: "sync", props: { travelMs: 10 } },
+      );
+      if (failed) {
+        d.nodes[3].stencil = "generic.service";
+        d.nodes[3].props = { latencyMs: 100, jitter: 0, failureRate: 1, concurrency: 100 };
+      }
+      const e = createEngine({
+        seed: 7,
+        maxParticles: 0,
+        verifyLedger: assertLedgerInvariants,
+        verifyOutcomes: assertOutcomeInvariants,
+      });
+      e.load(d, { cache: { "": { rate: 5000, fetchMs: 110 } } });
+      e.step(1010);
+      e.inject(first === "read-through" ? "direct" : "source", 10);
+      e.step(70);
+      e.inject(first === "read-through" ? "source" : "direct", 10);
+      e.step(40);
+      expect(e.observeCacheItem("cache", "", 1)?.fetches).toBe(1);
+      const token = e.checkpoint();
+      const suffix = () => {
+        e.step(2000);
+        return e.snapshot();
+      };
+      const result = suffix();
+      const completed = failed ? "failed" : "processed";
+      expect(result.nodes.database[completed]).toBe(1);
+      expect(result.nodes.source[completed]).toBe(10);
+      expect(result.nodes.direct[completed]).toBe(10);
+      expect(result.nodes.cache.cache).toMatchObject({ misses: 1, coalesced: 19, fills: failed ? 0 : 1 });
+      expect(result.inSystem).toBe(0);
+      e.restore(token);
+      expect(suffix()).toEqual(result);
+    },
+  );
+
+it.each([
+  ["generic.cache", false],
+  ["generic.cdn", false],
+  ["generic.cdn", true],
+] as const)("mixed access through %s (routed: %s) plans one origin demand and a local lookup", (stencil, routed) => {
+  const d = cacheAsideFixture();
+  d.nodes[2].stencil = stencil;
+  d.nodes.push({
+    id: "direct",
+    stencil: "client.browser",
+    label: "Direct readers",
+    x: 0,
+    y: -100,
+    props: { ratePerSec: 100 },
+  });
+  d.edges.push(
+    { id: "direct-lookup", from: "direct", to: "cache", kind: "sync" },
+    { id: "cache-origin", from: "cache", to: "database", kind: "sync" },
+  );
+  if (routed) {
+    d.planning!.requestRoutes = [{ id: "read", address: { method: "GET", path: "/products/one" } }];
+    for (const node of [d.nodes[0], d.nodes.at(-1)!])
+      node.props!.trafficMix = { mode: "shares", entries: [{ routeId: "read", share: 1 }] };
+    d.nodes[2].props!.routeTable = { rules: [], default: { targets: [{ edgeId: "cache-origin", weight: 1 }] } };
+  }
+  const a = analyzeCapacity(d);
+  const cache = a.cacheDemand!.cache[""];
+  const miss = 1 - cache.hitRatio;
+  expect(cache.rate).toBe(300);
+  expect(cache.fetchMs).toBeCloseTo((200 * 150 + 100 * 110) / 300, 8);
+  expect(a.nodes.database.offered).toBeCloseTo(cache.rate * miss, 8);
+  expect(a.nodes.service.waits!.threadHoldMs).toBeCloseTo(30 + miss * 100, 8);
 });

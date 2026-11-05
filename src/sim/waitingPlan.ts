@@ -68,7 +68,8 @@ export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopol
     });
     parents.set(edge.to, list);
   }
-  return { remaining, parents, roles };
+  const lookups = new Set([...parents.values()].flatMap((list) => list.flatMap((p) => (p.onMiss ? [p.onMiss] : []))));
+  return { remaining, parents, roles, lookups };
 }
 
 /** Reverse topological evaluation, O(nodes + connections), including deep graphs and cycles. */
@@ -123,7 +124,12 @@ export function waitingPlan(
       });
     for (const parent of parents.get(id) ?? []) {
       const endpointMs = resolvedTiming(props, 0, parent.endpoint).workMs;
-      const outcome = callOutcome(parent.policy, endpointMs + responseMs + replyMs + parent.delay, failAt < Infinity);
+      const localLookup = graph.lookups.has(parent.edge);
+      const outcome = callOutcome(
+        parent.policy,
+        endpointMs + (localLookup ? 0 : responseMs + replyMs) + parent.delay,
+        !localLookup && failAt < Infinity,
+      );
       let duration = outcome.responseMs;
       let poolDuration = duration;
       if (parent.retry) {

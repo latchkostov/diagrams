@@ -23,9 +23,17 @@ and replay covers readers joining a refresh after its stale window closes.
 
 All 306 cross-engine digest cases pass in Chromium, Firefox and WebKit. The bundle
 and skill preflight passes 216 tests with all existing reserves and ZIP limits.
-The largest of the three lease checkpoints is 132,020 B, below the unchanged 130 KiB
+The largest of the three lease checkpoints is 132,028 B, below the unchanged 130 KiB
 bound. The public showcase retains its generated `caching` tag and demonstrates real
 hits and misses within ten seconds.
+
+Direct read-through requests and cache-aside callers share the same item lease in
+either arrival order, including failures. Refresh observations include both waiter
+queues. Analysis keeps a service's cache lookup local even when that cache also has
+its own origin, and counts only one total origin demand. Focused thread, replay and
+property checks pass; temporarily reverting these fixes fails nine regressions.
+Full parity passes 1,995 Node tests and 112 Linux browser tests: all 3,376 records
+are unchanged by this follow-up.
 
 ## Planning work and bundle headroom
 
@@ -42,10 +50,10 @@ not a new time budget or an isolated hardware comparison. Both inputs use four
 planning runs. Correct sequential misses change 11,248 ticks / 25,218 messages to
 11,253 ticks / 25,485 messages; no planner limit changes.
 
-The final build measures Live at 123,134 B gzip versus the 122,084 B starting
+Before the shared-lease follow-up, the build measured Live at 123,134 B gzip versus the 122,084 B starting
 baseline: 11,866 B headroom against 135,000 B, including 5,722 B beyond the fixed
 6,144 B reserve. The cache runtime is 4,690 B, leaving 430 B below its unchanged
-5,120 B cap. Complete Linux gate results are reported on the PR.
+5,120 B cap. The PR reports refreshed final measurements and complete Linux gate results.
 
 ## Shared-load verification
 

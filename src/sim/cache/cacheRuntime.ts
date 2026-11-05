@@ -550,7 +550,8 @@ export const cacheRuntime: CacheRuntime = {
       rule: id,
       item,
       fetches: rule.fetching[index],
-      waiting: flight?.cacheFlight?.waiting ?? cache.leases?.get(cacheRuntime.flightKey(id, index))?.waiting ?? 0,
+      waiting:
+        (flight?.cacheFlight?.waiting ?? 0) + (cache.leases?.get(cacheRuntime.flightKey(id, index))?.waiting ?? 0),
       expiredAt: Math.max(0, episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[index]),
       edge: episode?.edge ?? flight?.cache?.origin,
     };

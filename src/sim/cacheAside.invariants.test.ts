@@ -20,6 +20,8 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
         fail: fc.boolean(),
         timeout: fc.boolean(),
         purge: fc.boolean(),
+        mixed: fc.boolean(),
+        directFirst: fc.boolean(),
       }),
       (p) => {
         const d = cacheAsideFixture();
@@ -33,6 +35,19 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
           d.nodes[3].props = { latencyMs: 100, failureRate: 1, jitter: 0, concurrency: 1000 };
         }
         d.edges[2].props!.caller = { onMiss: "lookup", wait: "blocking", ...(p.timeout ? { deadlineMs: 30 } : {}) };
+        if (p.mixed) {
+          d.nodes.push({ id: "direct", stencil: "client.browser", label: "Direct readers", x: 0, y: -100 });
+          d.edges.push(
+            { id: "direct-lookup", from: "direct", to: "cache", kind: "sync" },
+            {
+              id: "cache-origin",
+              from: "cache",
+              to: "database",
+              kind: "sync",
+              ...(p.timeout ? { props: { caller: { deadlineMs: 30 } } } : {}),
+            },
+          );
+        }
         const watch = watchCheckpoints();
         try {
           const e = createEngine({
@@ -44,8 +59,9 @@ it("cache-aside conserves requests and leases, fills only successful calls, drai
           });
           e.load(d, { cache: { "": { rate: 5000, fetchMs: 130 } } });
           e.step(1010);
-          e.inject("source", p.count, { spreadMs: 100 });
+          e.inject(p.mixed && p.directFirst ? "direct" : "source", p.count, { spreadMs: 100 });
           for (let i = 0; i < 20; i++) {
+            if (p.mixed && i === 7) e.inject(p.directFirst ? "source" : "direct", p.count, { spreadMs: 100 });
             if (p.purge && i === 5) e.setFault({ kind: "purge", node: "cache", mode: "hard" });
             e.step(10);
             e.checkpoint();

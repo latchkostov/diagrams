@@ -293,6 +293,7 @@ export function analyzeCapacity(
       aside.set(edge.id, lookup.id);
       asideOrigins.set(lookup.to, [...(asideOrigins.get(lookup.to) ?? []), edge]);
     }
+  const asideLookups = new Set(aside.values());
   const cacheMatchers = new Map(
     diagram.nodes.flatMap((node) => {
       const match = analysisCache(diagram, node, simulation);
@@ -413,23 +414,24 @@ export function analyzeCapacity(
     type: string;
     route?: CompiledRoute;
     sync?: boolean;
+    aside?: boolean;
   }
   const classes = new Map<string, TrafficClass>();
   // Unrouted documents key classes by their type, as before routing; a routed document keys every class by its
   // whole tuple, so no type, route or router name can collide with another class.
   // Interned by type, route and sync flag: each distinct class is serialized once per analysis, not per traversal.
-  const interned = new Map<string, Map<CompiledRoute | undefined, [string?, string?]>>();
-  const classKey = (type: string, route?: CompiledRoute, sync?: boolean): string => {
+  const interned = new Map<string, Map<CompiledRoute | undefined, string[]>>();
+  const classKey = (type: string, route?: CompiledRoute, sync?: boolean, aside = false): string => {
     if (!routes && !hasCaches) return type;
     let byRoute = interned.get(type);
     if (!byRoute) interned.set(type, (byRoute = new Map()));
     let pair = byRoute.get(route);
     if (!pair) byRoute.set(route, (pair = []));
-    const slot = sync ? 1 : 0;
+    const slot = (sync ? 1 : 0) + (aside ? 2 : 0);
     let key = pair[slot];
     if (key === undefined) {
-      key = pair[slot] = JSON.stringify([type, route?.id ?? null, !!sync]);
-      classes.set(key, { type, route, sync });
+      key = pair[slot] = JSON.stringify([type, route?.id ?? null, !!sync, ...(aside ? [true] : [])]);
+      classes.set(key, { type, route, sync, ...(aside ? { aside: true } : {}) });
     }
     return key;
   };
@@ -438,7 +440,12 @@ export function analyzeCapacity(
     forwardingShare(entries.get(edge.from)!.role, edge, c.type, "routed", requestFilter.get(edge.id), c.route) > 0;
   /** The class leaving along an edge into `to`: an unaddressed Request into a router remembers it was a Request. */
   const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
-    classKey(type, route, hasCaches ? edge.sync : !route && edge.sync && !!entries.get(edge.to)?.table);
+    classKey(
+      type,
+      route,
+      hasCaches ? edge.sync : !route && edge.sync && !!entries.get(edge.to)?.table,
+      asideLookups.has(edge.id),
+    );
   const demand = new Map<string, Map<string, RouteDemand>>();
   // A router's decision for a traffic class never changes with rates: decided once per analysis (not per iteration),
   // with its eligible targets, the share they forward (deny targets block theirs before admission, as in playback)
@@ -680,6 +687,7 @@ export function analyzeCapacity(
             });
         }
         const forwarded = cachedRate(id, c, rate, decision.forwarded);
+        if (c.aside) return;
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
           send(next, edge, type, (forwarded * decision.weights[i]) / decision.sum, route);
@@ -688,6 +696,8 @@ export function analyzeCapacity(
       }
     }
     rate = cachedRate(id, c, rate);
+    // A service's lookup replies locally; that service owns the conditional origin call.
+    if (c.aside) return;
     const routesOut = (outgoing.get(id) ?? []).filter((edge) => takes(edge, { type, route: branchRoute(edge, route) }));
     if (brokerRole(entry.role)) {
       for (const group of groups.get(id) ?? []) {
@@ -767,8 +777,8 @@ export function analyzeCapacity(
           const admitted = decision === "legacy" ? 1 : decision.forwarded;
           if (!admitted) continue;
           const origins =
-            decision === "legacy"
-              ? [...(outgoing.get(id) ?? []), ...(asideCompiledOrigins.get(id) ?? [])].filter(
+            c.aside || decision === "legacy"
+              ? (c.aside ? (asideCompiledOrigins.get(id) ?? []) : (outgoing.get(id) ?? [])).filter(
                   (edge) =>
                     edge.sync &&
                     !edge.deny &&
@@ -791,7 +801,7 @@ export function analyzeCapacity(
                 : 0) +
               (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
               2 * (typeof delay === "number" ? delay : 0);
-            if (entry.role === "gateway")
+            if (entry.role === "gateway" && !c.aside)
               fetchMs +=
                 response *
                 (decision === "legacy"
