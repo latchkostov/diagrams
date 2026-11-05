@@ -290,6 +290,9 @@ export async function activate(page: Page, id: string) {
   });
   if (input && !["checkbox", "radio", "button", "submit"].includes(input)) return;
   await page.keyboard.press(input === "checkbox" || input === "radio" ? "Space" : "Enter");
+  // The rail opens a lazy panel whose effect owns the next keyboard destination.
+  // Starting another Tab route before that handoff can revisit already-seen controls.
+  if (id === "ai-rail-open") await expect(page.getByTestId("ai-panel")).toBeFocused();
 }
 
 async function menuItem(page: Page, id: string) {

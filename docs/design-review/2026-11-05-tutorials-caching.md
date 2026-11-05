@@ -24,6 +24,10 @@ comparison. Its later step now reads the current saved Drill, so assistance cann
 required change. The native TTL radio group has an explicit keyboard route. Preview changes
 name a matched rule by its method and path, and the stale-window edit appears only once.
 
+The shared keyboard driver now waits for the AI dock's actual focus handoff before
+starting the next Tab route. A regression holds that focus request and verifies that
+the driver stays pending; temporarily removing the wait makes the assertion fail.
+
 ## Evidence and limitations
 
 The code review checked acts, observed results, caveats, Skip, escalating help, keyboard
