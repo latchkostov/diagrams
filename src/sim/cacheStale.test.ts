@@ -276,7 +276,7 @@ it("hard purge, partial refill, soft purge leaves missing statistical copies as 
   expect(hits).toBeLessThan(1000 / 8);
 });
 
-it("statistical background refreshes expire after an origin outage", () => {
+it.each(["down", "paused"] as const)("statistical background refreshes expire when the origin is %s", (status) => {
   const d = cacheFixture();
   d.nodes[0].props!.ratePerSec = 1000;
   d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 1, staleWhileRevalidateMs: 10000 } };
@@ -285,7 +285,7 @@ it("statistical background refreshes expire after an origin outage", () => {
   e.setTraffic(true);
   e.step(1000);
   expect(e.snapshot().nodes.cache.cache!.revalidations).toBeGreaterThan(0);
-  e.setNodeStatus("origin", "down");
+  e.setNodeStatus("origin", status);
   e.step(11000);
   const checkpoint = e.checkpoint();
   const before = e.snapshot().nodes.cache.cache!;

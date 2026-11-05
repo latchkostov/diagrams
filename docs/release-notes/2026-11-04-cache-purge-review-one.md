@@ -61,7 +61,8 @@ explicitly; no assertion or tolerance was weakened to absorb them.
 
 ## Focused verification
 
-The 54 focused cache/editor/action regressions pass. All 18 cache-scenario
+The 56 focused cache/editor/action regressions pass, including failed and stalled
+origin refreshes and removed default-rule choices. All 18 cache-scenario
 engine digests agree on Chromium, Firefox and WebKit. The short-stale-window
 agreement regression uses five seeds and 100,000 requests per case. Its maximum
 absolute hit-ratio errors are 0.8123 percentage points at scale 1, 0.8123 at

@@ -155,7 +155,9 @@ export function FaultStep({
               }
             >
               {missingRule && fault.kind === "purge" && (
-                <option value={`rule:${fault.rule}`}>{t("fault.chooseTarget", { target: fault.rule ?? "" })}</option>
+                <option value={`rule:${fault.rule}`}>
+                  {t("fault.chooseTarget", { target: fault.rule || t("cache.everythingElse") })}
+                </option>
               )}
               <option value="all">{t("cache.allRules")}</option>
               {table?.rules.map((r) => (
