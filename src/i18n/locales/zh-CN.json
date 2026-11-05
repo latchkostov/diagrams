@@ -2086,6 +2086,7 @@
   "cache.staleAction": "刷新时提供旧副本",
   "cache.staleTrace": "已提供旧副本 · 正在后台刷新",
   "cache.purge": "清除缓存",
+  "cache.purged": "已清除 {name} 的缓存",
   "cache.softPurge": "软清除",
   "cache.deploy": "部署",
   "cache.coldCache": "冷缓存",

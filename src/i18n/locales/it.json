@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Servi copie scadute durante l’aggiornamento",
   "cache.staleTrace": "Copia scaduta servita · aggiornamento in background",
   "cache.purge": "Svuota cache",
+  "cache.purged": "Cache di {name} svuotata",
   "cache.softPurge": "Svuotamento graduale",
   "cache.deploy": "Deploy",
   "cache.coldCache": "Cache fredda",

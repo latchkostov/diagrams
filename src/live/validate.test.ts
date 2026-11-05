@@ -1,3 +1,6 @@
+import { cacheFixture } from "../lab/cacheFixture";
+import { faultTimelineProblem } from "../model/faultRuntime";
+import { faultStepDiagrams } from "./faults";
 import { expect, it } from "vitest";
 import { simulationFieldErrors } from "./validate";
 import { LIMITS } from "../interop/native";
@@ -120,4 +123,37 @@ it("checks every editable property using its shared upper bound", () => {
     draft.timeline[0].action = { do: "props", node: "api", props: { [property.key]: property.maximum + 1 } };
     expect(simulationFieldErrors(draft, diagram)).toHaveLength(1);
   }
+});
+
+it("validates purge rules in stable playback order and shares the effective configuration with the step editor", () => {
+  const d = cacheFixture();
+  const cache = { rules: [{ id: "new", match: {}, policy: { ttlMs: 1000, keys: 1 } }] };
+  const draft: Simulation = {
+    id: "timeline-rules",
+    title: "Timeline rules",
+    traffic: [],
+    timeline: [
+      { atMs: 2000, action: { do: "fault", fault: { kind: "purge", node: "cache", rule: "new" } } },
+      { atMs: 1000, action: { do: "props", node: "cache", props: { cache } } },
+    ],
+  };
+  expect(faultTimelineProblem(d, draft)).toBeUndefined();
+  expect(simulationFieldErrors(draft, d)).toEqual([]);
+  expect(faultStepDiagrams(d, draft).get(0)!.nodes[1].props!.cache).toEqual(cache);
+  draft.timeline!.push({
+    atMs: 2000,
+    action: { do: "props", node: "cache", props: { cache: { rules: [], default: { ttlMs: 1000, keys: 1 } } } },
+  });
+  // Equal-time array order: removal is after the purge.
+  expect(faultTimelineProblem(d, draft)).toBeUndefined();
+  draft.timeline![2].atMs = 1500;
+  expect(faultTimelineProblem(d, draft)).toBeDefined();
+  expect(simulationFieldErrors(draft, d)).toEqual([
+    {
+      field: "sim-panel-step-0-fault-rule",
+      text: "Rule: choose an existing target in this diagram.",
+    },
+  ]);
+  draft.timeline![0].action = { do: "fault", fault: { kind: "purge", node: "cache" } };
+  expect(simulationFieldErrors(draft, d)).toEqual([]);
 });

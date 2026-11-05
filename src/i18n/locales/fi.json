@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Tarjoa vanhaa kopiota päivityksen aikana",
   "cache.staleTrace": "Vanha kopio tarjottu · päivitetään taustalla",
   "cache.purge": "Tyhjennä välimuisti",
+  "cache.purged": "Kohteen {name} välimuisti tyhjennetty",
   "cache.softPurge": "Pehmeä tyhjennys",
   "cache.deploy": "Käyttöönotto",
   "cache.coldCache": "Kylmä välimuisti",

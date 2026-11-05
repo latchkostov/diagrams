@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Phục vụ bản cũ khi làm mới",
   "cache.staleTrace": "Đã phục vụ bản cũ · đang làm mới nền",
   "cache.purge": "Xóa bộ nhớ đệm",
+  "cache.purged": "Đã xóa bộ nhớ đệm của {name}",
   "cache.softPurge": "Xóa mềm",
   "cache.deploy": "Triển khai",
   "cache.coldCache": "Bộ nhớ đệm lạnh",

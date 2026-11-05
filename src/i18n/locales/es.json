@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Servir copias caducadas al actualizar",
   "cache.staleTrace": "Copia caducada servida · actualización en segundo plano",
   "cache.purge": "Purgar caché",
+  "cache.purged": "Caché de {name} purgada",
   "cache.softPurge": "Purga suave",
   "cache.deploy": "Despliegue",
   "cache.coldCache": "Caché fría",

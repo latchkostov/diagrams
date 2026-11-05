@@ -82,6 +82,25 @@ test("purge menus keep every rule ID unique and fit the contextual menu budget",
     await expect(page.getByTestId(`context-menu-item-sim.purge:hard:rule:${id}`)).toHaveCount(1);
   await page.getByTestId("context-menu-item-sim.purge:hard:rule:all").click();
   await expect(page.getByTestId("live-controls")).toBeVisible();
+  await expect(page.getByTestId("canvas-announce")).toContainText("cache purged");
+  await expect(page.getByTestId("canvas-announce")).toContainText(/Empty the cache: .*all/);
+  for (const [parent, child, words] of [
+    ["sim.purge", "sim.purge:hard:all", "Empty the cache: All rules"],
+    ["sim.soft-purge", "sim.purge:soft:rule:__all", "Soft purge: __all"],
+    ["sim.soft-purge", "sim.purge:soft:all", "Soft purge: All rules"],
+    ["sim.deploy-purge", "", "Deploy: All rules"],
+  ]) {
+    await page.getByTestId("node-cdn").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.fault").hover();
+    if (child) {
+      await page.getByTestId(`context-menu-item-${parent}`).hover();
+      await page.getByTestId(`context-menu-item-${child}`).click();
+    } else await page.getByTestId(`context-menu-item-${parent}`).click();
+    await expect
+      .poll(async () => (await page.getByTestId("canvas-announce").textContent())?.replace(/[\u2068\u2069]/g, ""))
+      .toContain(words);
+    await expect(page.getByTestId("canvas-announce")).toContainText("Edge CDN");
+  }
 });
 
 for (const locale of ["ar", "en-XA"])

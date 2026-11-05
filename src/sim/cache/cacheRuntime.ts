@@ -133,6 +133,57 @@ function rate(rule: CacheRuleState, now: number, size: number): number {
   return ring.buckets.reduce((a, b) => a + b, 0) / Math.max(0.01, ring.planned > 0 ? span : Math.min(span, now / 1000));
 }
 export const cacheRuntime: CacheRuntime = {
+  flightKey: (rule, item, refreshId) =>
+    JSON.stringify(refreshId === undefined ? ["item", rule, item] : ["refresh", rule, refreshId]),
+  refreshReady(cache, lookup, now, capacity) {
+    const rule = lookup.rule!;
+    if (
+      lookup.item >= 0 &&
+      (cache.flights?.has(cacheRuntime.flightKey(rule.id, lookup.item)) ||
+        rule.fetching[lookup.item] ||
+        now < rule.freshUntil[lookup.item])
+    )
+      return false;
+    if (capacity <= 0) {
+      if (lookup.item < 0) rule.revalidationCredit = (rule.revalidationCredit ?? 0) + lookup.revalidate!;
+      return false;
+    }
+    return true;
+  },
+  flight(work, now, id, refresh = false) {
+    const lookup = work.cache!;
+    const fetch: import("../engine/model").Work = {
+      message: {
+        ...work.message,
+        id,
+        represented: refresh && lookup.item < 0 ? lookup.revalidate! : 1,
+        width: undefined,
+        returnCall: undefined,
+        family: {
+          root: id,
+          bornAt: now,
+          alive: 1,
+          parked: 0,
+          routesDone: work.message.request ? [work.message.request.id] : [],
+        },
+      },
+      remaining: 0,
+      route: work.route,
+      cache: refresh ? { ...lookup, outcome: "stale" } : { ...lookup },
+      cacheOwner: work.cacheOwner,
+      cacheFlight: {
+        key: cacheRuntime.flightKey(lookup.rule!.id, lookup.item, refresh && lookup.item < 0 ? id : undefined),
+        waiters: [],
+        waiting: 0,
+      },
+    };
+    (work.cacheOwner!.flights ??= new Map()).set(fetch.cacheFlight!.key, fetch);
+    return fetch;
+  },
+  forgetFlight(work) {
+    work.cacheOwner!.flights!.delete(work.cacheFlight!.key);
+    cacheRuntime.invalidateSummary(work.cacheOwner!);
+  },
   reconfigure(cache, value) {
     checkCache(value);
     const table = value as CacheTable;
@@ -189,10 +240,13 @@ export const cacheRuntime: CacheRuntime = {
       if (id !== undefined && rule.id !== id) continue;
       const soft = mode === "soft" && !!rule.policy.staleWhileRevalidateMs;
       for (let i = 0; i < rule.tracked; i++)
-        rule.freshUntil[i] = soft && rule.freshUntil[i] > 0 ? Math.min(rule.freshUntil[i], now) : 0;
+        rule.freshUntil[i] = soft && rule.freshUntil[i] >= 0 ? Math.min(rule.freshUntil[i], now) : -1;
       rule.purgedAt = now;
-      rule.statisticalUntil = soft && rule.statisticalUntil ? now : 0;
-      rule.warmSince = soft ? undefined : now;
+      // Statistical deadlines encode expiry + 1; zero means no copies.
+      if (soft && rule.statisticalUntil)
+        rule.statisticalUntil = Math.sign(rule.statisticalUntil) * Math.min(Math.abs(rule.statisticalUntil), now + 1);
+      else rule.statisticalUntil = 0;
+      if (!soft) rule.warmSince = now;
       rule.revalidationCredit = undefined;
     }
     summaries.delete(cache);
@@ -225,7 +279,7 @@ export const cacheRuntime: CacheRuntime = {
             tracked++;
             remaining.value--;
           }
-          const freshUntil = new Float64Array(tracked);
+          const freshUntil = new Float64Array(tracked).fill(-1);
           let warm = streamSeed(seed, node, `cache-warm:${rule.id}`);
           for (let i = 0; i < tracked; i++) {
             const hit = drawStream(warm);
@@ -243,7 +297,7 @@ export const cacheRuntime: CacheRuntime = {
             popularity,
             stream: streamSeed(seed, node, `cache:${rule.id}`),
             tracked,
-            statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) : 0,
+            statisticalUntil: rates && planned > 0 ? (rule.policy.ttlMs ?? 0) + 1 : 0,
             statisticalCredit: drawStream(streamSeed(seed, node, `cache-credit:${rule.id}`)).value * scale,
             statisticalPending: 0,
             statisticalDue: 0,
@@ -322,7 +376,7 @@ export const cacheRuntime: CacheRuntime = {
     // Without planned demand, isolated injections retain fill-bounded expiry.
     const healthy =
       rule.rate.planned > 0 && rule.statisticalUntil > 0 && (!rule.statisticalPending || now <= rule.statisticalDue);
-    const available = healthy || now < Math.abs(rule.statisticalUntil);
+    const available = healthy || (!!rule.statisticalUntil && now < Math.abs(rule.statisticalUntil) - 1 + staleMs);
     // Stratify statistical outcomes: the shared formula already includes item
     // expiry. Independent whole-dot draws can leave artificial gaps between
     // successful fills at coarse scales and charge that expiry a second time.
@@ -338,7 +392,7 @@ export const cacheRuntime: CacheRuntime = {
     const stale =
       staleMs > 0 &&
       (item >= 0
-        ? !hit && rule.freshUntil[item] > 0 && now < rule.freshUntil[item] + staleMs
+        ? !hit && rule.freshUntil[item] >= 0 && now < rule.freshUntil[item] + staleMs
         : hit && sample >= freshShare);
     let revalidate = 0;
     if (stale && item >= 0 && !rule.fetching[item]) revalidate = 1;
@@ -405,13 +459,13 @@ export const cacheRuntime: CacheRuntime = {
         cache.peakHerd = { rule: lookup.rule.id, item: lookup.item + 1, fetches, edge: lookup.origin };
       if (fetches >= cache.herdThreshold && fetches - size < cache.herdThreshold) {
         (cache.herds ??= new Map()).set(`${lookup.rule.id}:${lookup.item}`, {
-          expiredAt: lookup.freshUntil ?? lookup.at,
+          expiredAt: Math.max(0, lookup.freshUntil ?? lookup.at),
           edge: lookup.origin,
         });
         return fetches;
       }
     }
-    if (lookup.rule && lookup.item < 0 && lookup.outcome === "miss") {
+    if (lookup.rule && lookup.item < 0 && (lookup.outcome === "miss" || lookup.revalidate)) {
       const rule = lookup.rule;
       if (!rule.statisticalPending) {
         const mean = rule.fetchMs.count ? rule.fetchMs.sum / rule.fetchMs.count : rule.fetchMs.planned;
@@ -425,7 +479,7 @@ export const cacheRuntime: CacheRuntime = {
     lookup.fetching = undefined;
     const rule = lookup.rule;
     if (!rule) return;
-    if (lookup.item < 0 && lookup.outcome === "miss") rule.statisticalPending--;
+    if (lookup.item < 0 && (lookup.outcome === "miss" || lookup.revalidate)) rule.statisticalPending--;
     if (lookup.item >= 0) rule.fetching[lookup.item] = Math.max(0, rule.fetching[lookup.item] - size);
     if (lookup.item >= 0) {
       const state = summaryState(cache);
@@ -434,7 +488,7 @@ export const cacheRuntime: CacheRuntime = {
     }
     if (lookup.item >= 0 && !rule.fetching[lookup.item]) cache.herds?.delete(`${rule.id}:${lookup.item}`);
     if (!ok || (lookup.outcome !== "miss" && !lookup.revalidate)) {
-      if (!ok && lookup.item < 0 && lookup.outcome === "miss" && rule.statisticalUntil > 0)
+      if (!ok && lookup.item < 0 && (lookup.outcome === "miss" || lookup.revalidate) && rule.statisticalUntil > 0)
         rule.statisticalUntil = -rule.statisticalUntil;
       return;
     }
@@ -449,7 +503,7 @@ export const cacheRuntime: CacheRuntime = {
     // A successful reply is progress for the shared statistical band. Keep one
     // bounded progress clock even when many sampled fetches remain in flight.
     if (lookup.item < 0) {
-      rule.statisticalUntil = now + rule.policy.ttlMs!;
+      rule.statisticalUntil = now + rule.policy.ttlMs! + 1;
       rule.statisticalDue = now + mean.sum / mean.count;
     }
     // Replies belong to the expiry they observed. A duplicate from an older
@@ -487,14 +541,14 @@ export const cacheRuntime: CacheRuntime = {
     if (!rule || !Number.isInteger(item) || item < 1 || item > rule.tracked) return;
     const index = item - 1,
       key = `${id}:${index}`,
-      flight = cache.flights?.get(key),
+      flight = cache.flights?.get(cacheRuntime.flightKey(id, index)),
       episode = cache.herds?.get(key);
     return {
       rule: id,
       item,
       fetches: rule.fetching[index],
       waiting: flight?.cacheFlight?.waiting ?? 0,
-      expiredAt: episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[index],
+      expiredAt: Math.max(0, episode?.expiredAt ?? flight?.cache?.freshUntil ?? rule.freshUntil[index]),
       edge: episode?.edge ?? flight?.cache?.origin,
     };
   },

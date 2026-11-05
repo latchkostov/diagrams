@@ -3,6 +3,7 @@ import { isDependency } from "./relations";
 import { t } from "../i18n/core";
 import { faultProblem, faultTarget, type Fault } from "./faults";
 import { cacheEnabled } from "./caching";
+import { timelineConfigurations } from "./timelineConfiguration";
 import { stencilRole } from "../stencils/roles";
 
 // Fault playback and outage lookup load with Live; opening a file only needs the fault grammar.
@@ -103,7 +104,10 @@ export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulatio
   const topology = faultTopology(diagram);
   const active = new Map<string, number | boolean>();
   let work = 0;
-  for (const { action } of steps.sort((a, b) => a.atMs - b.atMs)) {
+  for (const {
+    step: { action },
+    props,
+  } of timelineConfigurations(diagram, simulation)) {
     if (action.do !== "fault") continue;
     const f = action.fault;
     const problem = faultProblem(f);
@@ -113,11 +117,11 @@ export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulatio
       return t("fault.repairTarget");
     if (f.kind === "purge") {
       const node = topology.nodes.get(f.node)!;
-      const props = { ...node.props, ...simulation.setup?.props?.[f.node] };
+      const effective = props.get(f.node)!;
       if (
-        !cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), props.cache) ||
+        !cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), effective.cache) ||
         (f.rule !== undefined &&
-          !(f.rule === "" ? props.cache.default : props.cache.rules.some((r) => r.id === f.rule)))
+          !(f.rule === "" ? effective.cache.default : effective.cache.rules.some((r) => r.id === f.rule)))
       )
         return t("fault.repairTarget");
     }

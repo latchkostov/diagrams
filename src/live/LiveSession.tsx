@@ -127,6 +127,7 @@ export function LiveSession(props: SessionProps) {
 }
 
 export function RunningLiveSession({
+  announce,
   caption,
   transport,
   editor,
@@ -294,6 +295,7 @@ export function RunningLiveSession({
   const { addEntry } = useCapacityEntry({ session, editor, store, camera, interaction });
 
   useLiveContextMenu({
+    announce,
     session,
     commands,
     capacity: capacityInputs,

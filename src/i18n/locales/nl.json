@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Verouderde kopieën leveren tijdens vernieuwen",
   "cache.staleTrace": "Verouderde kopie geleverd · vernieuwing op de achtergrond",
   "cache.purge": "Cache legen",
+  "cache.purged": "Cache van {name} gewist",
   "cache.softPurge": "Zacht legen",
   "cache.deploy": "Uitrol",
   "cache.coldCache": "Koude cache",

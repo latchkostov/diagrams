@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Udostępniaj nieaktualne kopie podczas odświeżania",
   "cache.staleTrace": "Udostępniono nieaktualną kopię · odświeżanie w tle",
   "cache.purge": "Wyczyść pamięć podręczną",
+  "cache.purged": "Pamięć podręczna {name} wyczyszczona",
   "cache.softPurge": "Miękkie czyszczenie",
   "cache.deploy": "Wdrożenie",
   "cache.coldCache": "Zimna pamięć podręczna",

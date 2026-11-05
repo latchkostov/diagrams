@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Servera gamla kopior under uppdatering",
   "cache.staleTrace": "Gammal kopia serverad · uppdaterar i bakgrunden",
   "cache.purge": "Rensa cache",
+  "cache.purged": "Cachen för {name} har rensats",
   "cache.softPurge": "Mjuk rensning",
   "cache.deploy": "Driftsättning",
   "cache.coldCache": "Kall cache",

@@ -2085,6 +2085,7 @@
   "cache.staleAction": "更新中に古いコピーを提供",
   "cache.staleTrace": "古いコピーを提供 · バックグラウンドで更新中",
   "cache.purge": "キャッシュをパージ",
+  "cache.purged": "{name} のキャッシュをパージしました",
   "cache.softPurge": "ソフトパージ",
   "cache.deploy": "デプロイ",
   "cache.coldCache": "コールドキャッシュ",

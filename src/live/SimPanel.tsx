@@ -13,6 +13,7 @@ import {
   drillName,
   faultTargets,
   faultDiagram as configuredFaultDiagram,
+  faultStepDiagrams,
 } from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
@@ -196,6 +197,10 @@ export function SimPanel({
   const interaction = useInteraction();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
+  const stepDiagrams = useMemo(
+    () => (sim ? faultStepDiagrams(diagram, sim) : new Map<number, DiagramFile>()),
+    [diagram, sim],
+  );
   const faultDiagram = sim ? configuredFaultDiagram(diagram, sim) : diagram;
   useLayoutEffect(() => onDraftChange?.(sim), [sim, onDraftChange]);
   useLayoutEffect(() => {
@@ -353,7 +358,7 @@ export function SimPanel({
                   key={i}
                   index={i}
                   step={step}
-                  diagram={faultDiagram}
+                  diagram={stepDiagrams.get(i) ?? faultDiagram}
                   types={types}
                   warnings={warnings.filter((w) => w.where === `timeline:${i}`)}
                   onChange={(next) => edit((d) => void (d.timeline![i] = next))}

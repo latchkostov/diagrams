@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Pasniegt novecojušas kopijas atjauninot",
   "cache.staleTrace": "Pasniegta novecojusi kopija · atjaunināšana fonā",
   "cache.purge": "Iztīrīt kešatmiņu",
+  "cache.purged": "{name} kešatmiņa iztīrīta",
   "cache.softPurge": "Saudzīga tīrīšana",
   "cache.deploy": "Izvietošana",
   "cache.coldCache": "Auksta kešatmiņa",

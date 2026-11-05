@@ -360,3 +360,26 @@ it.each([1, 7, 17, 42, 99])("coalesced fills preserve Expected/Live fresh-hit ag
     }
   }
 });
+
+for (const mode of [1, 10, "auto"] as const) {
+  for (const keys of [1, 1000]) {
+    const runs: ReturnType<typeof agreement>[] = [];
+    it.each([1, 7, 17, 42, 99])(
+      `A1: short stale window observation (scale ${mode}, ${keys} items, seed %i)`,
+      (seed) => {
+        runs.push(agreement(seed, mode, keys, 1000, "even", 1000, 5000, true, 1000));
+      },
+    );
+    it(`A1: stale windows shorter than fetches agree (scale ${mode}, ${keys} items)`, () => {
+      expect(runs).toHaveLength(5);
+      const requests = runs.reduce((sum, r) => sum + r.requests, 0);
+      const observed = runs.reduce((sum, r) => sum + r.observed * r.requests, 0) / requests;
+      const error = Math.abs(observed - runs[0].expected);
+      console.info(
+        "short stale window agreement",
+        JSON.stringify({ mode, scale: runs[0].scale, keys, expected: runs[0].expected, observed, error, requests }),
+      );
+      expect(error, JSON.stringify(runs)).toBeLessThanOrEqual(runs[0].scale === 1 ? 0.02 : 0.03);
+    });
+  }
+}

@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Віддавати застарілі копії під час оновлення",
   "cache.staleTrace": "Застарілу копію надано · оновлення у фоні",
   "cache.purge": "Очистити кеш",
+  "cache.purged": "Кеш {name} очищено",
   "cache.softPurge": "М’яке очищення",
   "cache.deploy": "Розгортання",
   "cache.coldCache": "Холодний кеш",

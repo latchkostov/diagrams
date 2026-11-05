@@ -2085,6 +2085,7 @@
   "cache.staleAction": "ให้บริการสำเนาเก่าระหว่างรีเฟรช",
   "cache.staleTrace": "ส่งสำเนาเก่าแล้ว · รีเฟรชเบื้องหลัง",
   "cache.purge": "ล้างแคช",
+  "cache.purged": "ล้างแคช {name} แล้ว",
   "cache.softPurge": "ล้างแบบนุ่มนวล",
   "cache.deploy": "ปรับใช้",
   "cache.coldCache": "แคชเย็น",

@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Servér gamle kopier under opdatering",
   "cache.staleTrace": "Gammel kopi leveret · opdaterer i baggrunden",
   "cache.purge": "Ryd cache",
+  "cache.purged": "Cachen for {name} er ryddet",
   "cache.softPurge": "Blød rydning",
   "cache.deploy": "Udrulning",
   "cache.coldCache": "Kold cache",

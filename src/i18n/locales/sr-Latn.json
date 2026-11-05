@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Poslužuj zastarele kopije pri osvežavanju",
   "cache.staleTrace": "Poslužena zastarela kopija · osvežavanje u pozadini",
   "cache.purge": "Isprazni keš",
+  "cache.purged": "Keš za {name} je očišćen",
   "cache.softPurge": "Blago pražnjenje",
   "cache.deploy": "Objavljivanje",
   "cache.coldCache": "Hladan keš",

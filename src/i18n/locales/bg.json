@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Подавай стари копия при обновяване",
   "cache.staleTrace": "Подадено старо копие · обновяване на заден план",
   "cache.purge": "Изчисти кеша",
+  "cache.purged": "Кешът на {name} е изчистен",
   "cache.softPurge": "Меко изчистване",
   "cache.deploy": "Внедряване",
   "cache.coldCache": "Студен кеш",

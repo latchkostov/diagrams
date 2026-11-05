@@ -1,3 +1,4 @@
+import { announcePurge } from "./cachePurgeBridge";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { t } from "../i18n";
 import { type Fault } from "../model/faults";
@@ -14,6 +15,7 @@ import type { LiveController } from "./controller";
 import type { XY } from "../editor/types";
 
 export interface LiveActionsHost {
+  announce?: (text: string) => void;
   controller: LiveController;
   slowMotionActive(): boolean;
   /** "Custom…" injection: opens the small inject dialog at a screen point. */
@@ -159,7 +161,10 @@ export function liveActions(host: LiveActionsHost): Action[] {
             : !!ctx.edgeId && canCutLink(c.currentDiagram, ctx.edgeId),
       children: (ctx) => {
         const faults = c.snapshot().faults ?? [];
-        const apply = (fault: Fault) => () => c.setFault(fault);
+        const apply = (fault: Fault) => () => {
+          if (!c.setFault(fault) || fault.kind !== "purge") return;
+          announcePurge(c, fault, host.announce);
+        };
         if (ctx.target === "group") {
           const boundary = ctx.groupId!;
           const down = faults.some((f) => f.kind === "boundary" && f.boundary === boundary);

@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Paku värskendamise ajal aegunud koopiaid",
   "cache.staleTrace": "Aegunud koopia saadetud · värskendamine taustal",
   "cache.purge": "Tühjenda vahemälu",
+  "cache.purged": "{name}: vahemälu tühjendatud",
   "cache.softPurge": "Pehme tühjendus",
   "cache.deploy": "Juurutus",
   "cache.coldCache": "Külm vahemälu",

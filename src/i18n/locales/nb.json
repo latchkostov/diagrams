@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Server gamle kopier under oppdatering",
   "cache.staleTrace": "Gammel kopi levert · oppdaterer i bakgrunnen",
   "cache.purge": "Tøm hurtigbuffer",
+  "cache.purged": "Hurtigbufferen for {name} er tømt",
   "cache.softPurge": "Myk tømming",
   "cache.deploy": "Utrulling",
   "cache.coldCache": "Kald hurtigbuffer",

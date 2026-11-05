@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Elavult másolatok kiszolgálása frissítés közben",
   "cache.staleTrace": "Elavult másolat kiszolgálva · frissítés a háttérben",
   "cache.purge": "Gyorsítótár ürítése",
+  "cache.purged": "{name} gyorsítótára törölve",
   "cache.softPurge": "Lágy ürítés",
   "cache.deploy": "Telepítés",
   "cache.coldCache": "Hideg gyorsítótár",

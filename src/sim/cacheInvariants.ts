@@ -10,7 +10,9 @@ export function assertCacheInvariants(
   for (const { work } of calls ?? [])
     if (work.cacheFlight) {
       const key = work.cacheFlight.key;
-      if (owned.has(key) || work.message.represented !== 1) throw new Error("C3 multiple fetches for one item");
+      const units = work.cache!.item < 0 ? work.cache!.revalidate : 1;
+      if (owned.has(key) || work.message.represented !== units || !Number.isSafeInteger(units) || units! < 1)
+        throw new Error("C3 multiple fetches for one item or incorrect statistical batch weight");
       owned.add(key);
     }
   const counts = cache.counts;

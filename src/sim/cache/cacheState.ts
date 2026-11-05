@@ -60,10 +60,12 @@ export interface CacheRuleState {
   popularity?: PopularityTable;
   stream: number;
   tracked: number;
+  /** Signed (expiry + 1): zero means absent; negative means origin progress failed. */
   statisticalUntil: number;
   statisticalCredit: number;
   statisticalPending: number;
   statisticalDue: number;
+  /** -1 means absent; zero is a valid expiry after an instant soft purge. */
   freshUntil: Float64Array;
   fetching: Float64Array;
   rate: { buckets: Float64Array; second: number; planned: number };

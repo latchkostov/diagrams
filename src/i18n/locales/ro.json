@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Servește copii expirate în timpul actualizării",
   "cache.staleTrace": "Copie expirată servită · actualizare în fundal",
   "cache.purge": "Golește cache-ul",
+  "cache.purged": "Cache-ul {name} a fost golit",
   "cache.softPurge": "Golire blândă",
   "cache.deploy": "Implementare",
   "cache.coldCache": "Cache rece",

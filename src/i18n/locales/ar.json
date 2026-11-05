@@ -2187,6 +2187,7 @@
   "cache.staleAction": "تقديم نسخة قديمة أثناء التجديد",
   "cache.staleTrace": "تم تقديم نسخة قديمة · التجديد في الخلفية",
   "cache.purge": "مسح",
+  "cache.purged": "تم إفراغ ذاكرة التخزين المؤقت في {name}",
   "cache.softPurge": "مسح مرن",
   "cache.deploy": "نشر",
   "cache.coldCache": "التخزين المؤقت بارد",

@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Teikti pasenusias kopijas atnaujinant",
   "cache.staleTrace": "Pateikta pasenusi kopija · atnaujinama fone",
   "cache.purge": "Išvalyti talpyklą",
+  "cache.purged": "{name} talpykla išvalyta",
   "cache.softPurge": "Švelnus išvalymas",
   "cache.deploy": "Diegimas",
   "cache.coldCache": "Šaltas talpykla",

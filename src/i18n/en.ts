@@ -3162,6 +3162,7 @@ const en = {
   "cache.staleAction": "Serve stale while refreshing",
   "cache.staleTrace": "Stale copy served · refreshing in the background",
   "cache.purge": "Purge",
+  "cache.purged": "{name} cache purged",
   "cache.softPurge": "Soft purge",
   "cache.deploy": "Deploy",
   "cache.coldCache": "Cold cache",

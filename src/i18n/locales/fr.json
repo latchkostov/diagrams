@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Servir les copies périmées pendant l’actualisation",
   "cache.staleTrace": "Copie périmée servie · actualisation en arrière-plan",
   "cache.purge": "Purger le cache",
+  "cache.purged": "Cache de {name} purgé",
   "cache.softPurge": "Purge douce",
   "cache.deploy": "Déploiement",
   "cache.coldCache": "Cache froid",

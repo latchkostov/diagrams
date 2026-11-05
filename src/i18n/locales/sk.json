@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Poskytovať staré kópie počas obnovy",
   "cache.staleTrace": "Stará kópia odoslaná · obnova na pozadí",
   "cache.purge": "Vyprázdniť vyrovnávaciu pamäť",
+  "cache.purged": "Vyrovnávacia pamäť {name} vymazaná",
   "cache.softPurge": "Mäkké vyprázdnenie",
   "cache.deploy": "Nasadenie",
   "cache.coldCache": "Studená vyrovnávacia pamäť",

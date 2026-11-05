@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Podávat staré kopie během obnovy",
   "cache.staleTrace": "Stará kopie odeslána · obnova na pozadí",
   "cache.purge": "Vyprázdnit mezipaměť",
+  "cache.purged": "Mezipaměť {name} vymazána",
   "cache.softPurge": "Měkké vyprázdnění",
   "cache.deploy": "Nasazení",
   "cache.coldCache": "Studená mezipaměť",

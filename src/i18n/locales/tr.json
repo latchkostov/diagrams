@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Yenilerken eski kopyaları sun",
   "cache.staleTrace": "Eski kopya sunuldu · arka planda yenileniyor",
   "cache.purge": "Önbelleği temizle",
+  "cache.purged": "{name} önbelleği temizlendi",
   "cache.softPurge": "Yumuşak temizleme",
   "cache.deploy": "Dağıtım",
   "cache.coldCache": "Soğuk önbellek",

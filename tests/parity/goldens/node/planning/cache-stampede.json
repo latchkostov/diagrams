@@ -176,8 +176,8 @@
         "suggestion": "Product API: 48% utilized",
         "converged": true,
         "iterations": 4,
-        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 23.93124690635487, 0.4786249381270974, 1, 1, 0], "db": ["Infinity", 23.93124690635487, 0, 1, 1, 0] },
-        "connections": { "requests": 400, "fetch": 23.93124690635487, "read": 23.93124690635487 },
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 23.931263676555588, 0.4786252735311118, 1, 1, 0], "db": ["Infinity", 23.931263676555588, 0, 1, 1, 0] },
+        "connections": { "requests": 400, "fetch": 23.931263676555588, "read": 23.931263676555588 },
         "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
       },
       "explanations": {
@@ -190,7 +190,7 @@
           "evidence": "configured",
           "unit": "req/s",
           "capacity": 50,
-          "offered": 23.93124690635487,
+          "offered": 23.931263676555588,
           "replicas": 1,
           "baseReplicas": 1,
           "omittedContributors": 0,
@@ -198,17 +198,17 @@
           "assignments": [],
           "slots": 4,
           "seconds": 0.08,
-          "utilization": 0.4786249381270974,
+          "utilization": 0.4786252735311118,
           "growth": 0,
           "contributors": [
-            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 23.93124690635487, "via": "Edge CDN" }
+            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 23.931263676555588, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "products", "address": "GET /products/example", "offered": 23.738684624491828, "rejected": 0, "throttled": 0 },
+            { "route": "products", "address": "GET /products/example", "offered": 23.738701394692548, "rejected": 0, "throttled": 0 },
             { "route": "launch", "address": "GET /launch", "offered": 0.19256228186304009, "rejected": 0, "throttled": 0 }
           ]
         }
@@ -226,8 +226,8 @@
         "suggestion": "Product API: 48% utilized",
         "converged": true,
         "iterations": 4,
-        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 23.93124690635487, 0.4786249381270974, 1, 1, 0], "db": ["Infinity", 23.93124690635487, 0, 1, 1, 0] },
-        "connections": { "requests": 400, "fetch": 23.93124690635487, "read": 23.93124690635487 },
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 23.931263676555588, 0.4786252735311118, 1, 1, 0], "db": ["Infinity", 23.931263676555588, 0, 1, 1, 0] },
+        "connections": { "requests": 400, "fetch": 23.931263676555588, "read": 23.931263676555588 },
         "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
       },
       "explanations": {
@@ -240,7 +240,7 @@
           "evidence": "configured",
           "unit": "req/s",
           "capacity": 50,
-          "offered": 23.93124690635487,
+          "offered": 23.931263676555588,
           "replicas": 1,
           "baseReplicas": 1,
           "omittedContributors": 0,
@@ -248,17 +248,17 @@
           "assignments": [],
           "slots": 4,
           "seconds": 0.08,
-          "utilization": 0.4786249381270974,
+          "utilization": 0.4786252735311118,
           "growth": 0,
           "contributors": [
-            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 23.93124690635487, "via": "Edge CDN" }
+            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 23.931263676555588, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "products", "address": "GET /products/example", "offered": 23.738684624491828, "rejected": 0, "throttled": 0 },
+            { "route": "products", "address": "GET /products/example", "offered": 23.738701394692548, "rejected": 0, "throttled": 0 },
             { "route": "launch", "address": "GET /launch", "offered": 0.19256228186304009, "rejected": 0, "throttled": 0 }
           ]
         }
@@ -276,8 +276,8 @@
         "suggestion": "Product API: 48% utilized",
         "converged": true,
         "iterations": 4,
-        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 23.93124690635487, 0.4786249381270974, 1, 1, 0], "db": ["Infinity", 23.93124690635487, 0, 1, 1, 0] },
-        "connections": { "requests": 400, "fetch": 23.93124690635487, "read": 23.93124690635487 },
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "shoppers": ["Infinity", 400, 0, 1, 1, 0], "cdn": ["Infinity", 400, 0, 1, 1, 0], "origin": [50, 23.931263676555588, 0.4786252735311118, 1, 1, 0], "db": ["Infinity", 23.931263676555588, 0, 1, 1, 0] },
+        "connections": { "requests": 400, "fetch": 23.931263676555588, "read": 23.931263676555588 },
         "offeredTypes": { "shoppers": ["Shoppers"], "cdn": ["Shoppers"], "origin": ["Shoppers"], "db": ["Shoppers"] }
       },
       "explanations": {
@@ -290,7 +290,7 @@
           "evidence": "configured",
           "unit": "req/s",
           "capacity": 50,
-          "offered": 23.93124690635487,
+          "offered": 23.931263676555588,
           "replicas": 1,
           "baseReplicas": 1,
           "omittedContributors": 0,
@@ -298,17 +298,17 @@
           "assignments": [],
           "slots": 4,
           "seconds": 0.08,
-          "utilization": 0.4786249381270974,
+          "utilization": 0.4786252735311118,
           "growth": 0,
           "contributors": [
-            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 23.93124690635487, "via": "Edge CDN" }
+            { "edge": "fetch", "node": "cdn", "label": "Shoppers", "rate": 23.931263676555588, "via": "Edge CDN" }
           ],
           "target": 0.5,
           "minimumReplicas": 1,
           "changes": null,
           "converged": true,
           "routes": [
-            { "route": "products", "address": "GET /products/example", "offered": 23.738684624491828, "rejected": 0, "throttled": 0 },
+            { "route": "products", "address": "GET /products/example", "offered": 23.738701394692548, "rejected": 0, "throttled": 0 },
             { "route": "launch", "address": "GET /launch", "offered": 0.19256228186304009, "rejected": 0, "throttled": 0 }
           ]
         }

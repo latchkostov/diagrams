@@ -2086,6 +2086,7 @@
   "cache.staleAction": "Veraltete Kopien beim Aktualisieren bereitstellen",
   "cache.staleTrace": "Veraltete Kopie geliefert · Aktualisierung im Hintergrund",
   "cache.purge": "Cache leeren",
+  "cache.purged": "Cache von {name} geleert",
   "cache.softPurge": "Sanft leeren",
   "cache.deploy": "Bereitstellung",
   "cache.coldCache": "Kalter Cache",

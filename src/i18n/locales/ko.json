@@ -2085,6 +2085,7 @@
   "cache.staleAction": "갱신 중 오래된 사본 제공",
   "cache.staleTrace": "오래된 사본 제공됨 · 백그라운드 갱신 중",
   "cache.purge": "캐시 비우기",
+  "cache.purged": "{name} 캐시 제거됨",
   "cache.softPurge": "소프트 비우기",
   "cache.deploy": "배포",
   "cache.coldCache": "콜드 캐시",

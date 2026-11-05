@@ -12,6 +12,15 @@ export interface CacheRuntime {
     remaining: { value: number },
     rates?: Record<string, { rate: number; fetchMs: number }>,
   ): NodeCache;
+  forgetFlight(work: import("../engine/model").Work): void;
+  flightKey(rule: string, item: number, refreshId?: number): string;
+  flight(
+    work: import("../engine/model").Work,
+    now: number,
+    id: number,
+    refresh?: boolean,
+  ): import("../engine/model").Work;
+  refreshReady(cache: NodeCache, lookup: CacheLookup, now: number, capacity: number): boolean;
   reconfigure(cache: NodeCache, table: unknown): boolean;
   purge(cache: NodeCache, now: number, rule?: string, mode?: "hard" | "soft"): void;
   lookup(

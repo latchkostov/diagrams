@@ -1,3 +1,4 @@
+import { timelineConfigurations } from "../model/timelineConfiguration";
 import type { DiagramFile, Simulation } from "../model/types";
 import { type DrillPreset, type Fault } from "../model/faults";
 import { faultTopology } from "../model/faultRuntime";
@@ -22,6 +23,17 @@ export function faultDiagram(diagram: DiagramFile, simulation: Simulation): Diag
     cache.set(props, effective);
   }
   return effective;
+}
+export function faultStepDiagrams(diagram: DiagramFile, simulation: Simulation): Map<number, DiagramFile> {
+  const result = new Map<number, DiagramFile>();
+  for (const { step, index, props } of timelineConfigurations(diagram, simulation)) {
+    if (step.action.do === "fault")
+      result.set(index, {
+        ...diagram,
+        nodes: diagram.nodes.map((n) => ({ ...n, props: props.get(n.id) })),
+      });
+  }
+  return result;
 }
 export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {
   let cache = targetCache.get(diagram);

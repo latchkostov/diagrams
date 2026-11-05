@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Poslužuj zastarjele kopije pri osvježavanju",
   "cache.staleTrace": "Poslužena zastarjela kopija · osvježavanje u pozadini",
   "cache.purge": "Isprazni predmemoriju",
+  "cache.purged": "Predmemorija za {name} očišćena",
   "cache.softPurge": "Blago pražnjenje",
   "cache.deploy": "Uvođenje",
   "cache.coldCache": "Hladna predmemorija",

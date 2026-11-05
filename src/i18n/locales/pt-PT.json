@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Servir cópias expiradas durante a atualização",
   "cache.staleTrace": "Cópia expirada servida · atualização em segundo plano",
   "cache.purge": "Limpar cache",
+  "cache.purged": "Cache de {name} limpa",
   "cache.softPurge": "Limpeza suave",
   "cache.deploy": "Implementação",
   "cache.coldCache": "Cache fria",

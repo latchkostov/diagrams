@@ -1,3 +1,5 @@
+import { watchCheckpoints } from "../test/checkpointProbe";
+import { assertCacheInvariants } from "./cacheInvariants";
 import fc from "fast-check";
 import { expect, it } from "vitest";
 import { cacheRuntime } from "./cache/cacheRuntime";
@@ -24,7 +26,7 @@ it("C4: fresh and stale hits respect both deadlines, including absent entries an
       const lookup = cacheRuntime.lookup(cache, "Page", undefined, true, now, 1);
       expect(lookup.outcome).toBe(now < 5000 ? "hit" : now < 5000 + window ? "stale" : "miss");
       expect(!!lookup.revalidate).toBe(lookup.outcome === "stale");
-      rule.freshUntil[0] = 0;
+      rule.freshUntil[0] = -1;
       expect(cacheRuntime.lookup(cache, "Page", undefined, true, now, 1).outcome).toBe("miss");
     }),
     { numRuns: propertyRuns(100) },
@@ -33,7 +35,7 @@ it("C4: fresh and stale hits respect both deadlines, including absent entries an
 
 it("C6: hard purge empties exactly the selected rules; soft purge preserves copies only within a stale window", () => {
   fc.assert(
-    fc.property(fc.integer({ min: 1, max: 5000 }), fc.boolean(), fc.boolean(), (now, soft, targeted) => {
+    fc.property(fc.integer({ min: 0, max: 5000 }), fc.boolean(), fc.boolean(), (now, soft, targeted) => {
       const cache = cacheRuntime.compile(
         {
           rules: [
@@ -48,8 +50,8 @@ it("C6: hard purge empties exactly the selected rules; soft purge preserves copi
       );
       for (const r of cache.rules) r.freshUntil[0] = now + 100;
       cacheRuntime.purge(cache, now, targeted ? "a" : undefined, soft ? "soft" : "hard");
-      expect(cache.rules[0].freshUntil[0]).toBe(soft ? now : 0);
-      expect(cache.rules[1].freshUntil[0]).toBe(targeted ? now + 100 : 0);
+      expect(cache.rules[0].freshUntil[0]).toBe(soft ? now : -1);
+      expect(cache.rules[1].freshUntil[0]).toBe(targeted ? now + 100 : -1);
       expect(cacheRuntime.lookup(cache, "A", undefined, true, now, 1).outcome).toBe(soft ? "stale" : "miss");
     }),
     { numRuns: propertyRuns(100) },
@@ -228,3 +230,175 @@ it.each(["hard", "soft"] as const)(
     ).toBeUndefined();
   },
 );
+
+it("soft purge at time zero preserves warm copies", () => {
+  for (const tracked of [0, 256]) {
+    for (const mode of ["soft", "hard"] as const) {
+      const cache = cacheRuntime.compile(
+        table(),
+        "cache",
+        7,
+        1,
+        { value: tracked },
+        { "": { rate: 1000, fetchMs: 10 } },
+      );
+      cache.rules[0].freshUntil.fill(1000);
+      cacheRuntime.purge(cache, 0, undefined, mode);
+      const restored = new CacheCheckpoint(cache.rules[0]).restore();
+      expect(restored).toEqual(cache.rules[0]);
+      const outcomes = Array.from(
+        { length: 100 },
+        () => cacheRuntime.lookup(cache, "Page", undefined, true, 0, 1).outcome,
+      );
+      expect(outcomes.filter((o) => o === "hit" || o === "stale").length).toBe(mode === "soft" ? 100 : 0);
+    }
+  }
+});
+
+it("hard purge, partial refill, soft purge leaves missing statistical copies as misses", () => {
+  const cache = cacheRuntime.compile(
+    { rules: [], default: { ttlMs: 300000, keys: 20000, popularity: "even", staleWhileRevalidateMs: 60000 } },
+    "cache",
+    7,
+    1,
+    { value: 0 },
+    { "": { rate: 1000, fetchMs: 10 } },
+  );
+  cacheRuntime.purge(cache, 1000);
+  const miss = cacheRuntime.lookup(cache, "Page", undefined, true, 1010, 1);
+  cacheRuntime.start(cache, miss, 1);
+  cacheRuntime.settle(cache, miss, 1020, 1, true);
+  cacheRuntime.purge(cache, 1030, undefined, "soft");
+  expect(cache.rules[0].warmSince).toBe(1000);
+  const hits = Array.from({ length: 1000 }, () => cacheRuntime.lookup(cache, "Page", undefined, true, 1040, 1)).filter(
+    (r) => r.outcome === "hit" || r.outcome === "stale",
+  ).length;
+  expect(hits).toBeLessThan(1000 / 8);
+});
+
+it("statistical background refreshes expire after an origin outage", () => {
+  const d = cacheFixture();
+  d.nodes[0].props!.ratePerSec = 1000;
+  d.nodes[1].props!.cache = { rules: [], default: { ttlMs: 100, keys: 1, staleWhileRevalidateMs: 10000 } };
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(d, { cache: { "": { rate: 1000, fetchMs: 60 } } });
+  e.setTraffic(true);
+  e.step(1000);
+  expect(e.snapshot().nodes.cache.cache!.revalidations).toBeGreaterThan(0);
+  e.setNodeStatus("origin", "down");
+  e.step(11000);
+  const checkpoint = e.checkpoint();
+  const before = e.snapshot().nodes.cache.cache!;
+  e.step(1000);
+  const after = e.snapshot().nodes.cache.cache!;
+  expect(after.hits).toBe(before.hits);
+  expect(after.misses - before.misses).toBeGreaterThan(0);
+  e.restore(checkpoint);
+  e.step(1000);
+  expect(e.snapshot().nodes.cache.cache).toEqual(after);
+});
+
+it("each purge restarts aggregate and per-type latency windows", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = table(5000);
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(d);
+  e.setLatencySinceFault(true);
+  const collect = () => {
+    e.inject("source", 2, { type: "Page" });
+    e.inject("source", 3, { type: "Product" });
+    e.step(500);
+  };
+  collect();
+  for (const mode of ["hard", "hard", "soft", "soft"] as const) {
+    const before = e.snapshot();
+    const fault = { kind: "purge", node: "cache", mode } as const;
+    const now = before.time;
+    expect(before.nodes.source.latency!.samples).toBe(5);
+    expect(before.nodes.source.latency!.byType).toMatchObject({ Page: { samples: 2 }, Product: { samples: 3 } });
+    e.setFault(fault);
+    expect(e.snapshot().nodes.source.latency).toBeUndefined();
+    expect(e.snapshot().nodes.cache.latency).toBeUndefined();
+    expect(e.snapshot().nodes.cache.processed).toBe(before.nodes.cache.processed);
+    expect(e.snapshot().nodes.cache.cache!.requests).toBe(before.nodes.cache.cache!.requests);
+    const checkpoint = e.checkpoint();
+    collect();
+    const result = e.snapshot();
+    expect(result.nodes.source.latency).toMatchObject({
+      samples: 5,
+      byType: { Page: { samples: 2 }, Product: { samples: 3 } },
+      sinceFault: { atMs: now, fault },
+    });
+    e.restore(checkpoint);
+    collect();
+    expect(e.snapshot()).toEqual(result);
+  }
+});
+
+it("statistical refresh dispatch uses one weighted batch per sampled arrival", () => {
+  const d = cacheFixture();
+  d.nodes[1].props!.cache = {
+    rules: [],
+    default: { ttlMs: 100, keys: 1000000, popularity: "even", staleWhileRevalidateMs: 60000 },
+  };
+  const e = createEngine({ seed: 7, scale: 1000000, maxParticles: 0, messageBudget: { remaining: 24 } });
+  e.load(d, { cache: { "": { rate: 1000000, fetchMs: 60 } } });
+  e.inject("source", 1);
+  const watch = watchCheckpoints();
+  try {
+    e.checkpoint();
+    expect(() => e.step(20)).not.toThrow();
+    const node = watch.sources[0][0].get("cache")!;
+    expect(node.cache!.flights!.size).toBe(1);
+    assertCacheInvariants(node.cache!, false, node.calls.values());
+    expect(() => e.step(480)).not.toThrow();
+    assertCacheInvariants(node.cache!, true, node.calls.values());
+  } finally {
+    watch.stop();
+  }
+  const cache = e.snapshot().nodes.cache.cache!;
+  expect(cache.requests).toBe(1000000);
+  expect(cache.revalidations).toBeGreaterThan(100000);
+  expect(cache.fetches).toBe(cache.revalidations);
+  expect(e.snapshot().nodes.origin.processed * 1000000).toBe(cache.revalidations);
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("statistical refreshes preserve credit without allocating at call capacity", () => {
+  const cache = cacheRuntime.compile(
+    { rules: [], default: { ttlMs: 100, keys: 1000000, popularity: "even", staleWhileRevalidateMs: 60000 } },
+    "cache",
+    7,
+    1000000,
+    { value: 0 },
+    { "": { rate: 1000000, fetchMs: 60 } },
+  );
+  const lookup = cacheRuntime.lookup(cache, "Page", undefined, true, 100, 1000000);
+  expect(lookup.revalidate).toBeGreaterThan(0);
+  const credit = cache.rules[0].revalidationCredit!;
+  expect(cacheRuntime.refreshReady(cache, lookup, 100, 0)).toBe(false);
+  expect(cache.flights).toBeUndefined();
+  expect(cache.rules[0].revalidationCredit).toBe(credit + lookup.revalidate!);
+  const next = cacheRuntime.lookup(cache, "Page", undefined, true, 110, 1000000);
+  expect(next.revalidate).toBeGreaterThanOrEqual(lookup.revalidate!);
+  expect(cacheRuntime.refreshReady(cache, next, 110, 1)).toBe(true);
+});
+
+it("tracked-item and statistical-refresh flight keys cannot collide with delimiter-bearing rule IDs", () => {
+  expect(cacheRuntime.flightKey("products", -1, 42)).not.toBe(cacheRuntime.flightKey("products:-1", 42));
+  const cache = cacheRuntime.compile(
+    {
+      rules: [{ id: "products:-1", match: { types: ["Page"] }, policy: { ttlMs: 1000, keys: 1, popularity: "even" } }],
+    },
+    "cache",
+    7,
+    1,
+    { value: 256 },
+  );
+  // Observation uses the same key namespace as registration and cleanup.
+  const key = cacheRuntime.flightKey("products:-1", 0);
+  cache.flights = new Map([
+    [key, { cacheFlight: { key, waiting: 7, waiters: [] }, remaining: 0 } as unknown as import("./engine/model").Work],
+  ]);
+  expect(cacheRuntime.observeItem(cache, "products:-1", 1)?.waiting).toBe(7);
+});

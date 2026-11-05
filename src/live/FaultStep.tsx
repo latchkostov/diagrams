@@ -33,6 +33,10 @@ export function FaultStep({
     fault.kind === "purge"
       ? (diagram.nodes.find((n) => n.id === fault.node)?.props?.cache as CacheTable | undefined)
       : undefined;
+  const missingRule =
+    fault.kind === "purge" &&
+    fault.rule !== undefined &&
+    !(fault.rule === "" ? table?.default : table?.rules.some((r) => r.id === fault.rule));
   return (
     <div className="lv-step-body">
       <label>
@@ -150,6 +154,9 @@ export function FaultStep({
                 })
               }
             >
+              {missingRule && fault.kind === "purge" && (
+                <option value={`rule:${fault.rule}`}>{t("fault.chooseTarget", { target: fault.rule ?? "" })}</option>
+              )}
               <option value="all">{t("cache.allRules")}</option>
               {table?.rules.map((r) => (
                 <option key={r.id} value={`rule:${r.id}`}>

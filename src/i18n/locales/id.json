@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Sajikan salinan lama saat menyegarkan",
   "cache.staleTrace": "Salinan lama disajikan · menyegarkan di latar belakang",
   "cache.purge": "Bersihkan cache",
+  "cache.purged": "Cache {name} dibersihkan",
   "cache.softPurge": "Pembersihan lunak",
   "cache.deploy": "Deploy",
   "cache.coldCache": "Cache dingin",

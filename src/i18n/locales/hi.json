@@ -2086,6 +2086,7 @@
   "cache.staleAction": "ताज़ा करते समय पुरानी प्रति दें",
   "cache.staleTrace": "पुरानी प्रति दी गई · पृष्ठभूमि में ताज़ा हो रही है",
   "cache.purge": "कैश साफ़ करें",
+  "cache.purged": "{name} का कैश साफ़ किया गया",
   "cache.softPurge": "सॉफ़्ट पर्ज",
   "cache.deploy": "डिप्लॉय",
   "cache.coldCache": "ठंडा कैश",

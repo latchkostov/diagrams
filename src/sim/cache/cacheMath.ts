@@ -24,7 +24,11 @@ export function itemHitShare(rate: number, ttlMs: number, fetchMs: number, stale
   if (!(rate > 0) || !Number.isFinite(fetchMs)) return 0;
   const fresh = (rate * ttlMs) / 1000;
   const waiting = 1 + (rate * fetchMs) / 1000;
-  return (fresh + (1 - expNeg((rate * staleMs) / 1000)) * waiting) / (waiting + fresh);
+  // The triggering request and only arrivals before the original stale deadline
+  // are hits. A refresh can outlast that deadline.
+  const remaining = Math.max(0, staleMs - fetchMs);
+  const stale = (rate * Math.min(staleMs, fetchMs)) / 1000 + 1 - expNeg((rate * remaining) / 1000);
+  return (fresh + stale) / (waiting + fresh);
 }
 export function cacheHitShare(policy: CachePolicy, rate: number, fetchMs: number): number {
   if (policy.noStore || !policy.ttlMs || !(rate > 0)) return 0;
@@ -45,7 +49,14 @@ export function cacheFetchShare(policy: CachePolicy, rate: number, fetchMs: numb
       const cycle = 1 + (itemRate * (fetchMs + policy.ttlMs!)) / 1000;
       const q = 1 - expNeg((itemRate * policy.staleWhileRevalidateMs!) / 1000);
       const collapsed = policy.coalesce && band.first < tracked && cacheTrackingEligible(rate, policy.ttlMs!);
-      return sum + (band.share * (collapsed ? 1 : (1 - q) * (1 + (itemRate * fetchMs) / 1000) + q)) / cycle;
+      return (
+        sum +
+        (band.share *
+          (collapsed
+            ? 1
+            : (1 - itemHitShare(itemRate, policy.ttlMs!, fetchMs, policy.staleWhileRevalidateMs)) * cycle + q)) /
+          cycle
+      );
     }, 0);
   if (!policy.coalesce || !tracked || !cacheTrackingEligible(rate, policy.ttlMs!))
     return 1 - cacheHitShare(policy, rate, fetchMs);

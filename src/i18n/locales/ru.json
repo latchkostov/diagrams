@@ -2085,6 +2085,7 @@
   "cache.staleAction": "Отдавать устаревшее при обновлении",
   "cache.staleTrace": "Устаревшая копия отправлена · обновление в фоне",
   "cache.purge": "Очистить кэш",
+  "cache.purged": "Кэш {name} очищен",
   "cache.softPurge": "Мягкая очистка",
   "cache.deploy": "Развёртывание",
   "cache.coldCache": "Холодный кэш",

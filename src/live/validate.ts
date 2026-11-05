@@ -6,7 +6,7 @@ import { t } from "../i18n";
 
 import type { DiagramFile, Simulation } from "../model/types";
 import { LIMITS } from "../interop/native";
-import { faultTargets, faultDiagram } from "./faults";
+import { faultTargets, faultStepDiagrams } from "./faults";
 import { editableProperties } from "./editableProperties";
 
 export interface SimFieldError {
@@ -78,18 +78,30 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
       }
     }
   });
+  const stepDiagrams = faultStepDiagrams(diagram, sim);
   sim.timeline?.forEach((step, i) => {
     const id = `sim-panel-step-${i}`;
     const label = `Timeline ${i + 1}`;
     time(`${id}-time`, `${label}: Time (s)`, step.atMs);
     const a = step.action;
-    if (a.do === "fault")
+    if (a.do === "fault") {
+      const effective = stepDiagrams.get(i)!;
       target(
         `${id}-fault-target`,
         `${label}: Target`,
-        faultTargets(faultDiagram(diagram, sim), a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
+        faultTargets(effective, a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
       );
-    else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
+      const fault = a.fault;
+      if (fault.kind === "purge" && fault.rule !== undefined) {
+        const table = effective.nodes.find((n) => n.id === fault.node)?.props?.cache as
+          import("../model/caching").CacheTable | undefined;
+        target(
+          `${id}-fault-rule`,
+          t("cache.purgeRule"),
+          fault.rule === "" ? !!table?.default : !!table?.rules.some((r) => r.id === fault.rule),
+        );
+      }
+    } else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
     if (a.do === "inject") range(`${id}-count`, `${label}: Messages`, a.count, LIMITS.maxMessageCount, true);
     if (a.do === "props") {
       const key = Object.keys(a.props)[0];

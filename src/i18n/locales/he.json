@@ -2085,6 +2085,7 @@
   "cache.staleAction": "הגשת עותקים ישנים בזמן רענון",
   "cache.staleTrace": "הוגש עותק ישן · רענון ברקע",
   "cache.purge": "ניקוי מטמון",
+  "cache.purged": "המטמון של {name} נוקה",
   "cache.softPurge": "ניקוי רך",
   "cache.deploy": "פריסה",
   "cache.coldCache": "מטמון קר",
