@@ -626,6 +626,7 @@ export function createEditor(
       return null;
     if (r.droppedTables?.length)
       notify(t("routing.tableNotCopied", { routers: r.droppedTables.join(", ") }), { kind: "info" });
+    if (r.droppedCacheConditions) notify(t("cache.conditionNotCopied"), { kind: "info" });
     const ids = new Map<string, string>();
     p.nodes.forEach((n, i) => ids.set(n.id, r.nodes[i].id));
     (p.annotations ?? []).forEach((a, i) => ids.set(a.id, r.annotations![i].id));

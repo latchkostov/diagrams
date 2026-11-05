@@ -1,4 +1,5 @@
 import { analysisCache, effectiveCacheTable } from "./cache/cacheAnalysis";
+import { onMiss } from "../model/cacheAside";
 import { cacheHitShare, cacheFetchShare } from "./cache/cacheMath";
 import { cacheTrackingEligible } from "./cache/tracking";
 import { CACHE_LIMITS } from "../model/caching";
@@ -6,7 +7,7 @@ import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
 import { compileWaitingPlan, waitingPlan, type WaitCapacity } from "./waitingPlan";
 import { simulationEdges } from "./topology";
-import { replyCpuMs } from "./callPolicy";
+import { callPolicy, replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
 import { replicaRange, resourceCapacity } from "../model/resourceRuntime";
@@ -274,6 +275,24 @@ export function analyzeCapacity(
       ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
+  const aside = new Map<string, string>();
+  const asideOrigins = new Map<string, typeof diagram.edges>();
+  if (revisionAtLeast(diagram.planning?.revision, "p3-w3"))
+    for (const edge of diagram.edges) {
+      const ref = onMiss(edge);
+      const lookup = ref && diagram.edges.find((e) => e.id === ref && e.from === edge.from);
+      if (
+        !lookup ||
+        !effectiveCacheTable(
+          diagram,
+          diagram.nodes.find((n) => n.id === lookup.to)!,
+          simulation,
+        )
+      )
+        continue;
+      aside.set(edge.id, lookup.id);
+      asideOrigins.set(lookup.to, [...(asideOrigins.get(lookup.to) ?? []), edge]);
+    }
   const cacheMatchers = new Map(
     diagram.nodes.flatMap((node) => {
       const match = analysisCache(diagram, node, simulation);
@@ -281,7 +300,10 @@ export function analyzeCapacity(
     }),
   );
   function compiledCacheOrigin(id: string) {
-    return diagram.edges.some((e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow"));
+    return (
+      asideOrigins.has(id) ||
+      diagram.edges.some((e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow"))
+    );
   }
   const hasCaches = cacheMatchers.size > 0;
   const cacheTracking = new Map<string, Map<string, number>>();
@@ -291,9 +313,10 @@ export function analyzeCapacity(
       const table = effectiveCacheTable(diagram, node, simulation);
       if (
         !table ||
-        !diagram.edges.some(
-          (e) => e.from === node.id && e.kind === "sync" && !e.props?.dlq && (!e.relation || e.relation === "flow"),
-        )
+        (!asideOrigins.has(node.id) &&
+          !diagram.edges.some(
+            (e) => e.from === node.id && e.kind === "sync" && !e.props?.dlq && (!e.relation || e.relation === "flow"),
+          ))
       )
         continue;
       const rules = new Map<string, number>();
@@ -309,10 +332,27 @@ export function analyzeCapacity(
     }
   }
   let cacheDemand: NonNullable<CapacityAnalysis["cacheDemand"]> = {};
+  let asideMissShares: Record<string, number> = {};
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
   const compiled = options.topology ?? compileTopology(diagram);
+  const compiledEdges = new Map(compiled.edges.map((e) => [e.id, e]));
+  const asideCompiledOrigins = new Map(
+    [...asideOrigins].map(([id, edges]) => [id, edges.map((e) => compiledEdges.get(e.id)!)]),
+  );
   const waitGraph = compileWaitingPlan(diagram, compiled);
   let waiting = waitingPlan(diagram, waitProps, {}, waitGraph);
+  const asideWaitSensitive = [...aside.keys()].some((id) => {
+    const edge = diagram.edges.find((e) => e.id === id)!;
+    const source = entries.get(edge.from)!;
+    const policy = callPolicy(source.input.stencil, edge.props?.caller as import("./types").EdgeSimProps["caller"]);
+    return (
+      (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(entries.get(edge.to)!.props).workMs) > 0 ||
+      Number(edge.props?.networkDelayMs ?? 0) > 0 ||
+      !!policy.pool ||
+      policy.replyMs > 0 ||
+      (!!source.props.resources && !policy.blocking)
+    );
+  });
   for (const [id, wait] of waiting.nodes)
     if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
   for (const entry of entries.values()) {
@@ -326,6 +366,19 @@ export function analyzeCapacity(
             replyCpuMs(entry.props.resources.cpuMsPerMessage, entry.wait.replies),
         },
       };
+  }
+  function applyAsideWaiting() {
+    for (const [id, wait] of waiting.nodes) {
+      const entry = entries.get(id)!;
+      if (entry.role !== "processor" && wait.poolCeiling === undefined) continue;
+      entry.wait = wait;
+      const base = waitProps[id].resources;
+      if (base && wait.replies !== undefined) {
+        const cpuMsPerMessage = base.cpuMsPerMessage + replyCpuMs(base.cpuMsPerMessage, wait.replies);
+        if (cpuMsPerMessage !== entry.props.resources!.cpuMsPerMessage)
+          entry.props = { ...entry.props, resources: { ...entry.props.resources!, cpuMsPerMessage } };
+      }
+    }
   }
   const baseIterationCap = iterationBound(
     entries.keys(),
@@ -669,7 +722,16 @@ export function analyzeCapacity(
           cacheMatchers.has(id),
         );
         if (!share) continue;
-        send(next, edge, type, rate * share, branchRoute(edge, route));
+        const lookupId = aside.get(edge.id);
+        let missShare = 1;
+        if (lookupId) {
+          const lookup = (outgoing.get(id) ?? []).find((e) => e.id === lookupId);
+          if (!lookup || !routesOut.includes(lookup)) continue;
+          const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
+          const cached = rule && cacheDemand[lookup.to]?.[rule.id];
+          missShare = cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0);
+        }
+        send(next, edge, type, rate * share * missShare, branchRoute(edge, route));
       }
     }
   }
@@ -705,7 +767,7 @@ export function analyzeCapacity(
           if (!admitted) continue;
           const origins =
             decision === "legacy"
-              ? (outgoing.get(id) ?? []).filter(
+              ? [...(outgoing.get(id) ?? []), ...(asideCompiledOrigins.get(id) ?? [])].filter(
                   (edge) =>
                     edge.sync &&
                     !edge.deny &&
@@ -718,8 +780,14 @@ export function analyzeCapacity(
             if (edge.deny) return;
             const target = entries.get(edge.to)!;
             const delay = edgeInputs.get(edge.id)?.props?.networkDelayMs;
+            const lookup = aside.get(edge.id);
+            const lookupDelay = lookup && edgeInputs.get(lookup)?.props?.networkDelayMs;
             const response =
               10 +
+              // The lookup reply and the caller's second dispatch each cross a logical tick.
+              (lookup
+                ? 20 + resolvedTiming(entry.props).workMs + (typeof lookupDelay === "number" ? lookupDelay : 0)
+                : 0) +
               (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
               2 * (typeof delay === "number" ? delay : 0);
             if (entry.role === "gateway")
@@ -759,6 +827,19 @@ export function analyzeCapacity(
         }
       }
     }
+    let asideWaitChanged = false;
+    if (aside.size) {
+      const shares: Record<string, number> = {};
+      for (const [edge, lookup] of aside) {
+        const cache = edgeInputs.get(lookup)!.to;
+        const rules = Object.values(cacheDemand[cache] ?? {});
+        const requestRate = total(rates.get(cache));
+        const hit = requestRate ? rules.reduce((s, r) => s + r.rate * r.hitRatio, 0) / requestRate : 0;
+        shares[edge] = 1 - hit;
+      }
+      asideWaitChanged = Object.entries(shares).some(([id, value]) => value !== asideMissShares[id]);
+      asideMissShares = shares;
+    }
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
@@ -774,6 +855,10 @@ export function analyzeCapacity(
         error = Math.max(error, Math.abs((next.get(id)?.get(type) ?? 0) - (rates.get(id)?.get(type) ?? 0)));
     }
     rates = next;
+    if (asideWaitSensitive && asideWaitChanged) {
+      waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares);
+      applyAsideWaiting();
+    }
     if (hasRetryBudget) {
       let retryError = 0;
       for (const id of waiting.amplification.keys())
@@ -781,9 +866,10 @@ export function analyzeCapacity(
       error = Math.max(error, retryError);
       if (retryError) {
         priorRetryRequests = retryRequests;
-        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph);
+        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares);
         for (const [id, wait] of waiting.nodes)
           if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
+        if (aside.size) applyAsideWaiting();
       }
     }
     if (error < 1e-7 && !capped) {
@@ -791,6 +877,12 @@ export function analyzeCapacity(
       iterations++;
       break;
     }
+  }
+  if (aside.size && !asideWaitSensitive) {
+    // Zero-cost calls cannot change demand or response times. Resolve their reply
+    // counts once after rates settle instead of re-walking the graph every pass.
+    waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares);
+    applyAsideWaiting();
   }
   const incoming = new Map<string, CompiledEdge[]>();
   for (const edge of compiled.edges) {

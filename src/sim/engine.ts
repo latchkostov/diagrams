@@ -1,6 +1,7 @@
 import { createWork } from "./engine/model";
 import { cacheEnabled, CACHE_LIMITS } from "../model/caching";
 import { requireCacheRuntime, type CacheRuntime } from "./cache/cacheBridge";
+import { prepareAside, finishAside } from "./cache/cacheAside";
 import { createResources } from "./engine/resources";
 import { createBroker } from "./engine/broker";
 import { createExecutionReservations } from "./executionReservations";
@@ -174,6 +175,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let callSettings = new Map<string, import("./types").EdgeSimProps["caller"]>();
   let cacheRates: ReturnType<CacheRuntime["plan"]> | undefined;
   function compileCaches(only?: string): void {
+    for (const edge of edges) if (edge.asideLookup) delete edge.asideLookup;
+    for (const edge of edges) {
+      const ref = callSettings.get(edge.id)?.onMiss;
+      const lookup = ref ? faultEdges.get(ref) : undefined;
+      if (
+        lookup &&
+        revisionAtLeast(planning?.revision, "p3-w3") &&
+        cacheEnabled(planning, lookup.to.stencil, lookup.to.role, lookup.to.rawProps.cache)
+      ) {
+        edge.onMiss = ref!;
+        lookup.asideLookup = true;
+      } else if (edge.onMiss) delete edge.onMiss;
+    }
     const retained = only
       ? [...nodes.values()]
           .filter((n) => n.id !== only)
@@ -184,7 +198,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (only && node.id !== only) continue;
       if (
         cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache) &&
-        node.outgoing.some((e) => e.sync && !e.dlq)
+        (node.outgoing.some((e) => e.sync && !e.dlq) || edges.some((e) => e.to === node && e.asideLookup))
       ) {
         cacheRuntime ??= requireCacheRuntime();
         if (!only || !node.cache || !cacheRuntime.reconfigure(node.cache, node.rawProps.cache)) {
@@ -1156,6 +1170,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           timeoutOrigin: work.timeoutOrigin,
           visualAt: start + Math.max(STEP, edge.travelMs),
           represented: work.message.represented,
+          ...(work.cache?.aside ? { cacheReply: { cache: work.cacheOwner!, lookup: work.cache } } : {}),
         });
       const visible = drawn < maxParticles;
       const trip: Trip = {
@@ -1251,7 +1266,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const outgoing = !ok ? [] : work.route ? [work.route.edge] : outputRoutes(node, message);
     work.outputMessage = message;
     work.outputs = outgoing.filter((edge) => !edge.sync);
-    const requests = outgoing.filter((edge) => edge.sync);
+    const requests = outgoing.filter(
+      (edge) => edge.sync && (work.cacheFlight || !edge.onMiss || outgoing.some((e) => e.id === edge.onMiss)),
+    );
     if (!requests.length) return false;
     // Capture only admission's fractional carry before local work advances segmentActive.
     const admissibleActive = executionAdmissibleActive(node, work);
@@ -1281,6 +1298,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           e.id,
           {
             state: "queued",
+            ...(e.onMiss ? { lookup: e.onMiss } : {}),
             expiresAt: time + (e.policy?.deadlineMs ?? Infinity),
             ...(e.retry ? { attempt: 1, countedAt: time } : {}),
             ...(e.breaker ? { attemptStartedAt: time } : {}),
@@ -1292,6 +1310,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       replyMs: requests.reduce((sum, e) => sum + (e.policy?.replyMs ?? 0), 0),
       replies: requests.filter((e) => !e.policy?.blocking).length,
       depth,
+      ...(!work.cacheFlight && requests.some((e) => e.onMiss) ? { deferred: requests.filter((e) => e.onMiss) } : {}),
     };
     call.attempt.call = {
       startedAt: call.startedAt,
@@ -1300,6 +1319,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       branches: call.branches,
     };
     calls.set(call.id, call);
+    if (work.cacheFlight && work.cache?.aside && work.cache.item >= 0 && work.cache.rule?.policy.coalesce) {
+      const cache = work.cacheOwner!;
+      (cache.leases ??= new Map()).set(work.cacheFlight.key, { owner: call, waiting: 0, waiters: [] });
+      call.aside = new Map([
+        [requests[0].id, { cache, lookup: work.cache, size: sizeOf(work.message), key: work.cacheFlight.key }],
+      ]);
+    }
     node.calls.set(call.id, call);
     work.waitingCall = call.id;
     if (call.held) {
@@ -1318,42 +1344,75 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       suspendDelivery(work);
     }
     if (call.held) threadPhase(node, ledger.get<Group>(work.thread), "wait");
-    for (const edge of requests) {
-      if (call.held && edge.policy?.blocking) {
-        edge.calls.held += call.heldDots ??= dotsOf(message);
-        node.waitingOn.set(
-          edge.id,
-          (node.waitingOn.get(edge.id) ?? 0) + (ledger.get<Group>(work.thread)?.weight ?? sizeOf(message)),
-        );
-      }
-      const branch = {
-        ...addressed(copy(node, message), edge.requestRoute ?? message.request),
-        // A held caller thread was granted within its incoming width, so it narrows it.
-        width: ledger.get(work.thread)?.weight ?? message.width,
-        returnCall: call.id,
-        callDepth: depth,
-        ...(edge.retry ? { callAttempt: 1 } : {}),
-      };
-      if (edge.retry) {
-        retryCount(edge, "requests", branch);
-        retryCount(edge, "attempts", branch);
-      }
-      if (!permitBreaker(call, edge, branch)) continue;
-      pushDue(
-        edge.poolPending,
-        {
-          id: call.id,
-          end: call.id,
-          call,
-          message: branch,
-          admissibleActive,
-        },
-        edge.poolPendingIndices,
-      );
-      scheduleDeadline(call, edge, branch);
-      dispatchCalls(edge);
-    }
+    for (const edge of requests)
+      if (work.cacheFlight || !edge.onMiss) startCallBranch(call, edge, message, admissibleActive);
     return true;
+  }
+
+  function startCallBranch(call: Call, edge: Edge, message: Message, admissibleActive: number): void {
+    const { node, work, depth } = call;
+    if (call.deferred) call.deferred = call.deferred.filter((e) => e !== edge);
+    call.branches.get(edge.id)!.expiresAt = time + (edge.policy?.deadlineMs ?? Infinity);
+    if (call.held && edge.policy?.blocking) {
+      edge.calls.held += call.heldDots ??= dotsOf(message);
+      node.waitingOn.set(
+        edge.id,
+        (node.waitingOn.get(edge.id) ?? 0) + (ledger.get<Group>(work.thread)?.weight ?? sizeOf(message)),
+      );
+    }
+    const request = copy(node, message);
+    if (call.branches.get(edge.id)!.represented !== undefined)
+      request.represented = call.branches.get(edge.id)!.represented;
+    const branch = {
+      ...addressed(request, edge.requestRoute ?? message.request),
+      // A held caller thread was granted within its incoming width, so it narrows it.
+      width: ledger.get(work.thread)?.weight ?? message.width,
+      returnCall: call.id,
+      callDepth: depth,
+      ...(edge.retry ? { callAttempt: 1 } : {}),
+    };
+    if (edge.retry) {
+      retryCount(edge, "requests", branch);
+      retryCount(edge, "attempts", branch);
+    }
+    if (!permitBreaker(call, edge, branch)) return;
+    pushDue(
+      edge.poolPending,
+      {
+        id: call.id,
+        end: call.id,
+        call,
+        message: branch,
+        admissibleActive,
+      },
+      edge.poolPendingIndices,
+    );
+    scheduleDeadline(call, edge, branch);
+    dispatchCalls(edge);
+  }
+
+  function skipAside(call: Call, edge: Edge): void {
+    call.deferred = call.deferred?.filter((e) => e !== edge);
+    call.outstanding.delete(edge.id);
+    call.branches.get(edge.id)!.state = "replied";
+    if (edge.policy?.blocking) call.blockingRemaining--;
+    else {
+      call.replies!--;
+      call.replyMs! -= edge.policy?.replyMs ?? 0;
+    }
+    call.attempt.call!.blockingRemaining = call.blockingRemaining;
+  }
+
+  function settleAside(call: Call, edge: Edge, ok: boolean, cause: OutcomeKind): void {
+    if (!cacheRuntime || !call.aside?.has(edge.id)) return;
+    for (const waiter of finishAside(call, edge, ok, time, cacheRuntime)) {
+      if (waiter.call.attempt.outcome) continue;
+      finishAside(waiter.call, waiter.edge, ok, time, cacheRuntime);
+      skipAside(waiter.call, waiter.edge);
+      waiter.call.work.failureCode = call.work.failureCode;
+      waiter.call.work.timeoutOrigin = call.work.timeoutOrigin;
+      if (!ok || !waiter.call.outstanding.size) settleAttempt(waiter.call, cause);
+    }
   }
 
   function logBreaker(edge: Edge, previous: BreakerState["state"]): void {
@@ -1695,6 +1754,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function releaseCallEdge(call: Call, edge: Edge): void {
+    if (call.deferred?.includes(edge)) return;
     if (!call.held || !edge.policy?.blocking) return;
     const message = call.work.message;
     edge.calls.held = settled(edge.calls.held - (call.heldDots ?? 1));
@@ -1764,6 +1824,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (node.status === "paused") return;
     let ok = a.outcome!.ok;
+    if (call.aside)
+      for (const id of [...call.aside.keys()]) settleAside(call, faultEdges.get(id)!, false, settledCause(a));
     if (work.cacheOwner && work.cache)
       cacheRuntime!.settle(work.cacheOwner, work.cache, time, sizeOf(work.message), ok);
     const retry =
@@ -1963,6 +2025,23 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
         }
         call.outstanding.delete(edge!.id);
+        if (event.ok) {
+          for (const deferred of [...(call.deferred ?? [])].filter(
+            (e) => call.branches.get(e.id)!.lookup === edge!.id,
+          )) {
+            const action = event.cacheReply
+              ? prepareAside(call, deferred, event.cacheReply, sizeOf(call.work.message), time, cacheRuntime!)
+              : "send";
+            if (action === "skip") skipAside(call, deferred);
+            else if (action === "send") startCallBranch(call, deferred, call.work.outputMessage!, call.node.activeMs);
+          }
+        }
+        settleAside(
+          call,
+          edge!,
+          !!event.ok,
+          event.ok ? "success" : event.timeout ? "deadline" : (event.outcome?.kind ?? "error"),
+        );
         if (event.ok && edge!.retry) retryCount(edge!, "succeeded", branchSized(call, edge!));
         releaseCallEdge(call, edge!);
         call.branches.get(edge!.id)!.state = event.timeout ? "timedOut" : event.ok ? "replied" : "failed";
@@ -2176,12 +2255,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (cacheRuntime!.refreshReady(cache, lookup, time, 100_000 - calls.size)) {
         spend();
         const fetch = cacheRuntime!.flight(work, time, nextMessage++, true);
+        if (work.cache.aside) {
+          const origin = edges.find((e) => e.onMiss === work.via?.id);
+          if (origin) fetch.route = { edge: origin, rule: "", weight: 1, quotas: [] };
+        }
         inSystem++;
         if (!beginCall(node, fetch)) {
           cacheRuntime!.forgetFlight(fetch);
           gone(node, fetch.message, "drop", "cache refresh has no origin");
         }
       }
+    }
+
+    if (work.cache?.aside) {
+      settleWork(node, work, "success");
+      return;
     }
 
     if (work.cache?.outcome === "hit" || work.cache?.outcome === "stale") {
@@ -2620,6 +2708,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         time,
         sizeOf(work.message),
       );
+      if (work.via?.asideLookup) work.cache.aside = true;
       if (work.message.family.trace) step(work.message, "cache", node.id, { cache: cacheTrace(node, work) });
     }
     if (node.props.admission) {

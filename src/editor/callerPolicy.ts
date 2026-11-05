@@ -45,6 +45,7 @@ export function effectiveCallerPolicy(
           ...patch,
           ...(Object.hasOwn(patch ?? {}, "deadlineMs") && patch?.deadlineMs === undefined ? { deadlineMs: null } : {}),
           ...(Object.hasOwn(patch ?? {}, "breaker") && patch?.breaker === undefined ? { breaker: null } : {}),
+          ...(Object.hasOwn(patch ?? {}, "onMiss") && patch?.onMiss === undefined ? { onMiss: null } : {}),
         }).filter(([, v]) => v !== undefined),
       );
       if (saved) {

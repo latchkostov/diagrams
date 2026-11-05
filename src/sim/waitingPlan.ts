@@ -10,6 +10,7 @@ import { stencilRole } from "../stencils/roles";
 import { resolvedTiming } from "./timing";
 import { callOutcome, callPolicy, type CallPolicy } from "./callPolicy";
 import type { EdgeSimProps } from "./types";
+import { onMiss } from "../model/cacheAside";
 
 export interface WaitCapacity {
   workMs: number;
@@ -34,7 +35,15 @@ export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopol
   const remaining = new Map<string, number>();
   const parents = new Map<
     string,
-    { node: string; delay: number; endpoint?: string; policy: CallPolicy; edge: string; retry?: RetryPolicy }[]
+    {
+      node: string;
+      delay: number;
+      endpoint?: string;
+      policy: CallPolicy;
+      edge: string;
+      retry?: RetryPolicy;
+      onMiss?: string;
+    }[]
   >();
   for (const node of diagram.nodes) remaining.set(node.id, 0);
   for (const edge of topology.edges) {
@@ -46,6 +55,11 @@ export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopol
     const list = parents.get(edge.to) ?? [];
     list.push({
       edge: edge.id,
+      onMiss:
+        revisionAtLeast(diagram.planning?.revision, "p3-w3") &&
+        caching.has(inputs.get(onMiss(inputs.get(edge.id)!) ?? "")?.to ?? "")
+          ? onMiss(inputs.get(edge.id)!)
+          : undefined,
       retry: revisionAtLeast(diagram.planning?.revision, "p3-w2") ? caller?.retry : undefined,
       node: edge.from,
       delay: 2 * Math.max(0, delay),
@@ -63,6 +77,7 @@ export function waitingPlan(
   resolved: Record<string, ResolvedProps>,
   requestRates: Readonly<Record<string, number>> = {},
   graph = compileWaitingPlan(diagram),
+  missShares: Readonly<Record<string, number>> = {},
 ) {
   const result = new Map<string, WaitCapacity>();
   const amplification = new Map<string, { policy: RetryPolicy; probability: number }>();
@@ -74,10 +89,17 @@ export function waitingPlan(
   const failures = new Map<string, number>();
   const replies = new Map<string, { ms: number; count: number; pool: number }>();
   const pools = new Map<string, number>();
+  const edgeResponses = new Map<string, number>();
+  const deferred = new Map<string, { lookup: string; duration: number; blocking: boolean; share: number }[]>();
   const queue: string[] = [];
   for (const [id, count] of remaining) if (!count) queue.push(id);
   for (let head = 0; head < queue.length; head++) {
     const id = queue[head];
+    for (const branch of deferred.get(id) ?? []) {
+      const duration = (edgeResponses.get(branch.lookup) ?? 0) + branch.share * branch.duration;
+      response.set(id, Math.max(response.get(id) ?? 0, duration));
+      if (branch.blocking) callMs.set(id, Math.max(callMs.get(id) ?? 0, duration));
+    }
     const props = resolved[id];
     const { workMs } = resolvedTiming(props);
     const reply = replies.get(id);
@@ -121,21 +143,33 @@ export function waitingPlan(
         poolDuration *= expected.attempts;
         duration = duration * expected.attempts + expected.backoffMs;
       }
+      const share = parent.onMiss ? (missShares[parent.edge] ?? 1) : 1;
       if (parent.policy.pool)
         pools.set(
           parent.node,
-          Math.min(pools.get(parent.node) ?? Infinity, (parent.policy.pool * 1000) / Math.max(10, poolDuration)),
+          Math.min(
+            pools.get(parent.node) ?? Infinity,
+            (parent.policy.pool * 1000) / Math.max(1e-9, Math.max(10, poolDuration) * share),
+          ),
         );
       if (outcome.failed) failures.set(parent.node, Math.min(failures.get(parent.node) ?? Infinity, duration));
-      response.set(parent.node, Math.max(response.get(parent.node) ?? 0, duration));
-      if (parent.policy.blocking) callMs.set(parent.node, Math.max(callMs.get(parent.node) ?? 0, duration));
-      else {
+      edgeResponses.set(parent.edge, duration);
+      if (parent.onMiss) {
+        const branches = deferred.get(parent.node) ?? [];
+        branches.push({ lookup: parent.onMiss, duration, blocking: parent.policy.blocking, share });
+        deferred.set(parent.node, branches);
+      } else {
+        response.set(parent.node, Math.max(response.get(parent.node) ?? 0, duration));
+        if (parent.policy.blocking) callMs.set(parent.node, Math.max(callMs.get(parent.node) ?? 0, duration));
+      }
+      if (!parent.policy.blocking) {
         const r = replies.get(parent.node) ?? { ms: 0, count: 0, pool: Infinity };
         if (roles.get(parent.node) === "processor") {
-          r.ms += parent.policy.replyMs;
-          r.count++;
+          r.ms += parent.policy.replyMs * share;
+          r.count += share;
         }
-        if (parent.policy.pool) r.pool = Math.min(r.pool, (parent.policy.pool * 1000) / Math.max(10, poolDuration));
+        if (parent.policy.pool)
+          r.pool = Math.min(r.pool, (parent.policy.pool * 1000) / Math.max(1e-9, Math.max(10, poolDuration) * share));
         replies.set(parent.node, r);
       }
       const count = remaining.get(parent.node)! - 1;

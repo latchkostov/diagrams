@@ -837,7 +837,11 @@
       "sublabel": "ElastiCache",
       "group": "stores",
       "props": {
-        "latencyMs": 0
+        "latencyMs": 0,
+        "cache": {
+          "rules": [],
+          "default": { "ttlMs": 600000, "keys": 50000, "popularity": "typical" }
+        }
       },
       "x": 2340,
       "y": 500
@@ -1687,8 +1691,8 @@
       "kind": "sync",
       "label": "Cache miss",
       "props": {
-        "share": 0.1,
         "caller": {
+          "onMiss": "catalog-bff--product-cache",
           "wait": "non-blocking",
           "replyMs": 0
         }

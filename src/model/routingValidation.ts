@@ -63,6 +63,7 @@ function routingInputs(d: RoutingDocument): unknown[] {
   const labels = new Map<string, unknown[]>();
   for (const n of d.nodes) {
     const p = n.props;
+    out.push(n.id, n.stencil);
     if (saved.has(n.id) || (p && (p.cache !== undefined || p.trafficMix !== undefined || p.routeTable !== undefined))) {
       out.push(n.id, n.stencil, p?.trafficMix, p?.routeTable, p?.cache);
       if (p?.routeTable !== undefined) routers.set(n.id, n.stencil);
@@ -73,6 +74,7 @@ function routingInputs(d: RoutingDocument): unknown[] {
   if (routers.size) for (const n of d.nodes) labels.set(n.id, [n.stencil, n.label, n.sublabel]);
   for (const e of d.edges) {
     const p = e.props;
+    out.push(e.id, e.from, e.to, e.kind, e.relation, p?.caller, p?.dlq);
     if (p && (p.requestRouteId !== undefined || p.requestFilter !== undefined))
       out.push(e.id, p.requestRouteId, p.requestFilter);
     // A table's targets must stay ordinary flows out of their router (dead-letter inference reads the target).

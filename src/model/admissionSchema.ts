@@ -79,6 +79,7 @@ export const callerSchema: JsonSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    onMiss: { anyOf: [id, { type: "null" }] },
     wait: { enum: ["blocking", "non-blocking"] },
     replyMs: time,
     deadlineMs: { anyOf: [time, { type: "null" }] },

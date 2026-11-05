@@ -4,6 +4,7 @@ import { chooseAction, compileFilter, compileRoutes, compileTable, matchesReques
 import { requireCacheRuntime } from "../sim/cache/cacheBridge";
 import { acceptsType } from "../sim/topology";
 import { cacheOriginIndex } from "./cacheOrigins";
+import { cacheAsideOrigins } from "../model/cacheAside";
 
 /** Configured destinations, not delivery counts. Compile only when the document or rules change. */
 export function cacheDestinations(
@@ -13,9 +14,12 @@ export function cacheDestinations(
   table?: CacheTable,
   routeTable?: unknown,
 ) {
-  const outgoing = diagram.edges.filter(
-    (e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow") && !e.props?.dlq,
-  );
+  const outgoing = [
+    ...diagram.edges.filter(
+      (e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow") && !e.props?.dlq,
+    ),
+    ...cacheAsideOrigins(diagram, id),
+  ];
   const names = (ids: Iterable<string>) => [...new Set([...ids].map((to) => index.labels.get(to) ?? to))];
   const routes = compileRoutes(diagram.planning);
   const routing = routes && compileTable(routeTable);

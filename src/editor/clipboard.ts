@@ -35,6 +35,7 @@ import {
   type TrafficMix,
 } from "../model/requestRouting";
 import { checkJsonSchema } from "../model/jsonSchema";
+import { onMiss } from "../model/cacheAside";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
 // JSON that also pastes into another tab (or a text editor).
@@ -59,6 +60,7 @@ export interface ClipboardPayload {
   requestRoutes?: RequestRoute[];
   /** Set by remapPayload, never serialized: copied routers whose table lost a connection (so it wasn't kept). */
   droppedTables?: string[];
+  droppedCacheConditions?: boolean;
 }
 
 export interface TakenIds {
@@ -335,6 +337,18 @@ export function remapPayload(
     };
   });
   const scalerGroups = scalerGroupRemap(p.edges, nmap, emap);
+  let droppedCacheConditions = false;
+  for (const edge of edges) {
+    const ref = onMiss(edge);
+    if (!ref) continue;
+    const caller = { ...(edge.props!.caller as NonNullable<import("../sim/types").EdgeSimProps["caller"]>) };
+    if (emap.has(ref)) caller.onMiss = emap.get(ref);
+    else {
+      delete caller.onMiss;
+      droppedCacheConditions = true;
+    }
+    edge.props = { ...edge.props, caller };
+  }
   for (const n of nodes) remapScaler(n.props, nmap, scalerGroups);
   // A copied router's table follows its copied connections; one that lost a connection isn't kept (it could only
   // send that rule's requests somewhere else), and the editor says so.
@@ -366,6 +380,7 @@ export function remapPayload(
   return {
     ...(p.requestRoutes ? { requestRoutes: p.requestRoutes } : {}),
     ...(droppedTables.length ? { droppedTables } : {}),
+    ...(droppedCacheConditions ? { droppedCacheConditions } : {}),
     format: p.format,
     ...(p.planning ? { planning: p.planning } : {}),
     groups,

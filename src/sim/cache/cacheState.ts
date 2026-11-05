@@ -76,6 +76,7 @@ export interface CacheRuleState {
   revalidationCredit?: number;
 }
 export interface NodeCache {
+  leases?: Map<string, import("./cacheAside").AsideLease>;
   cold?: {
     atMs: number;
     at: number;
@@ -101,6 +102,7 @@ export interface NodeCache {
   latency?: import("../latency").LatencyRecorder;
 }
 export interface CacheLookup {
+  aside?: true;
   origin?: string;
   rule?: CacheRuleState;
   item: number;

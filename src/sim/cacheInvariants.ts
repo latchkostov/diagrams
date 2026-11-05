@@ -34,4 +34,8 @@ export function assertCacheInvariants(
     }
   }
   if (idle && cache.flights?.size) throw new Error("C7 waiters remain after drain");
+  if (idle && cache.leases?.size) throw new Error("C7 cache-aside leases remain after drain");
+  for (const lease of cache.leases?.values() ?? [])
+    if (lease.owner.attempt.committed || lease.waiting < 0)
+      throw new Error("C3 cache-aside lease has no live owner or invalid waiters");
 }

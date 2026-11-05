@@ -14,6 +14,8 @@ import { useSyncExternalStore } from "react";
 import { stencilRole } from "../../stencils/roles";
 import { callPolicy } from "../../sim/callPolicy";
 import { tutorialRoute } from "../../tutorials/route";
+import { cacheLookupChoices } from "../../model/cacheAside";
+import { isolate } from "../../live/bidi";
 
 const noSubscribe = () => () => {};
 const noState = () => null;
@@ -37,27 +39,35 @@ export function CallWaitFields({
   if (!effective?.editable) return null;
   const { caller, policy, set, override, diagramCaller } = effective;
   const advanced = revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2");
+  const diagram = readDiagram?.() ?? editor.getDiagram();
+  const choices = cacheLookupChoices(diagram, edgeId);
   const origin = (key: keyof NonNullable<typeof caller>) => {
     if (!override || !Object.hasOwn(override, key)) return null;
     const base = diagramCaller?.[key];
     const value =
-      key === "breaker"
+      key === "onMiss"
         ? base
-          ? t("resilience.on")
-          : t("resilience.off")
-        : key === "retry"
-          ? base && typeof base === "object" && "maxAttempts" in base && Number(base.maxAttempts) > 1
-            ? t("resilience.attempts", { count: Number(base.maxAttempts) })
+          ? t("cache.onlyMisses", {
+              cache: isolate(choices.find((choice) => choice.id === base)?.label ?? String(base)),
+            })
+          : t("cache.everyRequest")
+        : key === "breaker"
+          ? base
+            ? t("resilience.on")
             : t("resilience.off")
-          : key === "wait"
-            ? callPolicy(stencil, diagramCaller).blocking
-              ? t("threads.holds")
-              : t("threads.frees")
-            : base == null
-              ? key === "deadlineMs"
-                ? t("threads.noTimeout")
-                : t("threads.uncapped")
-              : String(base);
+          : key === "retry"
+            ? base && typeof base === "object" && "maxAttempts" in base && Number(base.maxAttempts) > 1
+              ? t("resilience.attempts", { count: Number(base.maxAttempts) })
+              : t("resilience.off")
+            : key === "wait"
+              ? callPolicy(stencil, diagramCaller).blocking
+                ? t("threads.holds")
+                : t("threads.frees")
+              : base == null
+                ? key === "deadlineMs"
+                  ? t("threads.noTimeout")
+                  : t("threads.uncapped")
+                : String(base);
     return (
       <p className="insp-note" data-testid={`call-override-${key}`}>
         {t("threads.simulationOverride", { value })}
@@ -117,18 +127,50 @@ export function CallWaitFields({
         />
         <CallAdvanced
           enabled={advanced}
+          conditional={choices.length > 0 || !!caller?.onMiss}
           summary={
-            !policy.blocking && stencilRole(stencil) === "processor"
-              ? t("workspaceInspector.poolSummary", {
-                  pool: policy.pool ?? t("threads.uncapped"),
-                  duration: policy.replyMs,
+            caller?.onMiss
+              ? t("cache.onlyMisses", {
+                  cache: isolate(choices.find((choice) => choice.id === caller.onMiss)?.label ?? caller.onMiss),
                 })
-              : t("workspaceInspector.valueSummary", {
-                  label: t("threads.pool"),
-                  value: String(policy.pool ?? t("threads.uncapped")),
-                })
+              : !policy.blocking && stencilRole(stencil) === "processor"
+                ? t("workspaceInspector.poolSummary", {
+                    pool: policy.pool ?? t("threads.uncapped"),
+                    duration: policy.replyMs,
+                  })
+                : t("workspaceInspector.valueSummary", {
+                    label: t("threads.pool"),
+                    value: String(policy.pool ?? t("threads.uncapped")),
+                  })
           }
         >
+          {(choices.length > 0 || caller?.onMiss) && (
+            <Field label={t("cache.when")} testId="inspector-unit-onMiss">
+              <select
+                data-testid="inspector-field-onMiss"
+                aria-label={t("cache.when")}
+                aria-describedby="cache-aside-hint"
+                value={caller?.onMiss ?? ""}
+                onChange={(e) => set({ onMiss: e.target.value || undefined })}
+              >
+                <option value="">{t("cache.everyRequest")}</option>
+                {choices.map((choice) => (
+                  <option key={choice.id} value={choice.id}>
+                    {t("cache.onlyMisses", { cache: isolate(choice.label) })}
+                  </option>
+                ))}
+              </select>
+              <p className="insp-note" id="cache-aside-hint" data-testid="inspector-hint-onMiss">
+                {t("cache.writeBackHint")}
+              </p>
+            </Field>
+          )}
+          {origin("onMiss")}
+          {caller?.onMiss && !revisionAtLeast(diagram.planning?.revision, "p3-w3") && (
+            <p className="insp-note" data-testid="inspector-onMiss-dormant">
+              {t("cache.conditionDormant")}
+            </p>
+          )}
           <SimInput
             visibleHint={!advanced}
             name="poolConnections"
@@ -186,17 +228,19 @@ export function CallWaitFields({
 
 function CallAdvanced({
   enabled,
+  conditional,
   summary,
   children,
 }: {
   enabled: boolean;
+  conditional: boolean;
   summary: string;
   children: import("react").ReactNode;
 }) {
   return enabled ? (
     <Disclosure
       id="call-advanced"
-      title={t("resilience.poolDetails")}
+      title={conditional ? t("cache.requestDetails") : t("resilience.poolDetails")}
       description={t("threads.poolHint")}
       summary={summary}
     >
