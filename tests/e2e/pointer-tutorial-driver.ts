@@ -72,6 +72,14 @@ export async function play(page: Page, step: ResolvedUiStep) {
     if (!(await open())) await disclosure.click();
     await expect.poll(open).toBe(true);
   } else if ("click" in step) {
+    if (
+      step.click === "trouble-action" &&
+      (await page.getByTestId("tutorial-app").getAttribute("data-tutorial")) === "cache-stampede"
+    ) {
+      await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-kind", "cache-stampede");
+      await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "cache");
+      await expect(page.getByTestId("trouble-action")).toHaveText("One fetch per item");
+    }
     if (step.click === "canvas-pane")
       await page.getByTestId("canvas-wrap").click({ position: await emptyCanvasPoint(page) });
     else if (step.click.startsWith("edge-") && !step.click.startsWith("edge-label-")) {
@@ -226,7 +234,7 @@ export async function hoverPractice(page: Page, id: string) {
   }
 }
 
-export async function finishSolution(page: Page, highlightsOff = false) {
+export async function finishSolution(page: Page, highlightsOff = false, capture?: string) {
   const seen: string[] = [];
   for (;;) {
     // Traffic can complete a step (or the tutorial) between separate browser reads.
@@ -247,7 +255,18 @@ export async function finishSolution(page: Page, highlightsOff = false) {
     expect(seen, `step ${current} came back`).not.toContain(current);
     seen.push(current);
     if (highlightsOff) await expect(page.getByTestId("tutorial-spot")).toHaveCount(0);
-    for (const step of steps) await play(page, step);
+    for (const [index, step] of steps.entries()) {
+      if (
+        capture &&
+        index === steps.length - 1 &&
+        ["rule", "longer-ttl", "dont-store", "stale-window", "author"].includes(current)
+      ) {
+        await page.getByTestId("tutorial-show-me").click();
+        await expect(page.getByTestId("coach-card")).toBeVisible();
+        await page.screenshot({ path: join(capture, `${current}-field-coach.png`) });
+      }
+      await play(page, step);
+    }
     await expect(strip(page)).not.toHaveAttribute("data-step", current, { timeout: 20_000 });
   }
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
@@ -320,10 +339,19 @@ export async function savedEntries(page: Page): Promise<{ slug: string; title: s
 export async function runPointerSolution(page: Page, consoleErrors: string[], id: string) {
   test.slow(); // Live has to carry real traffic for the last step.
   await openTutorial(page, id);
-  const capture = process.env.TUTORIAL_SCREENSHOTS;
+  const caching = /^(cdn-cache|derived-hit-ratio|cache-latency|cache-stampede|stale-while-revalidate|cold-cache)$/.test(
+    id,
+  );
+  const capture = process.env.TUTORIAL_SCREENSHOTS ?? (caching ? test.info().outputPath("caching") : undefined);
   if (
     capture &&
     [
+      "cdn-cache",
+      "derived-hit-ratio",
+      "cache-latency",
+      "cache-stampede",
+      "stale-while-revalidate",
+      "cold-cache",
       "checks-and-fixes",
       "route-by-address",
       "network-policy",
@@ -337,10 +365,24 @@ export async function runPointerSolution(page: Page, consoleErrors: string[], id
   }
   await page.getByTestId("tutorial-start").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "step");
-  const seen = await finishSolution(page);
+  if (
+    capture &&
+    /^(cdn-cache|derived-hit-ratio|cache-latency|cache-stampede|stale-while-revalidate|cold-cache)$/.test(id)
+  ) {
+    await page.getByTestId("tutorial-show-me").click();
+    await expect(page.getByTestId("coach-card")).toBeVisible();
+    await page.screenshot({ path: join(capture, `${id}-coach.png`) });
+  }
+  const seen = await finishSolution(page, false, caching ? capture : undefined);
   if (
     capture &&
     [
+      "cdn-cache",
+      "derived-hit-ratio",
+      "cache-latency",
+      "cache-stampede",
+      "stale-while-revalidate",
+      "cold-cache",
       "checks-and-fixes",
       "route-by-address",
       "network-policy",
@@ -388,6 +430,12 @@ export async function runPointerSkipAll(page: Page, consoleErrors: string[], id:
   await page.getByTestId("tutorial-start").click();
   await pauseClock(page);
   await skipAll(page, true);
+  if (/^(cdn-cache|derived-hit-ratio|cache-latency|cache-stampede|stale-while-revalidate|cold-cache)$/.test(id)) {
+    const capture = process.env.TUTORIAL_SCREENSHOTS ?? test.info().outputPath("caching");
+    mkdirSync(capture, { recursive: true });
+    await expect(page.getByTestId("tutorial-handoff")).toBeVisible();
+    await page.screenshot({ path: join(capture, `${id}-finish-sheet.png`) });
+  }
   await expectNothingSaved(page);
   expectNoErrors(consoleErrors);
 }

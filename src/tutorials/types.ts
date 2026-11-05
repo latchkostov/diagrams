@@ -57,7 +57,7 @@ export type PatchValue = PathLiteral | readonly PatchValue[] | { readonly [key: 
  * One step into props: an own object key, a whole-number array index, or `where`: the first array item whose fields
  * equal these. Never the prototype: `constructor`, `__proto__` or an array's `length` aren't keys (the lint says so).
  */
-export type PathSegment = string | number | { where: Readonly<Record<string, PathLiteral>> };
+export type PathSegment = string | number | { where: Readonly<Record<string, PatchValue>> };
 /** A path into a node's or edge's props (src/tutorials/paths.ts), from a top-level key: `["settings", 4, "secret"]`. */
 export type PropPath = readonly [string, ...PathSegment[]];
 /** `measure: "length"` compares the length of the list at the path (missing, or not a list: the check fails). */
@@ -73,6 +73,8 @@ type PropComparison =
  * stay theirs (a fifth setting is appended; the four they have are kept as they are).
  */
 export type PropPatch =
+  /** Remove an optional own object key; array items are never removed or renumbered. */
+  | { op: "unset"; path: PropPath }
   /** This value at the path, creating missing object keys; a missing list item or a non-object on the way skips it. */
   | { op: "set"; path: PropPath; value: PatchValue }
   /** Like set, only while nothing is at the path. */
@@ -81,8 +83,10 @@ export type PropPatch =
   | {
       op: "ensureItem";
       path: PropPath;
-      match: Readonly<Record<string, PathLiteral>>;
+      match: Readonly<Record<string, PatchValue>>;
       with?: Readonly<Record<string, PatchValue>>;
+      /** When appending an id-bearing item, keep the learner's existing ids unique. */
+      uniqueId?: true;
     }
   /** A number at the path below this one is raised to it; nothing, null (none) or a larger number stays. */
   | { op: "atLeast"; path: PropPath; value: number };
@@ -100,6 +104,8 @@ type NumericKeys<T> = { [K in keyof T]-?: NonNullable<T[K]> extends number ? K :
  */
 export type NodeMetric =
   | NumericKeys<NodeSimState>
+  /** Percentages (0–100), and the current maximum fetches for one item. */
+  | `cache.${"hitRatio" | "offload" | "itemFetches"}`
   | `latency.${"p50" | "p95" | "p99" | "waitMs" | "workMs"}`
   | `threads.${"working" | "waiting" | "queued"}`
   | `fleet.${"desired" | "ready" | "starting" | "draining"}`;
@@ -136,7 +142,7 @@ export interface SimulationMatch {
   note?: { focus: string; pause: boolean; atMs: number };
   notes?: readonly { focus: string; pause: boolean; atMs: number }[];
   expectation?: Pick<Expectation, "metric" | "op" | "value" | "when" | "atMs">;
-  fault?: { node: string; atMs: number; kind?: "slow" | "fail" | "purge" };
+  fault?: { node: string; atMs: number; kind?: "slow" | "fail" | "purge"; mode?: "hard" | "soft"; allRules?: true };
   seed?: number;
   scale?: number;
   durationMs?: number;
@@ -329,7 +335,7 @@ export type Demo =
       kind: "saveSimulation";
       id: string;
       title: Words;
-      drills?: readonly { preset: DrillPreset; atMs: number; target?: string }[];
+      drills?: readonly { preset: DrillPreset; atMs: number; target?: string; mode?: "hard" | "soft" }[];
       expectations?: readonly Expectation[];
       definition?: Simulation;
       durationMs?: number;
@@ -382,6 +388,8 @@ export type UiStep =
 /** Where to point: the first visible match wins, so a step can say "the +, else the node". */
 export interface Target {
   testId: string;
+  /** Explicit priorities for composed editors whose fields do not use inspector-field ids. */
+  priority?: "field" | "disclosure";
   /** The coach mark's words beside it. */
   tip: Words;
   /** Only while this subject is the one selected. */

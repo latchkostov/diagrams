@@ -1,4 +1,4 @@
-import type { PatchValue, PathLiteral, PathSegment, PropPatch, PropPath } from "./types";
+import type { PatchValue, PathSegment, PropPatch, PropPath } from "./types";
 
 /**
  * Paths into props, for prop checks and edit-preserving demo patches (types.ts: PropPath, PropPatch). Pure and data
@@ -32,7 +32,7 @@ export const resolve = (value: PatchValue): unknown =>
         ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolve(v as PatchValue)]))
         : value;
 
-const matches = (item: unknown, match: Readonly<Record<string, PathLiteral>>) =>
+const matches = (item: unknown, match: Readonly<Record<string, PatchValue>>) =>
   isRecord(item) &&
   Object.entries(match).every(([key, value]) => Object.hasOwn(item, key) && equal(item[key], resolve(value)));
 
@@ -62,6 +62,7 @@ export function readPath(props: unknown, path: PropPath): unknown {
 }
 
 const SKIP = Symbol("unchanged");
+const UNSET = Symbol("remove own key");
 type Edit = (current: unknown) => unknown;
 
 /** `container` with `edit` applied at `path`, copied only along it; SKIP when it can't be reached or doesn't change. */
@@ -72,16 +73,22 @@ function update(container: unknown, path: readonly PathSegment[], edit: Edit): u
     if ((container !== undefined && !isRecord(container)) || UNSAFE_KEYS.has(head)) return SKIP;
     const base = container ?? {};
     const next = update(Object.hasOwn(base, head) ? base[head] : undefined, rest, edit);
+    if (next === UNSET) {
+      if (!Object.hasOwn(base, head)) return SKIP;
+      const { [head]: _removed, ...remaining } = base;
+      return remaining;
+    }
     return next === SKIP ? SKIP : { ...base, [head]: next };
   }
   if (!Array.isArray(container)) return SKIP;
   const i = indexIn(container, head);
   if (i < 0) return SKIP;
   const next = update(container[i], rest, edit);
-  return next === SKIP ? SKIP : container.map((item, n) => (n === i ? next : item));
+  return next === SKIP || next === UNSET ? SKIP : container.map((item, n) => (n === i ? next : item));
 }
 
 const edits: { [K in PropPatch["op"]]: (patch: Extract<PropPatch, { op: K }>) => Edit } = {
+  unset: () => () => UNSET,
   set: (patch) => (current) => {
     const value = resolve(patch.value);
     return equal(current, value) ? SKIP : value;
@@ -91,7 +98,13 @@ const edits: { [K in PropPatch["op"]]: (patch: Extract<PropPatch, { op: K }>) =>
     if (current !== undefined && !Array.isArray(current)) return SKIP;
     const list = current ?? [];
     if (list.some((item) => matches(item, patch.match))) return SKIP;
-    return [...list, resolve({ ...patch.match, ...patch.with })];
+    const item = resolve({ ...patch.match, ...patch.with });
+    if (patch.uniqueId && isRecord(item) && typeof item.id === "string") {
+      const base = item.id;
+      let n = 2;
+      while (list.some((existing) => isRecord(existing) && existing.id === item.id)) item.id = `${base}-${n++}`;
+    }
+    return [...list, item];
   },
   atLeast: (patch) => (current) => (typeof current === "number" && current < patch.value ? patch.value : SKIP),
 };

@@ -8,9 +8,9 @@ import { paletteHost } from "../palette/host";
 import type { EditorApi } from "../editor/types";
 import {
   baselineKey,
+  metricBaseline,
   edgeTargets,
   holds,
-  metricValue,
   nearMiss,
   namingSubjects,
   observeSteps,
@@ -385,8 +385,9 @@ export function createTutorialRunner(
       values.newRun = [0, v.session.generation, v.sessionId];
     for (const expr of since[state.index]) {
       const key = baselineKey(expr);
-      const now = state.baseline[key] ? undefined : metricValue(expr, v, subjects);
-      if (now !== undefined) values[key] = [now, v.session.generation, v.sessionId];
+      if (!state.baseline[key])
+        for (const [name, value] of Object.entries(metricBaseline(expr, v, subjects)))
+          values[name] = [value, v.session.generation, v.sessionId];
     }
     if (Object.keys(values).length) send({ type: "baseline", step: state.index, values: values as Baseline });
   }
@@ -883,7 +884,15 @@ export function createTutorialRunner(
       }
       case "saveSimulation":
         // Only what's missing: a simulation the learner saved under this id keeps its own steps and checks.
-        return repairs.saveSimulation(repairPorts(), demo) === "done";
+        return (
+          repairs.saveSimulation(repairPorts(), {
+            ...demo,
+            drills: demo.drills?.map((d) => ({
+              ...d,
+              target: d.target ? (subjects[d.target] ?? d.target) : undefined,
+            })),
+          }) === "done"
+        );
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
         const made = subjects[demo.subject];

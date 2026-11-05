@@ -1,8 +1,23 @@
 import { describe, expect, it } from "vitest";
+
 import { patchProps, readPath } from "./paths";
 import { holds } from "./checks";
 import type { DiagramFile } from "../model/types";
 import type { Check, PropPatch } from "./types";
+
+it("unsets only an own object key without removing array items or touching siblings", () => {
+  const rule = { id: "products", policy: { noStore: true, keys: 17 } };
+  const props = { cache: { rules: [rule] }, custom: 23 };
+  const edits = [
+    { op: "unset" as const, path: ["cache", "rules", { where: { id: "products" } }, "policy", "noStore"] as const },
+  ];
+  const changed = patchProps(props, edits)!;
+  expect(changed).toEqual({ cache: { rules: [{ id: "products", policy: { keys: 17 } }] } });
+  expect(rule.policy.noStore).toBe(true);
+  expect(patchProps({ ...props, ...changed }, edits)).toBeNull();
+  expect(patchProps(props, [{ op: "unset", path: ["cache", "rules", 0] }])).toBeNull();
+  expect(patchProps(props, [{ op: "unset", path: ["constructor"] }])).toBeNull();
+});
 
 const settings = () => [{ key: "Host" }, { key: "Port", secret: false }, { key: "User" }, { key: "Pool" }];
 

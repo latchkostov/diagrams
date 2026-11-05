@@ -20,6 +20,8 @@ export function matchesSimulation(sim: Simulation | null | undefined, match: Sim
         target: match.fault?.node,
         atMs: match.fault?.atMs,
         kind: match.fault?.kind,
+        mode: match.fault?.mode,
+        allRules: match.fault?.allRules,
       }),
     )
   )
@@ -123,8 +125,16 @@ export function authoredSimulation(
   let repaired = false;
   for (const d of demo.drills ?? []) {
     const presetFault = drillFault(d.preset, diagram);
-    const fault = d.target && "node" in presetFault ? { ...presetFault, node: d.target } : presetFault;
-    const required = { preset: d.preset, atMs: d.atMs, target: faultTarget(fault), kind: fault.kind };
+    let fault = d.target && "node" in presetFault ? { ...presetFault, node: d.target } : presetFault;
+    if (fault.kind === "purge" && d.mode) fault = { ...fault, mode: d.mode };
+    const required = {
+      preset: d.preset,
+      atMs: d.atMs,
+      target: faultTarget(fault),
+      kind: fault.kind,
+      mode: d.mode,
+      allRules: d.preset === "cold-cache",
+    };
     if (timeline.some((step) => matchesFaultStep(step, required))) continue;
     const index = timeline.findIndex((step) => step.action.do === "fault" && step.action.drill === d.preset);
     const step: TimelineStep = { atMs: d.atMs, action: { do: "fault", fault, drill: d.preset } };
@@ -154,14 +164,23 @@ export function authoredSimulation(
 /** Completion and repair agree on the required fault, including where and when it runs. */
 function matchesFaultStep(
   step: TimelineStep,
-  match: { preset?: DrillPreset | "any"; target?: string; atMs?: number; kind?: Fault["kind"] },
+  match: {
+    preset?: DrillPreset | "any";
+    target?: string;
+    atMs?: number;
+    kind?: Fault["kind"];
+    mode?: "hard" | "soft";
+    allRules?: boolean;
+  },
 ): boolean {
   return (
     step.action.do === "fault" &&
     (!match.preset || match.preset === "any" || step.action.drill === match.preset) &&
     (match.target === undefined || faultTarget(step.action.fault) === match.target) &&
     (match.atMs === undefined || step.atMs === match.atMs) &&
-    (!match.kind || step.action.fault.kind === match.kind)
+    (!match.kind || step.action.fault.kind === match.kind) &&
+    (!match.allRules || (step.action.fault.kind === "purge" && step.action.fault.rule === undefined)) &&
+    (!match.mode || (step.action.fault.kind === "purge" && (step.action.fault.mode ?? "hard") === match.mode))
   );
 }
 

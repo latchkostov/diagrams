@@ -33,7 +33,7 @@ export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedU
     if ("rightclick" in s) return { rightclick: at(s.rightclick) };
     if ("boxSelect" in s) return { boxSelect: at(s.boxSelect), around: s.around.map(at) };
     if ("pane" in s) return s;
-    if ("select" in s) return { select: at(s.select), value: s.value };
+    if ("select" in s) return { select: at(s.select), value: at(s.value) };
     if ("dblclick" in s) return { dblclick: at(s.dblclick) };
     if ("hover" in s) return { hover: at(s.hover) };
     if ("fill" in s) return { fill: at(s.fill), text: words(s.text) };

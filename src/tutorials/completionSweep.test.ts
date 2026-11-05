@@ -1,3 +1,4 @@
+import "../sim/cache/cacheRuntime";
 import { planTurn } from "../ai/ui/apply";
 import { parseReply } from "../ai/ui/reply";
 import { workerReply, renameReply } from "./catalog/agentReplies";
@@ -1036,7 +1037,10 @@ function sandbox(
           return ui.openPanel();
         }
         case "saveSimulation": {
-          const simulations = withSavedSimulation(diagram, demo);
+          const simulations = withSavedSimulation(diagram, {
+            ...demo,
+            drills: demo.drills?.map((d) => ({ ...d, target: d.target ? id(d.target) : undefined })),
+          });
           return simulations && editor.updateMeta({ simulations });
         }
         case "continueNote":
@@ -1088,6 +1092,7 @@ const checkNeedsTime = (check: Check): boolean =>
       (check.kind === "trace" && (!!check.complete || !!check.deadLetter)) ||
       check.kind === "processed" ||
       check.kind === "metric" ||
+      check.kind === "compare" ||
       check.kind === "expectation" ||
       check.kind === "note" ||
       check.kind === "sequence" ||
@@ -1607,19 +1612,23 @@ function contrary(patch: PropPatch): PropPatch {
   if (patch.op === "atLeast") return { op: "set", path: patch.path, value: patch.value / 8 };
   const value = patch.op === "set" ? resolve(patch.value) : undefined;
   const bad =
-    typeof value === "boolean"
-      ? !value
-      : typeof value === "number"
-        ? key === "deadlineMs" || key === "latencyMs"
-          ? value * 4
-          : key === "failureRate"
-            ? 0
-            : key === "poolConnections"
-              ? 10
-              : key === "capacity"
-                ? 2
-                : 1
-        : null;
+    patch.path[0] === "cache" && key === "policy"
+      ? { ttlMs: 1000, keys: 20, popularity: "even" }
+      : patch.path[0] === "cache" && key === "ttlMs"
+        ? 100
+        : typeof value === "boolean"
+          ? !value
+          : typeof value === "number"
+            ? key === "deadlineMs" || key === "latencyMs"
+              ? value * 4
+              : key === "failureRate"
+                ? 0
+                : key === "poolConnections"
+                  ? 10
+                  : key === "capacity"
+                    ? 2
+                    : 1
+            : null;
   return { op: "set", path: patch.path, value: bad as PatchValue };
 }
 

@@ -31,7 +31,7 @@ const complete = (list = tutorials.filter((t) => !t.optional)) => ({
 
 it("earns chapter VII and the core syllabus offline with both extensions untouched", () => {
   const core = tutorials.filter((t) => !t.optional);
-  expect(core).toHaveLength(60);
+  expect(core).toHaveLength(66);
   expect(tutorials.filter((t) => t.optional).map((t) => t.id)).toEqual(["work-together", "review-agent-changes"]);
   expect(earnedSeals(complete(), tutorials)).toContain("whole-syllabus");
   expect(earnedSeals(complete(), tutorials)).toContain(chapters.sharing.seal);
