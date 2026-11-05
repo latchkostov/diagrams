@@ -28,6 +28,54 @@ const deferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
+it.each(["skip", "await"] as const)("excludes %s loading and failed shells from image clones", async (policy) => {
+  const { defineLazySurface } = await import("./lazySurface");
+  const { imageNodeFilter } = await import("../interop/image");
+  const pending = deferred<() => React.ReactNode>();
+  const Surface = defineLazySurface({
+    id: policy === "skip" ? "edge.message-tip" : "live.calls",
+    load: () => pending.promise,
+    placeholder: {},
+    focus: {},
+    export: policy,
+    retryToast: true,
+  });
+  await act(() => root.render(<Surface />));
+  const shell = host.firstElementChild!;
+  expect(shell.hasAttribute("data-lazy-shell")).toBe(true);
+  expect(shell.getAttribute("aria-busy")).toBe("true");
+  expect(imageNodeFilter(shell)).toBe(false);
+  await act(() => pending.reject(new Error("offline")));
+  expect(shell.getAttribute("aria-busy")).toBe("false");
+  expect(imageNodeFilter(shell)).toBe(false);
+  expect(imageNodeFilter(document.createTextNode("Drawing label"))).toBe(true);
+});
+
+it.each(["node", "edge"] as const)(
+  "excludes the custom %s readout shell while loading and after failure",
+  async (kind) => {
+    const { DetailsLoading } = await import("../live/DetailsLoading");
+    const { imageNodeFilter } = await import("../interop/image");
+    for (const failed of [false, true]) {
+      await act(() => root.render(<DetailsLoading kind={kind} id="item" pinned={false} failed={failed} />));
+      expect(host.firstElementChild?.getAttribute("aria-busy")).toBe(String(!failed));
+      expect(host.firstElementChild?.hasAttribute("data-lazy-shell")).toBe(true);
+      expect(imageNodeFilter(host.firstElementChild!)).toBe(false);
+    }
+  },
+);
+
+it("excludes marked HTML and SVG shells without depending on their classes or surface ids", async () => {
+  const { imageNodeFilter } = await import("../interop/image");
+  for (const shell of [document.createElement("span"), document.createElementNS("http://www.w3.org/2000/svg", "g")]) {
+    expect(imageNodeFilter(shell)).toBe(true);
+    shell.setAttribute("data-lazy-shell", "");
+    expect(imageNodeFilter(shell)).toBe(false);
+    shell.removeAttribute("data-lazy-shell");
+    expect(imageNodeFilter(shell)).toBe(true);
+  }
+});
+
 it("derives a stable placeholder id without redundant empty sizing metadata", async () => {
   const { defineLazySurface } = await import("./lazySurface");
   const pending = deferred<() => React.ReactNode>();

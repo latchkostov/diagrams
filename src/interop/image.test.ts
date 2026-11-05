@@ -54,6 +54,9 @@ it("inserts an ordinary export header before yielding", async () => {
 it("filters segment handles, the shaping preview and boundary focus controls from images", async () => {
   const { imageNodeFilter } = await import("./image");
   class Element {
+    hasAttribute() {
+      return false;
+    }
     classList: { contains(value: string): boolean };
     constructor(cls: string) {
       this.classList = { contains: (value) => value === cls };
