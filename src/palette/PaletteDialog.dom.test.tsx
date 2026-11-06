@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 import { PaletteDialog } from "./PaletteDialog";
 import { paletteHost, publish } from "./host";
 import type { Command } from "./rank";
-import { captureModalTypeAhead } from "../canvas/typeAhead";
+import { captureModalTypeAhead, typeAheadActive } from "../canvas/typeAhead";
 
 const source = vi.hoisted(() => ({ commands: [] as Command[] }));
 
@@ -56,6 +56,64 @@ it("keeps the typed prefix until the search actually takes focus and runs the wh
   } finally {
     capture.stop();
     delayedFocus.mockRestore();
+    await act(() => root.unmount());
+    host.remove();
+    paletteHost.reset();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+
+it.each([false, true])("keeps pending typing through blocked focus (Enter held: %s)", async (enterHeld) => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const wrong = vi.fn();
+  const properties = vi.fn();
+  source.commands = [
+    { id: "live", label: "Go live", group: "actions", idle: true, run: wrong },
+    { id: "properties", label: "Diagram properties", group: "actions", idle: true, run: properties },
+  ];
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const capture = captureModalTypeAhead(() => {});
+  const blockedFocus = vi.spyOn(HTMLInputElement.prototype, "focus").mockImplementation(() => {});
+  try {
+    await act(() =>
+      root.render(
+        <PaletteDialog
+          view="canvas"
+          diagrams={[]}
+          onOpenDiagram={() => {}}
+          onClose={() => {}}
+          typeAhead={capture.stop}
+        />,
+      ),
+    );
+    const input = document.querySelector<HTMLInputElement>('[data-testid="command-input"]')!;
+    expect(typeAheadActive()).toBe(true);
+    await act(() => {
+      for (const key of "diagram properties")
+        window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      if (enterHeld)
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    blockedFocus.mockRestore();
+    await act(() => vi.advanceTimersToNextFrame());
+    expect(typeAheadActive()).toBe(false);
+    expect(document.activeElement).toBe(input);
+    if (!enterHeld) {
+      expect(input.value).toBe("diagram properties");
+      await act(() => {
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+    }
+    await act(() => vi.runAllTimers());
+    expect(properties).toHaveBeenCalledOnce();
+    expect(wrong).not.toHaveBeenCalled();
+  } finally {
+    capture.stop();
+    blockedFocus.mockRestore();
     await act(() => root.unmount());
     host.remove();
     paletteHost.reset();
