@@ -58,6 +58,12 @@ Unchanged cache inputs now reuse popularity math while the capacity solver settl
 unrelated paths. An operation-count regression grows that path eightfold and
 requires cache-math work to remain constant; it fails without this memoization.
 
+Inspector lookup choices index nodes once instead of scanning them for every
+connection. An eightfold graph increase stays within the existing linear-work
+bound of 24; the old loop grows about 75-fold and fails the regression. Connection
+order, current labels and empty-label fallbacks are unchanged. This UI-only
+follow-up does not change the simulation runtime tested by the independent sweep.
+
 A same-process comparison bundles clean master and current planner code with the
 same Vite production settings, uses the public diagram before and after conversion,
 and alternates execution order. Two rounds each discard twelve warm-up pairs and
@@ -69,10 +75,10 @@ misses change 11,248 ticks / 25,218 messages to 11,253 ticks / 25,485 messages; 
 planner limit changes. The earlier oracle-enabled Vitest comparison measured
 454.212 ms to 488.211 ms; production bundles omit that test-only oracle code.
 
-The final build measures Live at 123,459 B gzip versus the synced merge-base's
-122,094 B: 11,541 B headroom against 135,000 B, including 5,397 B beyond the fixed
+The final build measures Live at 123,454 B gzip versus the synced merge-base's
+122,094 B: 11,546 B headroom against 135,000 B, including 5,402 B beyond the fixed
 6,144 B reserve. The cache runtime is 4,689 B, leaving 431 B below its unchanged
-5,120 B cap. Startup is 162,473 B across the same six chunks. All four bundle gates
+5,120 B cap. Startup is 162,444 B across the same six chunks. All four bundle gates
 pass. The PR reports complete Linux gate results.
 
 ## Shared-load verification

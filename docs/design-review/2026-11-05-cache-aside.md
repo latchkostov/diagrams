@@ -21,3 +21,11 @@ Production browser tests pass in both languages, including Undo.
 
 Public fixture screenshots: `C:\Users\latch\bin\codex-tasks\cdn-5-shots\cache-aside-en.png`
 and `cache-aside-ar.png`. No new menu items or toolbar controls were introduced.
+
+## Final selector review
+
+The selector now indexes node identities once per lookup rather than scanning the
+node list for every connection. Regression tests preserve connection order,
+current labels and fallback text. The designer approved the read-only follow-up:
+there are no visible UI changes or concrete issues, and both approved public
+screenshots remain representative.

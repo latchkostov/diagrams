@@ -15,8 +15,9 @@ export function cacheAsideOrigins(d: Pick<DiagramFile, "edges">, cache: string) 
 export function cacheLookupChoices(d: Pick<DiagramFile, "nodes" | "edges">, id: string) {
   const edge = d.edges.find((e) => e.id === id);
   if (!edge || edge.kind !== "sync" || (edge.relation && edge.relation !== "flow")) return [];
+  const nodes = new Map(d.nodes.map((node) => [node.id, node]));
   return d.edges.flatMap((lookup) => {
-    const cache = d.nodes.find((n) => n.id === lookup.to);
+    const cache = nodes.get(lookup.to);
     return lookup.id !== id &&
       lookup.from === edge.from &&
       lookup.kind === "sync" &&
