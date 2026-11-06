@@ -10,6 +10,7 @@ import stampede from "../examples/cache-stampede.json";
 import { cachingPractice, coldCachePractice } from "../lab/cachingPractice";
 import { configuredPlanning } from "../planning/cache";
 import { resolveSubjects } from "./checks";
+import { cacheStampede } from "./catalog/cacheStampede";
 import { cdnCache } from "./catalog/cdnCache";
 import { staleWhileRevalidate } from "./catalog/staleWhileRevalidate";
 import { patchProps } from "./paths";
@@ -122,6 +123,38 @@ it.each(seeds)("cache introduction, demand, TTL, tail and stale outcomes are det
   expect(after.snapshot.nodes.edge.cache!.staleHits).toBeGreaterThan(0);
   expect(after.snapshot.nodes.edge.cacheDetails!.itemFetches).toBeLessThanOrEqual(1);
 });
+
+// 4242 and 1005 once started the hot item absent: a cold fill no stale window could serve.
+it.each([...seeds, 4242, 1005])(
+  "the stampede lesson's 15 s cut keeps its herd and replay outcomes; a stale window starts warm (seed %i)",
+  (seed) => {
+    if (typeof cacheStampede.start !== "function") throw new Error("Expected the lesson's cut");
+    const d = cacheStampede.start();
+    for (const id of ["ttl-only", "one-fetch", "serve-stale"])
+      expect(d.simulations!.find((s) => s.id === id)!.durationMs).toBe(15000);
+    let herd = 0;
+    const bad = play(d, seed, "ttl-only", 15000, (state) => {
+      herd = Math.max(herd, state.snapshot.nodes.cdn.cacheDetails?.itemFetches ?? 0);
+    });
+    expect(herd).toBeGreaterThanOrEqual(herdThreshold(1));
+    expect(bad.run!.expectations.map((e) => e.status)).toEqual(["fail", "fail", "fail"]);
+    for (const id of ["one-fetch", "serve-stale"]) {
+      const fixed = play(d, seed, id, 15000);
+      expect(fixed.run!.done, id).toBe(true);
+      expect(
+        fixed.run!.expectations.map((e) => e.status),
+        id,
+      ).toEqual(["pass", "pass", "pass"]);
+    }
+
+    if (typeof staleWhileRevalidate.start !== "function") throw new Error("Expected local practice");
+    const stale = staleWhileRevalidate.start();
+    (stale.nodes[1].props!.cache as CacheTable).rules[0].policy.staleWhileRevalidateMs = 10000;
+    const refresh = play(stale, seed, "cache-traffic", 5000);
+    expect(refresh.snapshot.nodes.edge.cache!.misses).toBe(0);
+    expect(refresh.snapshot.nodes.edge.cache!.hitRatio).toBeGreaterThanOrEqual(0.999);
+  },
+);
 
 it.each(seeds)(
   "the example's herd, fixed replay, hard surge and soft purge satisfy lesson outcomes (seed %i)",

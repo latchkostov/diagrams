@@ -285,8 +285,15 @@ export const cacheRuntime: CacheRuntime = {
             const hit = drawStream(warm);
             const ttl = drawStream(hit.state);
             warm = ttl.state;
-            if (hit.value < itemHitShare(planned * popularity!.bands[i].share, rule.policy.ttlMs!, fetchMs))
-              freshUntil[i] = ttl.value * rule.policy.ttlMs!;
+            // A run starts in steady state. A stale window keeps an expired copy servable, so the share of time an
+            // item holds a copy includes it, as the statistical path's steady share does: never an absent hot item.
+            const share = itemHitShare(
+              planned * popularity!.bands[i].share,
+              rule.policy.ttlMs!,
+              fetchMs,
+              rule.policy.staleWhileRevalidateMs,
+            );
+            if (hit.value < share) freshUntil[i] = ttl.value * rule.policy.ttlMs!;
           }
           return {
             id: rule.id,

@@ -2,6 +2,7 @@ import { msg } from "../../i18n";
 import example from "../../examples/cache-stampede.json";
 import { familyOf } from "../../stencils/profileFamilies";
 import type { CacheTable } from "../../model/caching";
+import type { DiagramFile } from "../../model/types";
 import type { Demo, Tutorial } from "../types";
 import { cacheRuleStoringCheck, cachingSubjects, repairCacheRule, rulePath } from "./cachingSteps";
 import { runStep } from "./waitingSteps";
@@ -10,6 +11,28 @@ import { herdThreshold } from "../../live/cacheHerd";
 // Public example expectation identifiers, independent of their displayed labels.
 const outcomes = { fetches: "fetches", backlog: "backlog", latency: "latency" };
 const cache = example.nodes.find((n) => familyOf(n.stencil) === "edge")!.props.cache as CacheTable;
+/**
+ * The public example's same-seed expiry comparison, each run cut to 15 s. The example plays 40 s to show the herd
+ * escalating; the lesson needs only the herd (it forms within 4 s on every seed) and the replay's end-of-run chips,
+ * which settle the same way by 15 s. The replay is read at its end, so this is also how long it plays.
+ */
+const replayMs = 15000;
+const comparison = new Set(["ttl-only", "one-fetch", "serve-stale"]);
+function practice(): DiagramFile {
+  const d = structuredClone(example) as DiagramFile;
+  d.simulations = d.simulations?.map((sim) =>
+    comparison.has(sim.id)
+      ? {
+          ...sim,
+          durationMs: replayMs,
+          traffic: sim.traffic.map((t) =>
+            t.shape.kind === "constant" ? { ...t, shape: { ...t.shape, durationMs: replayMs } } : t,
+          ),
+        }
+      : sim,
+  );
+  return d;
+}
 const oneFetch: Demo = {
   kind: "patch",
   subject: "edge",
@@ -29,7 +52,7 @@ export const cacheStampede: Tutorial = {
   minutes: 5,
   title: msg("tutorials.cacheStampede.title"),
   summary: msg("tutorials.cacheStampede.summary"),
-  start: { example: "cache-stampede" },
+  start: practice,
   subjects: cachingSubjects,
   steps: [
     runStep(
@@ -96,7 +119,7 @@ export const cacheStampede: Tutorial = {
         kind: "all",
         checks: [
           { kind: "newRun" },
-          { kind: "simulation", id: "ttl-only", atLeastMs: 40000 },
+          { kind: "simulation", id: "ttl-only", atLeastMs: replayMs },
           { kind: "expectation", simulation: "ttl-only", label: outcomes.fetches, outcome: "pass" },
           { kind: "expectation", simulation: "ttl-only", label: outcomes.backlog, outcome: "pass" },
           { kind: "expectation", simulation: "ttl-only", label: outcomes.latency, outcome: "pass" },
