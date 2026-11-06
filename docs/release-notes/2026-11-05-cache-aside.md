@@ -16,6 +16,14 @@ Its database Request uses the cache result instead of the old 10% share. The pub
 
 ## Verification
 
+The exact independent sweep passes all 48 runs, including the requested seeds
+and heavy multipliers: zero failed and zero unrun. The final complete Linux Dev
+suite passes 3,391 cases with zero failed, zero flaky and 56 skipped cases.
+The six-worker, six-CPU Inspector and camera load run passes all five repeats:
+1,110 passed, zero failed and zero flaky. Earlier Dev concurrency failures and
+the bounded clean-master comparison are recorded in the dedicated backlog
+fragment; every earlier failed case passes in the final complete Dev run.
+
 Focused engine, planning, model, copy, saved-simulation and property regressions pass.
 Reverted engine, analysis, saved-override, copy, reference-validation and width-rule
 controls fail their regressions. The ledger/outcome oracles also cover shared leases,
