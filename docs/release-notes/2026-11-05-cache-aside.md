@@ -23,6 +23,11 @@ The six-worker, six-CPU Inspector and camera load run passes all five repeats:
 1,110 passed, zero failed and zero flaky. Earlier Dev concurrency failures and
 the bounded clean-master comparison are recorded in the dedicated backlog
 fragment; every earlier failed case passes in the final complete Dev run.
+The complete Build gate passes all unit, heavy, size and parity checks. Its CSP
+walkthrough timeout reproduces on clean master. The separate native-recording
+fixture now waits for real encoded output; five targeted repeats pass, and
+removing that synchronization fails the regression. The production recorder
+is unchanged; the dedicated Build evidence fragment records both failures.
 
 Focused engine, planning, model, copy, saved-simulation and property regressions pass.
 Reverted engine, analysis, saved-override, copy, reference-validation and width-rule
