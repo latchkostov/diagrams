@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
 import { expect, it, vi } from "vitest";
 import { PaletteDialog } from "./PaletteDialog";
 import { paletteHost, publish } from "./host";
@@ -85,7 +86,7 @@ it.each([false, true])("keeps pending typing through blocked focus (Enter held: 
           view="canvas"
           diagrams={[]}
           onOpenDiagram={() => {}}
-          onClose={() => {}}
+          onClose={() => flushSync(() => root.render(null))}
           typeAhead={capture.stop}
         />,
       ),
@@ -101,8 +102,8 @@ it.each([false, true])("keeps pending typing through blocked focus (Enter held: 
     blockedFocus.mockRestore();
     await act(() => vi.advanceTimersToNextFrame());
     expect(typeAheadActive()).toBe(false);
-    expect(document.activeElement).toBe(input);
     if (!enterHeld) {
+      expect(document.activeElement).toBe(input);
       expect(input.value).toBe("diagram properties");
       await act(() => {
         input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));

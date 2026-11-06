@@ -173,9 +173,11 @@ export function PaletteDialog({
     const closeLayer = openModalLayer(el, { opener: previousFocus });
     let focusFrame: number | undefined;
     const focusSearch = () => {
-      input.current?.focus({ preventScroll: true });
+      const search = input.current;
+      if (!search?.isConnected) return;
+      search.focus({ preventScroll: true });
       // An outgoing modal can still have this portal inert during the handoff.
-      if (document.activeElement !== input.current) focusFrame = requestAnimationFrame(focusSearch);
+      if (search.isConnected && document.activeElement !== search) focusFrame = requestAnimationFrame(focusSearch);
     };
     focusSearch();
     return () => {
