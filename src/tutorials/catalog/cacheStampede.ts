@@ -12,11 +12,13 @@ import { herdThreshold } from "../../live/cacheHerd";
 const outcomes = { fetches: "fetches", backlog: "backlog", latency: "latency" };
 const cache = example.nodes.find((n) => familyOf(n.stencil) === "edge")!.props.cache as CacheTable;
 /**
- * The public example's same-seed expiry comparison, each run cut to 15 s. The example plays 40 s to show the herd
+ * The public example's same-seed expiry comparison, each run cut to 20 s. The example plays 40 s to show the herd
  * escalating; the lesson needs only the herd (it forms within 4 s on every seed) and the replay's end-of-run chips,
- * which settle the same way by 15 s. The replay is read at its end, so this is also how long it plays.
+ * which settle the same way by 20 s. The replay is read at its end, so this is also how long it plays.
+ * Not shorter: the trouble callout offers One fetch per item for about 1.5 s after each 5 s expiry (5.5, 10.7 and
+ * 16.3 s on seed 7). A 15 s run can end between those offers, leaving the fix step no action until a restart.
  */
-const replayMs = 15000;
+const replayMs = 20000;
 const comparison = new Set(["ttl-only", "one-fetch", "serve-stale"]);
 function practice(): DiagramFile {
   const d = structuredClone(example) as DiagramFile;

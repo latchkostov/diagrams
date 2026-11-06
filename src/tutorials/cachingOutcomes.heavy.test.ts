@@ -126,20 +126,20 @@ it.each(seeds)("cache introduction, demand, TTL, tail and stale outcomes are det
 
 // 4242 and 1005 once started the hot item absent: a cold fill no stale window could serve.
 it.each([...seeds, 4242, 1005])(
-  "the stampede lesson's 15 s cut keeps its herd and replay outcomes; a stale window starts warm (seed %i)",
+  "the stampede lesson's 20 s cut keeps its herd and replay outcomes; a stale window starts warm (seed %i)",
   (seed) => {
     if (typeof cacheStampede.start !== "function") throw new Error("Expected the lesson's cut");
     const d = cacheStampede.start();
     for (const id of ["ttl-only", "one-fetch", "serve-stale"])
-      expect(d.simulations!.find((s) => s.id === id)!.durationMs).toBe(15000);
+      expect(d.simulations!.find((s) => s.id === id)!.durationMs).toBe(20000);
     let herd = 0;
-    const bad = play(d, seed, "ttl-only", 15000, (state) => {
+    const bad = play(d, seed, "ttl-only", 20000, (state) => {
       herd = Math.max(herd, state.snapshot.nodes.cdn.cacheDetails?.itemFetches ?? 0);
     });
     expect(herd).toBeGreaterThanOrEqual(herdThreshold(1));
     expect(bad.run!.expectations.map((e) => e.status)).toEqual(["fail", "fail", "fail"]);
     for (const id of ["one-fetch", "serve-stale"]) {
-      const fixed = play(d, seed, id, 15000);
+      const fixed = play(d, seed, id, 20000);
       expect(fixed.run!.done, id).toBe(true);
       expect(
         fixed.run!.expectations.map((e) => e.status),
