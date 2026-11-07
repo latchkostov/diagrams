@@ -1,18 +1,11 @@
-// The agent skill's offline Interactive HTML export (skills/livediagrams/scripts/export-html.mjs) runs on three
-// files in scripts/lib/:
-//   - inject.mjs: the app's injection (src/export/inject.ts) as plain JavaScript. Small and stable, so
-//     `pnpm schemas` keeps it current and src/ai/skill/skill.heavy.test.ts fails when it's stale.
-//   - viewer-template.html: the viewer (scripts/interactive-viewer.ts), one 1.2 MB minified page.
-//   - icons.json: the SVG text of every icon the catalog uses.
-// The template and the icons change with any canvas, live or export change, so they're refreshed only on
-// release (`pnpm skill:release`, scripts/skill-release.mjs), never by `pnpm schemas` or a build: concurrent pull
-// requests use `pnpm sync` to regenerate conflicts on this file. The committed copy is what Claude Code's marketplace
-// installs from git. The site's /skill/ folder and /livediagrams-skill.zip are built fresh from the current viewer
-// (scripts/skill-assets.ts), so downloads are always current. `pnpm skill:check` reports a stale copy (nightly).
+// The offline HTML exporter uses generated injection, plain JS/CSS chunks, binary WOFF2 fonts,
+// and partitioned icon JSON. Release assets are refreshed deterministically by pnpm regen;
+// git installations use the committed files and the site/ZIP use a fresh build.
 
 import * as nodeFs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 import { build, minifySync } from "vite";
 import { catalog } from "../src/stencils/catalog";
 import { FALLBACK_ICON } from "../src/export/inject";
@@ -78,18 +71,86 @@ export function iconMap(root: string): Record<string, string> {
   return out;
 }
 
-/** The released files as a fresh build makes them, given the current viewer template. */
-export function releasedFiles(root: string, template: string): Record<string, string> {
-  return {
-    [RELEASED.template]: template,
-    [RELEASED.icons]: JSON.stringify(iconMap(root)) + "\n",
+/** Scan-readable assets; concatenation must reproduce the original template byte for byte. */
+export type ReleaseFile = string | Buffer;
+export const FILE_LIMIT = 262_144;
+const marker = (name: string) => `/*__LIVEDIAGRAMS_${name}__*/`;
+export const isReleased = (name: string) =>
+  /^scripts\/lib\/(?:viewer(?:-template\.html|\.json|-\d+\.(?:js|css)|-font-\d+\.woff2)|icons(?:-\d+)?\.json)$/.test(
+    name,
+  );
+
+export function releasedFiles(root: string, template: string): Record<string, ReleaseFile> {
+  const files: Record<string, ReleaseFile> = {};
+  const manifest: Record<string, { file: string; font?: true }[]> = {};
+  const put = (name: string, data: ReleaseFile) => {
+    if (Buffer.byteLength(data) > FILE_LIMIT) throw new Error(`skill: ${name} exceeds ${FILE_LIMIT} bytes`);
+    files[`scripts/lib/${name}`] = data;
+    return name;
   };
+  let font = 0;
+  // Fonts are binary on disk; only the final HTML encodes them.
+  template = template.replace(/data:font\/woff2;base64,([A-Za-z0-9+/=]+)/g, (_, base64: string) => {
+    const key = marker(`FONT_${font}`);
+    manifest[key] = [{ file: put(`viewer-font-${font++}.woff2`, Buffer.from(base64, "base64")), font: true }];
+    return key;
+  });
+  template = template.replace(/<(script|style)>([\s\S]*?)<\/\1>/g, (_, tag: string, code: string) => {
+    const key = marker(tag.toUpperCase());
+    const ext = tag === "script" ? "js" : "css";
+    let prefix = "",
+      suffix = "";
+    let pieces = [code];
+    if (tag === "script") {
+      const ast = ts.createSourceFile("viewer.js", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+      let body: ts.Block | undefined;
+      const visit = (node: ts.Node) => {
+        if (!body && ts.isBlock(node)) body = node;
+        if (!body) ts.forEachChild(node, visit);
+      };
+      visit(ast);
+      if (!body?.statements.length) throw new Error("skill: expected the viewer's IIFE body");
+      prefix = code.slice(0, body.statements[0].pos);
+      suffix = code.slice(body.statements[body.statements.length - 1].end);
+      pieces = body.statements.map((n) => code.slice(n.pos, n.end));
+    }
+    const chunks: string[] = [];
+    let chunk = "";
+    for (const piece of pieces) {
+      if (Buffer.byteLength(chunk + piece) > FILE_LIMIT && chunk) {
+        chunks.push(chunk);
+        chunk = "";
+      }
+      chunk += piece;
+    }
+    if (chunk) chunks.push(chunk);
+    manifest[key] = chunks.map((text, i) => ({ file: put(`viewer-${i}.${ext}`, text) }));
+    return `<${tag}>${prefix}${key}${suffix}</${tag}>`;
+  });
+  // Insert script/style first, then font URLs that now live in the CSS.
+  put("viewer.json", JSON.stringify(Object.fromEntries(Object.entries(manifest).reverse())) + "\n");
+  put("viewer-template.html", template);
+  const groups: Record<string, string>[] = [];
+  let group: Record<string, string> = {};
+  for (const [name, svg] of Object.entries(iconMap(root))) {
+    if (Buffer.byteLength(JSON.stringify({ ...group, [name]: svg }) + "\n") > FILE_LIMIT) {
+      groups.push(group);
+      group = {};
+    }
+    group[name] = svg;
+  }
+  if (Object.keys(group).length) groups.push(group);
+  put(
+    "icons.json",
+    JSON.stringify(groups.map((icons, i) => put(`icons-${i}.json`, JSON.stringify(icons) + "\n"))) + "\n",
+  );
+  return files;
 }
 
 /** The file operations a release uses (the test fails one of them). */
 export interface ReleaseFs {
-  readFileSync(file: string, encoding: "utf8"): string;
-  writeFileSync(file: string, text: string, encoding: "utf8"): void;
+  readFileSync(file: string): Buffer;
+  writeFileSync(file: string, text: ReleaseFile): void;
   renameSync(from: string, to: string): void;
   rmSync(file: string, options: { force: true }): void;
   existsSync(file: string): boolean;
@@ -104,14 +165,14 @@ const staged = (file: string) => path.join(path.dirname(file), `.${path.basename
  * fails, the files already swapped get their old contents back, so a retry sees the same stale files
  * and does the whole refresh again. `files`: path → new text, only the ones that change.
  */
-export function applyRelease(files: Readonly<Record<string, string>>, fs: ReleaseFs = nodeFs): void {
+export function applyRelease(files: Readonly<Record<string, ReleaseFile>>, fs: ReleaseFs = nodeFs): void {
   const writes = Object.entries(files);
-  const before = new Map(writes.map(([file]) => [file, fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null]));
+  const before = new Map(writes.map(([file]) => [file, fs.existsSync(file) ? fs.readFileSync(file) : null]));
   const cleanUp = () => {
     for (const [file] of writes) fs.rmSync(staged(file), { force: true });
   };
   try {
-    for (const [file, text] of writes) fs.writeFileSync(staged(file), text, "utf8");
+    for (const [file, text] of writes) fs.writeFileSync(staged(file), text);
   } catch (err) {
     cleanUp();
     throw err;
@@ -126,7 +187,7 @@ export function applyRelease(files: Readonly<Record<string, string>>, fs: Releas
     for (const file of swapped) {
       const old = before.get(file);
       if (old === null || old === undefined) fs.rmSync(file, { force: true });
-      else fs.writeFileSync(file, old, "utf8");
+      else fs.writeFileSync(file, old);
     }
     cleanUp();
     throw err;

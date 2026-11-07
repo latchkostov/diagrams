@@ -29,7 +29,11 @@ Claude's plugin directory listing is coming soon, subject to approval. The separ
 
 `SKILL.md` guides the agent to write a `.diagram.json` file, then run `scripts/layout.mjs` and
 `scripts/validate.mjs`. `scripts/export-html.mjs` creates a self-contained interactive HTML file and
-can encrypt it with a password entered in the user's terminal. `scripts/share-link.mjs` only prints
+can encrypt it with explicit local password input. Claude asks which route the user wants:
+prefer `--password-file <path>` to a user-created UTF-8 text file, keeping the password out of the
+conversation; the fallback `--password <value>` exposes it in the conversation, shell history and
+process list. Claude never invents, stores or reuses a plugin password. The script reads only the
+supplied path, with no environment lookup or hidden terminal prompt. `scripts/share-link.mjs` only prints
 a URL when a share link is requested, and refuses diagrams marked private. No script uploads, fetches,
 calls another service, collects personal data or sends telemetry. There are no connectors, hooks or
 background services. Diagrams and exports are files in the user's environment; delete them there when
@@ -59,13 +63,11 @@ public issue reports.
 
 ## Releases
 
-The plugin is deliberately **unversioned**: `plugin.json` and the marketplace entry carry no `version`, so
-Claude Code and the directory track the git commit on `master`, and every merged change reaches users.
-Don't add a version; a fixed one pins cached installs until it is bumped, and the repository forbids
-manual version bumps. Recommend GitHub push webhook updates in the directory. The download contains only `SKILL.md`, `reference/` and `scripts/`; this README, licence,
+The plugin manifest declares the directory-requested `1.0.0` version. The marketplace entry has
+no separate version. `pnpm regen` and `pnpm sync` refresh generated assets without editing the
+manifest version. A fixed version pins Claude Code's cached git-marketplace installation until
+that version changes; directory publishing follows the developer portal's review process.
+The download contains only `SKILL.md`, `reference/` and `scripts/`; this README, licence,
 manifest and listing icon are plugin packaging, excluded from the skill ZIP.
-
-The [commit-based update policy](../../docs/PARALLEL-WORK.md#plugin-updates) also applies to generated
-assets refreshed by `pnpm regen` or `pnpm sync`; neither operation introduces a plugin version.
 
 Licensed under MIT; see [LICENSE](LICENSE).

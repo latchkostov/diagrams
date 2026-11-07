@@ -1,5 +1,6 @@
 {
   "name": "livediagrams",
+  "version": "1.0.0",
   "displayName": "Live Diagrams",
   "description": "Draw architecture and event-driven system diagrams with live message-flow simulations as offline interactive HTML files, editable diagram files, or share links.",
   "author": {

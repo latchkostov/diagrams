@@ -1,3 +1,4 @@
+import { readViewer } from "../../skills/livediagrams/scripts/lib/viewer.mjs";
 import { openLiveNodeDetails } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
@@ -29,11 +30,13 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
       await openViewer(page);
       await page.evaluate((d) => window.liveDiagramsViewer.load(d), diagram);
     } else {
-      const template = readFileSync(
-        viewer === "skill"
-          ? "skills/livediagrams/scripts/lib/viewer-template.html"
-          : join(E2E_PROFILES.e2e.outDir, "skill/scripts/lib/viewer-template.html"),
-        "utf8",
+      const template = readViewer(
+        new URL(
+          viewer === "skill"
+            ? "../../skills/livediagrams/scripts/lib/"
+            : `../../${E2E_PROFILES.e2e.outDir}/skill/scripts/lib/`,
+          import.meta.url,
+        ),
       );
       const file = test.info().outputPath("cache.html");
       writeFileSync(
@@ -111,10 +114,14 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
       await openViewer(page);
       await page.evaluate((d) => window.liveDiagramsViewer.load(d), diagram);
     } else {
-      const template =
-        viewer === "skill"
-          ? readFileSync("skills/livediagrams/scripts/lib/viewer-template.html", "utf8")
-          : readFileSync(join(E2E_PROFILES.e2e.outDir, "skill/scripts/lib/viewer-template.html"), "utf8");
+      const template = readViewer(
+        new URL(
+          viewer === "skill"
+            ? "../../skills/livediagrams/scripts/lib/"
+            : `../../${E2E_PROFILES.e2e.outDir}/skill/scripts/lib/`,
+          import.meta.url,
+        ),
+      );
       const file = test.info().outputPath("autoscaling.html");
       writeFileSync(
         file,

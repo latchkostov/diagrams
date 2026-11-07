@@ -14,7 +14,7 @@ import { zipSkillInWorker } from "./skill-zip-worker";
 export { zipSkill } from "./skill-zip";
 import type { ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { RELEASED, releasedFiles } from "./skill-viewer";
+import { isReleased, releasedFiles, type ReleaseFile } from "./skill-viewer";
 
 export const SKILL_NAME = "livediagrams";
 export const SKILL_ZIP = "livediagrams-skill.zip";
@@ -44,17 +44,21 @@ export function readSkill(dir = SKILL_ROOT): SkillFile[] {
   return out.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
-/** `files` with the released viewer files replaced by `fresh` ones (same names, same order). */
-export function withFresh(files: SkillFile[], fresh: Readonly<Record<string, string>>): SkillFile[] {
+/** Replace the whole generated asset set; chunk counts can change between releases. */
+export function withFresh(files: SkillFile[], fresh: Readonly<Record<string, ReleaseFile>>): SkillFile[] {
   for (const name of Object.keys(fresh))
-    if (!files.some((f) => f.name === name)) throw new Error(`skill-assets: the skill has no ${name} to refresh.`);
-  return files.map((f) =>
-    Object.hasOwn(fresh, f.name) ? { name: f.name, data: Buffer.from(fresh[f.name], "utf8") } : f,
-  );
+    if (!isReleased(name)) throw new Error(`skill-assets: the skill has no ${name} to refresh.`);
+  return [
+    ...files.filter((f) => !isReleased(f.name)),
+    ...Object.entries(fresh).map(([name, data]) => ({ name, data: Buffer.from(data) })),
+  ].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 const TYPES: Record<string, string> = {
   ".md": "text/markdown; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".woff2": "font/woff2",
   ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".zip": "application/zip",
@@ -89,7 +93,6 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
         withViewer = undefined;
         zip = undefined;
       });
-      const released = new Set<string>(Object.values(RELEASED).map((name) => `/skill/${name}`));
       const viewerFiles = () => {
         if (!withViewer) {
           const pending = current();
@@ -127,7 +130,7 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
           return next();
         }
         if (url === `/${SKILL_ZIP}`) return void skillZip().then((body) => send(res, url, body), next);
-        if (released.has(url))
+        if (url.startsWith("/skill/") && isReleased(url.slice("/skill/".length)))
           return void viewerFiles().then((files) => {
             const body = files.find((f) => `/skill/${f.name}` === url)?.data;
             return body ? send(res, url, body) : next();
