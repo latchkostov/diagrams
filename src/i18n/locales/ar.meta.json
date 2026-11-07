@@ -3229,7 +3229,7 @@
     "cacheChecks.coalesce": "b12a5b2f",
     "cacheChecks.stale": "40410379",
     "cacheChecks.keep": "fb9d91e3",
-    "cacheChecks.removeMethod": "99a6ea12",
+    "cacheChecks.deleteRule": "4082b4ee",
     "cacheChecks.replicas": "80292223",
     "cacheChecks.notChecked": "3ef9a0eb"
   }

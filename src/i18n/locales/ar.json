@@ -20,7 +20,7 @@
   "cacheChecks.coalesce": "جلب واحد لكل عنصر",
   "cacheChecks.stale": "تقديم النسخة القديمة أثناء التحديث",
   "cacheChecks.keep": "الاحتفاظ لمدة {seconds} ث",
-  "cacheChecks.removeMethod": "إزالة {method} من هذه القاعدة",
+  "cacheChecks.deleteRule": "حذف قاعدة التخزين المؤقت هذه",
   "cacheChecks.replicas": "إضافة نُسخ متماثلة ({count})",
   "cacheChecks.notChecked": "تجربة ذاكرة التخزين المؤقت الباردة: {count} دون فحص.",
   "selection.extend": "توسيع التحديد…",

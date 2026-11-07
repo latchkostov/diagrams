@@ -78,7 +78,17 @@ export interface NodeCapacity {
 export interface CapacityAnalysis {
   cacheDemand?: Record<
     string,
-    Record<string, { rate: number; fetchMs: number; hitRatio: number; fetchShare?: number }>
+    Record<
+      string,
+      {
+        rate: number;
+        fetchMs: number;
+        hitRatio: number;
+        fetchShare?: number;
+        /** Cold demand routed to each origin, before cache offload; shared by Checks and planning. */
+        origins?: Record<string, { rate: number; fetchMs: number; edge: string }>;
+      }
+    >
   >;
   /** Per-connection configured demand in real msg/s, computed by the same routing pass. */
   connections: Record<string, number>;
@@ -776,6 +786,7 @@ export function analyzeCapacity(
                     takes(edge, { type: c.type, route: branchRoute(edge, c.route) }),
                 )
               : decision.eligible;
+          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0, origins: Object.create(null) });
           let fetchMs = 0;
           origins.forEach((edge, index) => {
             if (edge.deny) return;
@@ -791,6 +802,15 @@ export function analyzeCapacity(
                 : 0) +
               (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
               2 * (typeof delay === "number" ? delay : 0);
+            const fraction =
+              entry.role === "gateway" && !c.aside
+                ? decision === "legacy"
+                  ? 1 / origins.length
+                  : decision.weights[index] / decision.forwarded / decision.sum
+                : 1;
+            const demand = (item.origins![edge.to] ??= { rate: 0, fetchMs: 0, edge: edge.id });
+            demand.rate += rate * admitted * fraction;
+            demand.fetchMs += rate * admitted * fraction * response;
             if (entry.role === "gateway" && !c.aside)
               fetchMs +=
                 response *
@@ -799,7 +819,6 @@ export function analyzeCapacity(
                   : decision.weights[index] / decision.forwarded / decision.sum);
             else fetchMs = Math.max(fetchMs, response);
           });
-          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0 });
           item.rate += rate * admitted;
           item.fetchMs += rate * admitted * fetchMs;
           policies.set(rule.id, rule.policy);
@@ -807,6 +826,7 @@ export function analyzeCapacity(
         for (const [ruleId, policy] of policies) {
           const item = byRule[ruleId];
           item.fetchMs /= item.rate;
+          for (const origin of Object.values(item.origins ?? {})) origin.fetchMs /= origin.rate;
           const prior = hitMemo.get(policy);
           if (prior?.rate === item.rate && prior.fetchMs === item.fetchMs) item.hitRatio = prior.hit;
           else {

@@ -159,7 +159,7 @@ function* shrink(full: AgentFinding): Generator<AgentFinding> {
   yield one;
   const fix = full.fix && { label: clip(full.fix.label, 80), needsChoice: "Call check_diagram with this rule only." };
   yield { ...one, title: clip(full.title, 80), ...(fix ? { fix } : {}) };
-  const { fix: _fix, ...bare } = one;
+  const { fix: _fix, cacheFinding: _cacheFinding, ...bare } = one;
   yield { ...bare, title: clip(full.title, 60) };
 }
 

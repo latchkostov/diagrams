@@ -38,7 +38,7 @@ const en = {
   "cacheChecks.coalesce": "One fetch per item",
   "cacheChecks.stale": "Serve stale while refreshing",
   "cacheChecks.keep": "Keep for {seconds} s",
-  "cacheChecks.removeMethod": "Remove {method} from this rule",
+  "cacheChecks.deleteRule": "Delete this cache rule",
   "cacheChecks.replicas": "Add replicas ({count})",
   "cacheChecks.notChecked": "{count} caches not checked by the Cold cache probe",
   "selection.extend": "Extend selection…",

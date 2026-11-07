@@ -1,3 +1,6 @@
+import { revisionAtLeast } from "../model/revisions";
+import type { Simulation } from "../model/types";
+import { freePlaySimulation } from "../live/threadFixPlan";
 import type { CachePolicy, CacheRule, CacheTable } from "../model/caching";
 import { cacheEnabled } from "../model/caching";
 import { cacheAsideOrigins } from "../model/cacheAside";
@@ -57,6 +60,8 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
   const analysis = ctx.capacity(),
     work = cacheWork(),
     output = findingBudget();
+  let freePlay: Simulation | undefined;
+  const setup = () => (freePlay ??= freePlaySimulation(ctx.diagram));
   const findings: Finding[] = [],
     omitted = new Map<Kind, number>();
   const emit = (finding: Finding) => {
@@ -66,7 +71,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
   const candidates: {
     node: string;
     table: CacheTable;
-    rules: { rule: CacheRule; data: NonNullable<Finding["cacheFinding"]>; origins: string[] }[];
+    rules: { rule: CacheRule; data: NonNullable<Finding["cacheFinding"]>; edge: string }[];
     score: number;
   }[] = [];
   const make = (
@@ -76,7 +81,13 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
     message: string,
     fix?: CheckFix,
   ): Finding => ({
-    id: `${kind}:${data.node}:${data.rule}`,
+    id: `${kind}:${data.node}:${data.rule}${
+      (kind === "cache-stampede" || kind === "cache-cold-start") &&
+      analysis.cacheDemand?.[data.node]?.[data.rule]?.origins &&
+      Object.keys(analysis.cacheDemand[data.node][data.rule].origins!).length > 1
+        ? `:${data.origin}`
+        : ""
+    }`,
     rule: kind,
     target: data.node,
     severity: kind === "cache-method" || kind === "cache-ttl-short" ? "suggestion" : "warning",
@@ -104,6 +115,9 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
       ]),
     ];
     const probed: (typeof candidates)[number]["rules"] = [];
+    let baseline: ReturnType<typeof probeCache>;
+    let baselineTried = false;
+    const ttlBase = () => ({ ...coldCacheSimulation(ctx.diagram, node.id, setup), durationMs: 30000, timeline: [] });
     for (const rule of rules) {
       if (rule.policy.noStore) continue;
       const demand = analysis.cacheDemand?.[node.id]?.[rule.id];
@@ -111,7 +125,8 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
         fetchMs = demand?.fetchMs ?? 0;
       const popularity = popularityTable(rule.policy.keys, rule.policy.popularity);
       const hottestPerSec = rate * popularity.hottestShare;
-      const origin = origins[0] ?? "";
+      const ruleOrigins = Object.keys(demand?.origins ?? {});
+      const origin = ruleOrigins.length === 1 ? ruleOrigins[0] : origins.length === 1 ? origins[0] : "";
       const capacity = analysis.nodes[origin]?.capacity;
       const data: NonNullable<Finding["cacheFinding"]> = {
         kind: "cache-method",
@@ -120,7 +135,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
         origin,
         nodeName: findingName(ctx.name(node.id)),
         ruleName: findingName(rule.label || rule.id || "Other requests"),
-        originName: findingName(ctx.name(origin)),
+        originName: origin ? findingName(ctx.name(origin)) : "the origin",
         hitRatio: demand?.hitRatio ?? 0,
         herd: (hottestPerSec * fetchMs) / 1000,
         coldPerSec: rate,
@@ -140,7 +155,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
             `${data.ruleName} matches ${method} requests, which are never stored.`,
             `They always reach ${data.originName}.`,
             {
-              label: `Remove ${method} from this rule`,
+              label: "Delete this cache rule",
               cacheLabel: { kind: "method", method },
               ops: [update(node.id, cache)],
             },
@@ -172,16 +187,30 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
         let fix: CheckFix | undefined;
         if (suggested) {
           const cache = withPolicy(table, rule.id, { ...rule.policy, ttlMs: suggested });
-          const base = { ...coldCacheSimulation(ctx.diagram, node.id), durationMs: 30000, timeline: [] };
-          const before = probeCache(ctx.diagram, base, node.id, origins, work);
-          const next = {
-            ...base,
-            setup: {
-              ...base.setup,
-              props: { ...base.setup?.props, [node.id]: { ...base.setup?.props?.[node.id], cache } },
-            },
-          };
-          const after = before && probeCache(ctx.diagram, next, node.id, origins, work);
+          if (!baselineTried) {
+            baselineTried = true;
+            baseline = probeCache(ctx.diagram, ttlBase, node.id, origins, work, 30000);
+          }
+          const before = baseline;
+          const after =
+            before &&
+            probeCache(
+              ctx.diagram,
+              () => {
+                const base = ttlBase();
+                return {
+                  ...base,
+                  setup: {
+                    ...base.setup,
+                    props: { ...base.setup?.props, [node.id]: { ...base.setup?.props?.[node.id], cache } },
+                  },
+                };
+              },
+              node.id,
+              origins,
+              work,
+              30000,
+            );
           if (after && after.hitRatio > before!.hitRatio)
             fix = {
               label: `Keep for ${suggested / 1000} s`,
@@ -205,9 +234,35 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
           ),
         );
       }
-      if (rate > 0 && origins.length) probed.push({ rule, data, origins });
+      for (const [origin, routed] of Object.entries(demand?.origins ?? {})) {
+        if (routed.rate <= 0) continue;
+        const hottestPerSec = routed.rate * popularity.hottestShare;
+        const capacity = analysis.nodes[origin]?.capacity;
+        probed.push({
+          rule,
+          edge: routed.edge,
+          data: {
+            ...data,
+            origin,
+            originName: findingName(ctx.name(origin)),
+            coldPerSec: routed.rate,
+            hottestPerSec,
+            herd: (hottestPerSec * routed.fetchMs) / 1000,
+            capacityPerSec: Number.isFinite(capacity) ? capacity : null,
+          },
+        });
+      }
     }
-    if (probed.length)
+    const coldRates = new Map<string, number>();
+    for (const { data } of probed) coldRates.set(data.origin, (coldRates.get(data.origin) ?? 0) + data.coldPerSec);
+    // Playback only confirms analytically possible warnings; healthy policies need no replay.
+    if (
+      probed.some(
+        ({ rule, data }) =>
+          (data.herd >= 20 && !rule.policy.coalesce && !rule.policy.staleWhileRevalidateMs) ||
+          (data.capacityPerSec !== null && coldRates.get(data.origin)! > data.capacityPerSec),
+      )
+    )
       candidates.push({
         node: node.id,
         table,
@@ -220,18 +275,30 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
   );
   let unchecked = Math.max(0, candidates.length - 3);
   for (const candidate of candidates.slice(0, 3)) {
-    const simulation = coldCacheSimulation(ctx.diagram, candidate.node);
-    const origins = [...new Set(candidate.rules.flatMap((r) => r.origins))];
-    const before = probeCache(ctx.diagram, simulation, candidate.node, origins, work);
+    let simulation: Simulation | undefined;
+    const coldSimulation = () => (simulation ??= coldCacheSimulation(ctx.diagram, candidate.node, setup));
+    const origins = [...new Set(candidate.rules.map((r) => r.data.origin))];
+    const before = probeCache(ctx.diagram, coldSimulation, candidate.node, origins, work);
     if (!before) {
       unchecked++;
       continue;
     }
-    const probe = { kind: "cold-cache" as const, startMs: 5000, horizonMs: 20000, recovered: before.recovered };
-    const coldPerSec = candidate.rules.reduce((sum, r) => sum + r.data.coldPerSec, 0);
-    for (const { rule, data } of candidate.rules) {
-      const stampede = data.herd >= 20 && !rule.policy.coalesce && !rule.policy.staleWhileRevalidateMs && before.harmed;
-      const cold = data.capacityPerSec !== null && coldPerSec > data.capacityPerSec && !before.recovered;
+    const emittedCold = new Set<string>();
+    const coldDemand = new Map<string, number>();
+    for (const { data } of candidate.rules)
+      coldDemand.set(data.origin, (coldDemand.get(data.origin) ?? 0) + data.coldPerSec);
+    for (const { rule, data, edge } of candidate.rules) {
+      const evidence = before.origins[data.origin];
+      if (!evidence) continue;
+      const probe = { kind: "cold-cache" as const, startMs: 5000, horizonMs: 20000, recovered: evidence.recovered };
+      const coldPerSec = coldDemand.get(data.origin)!;
+      const stampede =
+        data.herd >= 20 && !rule.policy.coalesce && !rule.policy.staleWhileRevalidateMs && evidence.harmed;
+      const cold =
+        !emittedCold.has(data.origin) &&
+        data.capacityPerSec !== null &&
+        coldPerSec > data.capacityPerSec &&
+        !evidence.recovered;
       if (!stampede && !cold) continue;
       let fix: CheckFix | undefined;
       if (stampede) {
@@ -241,7 +308,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
           origin: {
             diagram: ctx.diagram,
             simulation: {
-              ...simulation,
+              ...coldSimulation(),
               timeline: [],
               durationMs: Math.min(60000, Math.max(20000, 3 * rule.policy.ttlMs! + 5000)),
             },
@@ -249,11 +316,12 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
           },
           controls: [],
         };
-        const time = Math.max(before.herdTime, rule.policy.ttlMs! + 1000);
+        const time = Math.max(evidence.herdTime, rule.policy.ttlMs! + 1000);
         const action = confirmedCacheFix({
           context,
           node: candidate.node,
           rule: rule.id,
+          edge,
           time,
           budget: work,
           proven: (b) => {
@@ -272,6 +340,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
                   context,
                   node: candidate.node,
                   rule: rule.id,
+                  edge,
                   time,
                   budget: work,
                   baseline,
@@ -303,17 +372,17 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
         const collapse = cacheLadder(candidate.table, rule.id)[0];
         if (collapse?.step === "coalesce") {
           const next = {
-            ...simulation,
+            ...coldSimulation(),
             setup: {
-              ...simulation.setup,
+              ...coldSimulation().setup,
               props: {
-                ...simulation.setup?.props,
-                [candidate.node]: { ...simulation.setup?.props?.[candidate.node], cache: collapse.cache },
+                ...coldSimulation().setup?.props,
+                [candidate.node]: { ...coldSimulation().setup?.props?.[candidate.node], cache: collapse.cache },
               },
             },
           };
           const evidence = probeCache(ctx.diagram, next, candidate.node, origins, work);
-          if (evidence?.recovered)
+          if (evidence?.origins[data.origin]?.recovered)
             coldFix = {
               label: "One fetch per item",
               cacheLabel: { kind: "coalesce" },
@@ -342,7 +411,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
             coldFix,
           ),
         );
-        break;
+        emittedCold.add(data.origin);
       }
     }
   }
@@ -356,6 +425,7 @@ export function cacheRules(read: (ctx: CheckContext) => Finding[]): CheckRule[] 
     id,
     ...CACHE_ABOUT[id],
     detect(ctx) {
+      if (!revisionAtLeast(ctx.diagram.planning?.revision, "p3-w3")) return [];
       const marker = CACHE_RULES.find((rule) => !ctx.ran || ctx.ran.has(rule));
       return read(ctx).flatMap((f) =>
         f.unchecked && f.rule === "cache-stampede"

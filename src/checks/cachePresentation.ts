@@ -12,7 +12,7 @@ function label(value: CheckFix["cacheLabel"], fallback: string): string {
     case "ttl":
       return t("cacheChecks.keep", { seconds: formatNumber(value.value ?? 0) });
     case "method":
-      return t("cacheChecks.removeMethod", { method: isolate(value.method ?? "") });
+      return t("cacheChecks.deleteRule");
     case "replicas":
       return t("cacheChecks.replicas", { count: formatNumber(value.value ?? 0) });
     default:

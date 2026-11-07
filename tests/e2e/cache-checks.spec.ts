@@ -1,8 +1,10 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { test, expect, gotoCanvas, savedDiagram, openCheckFinding } from "./fixtures";
+import { test, expect, gotoCanvas, savedDiagram, openCheckFinding, STORAGE_KEYS } from "./fixtures";
 import { waitForBackgroundChecks } from "./checks-readiness";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
+import type { CacheTable } from "../../src/model/caching";
+import { cacheFixture } from "../../src/lab/cacheFixture";
 import small from "../../src/examples/cache-stampede.json" with { type: "json" };
 
 async function openChecks(page: import("@playwright/test").Page) {
@@ -96,3 +98,34 @@ test("agents describe cache expectations and author a purge Drill", async ({ pag
       drill: "cold-cache",
     });
 });
+
+for (const [locale, label] of [
+  ["en", "Delete this cache rule"],
+  ["ar", "حذف قاعدة التخزين المؤقت هذه"],
+]) {
+  test(`${locale} method fix names the whole-rule deletion and Undo restores it`, async ({ page }) => {
+    const diagram = cacheFixture();
+    const before: CacheTable = {
+      rules: [{ id: "writes", label: "Writes", match: { methods: ["POST", "DELETE"] }, policy: { ttlMs: 1000 } }],
+      default: { noStore: true },
+    };
+    diagram.nodes[1].props = { ...diagram.nodes[1].props, cache: before };
+    await page.addInitScript(
+      ({ key, diagram, locale }) => {
+        localStorage.setItem(key, JSON.stringify(diagram));
+        localStorage.setItem("diagrams.locale", locale);
+      },
+      { key: STORAGE_KEYS.autosavePrefix + "cache-stampede", diagram, locale },
+    );
+    await openChecks(page);
+    await openCheckFinding(page, "cache-method:cache:writes");
+    const fix = page.getByTestId("check-fix-cache-method:cache:writes");
+    await expect(fix).toHaveText(label);
+    await fix.click();
+    await expect
+      .poll(async () => (await savedDiagram(page)).nodes[1].props?.cache)
+      .toEqual({ rules: [], default: { noStore: true } });
+    await page.getByTestId("check-fix-undo").click();
+    await expect.poll(async () => (await savedDiagram(page)).nodes[1].props?.cache).toEqual(before);
+  });
+}
