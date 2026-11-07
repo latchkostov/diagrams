@@ -174,7 +174,7 @@ it("validates purge rules in stable playback order and shares the effective conf
   expect(simulationFieldErrors(draft, d)).toEqual([
     {
       field: "sim-panel-step-0-fault-rule",
-      text: "Rule: choose an existing target in this diagram.",
+      text: "Timeline step 1: cache rule “new” is unavailable. Choose an available rule or remove this step.",
     },
   ]);
   draft.timeline![0].action = { do: "fault", fault: { kind: "purge", node: "cache" } };

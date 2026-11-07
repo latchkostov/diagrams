@@ -3205,6 +3205,8 @@ const en = {
   "cache.deploy": "Deploy",
   "cache.coldCache": "Cold cache",
   "cache.purgeRule": "Rule",
+  "cache.missingPurgeRule":
+    "Timeline step {step}: cache rule “{rule}” is unavailable. Choose an available rule or remove this step.",
   "cache.allRules": "All rules",
   "cache.ruleRange": "Rules {from}–{to}",
   "cache.hardPurge": "Empty the cache",

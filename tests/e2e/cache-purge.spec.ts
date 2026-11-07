@@ -66,6 +66,47 @@ test("Cold cache finds setup-only rules; rule IDs cannot select All rules accide
   }
 });
 
+test("a saved purge with a removed rule explains disabled actions while Timeline is collapsed", async ({ page }) => {
+  const diagram = purgeEditorFixture();
+  const simulation = diagram.simulations?.[0];
+  if (!simulation) throw new Error("Expected the public purge editor fixture");
+  simulation.timeline = [{ atMs: 0, action: { do: "fault", fault: { kind: "purge", node: "cdn", rule: "removed" } } }];
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "cache-stampede",
+    diagram,
+  });
+  await gotoLive(page, "./?view=canvas&example=cache-stampede&live=1&paused=1");
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await page.getByTestId("sim-panel-edit-purge-rules").click();
+  const timeline = page.getByTestId("sim-panel-section-timeline");
+  const rule = page.getByTestId("sim-panel-step-0-fault-rule");
+  await expect(timeline).not.toHaveAttribute("open");
+  await expect(rule).toBeHidden();
+  const explanation =
+    "Timeline step 1: cache rule “removed” is unavailable. Choose an available rule or remove this step.";
+  await expect(page.getByTestId("sim-panel-invalid")).toBeVisible();
+  await expect(page.getByTestId("sim-panel-invalid")).toHaveText(explanation);
+  await expect(timeline).toHaveAttribute("data-warning", "true");
+  for (const action of ["run", "save"]) {
+    await expect(page.getByTestId(`sim-panel-${action}`)).toBeDisabled();
+    await expect(page.getByTestId(`sim-panel-${action}`)).toHaveAccessibleDescription(explanation);
+  }
+  await page.getByTestId("sim-panel-step-0-fault-rule-repair").click();
+  await expect(timeline).toHaveAttribute("open", "");
+  await expect(rule).toBeFocused();
+  await expect(rule).toHaveValue("rule:removed");
+  await expect(rule).toHaveAttribute("aria-invalid", "true");
+  await expect(rule).toHaveAccessibleDescription("Rule: choose an existing target in this diagram.");
+  await rule.selectOption("rule:__all");
+  await expect(page.getByTestId("sim-panel-invalid")).toBeEmpty();
+  await expect(timeline).not.toHaveAttribute("data-warning");
+  for (const action of ["run", "save"]) {
+    await expect(page.getByTestId(`sim-panel-${action}`)).toBeEnabled();
+    await expect(page.getByTestId(`sim-panel-${action}`)).not.toHaveAttribute("aria-describedby");
+  }
+});
+
 test("purge menus keep every rule ID unique and fit the contextual menu budget", async ({ page }) => {
   await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
     key: STORAGE_KEYS.autosavePrefix + "cache-stampede",

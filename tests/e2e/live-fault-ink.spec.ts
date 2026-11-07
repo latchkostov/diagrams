@@ -2,6 +2,7 @@ import { test, expect, gotoLive, STORAGE_KEYS } from "./fixtures";
 import { chunk, holdChunk } from "./chunk";
 import { faultDrillFixture } from "../../src/lab/faultDrillFixture";
 import { zoomIdentity } from "./node-identity";
+import { readFile } from "node:fs/promises";
 
 test("outages and cuts remain painted through held chips, zoom and leaving Live", async ({ page }) => {
   const held = await holdChunk(page, chunk("chipInk", "src/live/chipInk.ts"));
@@ -38,7 +39,29 @@ test("outages and cuts remain painted through held chips, zoom and leaving Live"
     await page.getByTestId("image-format-svg").click();
     const download = page.waitForEvent("download");
     await page.getByTestId("image-export").click();
-    expect((await download).suggestedFilename()).toMatch(/\.svg$/);
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/\.svg$/);
+    expect(await file.failure()).toBeNull();
+    const path = await file.path();
+    if (!path) throw new Error("SVG download failed");
+    const svg = await readFile(path, "utf8");
+    const ink = await page.evaluate((svg) => {
+      const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+      const boundary = doc.querySelector<HTMLElement>('[data-testid="group-zone-b"]');
+      const link = doc.querySelector<SVGElement>('[data-testid="connection-stroke-request"]');
+      return {
+        filter: boundary?.style.filter,
+        border: boundary?.style.borderStyle,
+        stroke: link?.style.stroke,
+        dash: link?.style.strokeDasharray,
+      };
+    }, svg);
+    expect(ink).toEqual({
+      filter: "grayscale(1)",
+      border: "dashed",
+      stroke: "rgb(209, 57, 63)",
+      dash: "4px, 8px",
+    });
     await expect(boundary).toHaveAttribute("data-live-status", "down");
     await expect.poll(cut).toBe("1");
     await page.getByTestId("live-toggle").click();

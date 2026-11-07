@@ -18,7 +18,7 @@ import {
 } from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { useStoreApi } from "@xyflow/react";
 import type {
   DiagramFile,
@@ -210,6 +210,7 @@ export function SimPanel({
     return () => onEditCommand(null);
   }, [onEditCommand]);
   const [picker, setPicker] = useState<Picker>(null);
+  const timelineRef = useRef<HTMLDetailsElement>(null);
   const saved = sim ? ui.simulations.find((s) => s.id === sim.id) : undefined;
   const dirty = !!sim && (!saved || JSON.stringify(saved) !== JSON.stringify(sim));
   const warnings = useMemo(() => (sim ? simulationWarnings(sim, diagram) : []), [sim, diagram]);
@@ -349,10 +350,14 @@ export function SimPanel({
 
             <Disclosure
               id="timeline"
+              ref={timelineRef}
               title="Timeline"
               hint="Notes, outages and changes over time"
               count={sim.timeline?.length ?? 0}
-              warn={warnings.some((w) => w.where.startsWith("timeline"))}
+              warn={
+                warnings.some((w) => w.where.startsWith("timeline")) ||
+                fieldErrors.some((error) => error.field.startsWith("sim-panel-step-"))
+              }
             >
               {(sim.timeline ?? []).map((step, i) => (
                 <StepRow
@@ -527,13 +532,28 @@ export function SimPanel({
               data-testid="sim-panel-invalid"
             >
               {fieldErrors.length
-                ? fieldErrors
-                    .filter((error) => !error.field.endsWith("-fault-rule"))
-                    .map((error) => (
+                ? fieldErrors.map((error) =>
+                    error.field.endsWith("-fault-rule") ? (
+                      <p key={error.field}>
+                        <button
+                          className="link-btn"
+                          data-testid={`${error.field}-repair`}
+                          onClick={() => {
+                            const timeline = timelineRef.current;
+                            if (!timeline) return;
+                            timeline.open = true;
+                            interaction?.dispatch({ type: "panel.field", panel: "sim-panel", field: error.field });
+                          }}
+                        >
+                          {error.text}
+                        </button>
+                      </p>
+                    ) : (
                       <p key={error.field} id={`${error.field}-error`}>
                         {error.text}
                       </p>
-                    ))
+                    ),
+                  )
                 : invalid}
             </div>
             {warnings.length > 0 && (
@@ -705,6 +725,7 @@ function Section({
 /** A collapsible group, closed by default: the common path never needs it. */
 function Disclosure({
   id,
+  ref,
   title,
   hint,
   count,
@@ -712,6 +733,7 @@ function Disclosure({
   children,
 }: {
   id: string;
+  ref?: Ref<HTMLDetailsElement>;
   title: string;
   hint?: string;
   count?: number;
@@ -719,7 +741,12 @@ function Disclosure({
   children: ReactNode;
 }) {
   return (
-    <details className="lv-disclosure" data-testid={`sim-panel-section-${id}`}>
+    <details
+      ref={ref}
+      className="lv-disclosure"
+      data-testid={`sim-panel-section-${id}`}
+      data-warning={warn || undefined}
+    >
       <summary data-testid={`sim-panel-section-${id}-toggle`}>
         <LiveIcon name="chevron" size={12} className="lv-disclosure-chevron" />
         <span className="lv-disclosure-title">{title}</span>

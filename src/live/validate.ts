@@ -114,11 +114,11 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
       const fault = a.fault;
       if (fault.kind === "purge" && fault.rule !== undefined) {
         const table = effective?.table;
-        target(
-          `${id}-fault-rule`,
-          t("cache.purgeRule"),
-          fault.rule === "" ? !!table?.default : !!table?.rules.some((r) => r.id === fault.rule),
-        );
+        if (!(fault.rule === "" ? table?.default : table?.rules.some((r) => r.id === fault.rule)))
+          add(
+            `${id}-fault-rule`,
+            t("cache.missingPurgeRule", { step: i + 1, rule: fault.rule || t("cache.everythingElse") }),
+          );
       }
     } else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
     if (a.do === "inject") range(`${id}-count`, `${label}: Messages`, a.count, LIMITS.maxMessageCount, true);
