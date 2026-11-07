@@ -1,14 +1,5 @@
 /* ---------------------------------------------------------------- request routing (src/planning/RoutingFields.tsx) */
-:root {
-  --route-outline: #1f2328;
-}
-[data-theme="dark"] {
-  --route-outline: #ffffff;
-}
-.route-swatch {
-  flex: none;
-  vertical-align: -2px;
-}
+@import "./route-appearance.css";
 .route-table {
   display: grid;
   gap: 2px;

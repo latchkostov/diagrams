@@ -27,3 +27,15 @@ removed; all 291 focused catalog, bucket and cache-aside tests pass.
 Full parity passes 1,995 Node tests and 112 Linux browser tests: all 3,376 goldens
 are unchanged, with none added, missing or stale. The subsequent catalog-only
 parity check also preserves all three i18n goldens. No golden was re-recorded.
+
+## Downloadable skill reserve
+
+The single full Linux gate exposed a skill ZIP of 829,876 B against the unchanged
+828,856 B reserve bound; the same focused check passes on clean master. The
+read-only viewer still imported editor context-menu and routing-authoring CSS
+despite excluding their components. It now imports only shared route colors and
+swatches, retaining the fade animation used by dialogs. The editor keeps its
+complete styles. The ZIP is 828,851 B, preserving the 6,144 B reserve. Both affected
+skill checks pass; restoring the old viewer imports fails the regression. An
+attempt to compact generated module identifiers produced identical bytes and was
+discarded.

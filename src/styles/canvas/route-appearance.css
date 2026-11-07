@@ -1,0 +1,11 @@
+/* Shared route colors and swatches, including read-only playback and traces. */
+:root {
+  --route-outline: #1f2328;
+}
+[data-theme="dark"] {
+  --route-outline: #ffffff;
+}
+.route-swatch {
+  flex: none;
+  vertical-align: -2px;
+}

@@ -6,8 +6,14 @@
 @import "../../styles/canvas/nodes.css";
 @import "../../styles/canvas/edges.css";
 @import "../../styles/canvas/overlays.css";
-@import "../../styles/canvas/context-menu.css";
-@import "../../styles/canvas/routing.css";
+@import "../../styles/canvas/route-appearance.css";
 @import "../../styles/canvas/dialog.css";
 @import "../../styles/canvas/annotations.css";
 @import "../../styles/canvas/markdown.css";
+
+/* Dialogs share the editor menu's fade-in, but the read-only viewer has no editing menu. */
+@keyframes cm-in {
+  from {
+    opacity: 0;
+  }
+}
