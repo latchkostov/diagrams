@@ -7,6 +7,7 @@ import { t } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { toneLabel } from "../canvas/groupTones";
 import type {
+  SimulationMatch,
   Check,
   EdgeMetric,
   MetricComparison,
@@ -159,6 +160,13 @@ export function nearMiss(
 }
 
 export function holds(check: Check, view: SandboxView, subjects: Record<string, string | undefined>): boolean {
+  const matchesBoundSimulation = (sim: Parameters<typeof matchesSimulation>[0], match: SimulationMatch): boolean => {
+    if (match.fault && Object.hasOwn(subjects, match.fault.node) && !subjects[match.fault.node]) return false;
+    return matchesSimulation(sim, {
+      ...match,
+      ...(match.fault ? { fault: { ...match.fault, node: subjects[match.fault.node] ?? match.fault.node } } : {}),
+    });
+  };
   const node = (name: string) => view.diagram.nodes.find((n) => n.id === subjects[name]);
   const edge = (pair: readonly [string, string]) => {
     const from = subjects[pair[0]],
@@ -422,14 +430,14 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.live &&
         !!session &&
         !session.needsRestart &&
-        (check.saved ? matchesSimulation(session.running, check.saved) : session.running?.id === check.id) &&
+        (check.saved ? matchesBoundSimulation(session.running, check.saved) : session.running?.id === check.id) &&
         (check.traffic === undefined || session.traffic === check.traffic) &&
         !!session.run &&
         session.run.time >= (check.atLeastMs ?? 0)
       );
     }
     case "savedSimulation":
-      return !!view.diagram.simulations?.some((sim) => matchesSimulation(sim, check.match));
+      return !!view.diagram.simulations?.some((sim) => matchesBoundSimulation(sim, check.match));
     case "liveView":
       return view.views?.[check.view] === check.open;
     case "readout": {
@@ -575,6 +583,9 @@ const order = (left: number, op: MetricComparison, right: number) =>
 type SimNode = NonNullable<SandboxView["session"]>["snapshot"]["nodes"][string];
 /** A node's reading: a field, or one inside its latency, threads or fleet ("latency.p95"). */
 const reading = (metrics: SimNode | undefined, field: NodeMetric | keyof SimNode): unknown => {
+  if (field === "cache.hitRatio") return metrics?.cache && metrics.cache.hitRatio * 100;
+  if (field === "cache.offload") return metrics?.cache && metrics.cache.originOffload * 100;
+  if (field === "cache.itemFetches") return metrics?.cacheDetails?.itemFetches;
   const [group, key] = field.split(".") as [keyof SimNode, string | undefined];
   const value: unknown = metrics?.[group];
   return key === undefined
@@ -657,6 +668,28 @@ export function metricValue(
 /** A `sinceStep` baseline's key in RunnerState.baseline: the expression itself (plain data). */
 export const baselineKey = (expr: MetricValue) => JSON.stringify(expr);
 
+/** Ratios need their underlying counts: subtracting two percentages is not a fresh hit ratio. */
+export function metricBaseline(
+  expr: MetricValue,
+  view: SandboxView,
+  subjects: Record<string, string | undefined>,
+): Record<string, number> {
+  const key = baselineKey(expr);
+  const value = metricValue(expr, view, subjects);
+  if (value === undefined) return {};
+  const counts = cacheRatioCounts(expr, view, subjects);
+  return { [key]: value, ...(counts && { [`${key}:part`]: counts[0], [`${key}:total`]: counts[1] }) };
+}
+
+function cacheRatioCounts(expr: MetricValue, view: SandboxView, subjects: Record<string, string | undefined>) {
+  if (!("node" in expr) || (expr.metric !== "cache.hitRatio" && expr.metric !== "cache.offload")) return;
+  const cache = view.session?.snapshot.nodes[subjects[expr.node] ?? ""]?.cache;
+  if (!cache) return;
+  return expr.metric === "cache.hitRatio"
+    ? [cache.hits, cache.hits + cache.misses + (cache.coalesced ?? 0)]
+    : [cache.requests - cache.fetches, cache.requests];
+}
+
 /** The `sinceStep` expressions a check counts from its step's start. */
 export const sinceValues = (check: Check): MetricValue[] =>
   check.kind === "all"
@@ -681,6 +714,17 @@ function expressionValue(expr: MetricExpr, view: SandboxView, subjects: Record<s
   const now = metricValue(expr.sinceStep, view, subjects);
   const base = view.baseline?.[baselineKey(expr.sinceStep)];
   if (now === undefined || !base) return undefined;
+  const counts = cacheRatioCounts(expr.sinceStep, view, subjects);
+  if (counts) {
+    const key = baselineKey(expr.sinceStep);
+    const sameRun = view.session!.generation === base[1] && view.sessionId === base[2];
+    const part = view.baseline?.[`${key}:part`],
+      total = view.baseline?.[`${key}:total`];
+    if (sameRun && (!part || !total)) return undefined;
+    const n = counts[0] - (sameRun ? part![0] : 0),
+      d = counts[1] - (sameRun ? total![0] : 0);
+    return d > 0 ? (100 * n) / d : undefined;
+  }
   // Same session and run: the change since then. Another run, or a remounted session: all of it came after.
   return view.session!.generation === base[1] && view.sessionId === base[2] ? now - base[0] : now;
 }

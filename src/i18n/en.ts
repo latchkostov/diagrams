@@ -5975,5 +5975,169 @@ const en = {
     "The clipboard writer succeeded for the public practice diagram; no model received it.",
 
   "tutorials.sharePresentAudience.title": "Present a story and choose its audience",
+  "tutorials.caching.traffic": "Product requests",
+  "tutorials.caching.example": "Explore the cache comparison",
+  "tutorials.caching.openExpiry": "Open When an item expires.",
+  "tutorials.caching.openRule": "Open the rule.",
+  "tutorials.caching.openRules": "Open Cache rules.",
+  "tutorials.caching.editProperties": "Open Edit properties.",
+  "tutorials.caching.selectEdge": "Select the edge cache and open Properties.",
+  "tutorials.caching.runTitle": "Run the requests",
+  "tutorials.caching.runGoal": "Go Live, then choose Product requests in Simulations.",
+  "tutorials.caching.runDone": "The same seeded traffic makes the comparisons repeatable.",
+  "tutorials.cdnCache.title": "Cache at the edge",
+  "tutorials.cdnCache.summary":
+    "Keep copies near readers and watch fewer requests reach the origin. Start here if caching is new to you; knowing how to open Properties is enough.",
+  "tutorials.cdnCache.introTitle": "What is a cache?",
+  "tutorials.cdnCache.introGoal":
+    "A cache keeps a copy of a reply. A hit answers from that copy; a miss asks the original service, called the origin. This edge cache sits between readers and Product API. Read this, then choose Done.",
+  "tutorials.cdnCache.introDone":
+    "Copies reduce origin work, but they can become old. Keep for (TTL) is how long a copy stays fresh.",
+  "tutorials.cdnCache.ruleTitle": "Add a cache rule",
+  "tutorials.cdnCache.ruleGoal":
+    "Right-click Edge CDN, then Simulation → Add cache rules. Keep the offered GET product-path rule. It stores replies for five minutes; other addresses pass through.",
+  "tutorials.cdnCache.ruleDone":
+    "The rule selects cacheable requests by method and address. It does not make every request a hit.",
+  "tutorials.cdnCache.offloadTitle": "Read the hit chip",
+  "tutorials.cdnCache.offloadGoal":
+    "Watch the % hits chip on Edge CDN. Since this step began, at least half of cacheable requests must hit, and Product API must process fewer requests than the edge.",
+  "tutorials.cdnCache.offloadDone":
+    "Fresh traffic showed the effect: hits answered here and fewer requests reached the origin.",
+  "tutorials.cdnCache.finish":
+    "You added a cache rule; the hit ratio and origin counts showed less origin work. A hit can return older data: what freshness would your readers accept?",
+  "tutorials.derivedHitRatio.title": "Where the hit ratio comes from",
+  "tutorials.derivedHitRatio.summary":
+    "Predict how fewer requests and a longer freshness period change hits. Try Cache at the edge first; the ratio is calculated, never a slider.",
+  "tutorials.derivedHitRatio.predictTitle": "Make a prediction",
+  "tutorials.derivedHitRatio.predictGoal":
+    "Twenty equally popular items stay fresh for one second. If fewer readers request them, will copies be reused more or less often? Decide, then choose Done.",
+  "tutorials.derivedHitRatio.predictDone":
+    "Fewer requests usually mean fewer reuses before expiry. A longer TTL gives a copy more time to earn hits.",
+  "tutorials.derivedHitRatio.trafficTitle": "Lower Traffic ×",
+  "tutorials.derivedHitRatio.trafficGoal":
+    "Open Inputs and lower Traffic × to 0.2. Use [Home], then [→] twice on its slider. The explanation row recalculates from 40 requests/s.",
+  "tutorials.derivedHitRatio.trafficDone":
+    "The offered rate fell. Expected hits fell too because each item is requested less often before expiry.",
+  "tutorials.derivedHitRatio.openInputs": "Open Inputs to read the cache explanation.",
+  "tutorials.derivedHitRatio.ttlTitle": "Keep copies longer",
+  "tutorials.derivedHitRatio.ttlGoal":
+    "Close Inputs. In Edge CDN's Edit properties → Cache rules, open the product rule and choose Keep for 1 min (TTL). Keep Traffic × at 0.2.",
+  "tutorials.derivedHitRatio.ttlDone":
+    "You changed freshness, not demand. The same 40 requests/s now reuse copies for longer.",
+  "tutorials.derivedHitRatio.explainTitle": "Read the explanation row",
+  "tutorials.derivedHitRatio.explainGoal":
+    "Open Inputs again. Read the cache row: requests/s, Keep for, item count and popularity explain Expected hits and the rate reaching Product API. Then choose Done.",
+  "tutorials.derivedHitRatio.explainDone":
+    "Expected is a model estimate. Live measures sampled requests, so a short run can differ.",
+  "tutorials.derivedHitRatio.finish":
+    "You lowered demand and raised the TTL; Inputs explained the expected hit ratio. More hits trade freshness for reuse, and popularity matters too.",
+  "tutorials.cacheLatency.title": "Faster at p95?",
+  "tutorials.cacheLatency.summary":
+    "Compare the readers' slow tail with caching and Don't store. After Cache at the edge, learn why fewer origin requests need not improve p95.",
+  "tutorials.cacheLatency.cachedTitle": "Read the cached p95",
+  "tutorials.cacheLatency.cachedGoal":
+    "Open Product readers' Live readout. Most requests hit, yet more than 5% still miss. Wait for 200 edge completions and read the readers' p95, including the origin round trip.",
+  "tutorials.cacheLatency.cachedDone":
+    "The source's p95 is still a miss. A high hit ratio alone does not remove the slowest 5% of replies.",
+  "tutorials.cacheLatency.noStoreTitle": "Try Don't store",
+  "tutorials.cacheLatency.noStoreGoal":
+    "In Edge CDN's Edit properties → Cache rules, open the product rule and turn on Don't store. The same requests will all reach Product API.",
+  "tutorials.cacheLatency.noStoreDone": "The active rule now passes requests to the origin without storing replies.",
+  "tutorials.cacheLatency.uncachedTitle": "Compare without copies",
+  "tutorials.cacheLatency.uncachedGoal":
+    "Open Product readers' readout after the restart. After 200 completions, p95 still includes the origin trip, while offload is zero.",
+  "tutorials.cacheLatency.uncachedDone":
+    "Both p95 readings include misses. Caching saved origin work even though the tail stayed slow.",
+  "tutorials.cacheLatency.interpretTitle": "Why the tail stayed slow",
+  "tutorials.cacheLatency.interpretGoal":
+    "Until more than 95% of requests hit, the 95th percentile can still be a miss. Cache-local hit latency is different from the source's end-to-end p95. Read this, then choose Done.",
+  "tutorials.cacheLatency.interpretDone":
+    "These are sampled model estimates; a percentile also needs enough completed requests.",
+  "tutorials.cacheLatency.finish":
+    "You compared the source's p95 with copies and with Don't store; both retained the miss tail. Offload and tail latency answer different questions.",
+  "tutorials.cacheStampede.title": "A cache stampede",
+  "tutorials.cacheStampede.summary":
+    "Watch many requests fetch one expired item, apply One fetch per item and replay. Try Cache at the edge first; this uses the public same-seed comparison.",
+  "tutorials.cacheStampede.runTitle": "Open the expiry comparison",
+  "tutorials.cacheStampede.runGoal":
+    "Go Live and choose TTL only. One launch item expires every five seconds while a four-thread Product API serves it.",
+  "tutorials.cacheStampede.runDone":
+    "The public example starts warm. Expiry, rather than a cold start, creates the herd.",
+  "tutorials.cacheStampede.herdTitle": "Watch the lightning pill",
+  "tutorials.cacheStampede.herdGoal":
+    "Watch the ⚡ pill on the origin connection and Stampede on the hit chip. Several fetches in flight for one item mean readers are asking for the same copy at once.",
+  "tutorials.cacheStampede.herdDone": "The herd adds duplicate origin work; queuing can make the next expiry worse.",
+  "tutorials.cacheStampede.fixTitle": "Allow one fetch per item",
+  "tutorials.cacheStampede.fixGoal":
+    "In the trouble callout, choose One fetch per item (Apply). Other readers wait for that single fetch; the action edits TTL only, leaving the example's other comparisons intact.",
+  "tutorials.cacheStampede.fixDone":
+    "The active rule now shares a fetch among waiting readers. The existing run is not the result: replay it.",
+  "tutorials.cacheStampede.replayTitle": "Replay and read the outcomes",
+  "tutorials.cacheStampede.replayGoal":
+    "Restart TTL only with the same seed. You may use 4× speed. Read all three expectation chips at the end: one-item fetches, origin backlog and readers' p95 must pass.",
+  "tutorials.cacheStampede.replayDone":
+    "All three outcomes passed on the replay: the herd stopped without adding origin threads.",
+  "tutorials.cacheStampede.finish":
+    "You applied one fetch per item (request coalescing); the replay's outcomes showed a bounded herd and backlog. Waiting readers still wait for freshness, so what could a stale copy change?",
+  "tutorials.staleRefresh.title": "Serve stale while refreshing",
+  "tutorials.staleRefresh.summary":
+    "Keep answering from an expired copy while one background fetch refreshes it. After A cache stampede, compare expiry waits with a stale window.",
+  "tutorials.staleRefresh.expiryTitle": "See the expiry waits",
+  "tutorials.staleRefresh.expiryGoal":
+    "Read Edge CDN's hits. This exercise has one item, a one-second TTL and One fetch per item already on. Misses and waiting readers still appear when it expires.",
+  "tutorials.staleRefresh.expiryDone":
+    "One fetch protects the origin, but waiting readers cannot use the expired reply yet.",
+  "tutorials.staleRefresh.windowTitle": "Add a stale window",
+  "tutorials.staleRefresh.windowGoal":
+    "Open Edge CDN's Edit properties → Cache rules → product rule → When an item expires. Set Serve stale while refreshing to 10 s.",
+  "tutorials.staleRefresh.windowDone":
+    "The expired copy may now answer during the stale window while one background fetch updates it.",
+  "tutorials.staleRefresh.refreshTitle": "Watch expiry misses vanish",
+  "tutorials.staleRefresh.refreshGoal":
+    "Restart and read the hit chip after at least five seconds of traffic. Almost every request now hits, including stale hits; no item has more than one fetch in flight.",
+  "tutorials.staleRefresh.refreshDone":
+    "Expiry no longer makes readers wait in this run. Background origin work still happens.",
+  "tutorials.staleRefresh.finish":
+    "You added a stale window (stale-while-revalidate); the hit ratio showed expiry waits disappear. Product readers may receive old data, and refresh failures can outlast the window.",
+  "tutorials.coldCache.title": "A deploy empties the cache",
+  "tutorials.coldCache.summary":
+    "Author a Cold cache Drill, watch the origin surge, then keep stale copies with a soft purge. After Serve stale while refreshing, learn why a deploy can overwhelm a healthy origin.",
+  "tutorials.coldCache.drillName": "Deploy comparison",
+  "tutorials.coldCache.liveGoal":
+    "Go Live and choose Serve stale while refreshing. Both rules have stale copies available. You will author a separate ten-second Drill.",
+  "tutorials.coldCache.liveDone": "A warm cache keeps most demand away from the four-thread origin.",
+  "tutorials.coldCache.authorTitle": "Author a Cold cache Drill",
+  "tutorials.coldCache.authorGoal":
+    "Open More → Simulations, return to the list and choose New. In Timeline add Cold cache at 0 s on Edge CDN, keeping Empty the cache. Set Details → Duration to 10 s and Save.",
+  "tutorials.coldCache.authorDone":
+    "The saved Drill contains a hard purge on the edge at the start. Saving alone has not run it.",
+  "tutorials.coldCache.openEditor": "Open More → Simulations to edit the Drill.",
+  "tutorials.coldCache.faultTip":
+    "Fault → Empty the cache and Soft purge offer the same purge modes for a one-off experiment.",
+  "tutorials.coldCache.surgeTitle": "Watch the origin surge",
+  "tutorials.coldCache.surgeGoal":
+    "Close Simulations, select your new run and turn Traffic on in More. Watch Product API's backlog grow past 50: the hard purge removed even the stale copies.",
+  "tutorials.coldCache.surgeDone": "The origin was healthy, but refilling a cold cache overwhelmed its four threads.",
+  "tutorials.coldCache.softTitle": "Keep copies with a soft purge",
+  "tutorials.coldCache.softGoal":
+    "Open More → Simulations. In your Drill's Timeline, change the Cold cache step from Empty the cache to Soft purge, then Save. Keep its target and 0 s time.",
+  "tutorials.coldCache.softDone": "Soft purge expires copies but keeps them available during their stale windows.",
+  "tutorials.coldCache.resultTitle": "Replay the soft purge",
+  "tutorials.coldCache.resultGoal":
+    "Close Simulations and Restart with traffic running. After nine seconds, the origin backlog must be below 50 while the edge keeps answering.",
+  "tutorials.coldCache.resultDone": "The same demand now fits: stale copies served readers while the origin refreshed.",
+  "tutorials.coldCache.finish":
+    "You authored a cold-cache Drill and replaced its hard purge with a soft purge; origin backlog showed the difference. Soft purge needs stale copies and a stale window, so it cannot rescue a cache that has never been filled.",
+  "tutorials.caching.editHint":
+    "Select the edge cache and press [F2]. Open Edit properties, Cache rules, then the named rule. Use [Tab] to reach its field and [Space] for a checkbox.",
+  "tutorials.caching.menuHint":
+    "Focus the edge cache, press [Shift]+[F10], then choose Simulation → Add cache rules. [Esc] closes a menu without changing the diagram.",
+  "tutorials.caching.replayHint":
+    "Use the Simulations picker to choose the named comparison. [Tab] reaches Restart; [Space] activates it. A new run uses the same seed.",
+  "tutorials.cacheLatency.restartTitle": "Replay without storing",
+  "tutorials.cacheLatency.restartGoal":
+    "Restart with the same seed so earlier cached requests leave the latency window. Keep the active rule on Don't store.",
+  "tutorials.cdnCache.offloadHint":
+    "A hit answers at the edge. Compare completed requests here with Product API: reusing copies keeps work away from the origin.",
 } as const;
 export default en;

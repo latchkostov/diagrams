@@ -1,5 +1,7 @@
 import { t } from "../i18n";
 import { stencilLabel } from "../i18n/stencils";
+import { matchText } from "../model/routingAppearance";
+import type { RouteMatch } from "../model/requestRouting";
 import type { DiagramEdge, DiagramFile } from "../model/types";
 import { splitEdge } from "../model/edgeSplit";
 import { getStencil } from "../stencils/registry";
@@ -165,13 +167,26 @@ export function buildBlueprint(lesson: Tutorial, initial: DiagramFile): Blueprin
         const update = demo.kind === "prop" ? demo.props : patchProps(before, demo.patches);
         const after = { ...before, ...update };
         const paths =
-          demo.kind === "prop" ? Object.keys(demo.props).map((key) => [key] as const) : demo.patches.map((p) => p.path);
+          demo.kind === "prop"
+            ? Object.keys(demo.props).map((key) => [key] as const)
+            : demo.patches
+                .filter(
+                  (p) =>
+                    p.op !== "ensureItem" ||
+                    readPath(before, [...p.path, { where: p.match, serving: p.serving }]) === undefined,
+                )
+                .map((p) => p.path);
         for (const path of paths) {
           const a = readPath(before, path),
             b = readPath(after, path);
           const selector = path.find((part) => typeof part === "object");
+          const match = typeof selector === "object" ? resolve(selector.where.match) : undefined;
           const detail =
-            typeof selector === "object" ? Object.values(selector.where).map(resolve).join(" · ") : undefined;
+            match && typeof match === "object"
+              ? matchText(match as RouteMatch)
+              : typeof selector === "object"
+                ? Object.values(selector.where).map(resolve).join(" · ")
+                : undefined;
           recordChange(number, step.title(), a, b, detail);
         }
         props.set(key, after);

@@ -643,7 +643,7 @@ never re-record a failing golden without an intentional output change.
   CI/learner prerequisite. Use deterministic public replies and isolated peers;
   clearly distinguish a demonstration from hands-on completion.
 - Reject teaching roadmap-only or unsupported actions: arbitrary C4 drill-down,
-  production measurement, correlated cache misses, atomic outbox transactions,
+  production measurement, atomic outbox transactions,
   DLQ replay, packet-accurate appliances or a generic cost dashboard. Endpoint/API
   contract fields and imported data do not by themselves prove a complete endpoint
   authoring/OpenAPI workflow. Verify any expansion separately before promising it.
@@ -661,3 +661,30 @@ never re-record a failing golden without an intentional output change.
    milestones/checklists and recaps rather than splitting them into short lessons.
 5. Is the 25–39-day scope acceptable, or should the first release stop after PR 4
    and leave advanced scaling/team workflows for the next curriculum release?
+
+## Caching batch — 2026-11-05
+
+The earlier rejection of correlated cache misses is lifted for `p3-w3` cache rules:
+the shipped model now executes hits, expiry, request coalescing, stale refresh and purges.
+`cache-aside` keeps its existing approximation until the dedicated cache-aside model PR;
+this content batch does not imply that its old shares implement correlated misses.
+
+Six new lessons extend the completed batches 2–6. The intro, **Cache at the edge**
+(`cdn-cache`, II, level 2, 4 min), explains copies, hits, misses, origins and freshness,
+then adds the GET product rule and checks fresh hit ratio plus reduced origin work.
+**Where the hit ratio comes from** (`derived-hit-ratio`, III, level 2, 4 min) predicts,
+lowers Traffic ×, raises TTL and acknowledges the Inputs explanation.
+**Faster at p95?** (`cache-latency`, IV, level 2, 4 min) compares source p95 with
+caching and Don't store; more than 5% misses still reach the tail.
+**A cache stampede** (`cache-stampede`, V, level 3, 5 min) reads the lightning pill,
+applies One fetch per item and checks the same-seed replay's three expectations.
+**Serve stale while refreshing** (`stale-while-revalidate`, V, level 3, 4 min)
+adds a stale window and observes expiry misses disappear on a fresh replay.
+**A deploy empties the cache** (`cold-cache`, V, level 3, 5 min) authors a ten-second
+Cold cache Drill, observes the origin surge, then compares a soft purge.
+
+The catalog has 68 lessons, 66 core plus two optional extensions. Chapters I–VII
+contain 14, 14, 11, 8, 11, 6 and 4 lessons. Existing earned seal dates remain intact;
+new completion and reset use current chapter membership. All six lessons have real
+pointer and keyboard solutions, assistance, reconstruction and sandbox privacy tests.
+No simulation-engine or bundle-budget change belongs in this batch.

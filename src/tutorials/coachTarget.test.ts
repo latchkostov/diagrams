@@ -1,6 +1,35 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
 import { externalCoachTarget, observeCoach, locate } from "./coachTarget";
+import { staleWhileRevalidate } from "./catalog/staleWhileRevalidate";
+
+it("anchors the stale-window field before its expiry disclosure, cache rule or section", () => {
+  const ids = [
+    "inspector-section-node-cache",
+    "cache-rule-products",
+    "cache-rule-products-expires-toggle",
+    "cache-rule-products-stale-window",
+  ];
+  const elements = ids.map((id, index) => {
+    const el = document.createElement("button");
+    el.dataset.testid = id;
+    el.getBoundingClientRect = () => new DOMRect(100, 100 + index * 40, 200, 30);
+    vi.spyOn(el, "checkVisibility").mockReturnValue(true);
+    document.body.append(el);
+    return el;
+  });
+  const targets = staleWhileRevalidate.steps.find((s) => s.id === "stale-window")!.targets;
+  try {
+    const props = { targets, subjects: { edge: "edge" }, selected: ["edge"] };
+    expect(locate(props)?.testId).toBe("cache-rule-products-stale-window");
+    vi.mocked(elements[3].checkVisibility).mockReturnValue(false);
+    expect(locate(props)?.testId).toBe("cache-rule-products-expires-toggle");
+    vi.mocked(elements[2].checkVisibility).mockReturnValue(false);
+    expect(locate(props)?.testId).toBe("cache-rule-products");
+  } finally {
+    elements.forEach((el) => el.remove());
+  }
+});
 
 afterEach(() => vi.unstubAllGlobals());
 it("never anchors a card to its own Download or Save a copy button", () => {

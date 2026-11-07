@@ -259,6 +259,29 @@ it("soft purge at time zero preserves warm copies", () => {
   }
 });
 
+it("a run starts a hot tracked item servable whenever a stale window keeps its copy, on every seed", () => {
+  const start = (seed: number, window?: number) =>
+    cacheRuntime.compile(
+      { rules: [], default: { ttlMs: 1000, keys: 1, ...(window ? { staleWhileRevalidateMs: window } : {}) } },
+      "cache",
+      seed,
+      1,
+      { value: 256 },
+      { "": { rate: 200, fetchMs: 150 } },
+    ).rules[0];
+  const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
+  // Without a stale window an expired item is absent while it refills: some seeds start in that gap.
+  const absent = seeds.filter((seed) => start(seed).freshUntil[0] < 0).length;
+  expect(absent / seeds.length).toBeCloseTo(1 - itemHitShare(200, 1000, 150), 1);
+  expect(absent).toBeGreaterThan(0);
+  // With one, the same expiry serves the stale copy: steady state never holds the hot item absent.
+  for (const seed of seeds) {
+    const rule = start(seed, 10000);
+    expect(rule.freshUntil[0], `seed ${seed}`).toBeGreaterThanOrEqual(0);
+    expect(rule.freshUntil[0]).toBeLessThan(1000);
+  }
+});
+
 it("hard purge, partial refill, soft purge leaves missing statistical copies as misses", () => {
   const cache = cacheRuntime.compile(
     { rules: [], default: { ttlMs: 300000, keys: 20000, popularity: "even", staleWhileRevalidateMs: 60000 } },

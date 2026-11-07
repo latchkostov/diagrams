@@ -171,8 +171,17 @@ export function PaletteDialog({
     const wasInert = background.map((c) => c.inert);
     for (const c of background) c.inert = true;
     const closeLayer = openModalLayer(el, { opener: previousFocus });
-    input.current?.focus({ preventScroll: true });
+    let focusFrame: number | undefined;
+    const focusSearch = () => {
+      const search = input.current;
+      if (!search?.isConnected) return;
+      search.focus({ preventScroll: true });
+      // An outgoing modal can still have this portal inert during the handoff.
+      if (search.isConnected && document.activeElement !== search) focusFrame = requestAnimationFrame(focusSearch);
+    };
+    focusSearch();
     return () => {
+      if (focusFrame !== undefined) cancelAnimationFrame(focusFrame);
       background.forEach((c, i) => {
         c.inert = wasInert[i];
       });
@@ -297,7 +306,8 @@ export function PaletteDialog({
   // Keys typed before the search had focus start it; an Enter among them runs the best match, an Esc closes.
   const typed = useRef(typeAhead);
   const tookTyped = useRef(false);
-  useLayoutEffect(() => {
+  // Release capture only when focus actually reaches the search, including after an outgoing modal's cleanup.
+  const takeTyping = () => {
     if (tookTyped.current) return;
     tookTyped.current = true;
     const t = typed.current?.();
@@ -305,8 +315,7 @@ export function PaletteDialog({
     if (t.done === "escape") return closeRef.current();
     if (t.done === "enter") return run(flatten(rank(commands, t.text ?? "", recent))[0]);
     if (t.text) setQuery(t.text);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the search takes focus
-  }, []);
+  };
   const rowHover = useCallback((c: Command) => {
     const i = latest.current.flat.indexOf(c);
     if (i !== latest.current.active) setActive(i);
@@ -344,6 +353,7 @@ export function PaletteDialog({
             aria-label={t("command.searchCommands")}
             placeholder={placeholder}
             value={query}
+            onFocus={takeTyping}
             onChange={(e) => {
               setSubmenu(null);
               setQuery(e.target.value);
