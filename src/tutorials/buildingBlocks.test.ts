@@ -55,6 +55,7 @@ describe("building-block lessons", () => {
       "kafka-topic",
       "queue-workers",
       "load-balancer",
+      "cdn-cache",
       "cache-aside",
       "webhooks",
       "fanout",

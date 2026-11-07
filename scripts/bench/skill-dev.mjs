@@ -10,7 +10,9 @@ import { createServer, runnerImport } from "vite";
 const root = path.resolve(import.meta.dirname, "../..");
 const { skillAssetsPlugin } = (await runnerImport(path.join(root, "scripts/skill-assets.ts"), { configFile: false }))
   .module;
-const template = readFileSync(path.join(root, "skills/livediagrams/scripts/lib/viewer-template.html"), "utf8");
+const { readViewer } = await import("../../skills/livediagrams/scripts/lib/viewer.mjs");
+const template = readViewer();
+const skeleton = readFileSync(path.join(root, "skills/livediagrams/scripts/lib/viewer-template.html"), "utf8");
 const port = Number(process.env.SKILL_DEV_PORT ?? 6470);
 if (port === 5190 || port === 6000) throw new Error("Choose another skill benchmark port");
 const serverRoot = path.join(root, "tests/.output/skill-dev-server");
@@ -32,7 +34,7 @@ try {
     server.watcher.emit("all", "change", "skill-benchmark");
     const start = performance.now();
     const response = await globalThis.fetch(`http://127.0.0.1:${port}/skill/scripts/lib/viewer-template.html`);
-    if (!response.ok || (await response.text()) !== template) throw new Error("Incorrect dev viewer response");
+    if (!response.ok || (await response.text()) !== skeleton) throw new Error("Incorrect dev viewer response");
     samples.push(performance.now() - start);
   }
   console.log(JSON.stringify({ startupMs, coldViewerMs: samples }, null, 2));

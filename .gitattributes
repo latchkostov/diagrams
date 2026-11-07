@@ -1,5 +1,6 @@
 * text=auto eol=lf
 *.png binary
+*.woff2 binary
 *.svg text eol=lf
 # Committed outputs consumed directly from git; refresh with pnpm regen.
 vercel.json linguist-generated=true
@@ -36,3 +37,17 @@ skills/livediagrams/reference/simulation.md linguist-generated=true
 # Keep UX review screenshots in the repository but out of source archives (GitHub tarballs and zips), so archive
 # downloads such as the Claude plugin directory's validator stay under its size limits.
 docs/screenshots/** export-ignore
+
+skills/livediagrams/scripts/lib/icons-0.json linguist-generated=true -diff
+skills/livediagrams/scripts/lib/icons-1.json linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-0.css linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-0.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-1.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-2.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-3.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-4.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-5.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-6.js linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-font-0.woff2 linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-font-1.woff2 linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer.json linguist-generated=true -diff

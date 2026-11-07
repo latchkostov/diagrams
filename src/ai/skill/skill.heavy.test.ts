@@ -2,6 +2,7 @@ import { planningP2Fixture } from "../../lab/planningP2Fixture";
 // The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
 // (layout, share-link encoding, what the app will open, the HTML export's injection), its released viewer is
 // self-consistent, and validate.mjs explains what's wrong.
+import { assembleViewer, readViewer, readIcons } from "../../../skills/livediagrams/scripts/lib/viewer.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
@@ -14,7 +15,14 @@ import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
 import generated from "../../../scripts/generated-files.json";
 import { selfHostSamples } from "../../../scripts/self-host-headers";
 import { hostingTemplates } from "../../../scripts/self-host-templates";
-import { applyRelease, iconMap, RELEASED, releasedFiles, type ReleaseFs } from "../../../scripts/skill-viewer";
+import {
+  applyRelease,
+  iconMap,
+  isReleased,
+  RELEASED,
+  releasedFiles,
+  type ReleaseFs,
+} from "../../../scripts/skill-viewer";
 import { buildViewer, buildViewerTemplate } from "../../../scripts/interactive-viewer";
 import {
   buildPayload,
@@ -103,7 +111,9 @@ describe("generated skill files", () => {
     const files = await generateSkillFiles(root);
     const all = [
       ...Object.keys(files).map((name) => `${SKILL_DIR}/${name}`),
-      ...Object.values(RELEASED).map((name) => `${SKILL_DIR}/${name}`),
+      ...readSkill()
+        .filter((f) => isReleased(f.name))
+        .map(({ name }) => `${SKILL_DIR}/${name}`),
       ...Object.keys({ ...selfHostSamples(), ...hostingTemplates() }).map((name) => `deploy/self-host/${name}`),
       "vercel.json",
     ];
@@ -761,6 +771,23 @@ describe("share-link.mjs", () => {
 });
 
 describe("the downloadable skill", () => {
+  it("assembles byte-identical single-template exports for public examples", async () => {
+    const original = await buildViewerTemplate(root);
+    const files = releasedFiles(root, original);
+    const assembled = assembleViewer((name) => Buffer.from(files[`scripts/lib/${name}`]));
+    expect(Buffer.from(assembled).equals(Buffer.from(original))).toBe(true);
+    for (const { diagram } of examples.slice(0, 3)) {
+      const input: ExportInput = {
+        diagram,
+        iconSvgs: iconMap(root),
+        theme: "light",
+        startSimulation: null,
+        exportedOn: "2026-11-06",
+      };
+      expect(Buffer.from(exportHtml(assembled, input)).equals(Buffer.from(exportHtml(original, input)))).toBe(true);
+    }
+  }, 30_000);
+
   it("replaces document authoring commands with the viewer's read-only port", async () => {
     const { modules } = await buildViewer(root);
     expect(modules.some((id) => id.endsWith("/src/export/viewer/readOnlyEditor.ts"))).toBe(true);
@@ -873,8 +900,8 @@ describe("the downloadable skill", () => {
 });
 
 /** The released viewer (`pnpm skill:release`, scripts/skill-viewer.ts), as committed. */
-const committedTemplate = readFileSync(path.join(skill, RELEASED.template), "utf8");
-const committedIcons = JSON.parse(readFileSync(path.join(skill, RELEASED.icons), "utf8")) as Record<string, string>;
+const committedTemplate = readViewer();
+const committedIcons = readIcons();
 const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("base64");
 const csp = (html: string) => /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html)?.[1] ?? "";
 /** The contents of every <tag> element without attributes (the executable script, the style). */
@@ -1052,15 +1079,17 @@ describe("export-html.mjs", () => {
     expect(readdirSync(tmp).filter((f) => f.endsWith(".html"))).toEqual([]);
   });
 
-  it("--password: the app's encryption, the password from the environment, nothing readable in the file", async () => {
+  it("--password: the app's encryption, explicit password input, nothing readable in the file", async () => {
     const diagram = read(kafka);
-    const password = "quartz meadow tangle 81";
+    const password = " quartz meadow tangle 81 ";
     const dir = out("locked");
-    const r = runWith(
-      { LIVEDIAGRAMS_HTML_PASSWORD: password },
+    const passwordFile = path.join(tmp, "password.txt");
+    writeFileSync(passwordFile, password + "\r\n");
+    const r = run(
       "export-html.mjs",
       kafka,
-      "--password",
+      "--password-file",
+      passwordFile,
       "--out",
       dir,
       "--banner",
@@ -1105,11 +1134,11 @@ describe("export-html.mjs", () => {
 
   it("never replaces a file: protected exports get names of their own, a taken name the next free one", () => {
     const dir = out("collide");
-    const env = { LIVEDIAGRAMS_HTML_PASSWORD: "quartz meadow tangle 81" };
+    const password = "quartz meadow tangle 81";
     const other = write({ ...read(kafka), title: "Another diagram" });
     // Two different diagrams, protected, into one folder: two files, each still the one exported.
-    const a = runWith(env, "export-html.mjs", kafka, "--password", "--out", dir);
-    const b = runWith(env, "export-html.mjs", other, "--password", "--out", dir);
+    const a = run("export-html.mjs", kafka, "--password", password, "--out", dir);
+    const b = run("export-html.mjs", other, "--password", password, "--out", dir);
     expect([a.code, b.code], a.err + b.err).toEqual([0, 0]);
     const [fileA, fileB] = [a, b].map((r) => r.out.split("\n")[0].replace(/ \([\d,]+ kB.*$/, ""));
     expect(fileA).not.toBe(fileB);
@@ -1126,49 +1155,51 @@ describe("export-html.mjs", () => {
     // A named --out that exists: refused, untouched, unless --force.
     const named = path.join(dir, "Kafka order pipeline.html");
     const before = readFileSync(named, "utf8");
-    const refused = runWith(env, "export-html.mjs", kafka, "--password", "--out", named);
+    const refused = run("export-html.mjs", kafka, "--password", password, "--out", named);
     expect(refused.code).toBe(1);
     expect(refused.err).toMatch(/already exists\. Nothing was written.*--force/);
     expect(readFileSync(named, "utf8")).toBe(before);
-    const forced = runWith(env, "export-html.mjs", kafka, "--password", "--out", named, "--force");
+    const forced = run("export-html.mjs", kafka, "--password", password, "--out", named, "--force");
     expect(forced.code, forced.err).toBe(0);
     expect(readFileSync(named, "utf8")).toContain(`<title>${LOCKED_TITLE}</title>`);
   }, 60_000);
 
-  it("--password never takes the password from the command line, and needs one to write anything", () => {
+  it("requires explicit password input and rejects invalid inputs without writing or echoing", () => {
     const dir = out("refused");
-    const inArgs = run("export-html.mjs", kafka, "--password=hunter2hunter2", "--out", dir);
-    expect(inArgs.code).toBe(2);
-    expect(inArgs.err).toMatch(/takes no value.*shell history.*LIVEDIAGRAMS_HTML_PASSWORD/);
-    const asNext = run("export-html.mjs", kafka, "--password", "hunter2hunter2", "--out", dir);
-    expect(asNext.code).toBe(2);
-    expect(asNext.err).toMatch(/takes no value/);
-    // No variable and no terminal to ask in (stdin is a pipe here).
-    const none = run("export-html.mjs", kafka, "--password", "--out", dir);
-    expect(none.code).toBe(2);
-    expect(none.err).toMatch(/needs the password in LIVEDIAGRAMS_HTML_PASSWORD, or a terminal/);
-    const short = runWith(
-      { LIVEDIAGRAMS_HTML_PASSWORD: "short" },
-      "export-html.mjs",
-      kafka,
-      "--password",
-      "--out",
-      dir,
-    );
+    for (const option of ["--password", "--password-file"]) {
+      const none = run("export-html.mjs", kafka, option, "--out", dir);
+      expect(none.code).toBe(2);
+      expect(none.err).toContain(`${option} needs a value`);
+    }
+    const missing = run("export-html.mjs", kafka, "--password-file", path.join(tmp, "missing"), "--out", dir);
+    expect(missing.code).toBe(1);
+    expect(missing.err).toContain("Could not read --password-file");
+    const inline = run("export-html.mjs", kafka, "--password=secret-value", "--out", dir);
+    expect(inline.code).toBe(2);
+    expect(inline.err).not.toContain("secret-value");
+    const both = run("export-html.mjs", kafka, "--password", "secret-value", "--password-file", "unused", "--out", dir);
+    expect(both.code).toBe(2);
+    expect(both.err).not.toContain("secret-value");
+    // The viewer's password box is one line: a password with a line break left in could never unlock the file.
+    const multiline = path.join(tmp, "multiline-password.txt");
+    writeFileSync(multiline, "correct horse battery\n\n");
+    const broken = run("export-html.mjs", kafka, "--password-file", multiline, "--out", dir);
+    expect(broken.code).toBe(1);
+    expect(broken.err).toContain("can't contain a line break");
+    expect(broken.err).not.toContain("correct horse");
+    const literal = run("export-html.mjs", kafka, "--password", "correct horse\rbattery", "--out", dir);
+    expect(literal.code).toBe(1);
+    expect(literal.err).toContain("can't contain a line break");
+    const short = run("export-html.mjs", kafka, "--password", "short", "--out", dir);
     expect(short.code).toBe(1);
     expect(short.err).toMatch(/at least 8 characters/);
     expect(existsSync(dir)).toBe(false);
-    // A guessable one works, with the strength hint's warning.
-    const weak = runWith(
-      { LIVEDIAGRAMS_HTML_PASSWORD: "password1" },
-      "export-html.mjs",
-      kafka,
-      "--password",
-      "--out",
-      dir,
-    );
+    const weak = run("export-html.mjs", kafka, "--password", "password1", "--out", dir);
     expect(weak.code, weak.err).toBe(0);
     expect(weak.err).toMatch(/^warning: Easy to guess/);
+    expect(weak.out + weak.err).not.toContain("password1");
+    const source = readFileSync(path.join(skill, "scripts/export-html.mjs"), "utf8");
+    expect(source).not.toMatch(/process\.env|stdin|setRawMode/);
   }, 60_000);
 
   it("uses nothing that could reach the network", () => {
@@ -1180,11 +1211,11 @@ describe("export-html.mjs", () => {
 });
 
 describe("releasing the viewer", () => {
-  it("keeps the plugin unversioned (commit-tracked) and its manifest outside the downloadable skill", () => {
+  it("keeps the directory version fixed and its manifest outside the downloadable skill", () => {
     const manifest = JSON.parse(readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8"));
     expect(manifest.plugins[0]).not.toHaveProperty("version");
     const plugin = read(path.join(skill, ".claude-plugin", "plugin.json"));
-    expect(plugin).not.toHaveProperty("version");
+    expect(plugin).toHaveProperty("version", "1.0.0");
     expect(readSkill().every((f) => f.name === "SKILL.md" || /^(reference|scripts)\//.test(f.name))).toBe(true);
   });
 
@@ -1203,10 +1234,9 @@ describe("releasing the viewer", () => {
       // The second asset's swap fails: the assets already swapped get their old contents back.
       let failIcons = true;
       const fs: ReleaseFs = {
-        readFileSync: (f, e) => readFileSync(f, e),
-        writeFileSync: (f, t, encoding) => {
-          expect(encoding).toBe("utf8");
-          writeFileSync(f, t, encoding);
+        readFileSync: (f) => readFileSync(f),
+        writeFileSync: (f, t) => {
+          writeFileSync(f, t);
         },
         renameSync: (from, to) => {
           if (failIcons && to === icons) throw new Error("disk full");
@@ -1243,9 +1273,18 @@ describe("releasing the viewer", () => {
     const files = readSkill();
     const fresh = releasedFiles(root, "<!doctype html><title>fresh</title>\n");
     const served = withFresh(files, fresh);
-    expect(served.map((f) => f.name)).toEqual(files.map((f) => f.name));
-    expect(served.find((f) => f.name === RELEASED.template)?.data.toString("utf8")).toBe(fresh[RELEASED.template]);
-    expect(JSON.parse(served.find((f) => f.name === RELEASED.icons)!.data.toString("utf8"))).toEqual(iconMap(root));
+    expect(assembleViewer((name) => served.find((f) => f.name === `scripts/lib/${name}`)!.data)).toBe(
+      "<!doctype html><title>fresh</title>\n",
+    );
+    const iconFiles = JSON.parse(served.find((f) => f.name === RELEASED.icons)!.data.toString("utf8")) as string[];
+    expect(
+      Object.assign(
+        {},
+        ...iconFiles.map((name) =>
+          JSON.parse(served.find((f) => f.name === `scripts/lib/${name}`)!.data.toString("utf8")),
+        ),
+      ),
+    ).toEqual(iconMap(root));
     expect(served.find((f) => f.name === "SKILL.md")).toBe(files.find((f) => f.name === "SKILL.md"));
     expect(() => withFresh(files, { "scripts/lib/nope.html": "" })).toThrow(/no scripts\/lib\/nope\.html/);
   });

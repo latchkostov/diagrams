@@ -1,3 +1,4 @@
+import { assembleViewer } from "../../skills/livediagrams/scripts/lib/viewer.mjs";
 import { spawnSync } from "node:child_process";
 import { downloadSkill } from "./skill-download";
 import { openHtmlExport } from "./html-export-dialog";
@@ -124,17 +125,19 @@ test.describe("The agent skill's Interactive HTML export", () => {
     test.setTimeout(90_000);
     const password = "plum orbit lantern 42";
     const dir = test.info().outputPath("skill-locked");
-    // The password from the environment, never an argument.
+    const passwordFile = test.info().outputPath("password.txt");
+    writeFileSync(passwordFile, password);
     const r = spawnSync(
       process.execPath,
       [
         join(SCRIPTS, "export-html.mjs"),
         join(process.cwd(), "src", "examples", `${KAFKA}.json`),
-        "--password",
+        "--password-file",
+        passwordFile,
         "--out",
         dir,
       ],
-      { encoding: "utf8", env: { ...process.env, LIVEDIAGRAMS_HTML_PASSWORD: password } },
+      { encoding: "utf8" },
     );
     expect(r.status, r.stderr).toBe(0);
     const path = r.stdout.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
@@ -223,7 +226,23 @@ test.describe("The agent skill's Interactive HTML export", () => {
     test.skip(E2E_TARGET !== "build", "the dev server builds the template under another name");
     const res = await page.request.get("/skill/scripts/lib/viewer-template.html");
     expect(res.status()).toBe(200);
-    const template = await res.text();
+    const manifestResponse = await page.request.get("/skill/scripts/lib/viewer.json");
+    const manifestText = await manifestResponse.text();
+    const manifest = JSON.parse(manifestText) as Record<string, { file: string }[]>;
+    const assets = new Map<string, Buffer>([
+      ["viewer-template.html", Buffer.from(await res.text())],
+      ["viewer.json", Buffer.from(manifestText)],
+    ]);
+    for (const { file } of Object.values(manifest).flat()) {
+      const response = await page.request.get(`/skill/scripts/lib/${file}`);
+      expect(response.status()).toBe(200);
+      assets.set(file, await response.body());
+    }
+    const template = assembleViewer((name) => {
+      const data = assets.get(name);
+      if (!data) throw new Error(`Missing viewer asset ${name}`);
+      return data;
+    });
     // The app's own template is emitted as export/interactive-viewer-<its sha256>.html.
     const hash = createHash("sha256").update(template).digest("hex").slice(0, 10);
     const app = await page.request.get(`/export/interactive-viewer-${hash}.html`);
@@ -233,9 +252,14 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await page.goto("./skill/");
     const download = await downloadSkill(page);
     const zip = readFileSync(await download.path());
-    expect(zipEntries(zip).get("livediagrams/scripts/lib/viewer-template.html")?.toString("utf8") === template).toBe(
-      true,
-    );
+    const entries = zipEntries(zip);
+    expect(
+      assembleViewer((name) => {
+        const data = entries.get(`livediagrams/scripts/lib/${name}`);
+        if (!data) throw new Error(`Missing ZIP viewer asset ${name}`);
+        return data;
+      }),
+    ).toBe(template);
   });
 
   test("the downloaded skill exports a file that plays offline", async ({ page, context }) => {

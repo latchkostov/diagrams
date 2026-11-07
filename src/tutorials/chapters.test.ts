@@ -5,6 +5,45 @@ import { lessonNumber } from "./handoff";
 import { chapterSeals, earnedSeals } from "./seals";
 import { recordSeals, withoutProgress } from "./progress";
 
+it("includes the six caching lessons in chapter counts, numbering, seals and scoped reset", () => {
+  expect(tracks.map((track) => tutorials.filter((lesson) => lesson.track === track.id).length)).toEqual([
+    14, 14, 11, 8, 11, 6, 4,
+  ]);
+  const ids = [
+    "cdn-cache",
+    "derived-hit-ratio",
+    "cache-latency",
+    "cache-stampede",
+    "stale-while-revalidate",
+    "cold-cache",
+  ];
+  expect(
+    ids.map((id) =>
+      lessonNumber(
+        tutorials.find((t) => t.id === id)!,
+        tutorials,
+      ),
+    ),
+  ).toEqual(["2.6", "3.2", "4.1", "5.1", "5.2", "5.3"]);
+  const progress = Object.fromEntries(
+    tutorials.map((t) => [t.id, { version: t.version, step: t.steps.length, completed: true }]),
+  );
+  for (const id of ids) {
+    const partial = { progress: { ...progress, [id]: { ...progress[id], completed: false } } };
+    expect(earnedSeals(partial, tutorials)).not.toContain("whole-syllabus");
+    const track = tutorials.find((t) => t.id === id)!.track;
+    expect(earnedSeals(partial, tutorials)).not.toContain(chapters[track].seal);
+    const reset = withoutProgress(
+      { progress, marks: { [chapters[track].seal]: 123, "whole-syllabus": 456 } },
+      { lesson: id },
+      tutorials,
+    );
+    expect(reset.progress?.[id]).toBeUndefined();
+    expect(reset.progress?.["cache-aside"]).toEqual(progress["cache-aside"]);
+    expect(earnedSeals(reset, tutorials)).not.toContain("whole-syllabus");
+  }
+});
+
 it("derives order, numbering and seal identity from seven keyed descriptors", () => {
   expect(tracks).toHaveLength(7);
   expect(tracks.map((c) => c.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);

@@ -1,3 +1,4 @@
+import "../sim/cache/cacheRuntime";
 import { planTurn } from "../ai/ui/apply";
 import { parseReply } from "../ai/ui/reply";
 import { workerReply, renameReply } from "./catalog/agentReplies";
@@ -219,6 +220,7 @@ function sandbox(
   let draft: Simulation | null = null;
   /** The Simulations panel's working copy (SimPanel's local state), while it's open on a run. */
   let panelCopy: Simulation | null = null;
+  let closedPanelCopy: Simulation | null = null;
   let liveSync: LiveSync | undefined;
   const session = {
     get draft() {
@@ -226,6 +228,9 @@ function sandbox(
     },
     get panelCopy() {
       return panelCopy;
+    },
+    get closedPanelCopy() {
+      return closedPanelCopy;
     },
     openPanel(sim: Simulation | null) {
       panelCopy = sim && structuredClone(sim);
@@ -307,6 +312,7 @@ function sandbox(
       },
       closePanel: () => {
         panels.panelOpen = false;
+        closedPanelCopy = panelCopy;
         panelCopy = null;
         renderUi();
       },
@@ -1036,7 +1042,10 @@ function sandbox(
           return ui.openPanel();
         }
         case "saveSimulation": {
-          const simulations = withSavedSimulation(diagram, demo);
+          const simulations = withSavedSimulation(diagram, {
+            ...demo,
+            drills: demo.drills?.map((d) => ({ ...d, target: d.target ? id(d.target) : undefined })),
+          });
           return simulations && editor.updateMeta({ simulations });
         }
         case "continueNote":
@@ -1088,6 +1097,7 @@ const checkNeedsTime = (check: Check): boolean =>
       (check.kind === "trace" && (!!check.complete || !!check.deadLetter)) ||
       check.kind === "processed" ||
       check.kind === "metric" ||
+      check.kind === "compare" ||
       check.kind === "expectation" ||
       check.kind === "note" ||
       check.kind === "sequence" ||
@@ -1604,22 +1614,28 @@ const coversRun = (demo: RunRepair, id: string, selected: string | undefined) =>
 /** The opposite of what a repair writes: a value its milestone rejects. */
 function contrary(patch: PropPatch): PropPatch {
   const key = String(patch.path.at(-1));
+  // A deleted cache rule is a valid learner edit. Null is not a runnable cache table.
+  if (patch.op === "ensureItem" && patch.path[0] === "cache") return { op: "set", path: patch.path, value: [] };
   if (patch.op === "atLeast") return { op: "set", path: patch.path, value: patch.value / 8 };
   const value = patch.op === "set" ? resolve(patch.value) : undefined;
   const bad =
-    typeof value === "boolean"
-      ? !value
-      : typeof value === "number"
-        ? key === "deadlineMs" || key === "latencyMs"
-          ? value * 4
-          : key === "failureRate"
-            ? 0
-            : key === "poolConnections"
-              ? 10
-              : key === "capacity"
-                ? 2
-                : 1
-        : null;
+    patch.path[0] === "cache" && key === "policy"
+      ? { ttlMs: 1000, keys: 20, popularity: "even" }
+      : patch.path[0] === "cache" && key === "ttlMs"
+        ? 100
+        : typeof value === "boolean"
+          ? !value
+          : typeof value === "number"
+            ? key === "deadlineMs" || key === "latencyMs"
+              ? value * 4
+              : key === "failureRate"
+                ? 0
+                : key === "poolConnections"
+                  ? 10
+                  : key === "capacity"
+                    ? 2
+                    : 1
+            : null;
   return { op: "set", path: patch.path, value: bad as PatchValue };
 }
 
@@ -1715,7 +1731,8 @@ describe("every tutorial's completion contract", () => {
             const savedBefore = run ? s.diagram.simulations?.find((sim) => sim.id === run) : undefined;
             if (perturbation === "learner edited saved Inputs") {
               // Through the Inputs panel: its what-ifs on the selected run, then Save to simulation.
-              s.learn({ kind: "runSimulation", id: run! });
+              // Reselecting the current run would satisfy a restart milestone before making the learner edit.
+              if (s.live?.getState().simulation?.id !== run) s.learn({ kind: "runSimulation", id: run! });
               const live = s.live!;
               for (const demo of runRepairs(step)) {
                 if (demo.edge) continue;
@@ -1833,9 +1850,14 @@ describe("every tutorial's completion contract", () => {
               expect(copy).toMatchObject({ id: run, title: "Learner draft", seed: 4242 });
               expectRepaired(s, step, copy, run);
               expect(s.diagram.simulations!.find((sim) => sim.id === run)).toEqual(savedBefore);
-              // The open panel's copy got the same repair, its pending edit kept: its Run and Save keep the repair.
-              expect(s.session.panelCopy).toMatchObject({ id: run, title: "Learner draft", description: "Pending" });
-              expectRepaired(s, step, s.session.panelCopy!, run);
+              // Inspect the repaired pending copy before an explicitly requested close, or still open otherwise.
+              const closesPanel = step.demo.some(
+                (demo) => demo.kind === "openView" && demo.view === "simulations" && demo.open === false,
+              );
+              const pending = closesPanel ? s.session.closedPanelCopy : s.session.panelCopy;
+              expect(pending).toMatchObject({ id: run, title: "Learner draft", description: "Pending" });
+              expectRepaired(s, step, pending!, run);
+              if (closesPanel) expect(s.session.panelCopy).toBeNull();
             } else if (perturbation === "learner-changed multipliers before the reference replay") {
               expectAuthoredMultipliers(tutorial, s.diagram.simulations!);
               expectAuthoredMultipliers(tutorial, [s.live!.getState().simulation!]);

@@ -1,3 +1,4 @@
+import { cachingPractice, coldCachePractice } from "./cachingPractice";
 import { keyboardSelectionFixture, keyboardBoundaryFarFixture } from "./keyboardSelectionFixture";
 import { backlogScalingPractice, breakerPractice, deadLetterPractice } from "./waitingPractice";
 import { resourcePractice, experimentPractice } from "./simulationPractice";
@@ -339,6 +340,8 @@ const diagramPresets: Preset[] = [
     backlogScalingPractice,
     breakerPractice,
     deadLetterPractice,
+    () => cachingPractice(),
+    coldCachePractice,
   ].map((diagram, index): Preset => ({
     kind: "diagram",
     id: [
@@ -350,6 +353,8 @@ const diagramPresets: Preset[] = [
       "tutorial-backlog-scaling-practice",
       "tutorial-breaker-practice",
       "tutorial-dead-letter-practice",
+      "tutorial-caching-practice",
+      "tutorial-cold-cache-practice",
     ][index],
     title: diagram().title,
     group: "Diagrams",

@@ -309,7 +309,9 @@ export function unreachableFiles(bundle: Record<string, BundleFile>): string[] {
   const candidates = Object.keys(bundle).filter((name) => bundle[name].type === "chunk" || name.endsWith(".css"));
   const roots = Object.keys(bundle).filter((name) => {
     const f = bundle[name];
-    return f.type === "chunk" ? f.isEntry : name.endsWith(".html");
+    // Downloadable JSON manifests also name runtime assets (the skill's viewer CSS,
+    // for example). Their consumers assemble files outside the app's import graph.
+    return f.type === "chunk" ? f.isEntry : /\.(?:html|json)$/.test(name);
   });
   const reached = new Set(roots);
   let waiting = candidates.filter((name) => !reached.has(name));

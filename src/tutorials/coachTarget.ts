@@ -71,7 +71,11 @@ export function locate({ targets, subjects, edges, selected }: TargetProps): Loc
   const modal = document.querySelector('[aria-modal="true"]');
   // A field is more useful than its disclosure, which is more useful than a canvas subject.
   const priority = (t: Target) =>
-    t.testId.startsWith("inspector-field-") ? 0 : t.testId.startsWith("inspector-section-") ? 1 : 2;
+    t.priority === "field" || t.testId.startsWith("inspector-field-")
+      ? 0
+      : t.priority === "disclosure" || t.testId.startsWith("inspector-section-")
+        ? 1
+        : 2;
   for (const target of [...targets].sort((a, b) => priority(a) - priority(b))) {
     // A canvas gesture is context, not a control that a card can sit outside of.
     if (target.testId === "canvas-pane") continue;

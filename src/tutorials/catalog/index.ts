@@ -1,3 +1,9 @@
+import { coldCache } from "./coldCache";
+import { staleWhileRevalidate } from "./staleWhileRevalidate";
+import { cacheStampede } from "./cacheStampede";
+import { cacheLatency } from "./cacheLatency";
+import { derivedHitRatio } from "./derivedHitRatio";
+import { cdnCache } from "./cdnCache";
 import { AI_TOOLS } from "../../lib/deployment";
 import { ROOMS } from "../../lib/localOnly";
 import { exportForAudience } from "./exportForAudience";
@@ -89,6 +95,7 @@ export const allTutorials: readonly Tutorial[] = [
   kafkaTopic,
   queueWorkers,
   loadBalancer,
+  cdnCache,
   cacheAside,
   webhooks,
   fanout,
@@ -97,6 +104,7 @@ export const allTutorials: readonly Tutorial[] = [
   dependencies2,
   networkPolicy,
   checksAndFixes,
+  cacheLatency,
   whereTimeGoes,
   threadsBlock,
   timeoutsPools,
@@ -105,6 +113,7 @@ export const allTutorials: readonly Tutorial[] = [
   scaleOnBacklog,
   scaleToZero,
   ratesAndInputs,
+  derivedHitRatio,
   readANode,
   capacity,
   resourceHeadroom,
@@ -114,6 +123,9 @@ export const allTutorials: readonly Tutorial[] = [
   authorASimulation,
   faults,
   authorADrill,
+  cacheStampede,
+  staleWhileRevalidate,
+  coldCache,
   retryStorm,
   backoffBudget,
   circuitBreaker,

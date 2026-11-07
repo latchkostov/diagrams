@@ -58,6 +58,16 @@ const stencilIds = new Set(stencils.map((s) => s.id));
  */
 function knownTestId(id: string): boolean {
   if (!id) return true;
+  // Cache child controls compose the rule-row template with CachePolicyFields' id.
+  const cache = /^cache-rule-([^-]+)-(.+)$/.exec(id);
+  if (cache && source.includes("id={`cache-rule-${rule.id}`}")) {
+    const suffix = cache[2];
+    if (source.includes("data-testid={`${id}-" + suffix + "`}")) return true;
+    const disclosure = suffix.replace(/-toggle$/, "");
+    if (source.includes("testId={`${id}-" + disclosure + "`}")) return true;
+    if (/^ttl-\d+$/.test(suffix) && source.includes("data-testid={`${id}-ttl-${ttl}`}"))
+      return [10000, 60000, 300000, 3600000].includes(Number(suffix.slice(4)));
+  }
   if (
     id.endsWith("-toggle") &&
     source.includes("data-testid={`${testId}-toggle`}") &&
@@ -568,7 +578,9 @@ describe("tutorial catalog", () => {
                 expect(Object.keys(patch.match).length, `${step.id}: ensureItem matches nothing`).toBeGreaterThan(0);
                 for (const key of [...Object.keys(patch.match), ...Object.keys(patch.with ?? {})])
                   expect(UNSAFE_KEYS.has(key), `${step.id}: ${key}`).toBe(false);
-              } else expect(patch.value, `${step.id}: ${patch.op} writes nothing`).not.toBeUndefined();
+              } else if (patch.op === "unset")
+                expect(typeof patch.path.at(-1), `${step.id}: unset removes an own object key`).toBe("string");
+              else expect(patch.value, `${step.id}: ${patch.op} writes nothing`).not.toBeUndefined();
             }
           }
         }

@@ -15,14 +15,14 @@ In <https://claude.ai/directory/manage>, choose **Submit new → Plugin bundle**
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Repository        | `https://github.com/latchkostov/diagrams`                                                                                                                        |
 | Plugin path       | `skills/livediagrams`                                                                                                                                            |
-| Tracked branch    | `master` (after this change merges)                                                                                                                              |
+| Tracked branch    | `release/skill` (a stable branch; see "Releasing a new version")                                                                                                 |
 | Identifier        | `livediagrams`                                                                                                                                                   |
 | Listing name      | Live Diagrams                                                                                                                                                    |
 | Short description | Draw architecture and event-driven system diagrams with live message-flow simulations as offline interactive HTML files, editable diagram files, or share links. |
 | Publisher         | Live Diagrams                                                                                                                                                    |
 | Homepage          | `https://www.livediagrams.dev`                                                                                                                                   |
 | Licence           | MIT                                                                                                                                                              |
-| Version           | None: unversioned, tracks the commit                                                                                                                             |
+| Version           | `version` in plugin.json (1.0.0 at the first release)                                                                                                            |
 | Contact email     | **[OWNER TO FILL IN IN THE PORTAL — do not commit an address]**                                                                                                  |
 
 The name and short description come from
@@ -110,3 +110,19 @@ Recommend **GitHub push webhook** on **master**, with scheduled checks as the di
 After submission, use **Set up push updates** (repository admin access required). Keep the webhook
 secret in the portal/GitHub configuration, never in the repo. New commits are scanned and reviewed
 before going live; a webhook is update detection, not automatic approval or publication.
+
+## Releasing a new version
+
+The directory checks the tracked branch for new commits about every 6 hours, and every new commit there is a new
+version that may need review. So the submission tracks `release/skill`, not `master`; it moves only when the
+skill itself changes. `release/skill` is protected against deletion and force-pushes.
+
+To release:
+
+1. Make sure the change to `skills/livediagrams` is merged on `master` and CI is green.
+2. Run `claude plugin validate skills/livediagrams` on that commit; it must pass with no warnings.
+3. Bump `version` in `plugin.json` (semver) in that change.
+4. Fast-forward the branch: `git push origin <master commit>:refs/heads/release/skill`.
+5. In the directory, choose **Check for new commits** (or wait for the scheduled check).
+
+Master commits that don't touch the skill never reach the directory.

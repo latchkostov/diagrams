@@ -34,6 +34,50 @@ test("keyboard text recipes append a setting at the native document end", async 
   await expect(settings).toHaveValue("Orders:PageSize\nFeatures:*\nNotifications:Token");
 });
 
+test("keyboard AI dock activation waits for the lazy panel's actual focus", async ({ page }) => {
+  await page.goto("./?tutorial=review-agent-changes");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "open");
+  const handoff = await page.evaluateHandle(() => {
+    const original = HTMLElement.prototype.focus;
+    const pending: (() => void)[] = [];
+    let requested!: () => void;
+    const started = new Promise<void>((resolve) => (requested = resolve));
+    HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+      if (this.getAttribute("data-testid") === "ai-panel") {
+        pending.push(() => original.call(this, options));
+        requested();
+      } else original.call(this, options);
+    };
+    return {
+      started,
+      release() {
+        HTMLElement.prototype.focus = original;
+        for (const focus of pending.splice(0)) focus();
+      },
+    };
+  });
+  let returned = false;
+  const navigating = play(page, { activate: "ai-rail-open" }).finally(() => (returned = true));
+  const outcome = navigating.catch((error: unknown) => error);
+  try {
+    await handoff.evaluate(({ started }) => started);
+    await animationFrames(page);
+    expect(returned, "opening the dock does not complete its keyboard focus handoff").toBe(false);
+    await handoff.evaluate(({ release }) => release());
+    await navigating;
+    await expect(page.getByTestId("ai-panel")).toBeFocused();
+    await play(page, { activate: "tutorial-skip" });
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "context");
+  } finally {
+    await handoff.evaluate(({ release }) => release());
+    await outcome;
+    await handoff.dispose();
+  }
+});
+
 for (const id of keyboardTutorialGroups[0]) {
   test(`${id}: keyboard solution plays through the real UI`, async ({ page, consoleErrors }) => {
     await runKeyboardTutorial(page, consoleErrors, id);

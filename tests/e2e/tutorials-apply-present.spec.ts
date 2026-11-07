@@ -140,11 +140,11 @@ test("batch6 hub keeps chapter VII numbered and optional lessons outside core se
   await expect(page.getByTestId("tutorial-card-review-agent-changes")).toContainText("7.4");
   await expect(page.getByTestId("tutorial-optional-work-together")).toHaveText("Optional extension");
   await expect(page.getByTestId("tutorial-optional-review-agent-changes")).toHaveText("Optional extension");
-  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 60 core lessons · 0 of 8 seals");
+  await expect(page.getByTestId("tutorials-overall")).toContainText("0 of 66 core lessons · 0 of 8 seals");
   await page.screenshot({ path: info.outputPath("hub-chapter-vii.png"), fullPage: true });
   await page.getByTestId("tutorials-seals").click();
   await expect(page.getByTestId("tutorials-seal-chapter-sharing")).toContainText("Not yet · 0 of 2");
-  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("60 core lessons");
+  await expect(page.getByTestId("tutorials-seal-whole-syllabus")).toContainText("66 core lessons");
 });
 
 test("batch6 supplied replies use the named Read note control and stay left-to-right", async ({ page }) => {
