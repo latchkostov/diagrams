@@ -643,6 +643,18 @@ export function analyzeCapacity(
     }
     return value * (cache?.fetchShare ?? 1 - hit);
   }
+  /** Connection shares for ordinary forwarding and cold-origin projection use the same caller semantics. */
+  function connectionShare(edge: CompiledEdge, type: string, injected = false): number {
+    return forwardingShare(
+      entries.get(edge.from)!.role,
+      edge,
+      type,
+      injected ? "injected" : "output",
+      undefined,
+      undefined,
+      cacheMatchers.has(edge.from),
+    );
+  }
   function propagate(next: Rates, entry: Entry, key: string, rate: number, injected: boolean): void {
     if (!rate) return;
     const id = entry.input.id;
@@ -715,15 +727,7 @@ export function analyzeCapacity(
     } else {
       for (const edge of routesOut) {
         if (edge.deny) continue;
-        const share = forwardingShare(
-          entry.role,
-          edge,
-          type,
-          injected ? "injected" : "output",
-          undefined,
-          undefined,
-          cacheMatchers.has(id),
-        );
+        const share = connectionShare(edge, type, injected);
         if (!share) continue;
         const lookupId = aside.get(edge.id);
         let missShare = 1;
@@ -733,15 +737,7 @@ export function analyzeCapacity(
           const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
           const cached = rule && cacheDemand[lookup.to]?.[rule.id];
           missShare = cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0);
-          missShare *= forwardingShare(
-            entry.role,
-            lookup,
-            type,
-            injected ? "injected" : "output",
-            undefined,
-            undefined,
-            cacheMatchers.has(id),
-          );
+          missShare *= connectionShare(lookup, type, injected);
         }
         send(next, edge, type, rate * share * missShare, branchRoute(edge, route));
       }
@@ -807,7 +803,8 @@ export function analyzeCapacity(
                 ? decision === "legacy"
                   ? 1 / origins.length
                   : decision.weights[index] / decision.forwarded / decision.sum
-                : 1;
+                : connectionShare(edge, c.type);
+            if (!fraction) return;
             const demand = (item.origins![edge.to] ??= { rate: 0, fetchMs: 0, edge: edge.id });
             demand.rate += rate * admitted * fraction;
             demand.fetchMs += rate * admitted * fraction * response;

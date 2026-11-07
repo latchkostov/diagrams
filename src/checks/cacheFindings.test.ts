@@ -4,6 +4,8 @@ import type { CacheTable } from "../model/caching";
 import small from "../examples/cache-stampede.json";
 import blackFriday from "../examples/black-friday-commerce.json";
 import { cacheFixture } from "../lab/cacheFixture";
+import { cacheAsideFixture } from "../lab/cacheAsideFixture";
+import { analyzeCapacity } from "../sim/capacity";
 import { buildContext } from "./context";
 import { computeCacheFindings, cacheRules, CACHE_RULES } from "./cacheFindings";
 import { runChecks, onlyRules, summarize } from "./run";
@@ -14,6 +16,27 @@ import * as threadFix from "../live/threadFixPlan";
 import { presentCacheFinding } from "./cachePresentation";
 import * as headless from "../sim/headless";
 import { probeCache, coldCacheSimulation, cacheWork } from "./cacheProbe";
+
+it.each(["read-through", "cache-aside"])("sizes a fractional %s origin from its connection share", (kind) => {
+  const d = kind === "read-through" ? cacheFixture() : cacheAsideFixture();
+  const cache = d.nodes.find((n) => n.id === "cache")!;
+  if (kind === "read-through") cache.stencil = "generic.cache";
+  cache.props!.cache = { rules: [], default: { ttlMs: 1000, keys: 1000, popularity: "even" } };
+  const fetch = d.edges.find((e) => e.id === "fetch")!;
+  fetch.props!.share = 0.1;
+  const origin = d.nodes.find((n) => n.id === fetch.to)!;
+  origin.stencil = "generic.service";
+  origin.props = { latencyMs: 100, concurrency: 1, replicas: 1, jitter: 0 };
+  const analysis = analyzeCapacity(d);
+  expect.soft(analysis.cacheDemand!.cache[""].origins![origin.id].rate).toBeCloseTo(20);
+  const cold = structuredClone(d);
+  cold.nodes.find((n) => n.id === "cache")!.props!.cache = { rules: [], default: { noStore: true } };
+  expect(analyzeCapacity(cold).connections.fetch).toBeCloseTo(20);
+  const finding = runChecks(d, { rules: ["cache-cold-start"] }).findings[0];
+  expect.soft(finding?.cacheFinding).toMatchObject({ origin: origin.id, coldPerSec: 20, capacityPerSec: 10 });
+  expect.soft(finding?.fix?.cacheLabel).toEqual({ kind: "replicas", value: 4 });
+  expect(finding?.fix?.ops).toContainEqual({ op: "update", target: origin.id, props: { replicas: 4 } });
+});
 
 it("covers the small cache example with probe evidence and undoable fixes", () => {
   const d = structuredClone(small) as DiagramFile;
