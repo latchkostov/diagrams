@@ -27,6 +27,8 @@ for (const locale of ["en", "ar"]) {
     const when = page.getByTestId("inspector-field-onMiss");
     await expect(when).toHaveAccessibleName(locale === "en" ? "When" : "متى");
     await expect(when).toHaveValue("lookup");
+    await expect(page.getByTestId("inspector-hint-onMiss")).toBeVisible();
+    await expect(when).toHaveAttribute("aria-describedby", "cache-aside-hint");
     await expect(when).toContainText("\u2068Product cache\u2069");
     const full = await page.getByTestId("inspector-unit-onMiss").boundingBox();
     const control = await when.boundingBox();
@@ -34,10 +36,14 @@ for (const locale of ["en", "ar"]) {
     expect(control?.width).toBeGreaterThan((full?.width ?? Infinity) * 0.9);
     await page.screenshot({ path: test.info().outputPath(`cache-aside-${locale}.png`) });
     await when.selectOption("");
+    await expect(page.getByTestId("inspector-hint-onMiss")).toHaveCount(0);
+    await expect(when).not.toHaveAttribute("aria-describedby");
     await expect
       .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "fetch")?.props?.caller)
       .toEqual({ wait: "blocking" });
     await page.getByTestId("undo-button").click();
     await expect(when).toHaveValue("lookup");
+    await expect(page.getByTestId("inspector-hint-onMiss")).toBeVisible();
+    await expect(when).toHaveAttribute("aria-describedby", "cache-aside-hint");
   });
 }

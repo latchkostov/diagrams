@@ -1,4 +1,4 @@
-import { analysisCache, effectiveCacheTable } from "./cache/cacheAnalysis";
+import { compileCacheConfiguration } from "./cache/cacheAnalysis";
 import { onMiss } from "../model/cacheAside";
 import { cacheHitShare, cacheFetchShare } from "./cache/cacheMath";
 import { cacheTrackingEligible } from "./cache/tracking";
@@ -275,51 +275,35 @@ export function analyzeCapacity(
       ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
+  const compiled = options.topology ?? compileTopology(diagram);
+  const compiledEdges = new Map(compiled.edges.map((e) => [e.id, e]));
+  const edgeInputs = new Map(diagram.edges.map((edge) => [edge.id, edge]));
+  const cacheConfig = compileCacheConfiguration(diagram, simulation);
   const aside = new Map<string, string>();
-  const asideOrigins = new Map<string, typeof diagram.edges>();
+  const asideCompiledOrigins = new Map<string, CompiledEdge[]>();
   if (revisionAtLeast(diagram.planning?.revision, "p3-w3"))
-    for (const edge of diagram.edges) {
-      const ref = onMiss(edge);
-      const lookup = ref && diagram.edges.find((e) => e.id === ref && e.from === edge.from);
-      if (
-        !lookup ||
-        !effectiveCacheTable(
-          diagram,
-          diagram.nodes.find((n) => n.id === lookup.to)!,
-          simulation,
-        )
-      )
-        continue;
+    for (const edge of compiled.edges) {
+      const ref = onMiss(edgeInputs.get(edge.id)!);
+      const lookup = ref ? compiledEdges.get(ref) : undefined;
+      if (!lookup || lookup.from !== edge.from || !cacheConfig.tables.has(lookup.to)) continue;
       aside.set(edge.id, lookup.id);
-      asideOrigins.set(lookup.to, [...(asideOrigins.get(lookup.to) ?? []), edge]);
+      let origins = asideCompiledOrigins.get(lookup.to);
+      if (!origins) asideCompiledOrigins.set(lookup.to, (origins = []));
+      origins.push(edge);
     }
   const asideLookups = new Set(aside.values());
   const cacheMatchers = new Map(
-    diagram.nodes.flatMap((node) => {
-      const match = analysisCache(diagram, node, simulation);
-      return match && compiledCacheOrigin(node.id) ? [[node.id, match] as const] : [];
-    }),
+    [...cacheConfig.matchers].filter(
+      ([id]) => asideCompiledOrigins.has(id) || compiled.outgoing.get(id)?.some((e) => e.sync && !e.dlq),
+    ),
   );
-  function compiledCacheOrigin(id: string) {
-    return (
-      asideOrigins.has(id) ||
-      diagram.edges.some((e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow"))
-    );
-  }
   const hasCaches = cacheMatchers.size > 0;
   const cacheTracking = new Map<string, Map<string, number>>();
   function updateCacheTracking() {
     let remaining = CACHE_LIMITS.totalTracked;
     for (const node of diagram.nodes) {
-      const table = effectiveCacheTable(diagram, node, simulation);
-      if (
-        !table ||
-        (!asideOrigins.has(node.id) &&
-          !diagram.edges.some(
-            (e) => e.from === node.id && e.kind === "sync" && !e.props?.dlq && (!e.relation || e.relation === "flow"),
-          ))
-      )
-        continue;
+      const table = cacheConfig.tables.get(node.id);
+      if (!table || !cacheMatchers.has(node.id)) continue;
       const rules = new Map<string, number>();
       for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
         const tracked =
@@ -337,19 +321,16 @@ export function analyzeCapacity(
   let asideMissShares: Record<string, number> = {};
   let asideFetchShares: Record<string, number> = {};
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
-  const compiled = options.topology ?? compileTopology(diagram);
-  const compiledEdges = new Map(compiled.edges.map((e) => [e.id, e]));
-  const asideCompiledOrigins = new Map(
-    [...asideOrigins].map(([id, edges]) => [id, edges.map((e) => compiledEdges.get(e.id)!)]),
-  );
-  const waitGraph = compileWaitingPlan(diagram, compiled);
+  const waitGraph = compileWaitingPlan(diagram, compiled, cacheConfig);
   let waiting = waitingPlan(diagram, waitProps, {}, waitGraph);
   const asideWaitSensitive = [...aside.keys()].some((id) => {
-    const edge = diagram.edges.find((e) => e.id === id)!;
-    const source = entries.get(edge.from)!;
+    const edge = edgeInputs.get(id)!;
+    const source = entries.get(edge.from);
+    const target = entries.get(edge.to);
+    if (!source || !target) return false;
     const policy = callPolicy(source.input.stencil, edge.props?.caller as import("./types").EdgeSimProps["caller"]);
     return (
-      (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(entries.get(edge.to)!.props).workMs) > 0 ||
+      (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) > 0 ||
       Number(edge.props?.networkDelayMs ?? 0) > 0 ||
       !!policy.pool ||
       policy.replyMs > 0 ||
@@ -737,7 +718,7 @@ export function analyzeCapacity(
         const lookupId = aside.get(edge.id);
         let missShare = 1;
         if (lookupId) {
-          const lookup = (outgoing.get(id) ?? []).find((e) => e.id === lookupId);
+          const lookup = compiledEdges.get(lookupId);
           if (!lookup || !routesOut.includes(lookup)) continue;
           const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
           const cached = rule && cacheDemand[lookup.to]?.[rule.id];
@@ -760,7 +741,6 @@ export function analyzeCapacity(
   function branchRoute(edge: CompiledEdge, route: CompiledRoute | undefined): CompiledRoute | undefined {
     return callerRoute.get(edge.id) ?? route;
   }
-  const edgeInputs = new Map(diagram.edges.map((edge) => [edge.id, edge]));
   let rates = external,
     converged = false,
     iterations = 0;
@@ -839,7 +819,7 @@ export function analyzeCapacity(
       // Allocate the shared budget after every rule's demand is known, as Live does.
       updateCacheTracking();
       for (const node of diagram.nodes) {
-        const table = effectiveCacheTable(diagram, node, simulation);
+        const table = cacheConfig.tables.get(node.id);
         if (!table) continue;
         for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
           const item = cacheDemand[node.id]?.[rule.id];
@@ -857,18 +837,45 @@ export function analyzeCapacity(
     if (aside.size) {
       const shares: Record<string, number> = {};
       const fetchShares: Record<string, number> = {};
+      const lookupShares = new Map<string, { miss: number; fetch: number }>();
+      for (const lookupId of asideLookups) {
+        const lookup = compiledEdges.get(lookupId)!;
+        const entry = entries.get(lookup.from)!;
+        let requestRate = 0,
+          misses = 0,
+          fetches = 0;
+        for (const [key, rate] of rates.get(lookup.from) ?? []) {
+          const c = classOf(key);
+          const type = outputType(entry.role, entry.props.emits, c.type);
+          const route = branchRoute(lookup, c.route);
+          const injected = external.get(lookup.from)?.get(key) ?? 0;
+          const share = (mode: "injected" | "output") =>
+            forwardingShare(
+              entry.role,
+              lookup,
+              type,
+              mode,
+              requestFilter.get(lookup.id),
+              route,
+              cacheMatchers.has(lookup.from),
+            );
+          const weight = injected * share("injected") + Math.max(0, rate - injected) * share("output");
+          if (!weight || lookup.deny) continue;
+          const rule = cacheMatchers.get(lookup.to)?.(lookup.emits ?? type, route, lookup.sync);
+          const cached = rule && cacheDemand[lookup.to]?.[rule.id];
+          requestRate += weight;
+          misses += weight * (1 - (cached?.hitRatio ?? 0));
+          fetches += weight * (cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0));
+        }
+        lookupShares.set(lookupId, {
+          miss: requestRate ? misses / requestRate : 1,
+          fetch: requestRate ? fetches / requestRate : 1,
+        });
+      }
       for (const [edge, lookup] of aside) {
-        const cache = edgeInputs.get(lookup)!.to;
-        const rules = Object.values(cacheDemand[cache] ?? {});
-        const requestRate = total(rates.get(cache));
-        const hit = requestRate ? rules.reduce((s, r) => s + r.rate * r.hitRatio, 0) / requestRate : 0;
-        shares[edge] = 1 - hit;
-        fetchShares[edge] = requestRate
-          ? Math.max(
-              0,
-              1 - rules.reduce((s, r) => s + r.rate * (1 - (r.fetchShare ?? 1 - r.hitRatio)), 0) / requestRate,
-            )
-          : 1;
+        const share = lookupShares.get(lookup)!;
+        shares[edge] = share.miss;
+        fetchShares[edge] = share.fetch;
       }
       asideWaitChanged =
         Object.entries(shares).some(([id, value]) => value !== asideMissShares[id]) ||

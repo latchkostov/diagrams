@@ -5,7 +5,7 @@ import type { CacheRuntime } from "./cacheBridge";
 export interface AsideLease {
   owner: Call;
   waiting: number;
-  waiters: { call: Call; edge: Edge }[];
+  waiters: Map<AsideFetch, { call: Call; edge: Edge }>;
 }
 export interface AsideFetch {
   cache: NodeCache;
@@ -50,10 +50,10 @@ export function prepareAside(
     fetch.key = key;
     if (lease) {
       fetch.waiting = true;
-      lease.waiters.push({ call, edge });
+      lease.waiters.set(fetch, { call, edge });
       lease.waiting += size;
     } else {
-      leases.set(key, { owner: call, waiters: [], waiting: size - 1 });
+      leases.set(key, { owner: call, waiters: new Map(), waiting: size - 1 });
       fetch.size = 1;
       if (edges) for (const origin of edges) call.branches.get(origin.id)!.represented = 1;
       else call.branches.get(edge.id)!.represented = 1;
@@ -77,9 +77,7 @@ export function finishAside(call: Call, edge: Edge, ok: boolean, now: number, ru
   const lease = fetch.key === undefined ? undefined : fetch.cache.leases?.get(fetch.key);
   if (fetch.waiting) {
     if (lease) {
-      lease.waiters = lease.waiters.filter(
-        (w) => w.call !== call || (fetch.edges ? !fetch.edges.includes(w.edge) : w.edge !== edge),
-      );
+      lease.waiters.delete(fetch);
       lease.waiting -= fetch.size;
     }
     return [];
@@ -87,5 +85,5 @@ export function finishAside(call: Call, edge: Edge, ok: boolean, now: number, ru
   runtime.settle(fetch.cache, fetch.lookup, now, fetch.size, ok && !fetch.failed);
   if (lease?.owner !== call) return [];
   fetch.cache.leases!.delete(fetch.key!);
-  return lease.waiters;
+  return lease.waiters.values();
 }

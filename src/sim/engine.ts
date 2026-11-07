@@ -1266,7 +1266,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!node.waits) return false;
     let message = work.message;
     message = rename(message, outputType(node.role, node.props.emits, message.type));
-    const outgoing = !ok ? [] : work.route ? [work.route.edge] : outputRoutes(node, message);
+    const outgoing = !ok
+      ? []
+      : (work.cacheFlight?.origins ?? (work.route ? [work.route.edge] : outputRoutes(node, message)));
     work.outputMessage = message;
     const joinCacheLease =
       work.cache?.outcome === "coalesced" &&
@@ -1347,7 +1349,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.cache.rule?.policy.coalesce
     ) {
       const cache = work.cacheOwner!;
-      (cache.leases ??= new Map()).set(work.cacheFlight.key, { owner: call, waiting: 0, waiters: [] });
+      (cache.leases ??= new Map()).set(work.cacheFlight.key, { owner: call, waiting: 0, waiters: new Map() });
       const fetch: AsideFetch = { cache, lookup: work.cache, size: sizeOf(work.message), key: work.cacheFlight.key };
       if (requests.length > 1) {
         fetch.edges = requests;
@@ -2326,8 +2328,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         spend();
         const fetch = cacheRuntime!.flight(work, time, nextMessage++, true);
         if (work.cache.aside) {
-          const origin = edges.find((e) => e.onMiss === work.via?.id);
-          if (origin) fetch.route = { edge: origin, rule: "", weight: 1, quotas: [] };
+          fetch.cacheFlight!.origins = work.via!.from.outgoing.filter(
+            (edge) =>
+              edge.onMiss === work.via!.id &&
+              accepts(edge, edge.requestRoute ? addressedView(work.message, edge.requestRoute) : work.message, true),
+          );
         }
         inSystem++;
         if (!beginCall(node, fetch)) {

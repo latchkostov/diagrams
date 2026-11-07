@@ -7,6 +7,74 @@ import type { CacheTable } from "../model/caching";
 import { analyzeCapacity } from "./capacity";
 import { resourceLesson } from "../model/autoscalingLessons";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
+import { opGrowth } from "../test/opCounter";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+
+it("cancelling coalesced waiters is linear while another service owns the lease", () => {
+  const prepare = (count: number) => {
+    const d = cacheAsideFixture();
+    (d.nodes[2].props!.cache as CacheTable).default!.coalesce = true;
+    d.nodes[3].props!.latencyMs = 10_000;
+    d.nodes[1].props!.concurrency = count;
+    d.nodes.push({ ...d.nodes[1], id: "waiting-service" });
+    d.edges.push(
+      { ...d.edges[1], id: "waiting-lookup", from: "waiting-service" },
+      { ...d.edges[2], id: "waiting-fetch", from: "waiting-service", props: { caller: { onMiss: "waiting-lookup" } } },
+    );
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(d);
+    e.inject("service", 1);
+    e.step(100);
+    e.inject("waiting-service", count);
+    e.step(100);
+    expect(e.observeCacheItem("cache", "", 1)?.waiting).toBe(count);
+    return () => {
+      e.setNodeStatus("waiting-service", "down");
+      expect(e.observeCacheItem("cache", "", 1)?.waiting).toBe(0);
+      expect(e.snapshot().edges.fetch.calls!.inFlight).toBe(1);
+    };
+  };
+  const small = prepare(64),
+    large = prepare(64 * GROWTH_FACTOR);
+  expect(opGrowth(small, large, LINEAR_LIMIT, ["src/sim/cache/cacheAside.ts"])).toBeLessThan(LINEAR_LIMIT);
+});
+
+it.each(["none", "database", "slow-database"])(
+  "stale refresh joins every conditional origin before filling (failed: %s)",
+  (failed) => {
+    const d = cacheAsideFixture();
+    (d.nodes[2].props!.cache as CacheTable).default = {
+      ttlMs: 1000,
+      keys: 1,
+      coalesce: true,
+      staleWhileRevalidateMs: 1000,
+    };
+    d.nodes.push({ ...d.nodes[3], id: "slow-database", props: { latencyMs: 300, jitter: 0 } });
+    d.edges.push({ ...d.edges[2], id: "slow-fetch", to: "slow-database" });
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(d);
+    e.inject("source", 1);
+    e.step(1500);
+    expect(e.snapshot().nodes.cache.cache!.fills).toBe(1);
+    if (failed !== "none") e.setNodeStatus(failed, "down");
+    e.inject("source", 1);
+    e.step(60);
+    expect(e.snapshot().nodes.cache.cache!.staleHits).toBe(1);
+    expect(e.snapshot().nodes.source.processed).toBe(2);
+    expect(e.snapshot().edges.fetch.delivered).toBe(2);
+    expect(e.snapshot().edges["slow-fetch"].delivered).toBe(2);
+    e.step(150);
+    expect(e.snapshot().nodes.cache.cache!.fills).toBe(1);
+    const token = e.checkpoint();
+    e.step(500);
+    const result = e.snapshot();
+    expect(result.nodes.cache.cache!.fills).toBe(failed === "none" ? 2 : 1);
+    expect(result.inSystem).toBe(0);
+    e.restore(token);
+    e.step(500);
+    expect(e.snapshot()).toEqual(result);
+  },
+);
 
 it.each(["blocking", "non-blocking"] as const)(
   "coalesced fetches consume pool capacity once, with %s database calls",
@@ -275,6 +343,79 @@ it("planning includes lookup plus miss-weighted database hold time and demand", 
   expect(a.nodes.service.waits!.threadHoldMs).toBeCloseTo(10 + 20 + miss * 100, 8);
   d.edges[2].props!.caller = { onMiss: "lookup", wait: "blocking", poolConnections: 1 };
   expect(analyzeCapacity(d).nodes.service.capacity).toBeGreaterThan(10);
+});
+
+it("setup-only cache rules activate the same sequential waiting plan as base rules", () => {
+  const d = cacheAsideFixture();
+  const expected = analyzeCapacity(d);
+  const cache = d.nodes[2].props!.cache;
+  delete d.nodes[2].props!.cache;
+  const simulation = {
+    id: "setup-cache",
+    title: "Setup cache",
+    traffic: [
+      { id: "readers", node: "source", shape: { kind: "constant" as const, ratePerSec: 200, durationMs: 60_000 } },
+    ],
+    setup: { props: { cache: { cache } } },
+  };
+  const actual = analyzeCapacity(d, simulation);
+  expect(actual.cacheDemand).toEqual(expected.cacheDemand);
+  expect(actual.nodes.service.waits).toEqual(expected.nodes.service.waits);
+  expect(actual.nodes.service.waits!.threadHoldMs).toBeCloseTo(
+    30 + 100 * (1 - actual.cacheDemand!.cache[""].hitRatio),
+    8,
+  );
+});
+
+it.each([false, true])("each lookup weights its own filtered method distribution (coalesce %s)", (coalesce) => {
+  const d = cacheAsideFixture();
+  (d.nodes[2].props!.cache as CacheTable).default!.coalesce = coalesce;
+  d.planning!.requestRoutes = [
+    { id: "read", address: { method: "GET", path: "/products" } },
+    { id: "write", address: { method: "POST", path: "/products" } },
+  ];
+  d.nodes[0].props!.trafficMix = { mode: "shares", entries: [{ routeId: "read", share: 1 }] };
+  d.nodes.push(
+    {
+      ...d.nodes[0],
+      id: "writers",
+      props: {
+        ratePerSec: 200,
+        trafficMix: {
+          mode: "shares",
+          entries: [
+            { routeId: "read", share: 0.5 },
+            { routeId: "write", share: 0.5 },
+          ],
+        },
+      },
+    },
+    { ...d.nodes[1], id: "write-service" },
+  );
+  d.edges.push(
+    { ...d.edges[0], id: "write-input", from: "writers", to: "write-service" },
+    {
+      ...d.edges[1],
+      id: "write-lookup",
+      from: "write-service",
+      props: { ...d.edges[1].props, requestFilter: { methods: ["POST"] } },
+    },
+    {
+      ...d.edges[2],
+      id: "write-fetch",
+      from: "write-service",
+      props: { caller: { wait: "blocking", onMiss: "write-lookup", poolConnections: 1 } },
+    },
+  );
+  d.edges[2].props!.caller = { wait: "blocking", onMiss: "lookup", poolConnections: 1 };
+  const a = analyzeCapacity(d);
+  const cache = a.cacheDemand!.cache[""];
+  expect(a.connections["write-lookup"]).toBe(100);
+  expect(a.connections["write-fetch"]).toBe(100);
+  expect(a.nodes["write-service"].waits!.threadHoldMs).toBe(130);
+  expect(a.nodes["write-service"].waits!.poolCeiling).toBe(10);
+  expect(a.nodes.service.waits!.threadHoldMs).toBeCloseTo(30 + 100 * (1 - cache.hitRatio), 8);
+  expect(a.nodes.service.waits!.poolCeiling).toBeCloseTo(10 / (cache.fetchShare ?? 1 - cache.hitRatio), 8);
 });
 
 it("stale cache-aside replies refresh through the database without waiting for it", () => {

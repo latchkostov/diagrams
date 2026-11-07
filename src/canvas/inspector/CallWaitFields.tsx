@@ -15,6 +15,7 @@ import { stencilRole } from "../../stencils/roles";
 import { callPolicy } from "../../sim/callPolicy";
 import { tutorialRoute } from "../../tutorials/route";
 import { cacheLookupChoices } from "../../model/cacheAside";
+import { cacheEnabled } from "../../model/caching";
 import { isolate } from "../../live/bidi";
 
 const noSubscribe = () => () => {};
@@ -41,6 +42,13 @@ export function CallWaitFields({
   const advanced = revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2");
   const diagram = readDiagram?.() ?? editor.getDiagram();
   const choices = cacheLookupChoices(diagram, edgeId);
+  const lookup = diagram.edges.find((edge) => edge.id === caller?.onMiss);
+  const cache = diagram.nodes.find((node) => node.id === lookup?.to);
+  const cacheProps = cache && { ...cache.props, ...live?.controller.getState().running?.setup?.props?.[cache.id] };
+  const activeCondition =
+    !!caller?.onMiss &&
+    !!cache &&
+    cacheEnabled(diagram.planning, cache.stencil, stencilRole(cache.stencil), cacheProps?.cache);
   const origin = (key: keyof NonNullable<typeof caller>) => {
     if (!override || !Object.hasOwn(override, key)) return null;
     const base = diagramCaller?.[key];
@@ -150,7 +158,7 @@ export function CallWaitFields({
                 className="cache-aside-when"
                 data-testid="inspector-field-onMiss"
                 aria-label={t("cache.when")}
-                aria-describedby="cache-aside-hint"
+                aria-describedby={activeCondition ? "cache-aside-hint" : undefined}
                 value={caller?.onMiss ?? ""}
                 onChange={(e) => set({ onMiss: e.target.value || undefined })}
               >
@@ -161,9 +169,11 @@ export function CallWaitFields({
                   </option>
                 ))}
               </select>
-              <p className="insp-note" id="cache-aside-hint" data-testid="inspector-hint-onMiss">
-                {t("cache.writeBackHint")}
-              </p>
+              {activeCondition && (
+                <p className="insp-note" id="cache-aside-hint" data-testid="inspector-hint-onMiss">
+                  {t("cache.writeBackHint")}
+                </p>
+              )}
             </Field>
           )}
           {origin("onMiss")}

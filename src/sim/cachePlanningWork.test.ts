@@ -3,6 +3,28 @@ import { cacheFixture } from "../lab/cacheFixture";
 import { analyzeCapacity } from "./capacity";
 import * as math from "./cache/cacheMath";
 import { GROWTH_FACTOR } from "../test/complexity";
+import { LINEAR_LIMIT } from "../test/complexity";
+import { opGrowth } from "../test/opCounter";
+import { cacheAsideFixture } from "../lab/cacheAsideFixture";
+
+it("indexes shared-cache conditional references in linear work", () => {
+  const prepare = (count: number) => {
+    const d = cacheAsideFixture();
+    d.nodes[0].props!.ratePerSec = 0;
+    for (let i = 1; i < count; i++) {
+      const id = `caller-${i}`;
+      d.nodes.push({ ...d.nodes[1], id });
+      d.edges.push(
+        { ...d.edges[1], id: `lookup-${i}`, from: id },
+        { ...d.edges[2], id: `fetch-${i}`, from: id, props: { caller: { onMiss: `lookup-${i}` } } },
+      );
+    }
+    return () => expect(analyzeCapacity(d).converged).toBe(true);
+  };
+  expect(opGrowth(prepare(128), prepare(128 * GROWTH_FACTOR), LINEAR_LIMIT, ["src/sim/capacity.ts"])).toBeLessThan(
+    LINEAR_LIMIT,
+  );
+});
 
 it("unchanged cache inputs do not repeat popularity math as an unrelated path settles", () => {
   const measure = (length: number) => {

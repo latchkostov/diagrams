@@ -67,7 +67,9 @@ export function agreement(
   if (scale === "auto") scale = autoScale(explanationSimulation(d), d);
   const legacyExpected = analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))).cacheDemand!.cache[""]
     .hitRatio;
-  const expected = analyzePlanningCapacity(d, explanationSimulation(d)).cacheDemand!.cache[""].hitRatio;
+  const planned = analyzePlanningCapacity(d, explanationSimulation(d)).cacheDemand!.cache[""];
+  const expected = planned.hitRatio;
+  const expectedFetchShare = planned.fetchShare ?? 1 - expected;
   const e = createEngine({ seed, maxParticles: 0 });
   e.load(d, startingCacheRates(d));
   e.setScale(scale);
@@ -91,8 +93,10 @@ export function agreement(
     expected,
     legacyExpected,
     observed,
+    fetchShare,
+    expectedFetchShare,
     error: Math.abs(expected - observed),
-    fetchError: Math.abs(fetchShare - (1 - expected)) / (1 - expected),
+    fetchError: Math.abs(fetchShare - expectedFetchShare) / expectedFetchShare,
   };
 }
 
@@ -122,6 +126,13 @@ for (const scale of [1, 10]) {
           expect(fetchError, JSON.stringify(runs)).toBeLessThanOrEqual(0.05);
         }
       });
+      if (scale === 1 && coalesce)
+        it(`coalesced cache-aside fetch rate agrees with analysis at scale 1 (batch ${batch}, ${keys} items)`, () => {
+          expect(runs).toHaveLength(5);
+          const fetchError = runs.reduce((sum, run) => sum + run.fetchError, 0) / runs.length;
+          console.info("coalesced cache-aside fetch agreement", JSON.stringify({ keys, fetchError, runs }));
+          expect(fetchError, JSON.stringify(runs)).toBeLessThanOrEqual(0.05);
+        });
     }
   }
 }

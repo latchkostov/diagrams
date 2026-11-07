@@ -1,5 +1,5 @@
 import { resolveApiBehaviour } from "./admissionPolicy";
-import { cacheEnabled } from "../model/caching";
+import { compileCacheConfiguration } from "./cache/cacheAnalysis";
 import { classifyOutcome, expectedRetries } from "./retryPolicy";
 import type { RetryPolicy } from "../model/admission";
 import { revisionAtLeast } from "../model/revisions";
@@ -23,15 +23,15 @@ export interface WaitCapacity {
 }
 
 /** Rate-independent graph metadata, shared by every retry-budget solver pass. */
-export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopology(diagram)) {
+export function compileWaitingPlan(
+  diagram: DiagramFile,
+  topology = compileTopology(diagram),
+  caches = compileCacheConfiguration(diagram),
+) {
   const inputs = new Map(diagram.edges.map((e) => [e.id, e]));
   const stencils = new Map(diagram.nodes.map((n) => [n.id, n.stencil]));
   const roles = new Map(diagram.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
-  const caching = new Set(
-    diagram.nodes
-      .filter((n) => cacheEnabled(diagram.planning, n.stencil, roles.get(n.id)!, n.props?.cache))
-      .map((n) => n.id),
-  );
+  const caching = caches.tables;
   const remaining = new Map<string, number>();
   const parents = new Map<
     string,

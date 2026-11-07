@@ -1,9 +1,47 @@
+// @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
 import { expect, it, vi } from "vitest";
 import { safeStorage } from "../../lib/storage";
 import { recommendedRetry } from "../../sim/resiliencePresets";
 import { RetryFields } from "./RetryFields";
 import { BreakerFields } from "./BreakerFields";
+import { CallWaitFields } from "./CallWaitFields";
+import { cacheAsideFixture } from "../../lab/cacheAsideFixture";
+import type { EditorApi } from "../../editor/types";
+
+it.each(["active", "every-request", "no-rules", "older-model"])(
+  "only an active cache-aside condition describes automatic write-back (%s)",
+  (mode) => {
+    const d = cacheAsideFixture();
+    if (mode === "every-request") d.edges[2].props!.caller = { wait: "blocking" };
+    if (mode === "no-rules") delete d.nodes[2].props!.cache;
+    if (mode === "older-model") d.planning!.revision = "p3-w2";
+    const editor = {
+      getDiagram: () => d,
+      getEdge: (id: string) => d.edges.find((e) => e.id === id),
+      getNode: (id: string) => d.nodes.find((n) => n.id === id),
+    } as EditorApi;
+    const read = vi.spyOn(safeStorage, "getItem").mockReturnValue('{"call-advanced":true}');
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      flushSync(() =>
+        root.render(
+          <CallWaitFields editor={editor} edgeId="fetch" stencil="generic.service" caller={d.edges[2].props!.caller} />,
+        ),
+      );
+      const html = container.innerHTML;
+      expect(html).toContain('data-testid="inspector-field-onMiss"');
+      expect(html.includes('data-testid="inspector-hint-onMiss"')).toBe(mode === "active");
+      expect(html.includes('aria-describedby="cache-aside-hint"')).toBe(mode === "active");
+    } finally {
+      root.unmount();
+      read.mockRestore();
+    }
+  },
+);
 
 it("keeps retry tuning collapsed and the load limit visible beside attempts", () => {
   const read = vi.spyOn(safeStorage, "getItem").mockReturnValue(null);
