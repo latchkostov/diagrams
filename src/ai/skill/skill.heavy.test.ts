@@ -832,6 +832,10 @@ describe("the downloadable skill", () => {
     expect(html).not.toContain(".route-rules-table");
     expect(html).toContain(".route-swatch");
     expect(html).toContain("@keyframes cm-in");
+    expect(html.includes(".insp-paired")).toBe(false);
+    expect(html).toContain(".readout-disclosure");
+    expect(modules.some((id) => id.endsWith("/src/styles/inspector-layout.css"))).toBe(false);
+    expect(modules.some((id) => id.endsWith("/src/styles/readout.css"))).toBe(true);
     expect((await zipSkill(withFresh(readSkill(), releasedFiles(root, html)))).length).toBeLessThan(835_000 - 6_144);
   }, 30_000);
   it("saves at least 6 KiB by excluding unreachable editor CSS, with every skill file retained", async () => {
