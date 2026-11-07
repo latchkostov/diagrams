@@ -40,3 +40,24 @@ A production-bundled, same-process comparison against the pre-review head
 pairs average 360.806 ms before and 337.670 ms after (medians 345.395 ms and
 336.619 ms). Both retain four sizing runs, 11,253 ticks and 25,485 messages. These
 shared-machine timings show no growth in Black Friday's Checks sizing work.
+
+## Viewer fixture verification follow-up
+
+The first complete Linux Build gate passed 16,644 unit/heavy tests and all parity
+records, then finished with 3,434 browser cases passed, one failed and twelve
+skipped. The failed Interactive HTML autoscaling fixture expected a scale-up after
+1.5 seconds of setup. Two repeats of only its spec on clean master
+c9eba9f728c96b4efd0f23ada20be3c0a5ada8b2 passed all thirty cases, so the failure is
+not classified as pre-existing.
+
+The fixture advanced that interval in two large frame jumps. A page resuming from
+being hidden intentionally discards its first frame's gap, which could consume
+most of the setup interval. Setup now primes ordinary frames before batching the
+remainder of the same interval. Production playback, elapsed setup time, polling
+limits and assertions are unchanged. A forced visibility-resume regression fails
+all three built viewers with the old helper.
+
+The repaired viewer fixture, cache-aside tests and all Inspector/viewport neighbours
+pass five Linux repeats with six workers and six CPUs: 1,195 passed, zero failed,
+zero flaky and zero skipped. The final engine and complete-gate results are reported
+with the pushed commit.
