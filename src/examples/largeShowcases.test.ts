@@ -7,6 +7,7 @@ import { loadExample } from "./index";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { NOTE_FIT } from "../canvas/camera/geometry";
 import type { KedaConfig } from "../model/autoscaling";
+import { exampleMetadata } from "./metadata";
 
 // The large public showcases (docs/EXAMPLES.md): each tells its saved stories on a realistic, invented system.
 // Public fixtures only: this shallow glob never descends into local-only examples.
@@ -150,6 +151,26 @@ describe("large showcases", () => {
       ),
     ).toBeGreaterThan(2);
     expect(end.nodes.orders.deadLettered).toBe(0);
+  });
+
+  it("Black Friday: the product cache performs real lookups and only misses read the catalog database", () => {
+    expect(exampleMetadata["black-friday-commerce"].shows).toContain("caching");
+    const d = diagram("black-friday-commerce");
+    const cache = d.nodes.find((n) => n.id === "product-cache")!;
+    const lookup = d.edges.find((e) => e.id === "catalog-bff--product-cache")!;
+    const fetch = d.edges.find((e) => e.id === "catalog-bff--catalog-db")!;
+    expect(fetch.props).not.toHaveProperty("share");
+    expect(fetch.props!.caller).toMatchObject({ onMiss: lookup.id });
+    expect(cache.props!.cache).toMatchObject({ default: { ttlMs: 600000, keys: 50000, popularity: "typical" } });
+    const run = createSimulationRun(d, simulation("black-friday-commerce", "doors-open"), { maxParticles: 0 });
+    while (run.engine.snapshot().time < 10000) {
+      if (run.state().waiting) run.resume();
+      run.step(100);
+    }
+    const s = run.engine.snapshot();
+    expect(s.nodes["product-cache"].cache!.hits).toBeGreaterThan(0);
+    expect(s.nodes["product-cache"].cache!.fetches).toBe(s.nodes["product-cache"].cache!.misses);
+    expect(s.nodes["catalog-db"].processed).toBeLessThan(s.nodes["product-cache"].processed);
   });
 
   it("Black Friday: a bad Loyalty deploy parks events without touching other consumer groups", () => {

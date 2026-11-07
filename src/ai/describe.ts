@@ -14,6 +14,7 @@ import { planMessage } from "../checks/scalingFindings";
 import { messageTypesAt } from "../model/messageTypes";
 import { describeResilience } from "./resilience";
 import { cacheEnabled } from "../model/caching";
+import { cacheAsideOrigins } from "../model/cacheAside";
 import { stencilRole } from "../stencils/roles";
 
 const quote = (s: string) => JSON.stringify(s);
@@ -64,7 +65,10 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
             expected: analysis?.cacheDemand?.[node.id]?.[rule.id] ?? null,
           })),
           ...(node.props.cache.default ? { default: node.props.cache.default } : {}),
-          origin: topology.edges.filter((e) => e.from === node.id && e.sync && !e.dlq).map((e) => e.id),
+          origin: [
+            ...topology.edges.filter((e) => e.from === node.id && e.sync && !e.dlq).map((e) => e.id),
+            ...cacheAsideOrigins(d, node.id).map((e) => e.id),
+          ],
         }
       : undefined;
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);

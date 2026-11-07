@@ -416,6 +416,11 @@
   .inspector .insp-field > .insp-note {
     margin: 0;
   }
+  /* A modifier class, not :has(): a :has() left of this universal :not() subject made every
+     canvas style recalc test it (typing on 1,500 nodes cost ~4x the main-thread CPU). */
+  .inspector .insp-field.insp-field-wide > :not(.insp-label) {
+    grid-column: 1 / -1;
+  }
   /* Pairs become ledger rows. */
   .inspector .insp-paired,
   .inspector .insp-row2 {

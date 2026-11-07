@@ -40,10 +40,17 @@ async function stubCapture(page: Page, opts: StubOptions = {}) {
         ctx.fillRect(0, 0, 320, 180);
       };
       draw();
-      setInterval(draw, 33);
-      const stream = c.captureStream(30);
+      if (!o.realRecorder) setInterval(draw, 33);
+      // Native encoding does not use Playwright's clock. Explicit frames let the
+      // real-codec test observe encoded output before it stops the capture.
+      const stream = c.captureStream(o.realRecorder ? 0 : 30);
       // Behave like a captured tab that can be framed to an element.
       const track = stream.getVideoTracks()[0] as MediaStreamTrack & { restrictTo?: (t: unknown) => Promise<void> };
+      if (o.realRecorder)
+        w.__rec.captureFrame = () => {
+          draw();
+          (track as CanvasCaptureMediaStreamTrack).requestFrame();
+        };
       const stop = track.stop.bind(track);
       track.stop = () => {
         w.__rec.stopped = (w.__rec.stopped as number) + 1;
@@ -77,7 +84,20 @@ async function stubCapture(page: Page, opts: StubOptions = {}) {
         return fakeStream();
       };
     }
-    if (o.realRecorder) return;
+    if (o.realRecorder) {
+      const NativeRecorder = MediaRecorder;
+      w.__rec.encodedBytes = 0;
+      w.MediaRecorder = class extends NativeRecorder {
+        constructor(stream: MediaStream, options?: MediaRecorderOptions) {
+          super(stream, options);
+          w.__rec.requestData = () => this.requestData();
+          this.addEventListener("dataavailable", (event) => {
+            w.__rec.encodedBytes = (w.__rec.encodedBytes as number) + event.data.size;
+          });
+        }
+      };
+      return;
+    }
     class FakeRecorder extends EventTarget {
       state: RecordingState = "inactive";
       mimeType: string;
@@ -476,6 +496,14 @@ test.describe("record video", () => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await recordFor(page, 2);
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => (window as never as { __rec: { captureFrame: () => void } }).__rec.captureFrame());
+        await page.clock.runFor(1000 / 60);
+        await page.evaluate(() => (window as never as { __rec: { requestData: () => void } }).__rec.requestData());
+        return rec(page, "encodedBytes");
+      })
+      .toBeGreaterThan(0);
     await expect(page.getByTestId("record-elapsed")).toHaveText("0:02");
     const stoppedAt = await page.evaluate(() => performance.now());
     await page.getByTestId("record-stop").click();

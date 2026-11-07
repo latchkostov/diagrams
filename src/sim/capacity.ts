@@ -1,4 +1,5 @@
-import { analysisCache, effectiveCacheTable } from "./cache/cacheAnalysis";
+import { compileCacheConfiguration } from "./cache/cacheAnalysis";
+import { onMiss } from "../model/cacheAside";
 import { cacheHitShare, cacheFetchShare } from "./cache/cacheMath";
 import { cacheTrackingEligible } from "./cache/tracking";
 import { CACHE_LIMITS } from "../model/caching";
@@ -6,7 +7,7 @@ import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
 import { compileWaitingPlan, waitingPlan, type WaitCapacity } from "./waitingPlan";
 import { simulationEdges } from "./topology";
-import { replyCpuMs } from "./callPolicy";
+import { callPolicy, replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
 import { replicaRange, resourceCapacity } from "../model/resourceRuntime";
@@ -274,28 +275,35 @@ export function analyzeCapacity(
       ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
+  const compiled = options.topology ?? compileTopology(diagram);
+  const compiledEdges = new Map(compiled.edges.map((e) => [e.id, e]));
+  const edgeInputs = new Map(diagram.edges.map((edge) => [edge.id, edge]));
+  const cacheConfig = compileCacheConfiguration(diagram, simulation);
+  const aside = new Map<string, string>();
+  const asideCompiledOrigins = new Map<string, CompiledEdge[]>();
+  if (revisionAtLeast(diagram.planning?.revision, "p3-w3"))
+    for (const edge of compiled.edges) {
+      const ref = onMiss(edgeInputs.get(edge.id)!);
+      const lookup = ref ? compiledEdges.get(ref) : undefined;
+      if (!lookup || lookup.from !== edge.from || !cacheConfig.tables.has(lookup.to)) continue;
+      aside.set(edge.id, lookup.id);
+      let origins = asideCompiledOrigins.get(lookup.to);
+      if (!origins) asideCompiledOrigins.set(lookup.to, (origins = []));
+      origins.push(edge);
+    }
+  const asideLookups = new Set(aside.values());
   const cacheMatchers = new Map(
-    diagram.nodes.flatMap((node) => {
-      const match = analysisCache(diagram, node, simulation);
-      return match && compiledCacheOrigin(node.id) ? [[node.id, match] as const] : [];
-    }),
+    [...cacheConfig.matchers].filter(
+      ([id]) => asideCompiledOrigins.has(id) || compiled.outgoing.get(id)?.some((e) => e.sync && !e.dlq),
+    ),
   );
-  function compiledCacheOrigin(id: string) {
-    return diagram.edges.some((e) => e.from === id && e.kind === "sync" && (!e.relation || e.relation === "flow"));
-  }
   const hasCaches = cacheMatchers.size > 0;
   const cacheTracking = new Map<string, Map<string, number>>();
   function updateCacheTracking() {
     let remaining = CACHE_LIMITS.totalTracked;
     for (const node of diagram.nodes) {
-      const table = effectiveCacheTable(diagram, node, simulation);
-      if (
-        !table ||
-        !diagram.edges.some(
-          (e) => e.from === node.id && e.kind === "sync" && !e.props?.dlq && (!e.relation || e.relation === "flow"),
-        )
-      )
-        continue;
+      const table = cacheConfig.tables.get(node.id);
+      if (!table || !cacheMatchers.has(node.id)) continue;
       const rules = new Map<string, number>();
       for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
         const tracked =
@@ -309,10 +317,26 @@ export function analyzeCapacity(
     }
   }
   let cacheDemand: NonNullable<CapacityAnalysis["cacheDemand"]> = {};
+  const hitMemo = new WeakMap<import("../model/caching").CachePolicy, { rate: number; fetchMs: number; hit: number }>();
+  let asideMissShares: Record<string, number> = {};
+  let asideFetchShares: Record<string, number> = {};
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
-  const compiled = options.topology ?? compileTopology(diagram);
-  const waitGraph = compileWaitingPlan(diagram, compiled);
+  const waitGraph = compileWaitingPlan(diagram, compiled, cacheConfig);
   let waiting = waitingPlan(diagram, waitProps, {}, waitGraph);
+  const asideWaitSensitive = [...aside.keys()].some((id) => {
+    const edge = edgeInputs.get(id)!;
+    const source = entries.get(edge.from);
+    const target = entries.get(edge.to);
+    if (!source || !target) return false;
+    const policy = callPolicy(source.input.stencil, edge.props?.caller as import("./types").EdgeSimProps["caller"]);
+    return (
+      (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) > 0 ||
+      Number(edge.props?.networkDelayMs ?? 0) > 0 ||
+      !!policy.pool ||
+      policy.replyMs > 0 ||
+      (!!source.props.resources && !policy.blocking)
+    );
+  });
   for (const [id, wait] of waiting.nodes)
     if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
   for (const entry of entries.values()) {
@@ -326,6 +350,19 @@ export function analyzeCapacity(
             replyCpuMs(entry.props.resources.cpuMsPerMessage, entry.wait.replies),
         },
       };
+  }
+  function applyAsideWaiting() {
+    for (const [id, wait] of waiting.nodes) {
+      const entry = entries.get(id)!;
+      if (entry.role !== "processor" && wait.poolCeiling === undefined) continue;
+      entry.wait = wait;
+      const base = waitProps[id].resources;
+      if (base && wait.replies !== undefined) {
+        const cpuMsPerMessage = base.cpuMsPerMessage + replyCpuMs(base.cpuMsPerMessage, wait.replies);
+        if (cpuMsPerMessage !== entry.props.resources!.cpuMsPerMessage)
+          entry.props = { ...entry.props, resources: { ...entry.props.resources!, cpuMsPerMessage } };
+      }
+    }
   }
   const baseIterationCap = iterationBound(
     entries.keys(),
@@ -359,23 +396,24 @@ export function analyzeCapacity(
     type: string;
     route?: CompiledRoute;
     sync?: boolean;
+    aside?: boolean;
   }
   const classes = new Map<string, TrafficClass>();
   // Unrouted documents key classes by their type, as before routing; a routed document keys every class by its
   // whole tuple, so no type, route or router name can collide with another class.
   // Interned by type, route and sync flag: each distinct class is serialized once per analysis, not per traversal.
-  const interned = new Map<string, Map<CompiledRoute | undefined, [string?, string?]>>();
-  const classKey = (type: string, route?: CompiledRoute, sync?: boolean): string => {
+  const interned = new Map<string, Map<CompiledRoute | undefined, string[]>>();
+  const classKey = (type: string, route?: CompiledRoute, sync?: boolean, aside = false): string => {
     if (!routes && !hasCaches) return type;
     let byRoute = interned.get(type);
     if (!byRoute) interned.set(type, (byRoute = new Map()));
     let pair = byRoute.get(route);
     if (!pair) byRoute.set(route, (pair = []));
-    const slot = sync ? 1 : 0;
+    const slot = (sync ? 1 : 0) + (aside ? 2 : 0);
     let key = pair[slot];
     if (key === undefined) {
-      key = pair[slot] = JSON.stringify([type, route?.id ?? null, !!sync]);
-      classes.set(key, { type, route, sync });
+      key = pair[slot] = JSON.stringify([type, route?.id ?? null, !!sync, ...(aside ? [true] : [])]);
+      classes.set(key, { type, route, sync, ...(aside ? { aside: true } : {}) });
     }
     return key;
   };
@@ -384,7 +422,12 @@ export function analyzeCapacity(
     forwardingShare(entries.get(edge.from)!.role, edge, c.type, "routed", requestFilter.get(edge.id), c.route) > 0;
   /** The class leaving along an edge into `to`: an unaddressed Request into a router remembers it was a Request. */
   const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
-    classKey(type, route, hasCaches ? edge.sync : !route && edge.sync && !!entries.get(edge.to)?.table);
+    classKey(
+      type,
+      route,
+      hasCaches ? edge.sync : !route && edge.sync && !!entries.get(edge.to)?.table,
+      asideLookups.has(edge.id),
+    );
   const demand = new Map<string, Map<string, RouteDemand>>();
   // A router's decision for a traffic class never changes with rates: decided once per analysis (not per iteration),
   // with its eligible targets, the share they forward (deny targets block theirs before admission, as in playback)
@@ -626,6 +669,7 @@ export function analyzeCapacity(
             });
         }
         const forwarded = cachedRate(id, c, rate, decision.forwarded);
+        if (c.aside) return;
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
           send(next, edge, type, (forwarded * decision.weights[i]) / decision.sum, route);
@@ -634,6 +678,8 @@ export function analyzeCapacity(
       }
     }
     rate = cachedRate(id, c, rate);
+    // A service's lookup replies locally; that service owns the conditional origin call.
+    if (c.aside) return;
     const routesOut = (outgoing.get(id) ?? []).filter((edge) => takes(edge, { type, route: branchRoute(edge, route) }));
     if (brokerRole(entry.role)) {
       for (const group of groups.get(id) ?? []) {
@@ -669,7 +715,25 @@ export function analyzeCapacity(
           cacheMatchers.has(id),
         );
         if (!share) continue;
-        send(next, edge, type, rate * share, branchRoute(edge, route));
+        const lookupId = aside.get(edge.id);
+        let missShare = 1;
+        if (lookupId) {
+          const lookup = compiledEdges.get(lookupId);
+          if (!lookup || !routesOut.includes(lookup)) continue;
+          const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
+          const cached = rule && cacheDemand[lookup.to]?.[rule.id];
+          missShare = cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0);
+          missShare *= forwardingShare(
+            entry.role,
+            lookup,
+            type,
+            injected ? "injected" : "output",
+            undefined,
+            undefined,
+            cacheMatchers.has(id),
+          );
+        }
+        send(next, edge, type, rate * share * missShare, branchRoute(edge, route));
       }
     }
   }
@@ -677,7 +741,6 @@ export function analyzeCapacity(
   function branchRoute(edge: CompiledEdge, route: CompiledRoute | undefined): CompiledRoute | undefined {
     return callerRoute.get(edge.id) ?? route;
   }
-  const edgeInputs = new Map(diagram.edges.map((edge) => [edge.id, edge]));
   let rates = external,
     converged = false,
     iterations = 0;
@@ -704,8 +767,8 @@ export function analyzeCapacity(
           const admitted = decision === "legacy" ? 1 : decision.forwarded;
           if (!admitted) continue;
           const origins =
-            decision === "legacy"
-              ? (outgoing.get(id) ?? []).filter(
+            c.aside || decision === "legacy"
+              ? (c.aside ? (asideCompiledOrigins.get(id) ?? []) : (outgoing.get(id) ?? [])).filter(
                   (edge) =>
                     edge.sync &&
                     !edge.deny &&
@@ -718,11 +781,17 @@ export function analyzeCapacity(
             if (edge.deny) return;
             const target = entries.get(edge.to)!;
             const delay = edgeInputs.get(edge.id)?.props?.networkDelayMs;
+            const lookup = aside.get(edge.id);
+            const lookupDelay = lookup && edgeInputs.get(lookup)?.props?.networkDelayMs;
             const response =
               10 +
+              // The lookup reply and the caller's second dispatch each cross a logical tick.
+              (lookup
+                ? 20 + resolvedTiming(entry.props).workMs + (typeof lookupDelay === "number" ? lookupDelay : 0)
+                : 0) +
               (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
               2 * (typeof delay === "number" ? delay : 0);
-            if (entry.role === "gateway")
+            if (entry.role === "gateway" && !c.aside)
               fetchMs +=
                 response *
                 (decision === "legacy"
@@ -738,14 +807,19 @@ export function analyzeCapacity(
         for (const [ruleId, policy] of policies) {
           const item = byRule[ruleId];
           item.fetchMs /= item.rate;
-          item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
+          const prior = hitMemo.get(policy);
+          if (prior?.rate === item.rate && prior.fetchMs === item.fetchMs) item.hitRatio = prior.hit;
+          else {
+            item.hitRatio = cacheHitShare(policy, item.rate, item.fetchMs);
+            hitMemo.set(policy, { rate: item.rate, fetchMs: item.fetchMs, hit: item.hitRatio });
+          }
         }
         cacheDemand[id] = byRule;
       }
       // Allocate the shared budget after every rule's demand is known, as Live does.
       updateCacheTracking();
       for (const node of diagram.nodes) {
-        const table = effectiveCacheTable(diagram, node, simulation);
+        const table = cacheConfig.tables.get(node.id);
         if (!table) continue;
         for (const rule of [...table.rules, ...(table.default ? [{ id: "", policy: table.default }] : [])]) {
           const item = cacheDemand[node.id]?.[rule.id];
@@ -758,6 +832,56 @@ export function analyzeCapacity(
             );
         }
       }
+    }
+    let asideWaitChanged = false;
+    if (aside.size) {
+      const shares: Record<string, number> = {};
+      const fetchShares: Record<string, number> = {};
+      const lookupShares = new Map<string, { miss: number; fetch: number }>();
+      for (const lookupId of asideLookups) {
+        const lookup = compiledEdges.get(lookupId)!;
+        const entry = entries.get(lookup.from)!;
+        let requestRate = 0,
+          misses = 0,
+          fetches = 0;
+        for (const [key, rate] of rates.get(lookup.from) ?? []) {
+          const c = classOf(key);
+          const type = outputType(entry.role, entry.props.emits, c.type);
+          const route = branchRoute(lookup, c.route);
+          const injected = external.get(lookup.from)?.get(key) ?? 0;
+          const share = (mode: "injected" | "output") =>
+            forwardingShare(
+              entry.role,
+              lookup,
+              type,
+              mode,
+              requestFilter.get(lookup.id),
+              route,
+              cacheMatchers.has(lookup.from),
+            );
+          const weight = injected * share("injected") + Math.max(0, rate - injected) * share("output");
+          if (!weight || lookup.deny) continue;
+          const rule = cacheMatchers.get(lookup.to)?.(lookup.emits ?? type, route, lookup.sync);
+          const cached = rule && cacheDemand[lookup.to]?.[rule.id];
+          requestRate += weight;
+          misses += weight * (1 - (cached?.hitRatio ?? 0));
+          fetches += weight * (cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0));
+        }
+        lookupShares.set(lookupId, {
+          miss: requestRate ? misses / requestRate : 1,
+          fetch: requestRate ? fetches / requestRate : 1,
+        });
+      }
+      for (const [edge, lookup] of aside) {
+        const share = lookupShares.get(lookup)!;
+        shares[edge] = share.miss;
+        fetchShares[edge] = share.fetch;
+      }
+      asideWaitChanged =
+        Object.entries(shares).some(([id, value]) => value !== asideMissShares[id]) ||
+        Object.entries(fetchShares).some(([id, value]) => value !== asideFetchShares[id]);
+      asideMissShares = shares;
+      asideFetchShares = fetchShares;
     }
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
@@ -774,6 +898,10 @@ export function analyzeCapacity(
         error = Math.max(error, Math.abs((next.get(id)?.get(type) ?? 0) - (rates.get(id)?.get(type) ?? 0)));
     }
     rates = next;
+    if (asideWaitSensitive && asideWaitChanged) {
+      waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares, asideFetchShares);
+      applyAsideWaiting();
+    }
     if (hasRetryBudget) {
       let retryError = 0;
       for (const id of waiting.amplification.keys())
@@ -781,9 +909,10 @@ export function analyzeCapacity(
       error = Math.max(error, retryError);
       if (retryError) {
         priorRetryRequests = retryRequests;
-        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph);
+        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares, asideFetchShares);
         for (const [id, wait] of waiting.nodes)
           if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
+        if (aside.size) applyAsideWaiting();
       }
     }
     if (error < 1e-7 && !capped) {
@@ -791,6 +920,12 @@ export function analyzeCapacity(
       iterations++;
       break;
     }
+  }
+  if (aside.size && !asideWaitSensitive) {
+    // Zero-cost calls cannot change demand or response times. Resolve their reply
+    // counts once after rates settle instead of re-walking the graph every pass.
+    waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph, asideMissShares, asideFetchShares);
+    applyAsideWaiting();
   }
   const incoming = new Map<string, CompiledEdge[]>();
   for (const edge of compiled.edges) {

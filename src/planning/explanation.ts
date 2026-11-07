@@ -12,6 +12,7 @@ import { stencilRole } from "../stencils/roles";
 import { resolveMultiplier } from "../sim/units";
 import type { RealNodeMetrics, NodeStatus } from "../sim/types";
 import { effectiveCacheTable } from "../sim/cache/cacheAnalysis";
+import { cacheAsideOrigins } from "../model/cacheAside";
 
 /** Cache derivations share analysis precedence without building capacity/fix explanations. */
 export function cacheExplanation(
@@ -25,7 +26,10 @@ export function cacheExplanation(
   const table = node && effectiveCacheTable(d, node, sim);
   if (!table || !analysis.cacheDemand?.[id]) return;
   const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
-  const origin = (topology.outgoing.get(id) ?? [])
+  const origin = [
+    ...(topology.outgoing.get(id) ?? []),
+    ...cacheAsideOrigins(d, id).map((e) => ({ sync: true, to: e.to })),
+  ]
     .filter((e) => e.sync)
     .map((e) => labels.get(e.to) ?? e.to)
     .join(", ")

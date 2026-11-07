@@ -15,6 +15,23 @@ export function effectiveCacheTable(d: DiagramFile, node: DiagramFile["nodes"][n
 export function analysisCache(d: DiagramFile, node: DiagramFile["nodes"][number], simulation?: Simulation) {
   const table = effectiveCacheTable(d, node, simulation);
   if (!table) return;
+  return compileCacheMatcher(table);
+}
+
+/** One effective configuration for demand matching and the waiting graph, including saved setup. */
+export function compileCacheConfiguration(d: DiagramFile, simulation?: Simulation) {
+  const tables = new Map<string, CacheTable>();
+  const matchers = new Map<string, ReturnType<typeof compileCacheMatcher>>();
+  for (const node of d.nodes) {
+    const table = effectiveCacheTable(d, node, simulation);
+    if (!table) continue;
+    tables.set(node.id, table);
+    matchers.set(node.id, compileCacheMatcher(table));
+  }
+  return { tables, matchers };
+}
+
+function compileCacheMatcher(table: CacheTable) {
   const rules = table.rules.map((r) => {
     const { types, ...address } = r.match;
     return {

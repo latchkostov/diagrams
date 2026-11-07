@@ -826,6 +826,10 @@ describe("the downloadable skill", () => {
       ),
     ).toEqual([]);
     expect(html).not.toContain(".reactivate(");
+    expect(html).not.toContain(".cm-layer");
+    expect(html).not.toContain(".route-rules-table");
+    expect(html).toContain(".route-swatch");
+    expect(html).toContain("@keyframes cm-in");
     expect((await zipSkill(withFresh(readSkill(), releasedFiles(root, html)))).length).toBeLessThan(835_000 - 6_144);
   }, 30_000);
   it("saves at least 6 KiB by excluding unreachable editor CSS, with every skill file retained", async () => {

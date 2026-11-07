@@ -1,6 +1,7 @@
 import { createWork } from "./engine/model";
 import { cacheEnabled, CACHE_LIMITS } from "../model/caching";
 import { requireCacheRuntime, type CacheRuntime } from "./cache/cacheBridge";
+import { prepareAside, finishAside, type AsideFetch } from "./cache/cacheAside";
 import { createResources } from "./engine/resources";
 import { createBroker } from "./engine/broker";
 import { createExecutionReservations } from "./executionReservations";
@@ -174,6 +175,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let callSettings = new Map<string, import("./types").EdgeSimProps["caller"]>();
   let cacheRates: ReturnType<CacheRuntime["plan"]> | undefined;
   function compileCaches(only?: string): void {
+    for (const edge of edges) if (edge.asideLookup) delete edge.asideLookup;
+    for (const edge of edges) {
+      const ref = callSettings.get(edge.id)?.onMiss;
+      const lookup = ref ? faultEdges.get(ref) : undefined;
+      if (
+        lookup &&
+        revisionAtLeast(planning?.revision, "p3-w3") &&
+        cacheEnabled(planning, lookup.to.stencil, lookup.to.role, lookup.to.rawProps.cache)
+      ) {
+        edge.onMiss = ref!;
+        lookup.asideLookup = true;
+      } else if (edge.onMiss) delete edge.onMiss;
+    }
     const retained = only
       ? [...nodes.values()]
           .filter((n) => n.id !== only)
@@ -182,10 +196,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const remaining = { value: CACHE_LIMITS.totalTracked - retained };
     for (const node of nodes.values()) {
       if (only && node.id !== only) continue;
-      if (
-        cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache) &&
-        node.outgoing.some((e) => e.sync && !e.dlq)
-      ) {
+      const caching = cacheEnabled(planning, node.stencil, node.role, node.rawProps.cache);
+      const aside = caching && edges.some((e) => e.to === node && e.asideLookup);
+      if (caching && (node.outgoing.some((e) => e.sync && !e.dlq) || aside)) {
         cacheRuntime ??= requireCacheRuntime();
         if (!only || !node.cache || !cacheRuntime.reconfigure(node.cache, node.rawProps.cache)) {
           const peak = node.cache?.peakHerd;
@@ -199,6 +212,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           );
           if (peak) node.cache.peakHerd = peak;
         }
+        if (aside) node.cache.aside = true;
+        else delete node.cache.aside;
       } else node.cache = undefined;
       if (node.role === "store") node.waits = !!node.cache;
       for (const edge of node.outgoing) initializeCall(edge, !!node.cache);
@@ -1142,8 +1157,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (waits() && work.via?.sync && work.message.returnCall !== undefined) {
       const edge = work.via;
       const start = Math.max(time, work.message.visualAt ?? time);
-      if (!cut(edge))
-        scheduleLogical({
+      if (!cut(edge)) {
+        const response: Logical = {
           id: nextLogical++,
           end: time + edge.networkDelayMs,
           edge,
@@ -1156,7 +1171,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           timeoutOrigin: work.timeoutOrigin,
           visualAt: start + Math.max(STEP, edge.travelMs),
           represented: work.message.represented,
-        });
+        };
+        if (work.cache?.aside) response.cacheReply = { cache: work.cacheOwner!, lookup: work.cache };
+        scheduleLogical(response);
+      }
       const visible = drawn < maxParticles;
       const trip: Trip = {
         id: nextParticle++,
@@ -1246,17 +1264,43 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** Choose each branch once, then join Requests before publishing Messages or replying upstream. */
   function beginCall(node: Node, work: Work, ok = true): boolean {
     if (!node.waits) return false;
-    let message = work.message;
-    message = rename(message, outputType(node.role, node.props.emits, message.type));
-    const outgoing = !ok ? [] : work.route ? [work.route.edge] : outputRoutes(node, message);
+    const message = work.cacheFlight?.origins
+      ? work.message
+      : rename(work.message, outputType(node.role, node.props.emits, work.message.type));
+    const outgoing = !ok
+      ? []
+      : (work.cacheFlight?.origins ?? (work.route ? [work.route.edge] : outputRoutes(node, message)));
     work.outputMessage = message;
-    work.outputs = outgoing.filter((edge) => !edge.sync);
-    const requests = outgoing.filter((edge) => edge.sync);
+    const joinCacheLease =
+      work.cache?.outcome === "coalesced" &&
+      work.cacheOwner?.leases?.has(cacheRuntime!.flightKey(work.cache.rule!.id, work.cache.item));
+    const requests: Edge[] = [],
+      outputs: Edge[] = [];
+    let deferred: Call["deferred"];
+    let blockingRemaining = 0,
+      replyMs = 0,
+      replies = 0;
+    for (const edge of outgoing) {
+      if (!edge.sync) {
+        outputs.push(edge);
+        continue;
+      }
+      // A shared fill answers the cache request without dispatching any of its origins.
+      if (joinCacheLease && requests.length) continue;
+      const lookup = !work.cacheFlight && edge.onMiss;
+      if (lookup && !outgoing.some((e) => e.id === lookup)) continue;
+      if (lookup && !joinCacheLease) (deferred ??= []).push({ edge, lookup });
+      else requests.push(edge);
+      if (edge.policy?.blocking) blockingRemaining++;
+      else replies++;
+      replyMs += edge.policy?.replyMs ?? 0;
+    }
+    work.outputs = outputs;
     if (!requests.length) return false;
     // Capture only admission's fractional carry before local work advances segmentActive.
     const admissibleActive = executionAdmissibleActive(node, work);
     finishThreadWork(node, work);
-    const nonblocking = requests.every((e) => !e.policy?.blocking);
+    const nonblocking = blockingRemaining === 0;
     if (nonblocking) retireThread(node, work);
     const depth = (message.callDepth ?? 0) + 1;
     if (depth > 16 || calls.size >= 100_000) {
@@ -1266,8 +1310,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (work.cacheOwner && work.cache) {
       work.cache.origin = requests[0].id;
-      const herd = cacheRuntime!.start(work.cacheOwner, work.cache, sizeOf(work.message), time);
+      const herd = !joinCacheLease && cacheRuntime!.start(work.cacheOwner, work.cache, sizeOf(work.message), time);
       if (herd) log("status", node, undefined, "cache herd", { ...cacheTrace(node, work), fetches: herd });
+    }
+    const branches = new Map<string, LogicalBranch>(),
+      outstanding = new Set<string>();
+    for (const edge of requests) {
+      branches.set(edge.id, queuedBranch(edge));
+      outstanding.add(edge.id);
     }
     const call: Call = {
       attempt: attempt(node, work),
@@ -1275,23 +1325,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       startedAt: time,
       node,
       work,
-      outstanding: new Set(requests.map((e) => e.id)),
-      branches: new Map(
-        requests.map((e) => [
-          e.id,
-          {
-            state: "queued",
-            expiresAt: time + (e.policy?.deadlineMs ?? Infinity),
-            ...(e.retry ? { attempt: 1, countedAt: time } : {}),
-            ...(e.breaker ? { attemptStartedAt: time } : {}),
-          },
-        ]),
-      ),
-      blockingRemaining: requests.filter((e) => e.policy?.blocking).length,
+      outstanding,
+      branches,
+      blockingRemaining,
       held: node.role === "processor" && !nonblocking,
-      replyMs: requests.reduce((sum, e) => sum + (e.policy?.replyMs ?? 0), 0),
-      replies: requests.filter((e) => !e.policy?.blocking).length,
+      replyMs,
+      replies,
       depth,
+      deferred,
+      aside: undefined,
     };
     call.attempt.call = {
       startedAt: call.startedAt,
@@ -1300,6 +1342,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       branches: call.branches,
     };
     calls.set(call.id, call);
+    if (
+      work.cacheFlight &&
+      work.cache &&
+      work.cacheOwner?.aside &&
+      work.cache.item >= 0 &&
+      work.cache.rule?.policy.coalesce
+    ) {
+      const cache = work.cacheOwner!;
+      (cache.leases ??= new Map()).set(work.cacheFlight.key, { owner: call, waiting: 0, waiters: new Map() });
+      const fetch: AsideFetch = { cache, lookup: work.cache, size: sizeOf(work.message), key: work.cacheFlight.key };
+      if (requests.length > 1) {
+        fetch.edges = requests;
+        fetch.pending = requests.length;
+      }
+      call.aside = new Map(requests.map((edge) => [edge.id, fetch]));
+    }
     node.calls.set(call.id, call);
     work.waitingCall = call.id;
     if (call.held) {
@@ -1318,42 +1376,131 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       suspendDelivery(work);
     }
     if (call.held) threadPhase(node, ledger.get<Group>(work.thread), "wait");
-    for (const edge of requests) {
-      if (call.held && edge.policy?.blocking) {
-        edge.calls.held += call.heldDots ??= dotsOf(message);
-        node.waitingOn.set(
-          edge.id,
-          (node.waitingOn.get(edge.id) ?? 0) + (ledger.get<Group>(work.thread)?.weight ?? sizeOf(message)),
-        );
-      }
-      const branch = {
-        ...addressed(copy(node, message), edge.requestRoute ?? message.request),
-        // A held caller thread was granted within its incoming width, so it narrows it.
-        width: ledger.get(work.thread)?.weight ?? message.width,
-        returnCall: call.id,
-        callDepth: depth,
-        ...(edge.retry ? { callAttempt: 1 } : {}),
-      };
-      if (edge.retry) {
-        retryCount(edge, "requests", branch);
-        retryCount(edge, "attempts", branch);
-      }
-      if (!permitBreaker(call, edge, branch)) continue;
-      pushDue(
-        edge.poolPending,
-        {
-          id: call.id,
-          end: call.id,
+    for (const edge of requests)
+      if (joinCacheLease)
+        prepareAside(
           call,
-          message: branch,
-          admissibleActive,
-        },
-        edge.poolPendingIndices,
-      );
-      scheduleDeadline(call, edge, branch);
-      dispatchCalls(edge);
-    }
+          edge,
+          { cache: work.cacheOwner!, lookup: { ...work.cache!, outcome: "miss" } },
+          sizeOf(message),
+          time,
+          cacheRuntime!,
+        );
+      else startCallBranch(call, edge, message, admissibleActive);
     return true;
+  }
+
+  function startCallBranch(call: Call, edge: Edge, message: Message, admissibleActive: number): void {
+    const { node, work, depth } = call;
+    const logicalBranch = call.branches.get(edge.id)!;
+    logicalBranch.expiresAt = time + (edge.policy?.deadlineMs ?? Infinity);
+    if (edge.retry) logicalBranch.countedAt = time;
+    if (edge.breaker) logicalBranch.attemptStartedAt = time;
+    if (call.held && edge.policy?.blocking) {
+      edge.calls.held += call.heldDots ??= dotsOf(message);
+      node.waitingOn.set(
+        edge.id,
+        (node.waitingOn.get(edge.id) ?? 0) + (ledger.get<Group>(work.thread)?.weight ?? sizeOf(message)),
+      );
+    }
+    const request = copy(node, message);
+    if (logicalBranch.represented !== undefined) request.represented = logicalBranch.represented;
+    const branch = {
+      ...addressed(request, edge.requestRoute ?? message.request),
+      // A held caller thread was granted within its incoming width, so it narrows it.
+      width: ledger.get(work.thread)?.weight ?? message.width,
+      returnCall: call.id,
+      callDepth: depth,
+      ...(edge.retry ? { callAttempt: 1 } : {}),
+    };
+    if (edge.retry) {
+      retryCount(edge, "requests", branch);
+      retryCount(edge, "attempts", branch);
+    }
+    if (!permitBreaker(call, edge, branch)) return;
+    pushDue(
+      edge.poolPending,
+      {
+        id: call.id,
+        end: call.id,
+        call,
+        message: branch,
+        admissibleActive,
+      },
+      edge.poolPendingIndices,
+    );
+    scheduleDeadline(call, edge, branch);
+    dispatchCalls(edge);
+  }
+
+  function queuedBranch(edge: Edge): LogicalBranch {
+    const branch: LogicalBranch = { state: "queued", expiresAt: time + (edge.policy?.deadlineMs ?? Infinity) };
+    if (edge.retry) branch.attempt = 1;
+    return branch;
+  }
+
+  function skipAside(call: Call, edge: Edge): void {
+    call.outstanding.delete(edge.id);
+    const branch = call.branches.get(edge.id);
+    if (branch) branch.state = "replied";
+    if (edge.policy?.blocking) call.blockingRemaining--;
+    else {
+      call.replies!--;
+      call.replyMs! -= edge.policy?.replyMs ?? 0;
+    }
+    call.attempt.call!.blockingRemaining = call.blockingRemaining;
+  }
+
+  function settleAside(call: Call, edge: Edge, ok: boolean, cause: OutcomeKind): void {
+    if (!cacheRuntime || !call.aside?.has(edge.id)) return;
+    for (const waiter of finishAside(call, edge, ok, time, cacheRuntime)) {
+      if (waiter.call.attempt.outcome) continue;
+      const origins = waiter.call.aside!.get(waiter.edge.id)!.edges ?? [waiter.edge];
+      for (const origin of origins) {
+        finishAside(waiter.call, origin, ok, time, cacheRuntime);
+        skipAside(waiter.call, origin);
+      }
+      waiter.call.work.failureCode = call.work.failureCode;
+      waiter.call.work.timeoutOrigin = call.work.timeoutOrigin;
+      if (!ok || !waiter.call.outstanding.size) settleAttempt(waiter.call, cause);
+    }
+  }
+
+  /** Reuse the caller's selected branches: lookup renames, addresses and later edits cannot reselect them. */
+  function asideOrigins(call: Call, lookup: string): NonNullable<Call["deferred"]> {
+    const pending = call.deferred ?? [];
+    return pending.length === 1 && pending[0].lookup === lookup
+      ? pending
+      : pending.filter((item) => item.lookup === lookup);
+  }
+
+  function continueAside(call: Call, edge: Edge, event: Logical): void {
+    const pending = call.deferred!;
+    const matching = asideOrigins(call, edge.id);
+    call.deferred =
+      pending.length === 1 && pending[0].lookup === edge.id ? undefined : pending.filter((e) => e.lookup !== edge.id);
+    const hit = event.cacheReply?.lookup.outcome === "hit" || event.cacheReply?.lookup.outcome === "stale";
+    if (!hit)
+      for (const item of matching) {
+        call.branches.set(item.edge.id, queuedBranch(item.edge));
+        call.outstanding.add(item.edge.id);
+      }
+    const action =
+      event.cacheReply && matching.length
+        ? prepareAside(
+            call,
+            matching[0].edge,
+            event.cacheReply,
+            sizeOf(call.work.message),
+            time,
+            cacheRuntime!,
+            matching.length > 1 ? matching.map((item) => item.edge) : undefined,
+          )
+        : "send";
+    for (const { edge: origin } of matching) {
+      if (action === "skip") skipAside(call, origin);
+      else if (action === "send") startCallBranch(call, origin, call.work.outputMessage!, call.node.activeMs);
+    }
   }
 
   function logBreaker(edge: Edge, previous: BreakerState["state"]): void {
@@ -1764,6 +1911,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (node.status === "paused") return;
     let ok = a.outcome!.ok;
+    if (call.aside)
+      for (const id of [...call.aside.keys()]) settleAside(call, faultEdges.get(id)!, false, settledCause(a));
     if (work.cacheOwner && work.cache)
       cacheRuntime!.settle(work.cacheOwner, work.cache, time, sizeOf(work.message), ok);
     const retry =
@@ -1963,6 +2112,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
         }
         call.outstanding.delete(edge!.id);
+        if (event.ok && call.deferred?.length) continueAside(call, edge!, event);
+        if (call.aside)
+          settleAside(
+            call,
+            edge!,
+            !!event.ok,
+            event.ok ? "success" : event.timeout ? "deadline" : (event.outcome?.kind ?? "error"),
+          );
         if (event.ok && edge!.retry) retryCount(edge!, "succeeded", branchSized(call, edge!));
         releaseCallEdge(call, edge!);
         call.branches.get(edge!.id)!.state = event.timeout ? "timedOut" : event.ok ? "replied" : "failed";
@@ -2173,15 +2330,33 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (work.cache?.revalidate) {
       const lookup = work.cache;
       const cache = work.cacheOwner!;
-      if (cacheRuntime!.refreshReady(cache, lookup, time, 100_000 - calls.size)) {
+      const caller =
+        work.cache.aside && work.message.returnCall !== undefined ? calls.get(work.message.returnCall) : undefined;
+      const origins = caller && asideOrigins(caller, work.via!.id).map((item) => item.edge);
+      // An ended caller no longer owns the pre-lookup request. Do not invent a refresh from its lookup.
+      if (
+        (!work.cache.aside || (caller?.work.outputMessage && origins?.length)) &&
+        cacheRuntime!.refreshReady(cache, lookup, time, 100_000 - calls.size)
+      ) {
         spend();
         const fetch = cacheRuntime!.flight(work, time, nextMessage++, true);
+        if (work.cache.aside) {
+          const message = caller!.work.outputMessage!;
+          fetch.cacheFlight!.origins = origins;
+          fetch.message = { ...fetch.message, type: message.type, color: message.color, request: message.request };
+          fetch.message.family.routesDone = message.request ? [message.request.id] : [];
+        }
         inSystem++;
         if (!beginCall(node, fetch)) {
           cacheRuntime!.forgetFlight(fetch);
           gone(node, fetch.message, "drop", "cache refresh has no origin");
         }
       }
+    }
+
+    if (work.cache?.aside) {
+      settleWork(node, work, "success");
+      return;
     }
 
     if (work.cache?.outcome === "hit" || work.cache?.outcome === "stale") {
@@ -2191,6 +2366,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (work.cache?.outcome === "miss" && work.cache.rule?.policy.coalesce && work.cache.item >= 0) {
       const cache = work.cacheOwner!;
       const key = cacheRuntime!.flightKey(work.cache.rule.id, work.cache.item);
+      if (cache.leases?.has(key)) {
+        work.cache.outcome = "coalesced";
+        if (!beginCall(node, work)) settleWork(node, work, "call-limit", false);
+        return;
+      }
       const flights = (cache.flights ??= new Map());
       let fetch = flights.get(key);
       // A miss can finish its local hop after the first fetch has already filled.
@@ -2620,6 +2800,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         time,
         sizeOf(work.message),
       );
+      if (work.via?.asideLookup) work.cache.aside = true;
       if (work.message.family.trace) step(work.message, "cache", node.id, { cache: cacheTrace(node, work) });
     }
     if (node.props.admission) {

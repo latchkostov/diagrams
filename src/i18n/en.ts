@@ -3199,6 +3199,13 @@ const en = {
   "cache.rulesHint":
     "Checked after routing. A hit answers here; a miss goes to the origin — the service behind the cache — and fills the cache.",
   "cache.addRules": "Add cache rules…",
+  "cache.when": "When",
+  "cache.requestDetails": "Request details",
+  "cache.everyRequest": "Every request",
+  "cache.onlyMisses": "Only when {cache} misses",
+  "cache.writeBackHint": "A successful reply fills the cache automatically (cache-aside).",
+  "cache.conditionDormant": "Upgrade the model to use this cache condition.",
+  "cache.conditionNotCopied": "Cache condition removed: its lookup connection wasn't copied.",
   "cache.keepFor": "Keep for",
   "cache.noStore": "Don't store",
   "cache.notCached": "Not cached",

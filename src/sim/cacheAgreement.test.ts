@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { afterAll, expect, it } from "vitest";
 import { cacheFixture } from "../lab/cacheFixture";
+import { cacheAsideFixture } from "../lab/cacheAsideFixture";
 import { propertyRuns } from "../test/fastCheck";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
@@ -44,15 +45,31 @@ export function agreement(
   fetchMs = 60,
   coalesce = false,
   staleWhileRevalidateMs = 0,
+  aside = false,
 ) {
-  const d = agreementDiagram(keys, ttlMs, popularity, rate, fetchMs);
-  if (coalesce) (d.nodes[1].props!.cache as CacheTable).default!.coalesce = true;
+  const d = aside ? cacheAsideFixture() : agreementDiagram(keys, ttlMs, popularity, rate, fetchMs);
+  if (aside) {
+    d.nodes[0].props!.ratePerSec = rate;
+    d.nodes[1].props = { latencyMs: 0, concurrency: 10000, jitter: 0, failureRate: 0 };
+    d.nodes[2].props!.cache = { rules: [], default: { keys, ttlMs, popularity } };
+    d.nodes[3].props!.latencyMs = fetchMs - 50;
+    for (const edge of d.edges.slice(1))
+      edge.props!.caller = {
+        ...(edge.props!.caller as object),
+        wait: "non-blocking",
+        replyMs: 0,
+      };
+  }
+  const cacheNode = d.nodes.find((n) => n.id === "cache")!;
+  if (coalesce) (cacheNode.props!.cache as CacheTable).default!.coalesce = true;
   if (staleWhileRevalidateMs)
-    (d.nodes[1].props!.cache as CacheTable).default!.staleWhileRevalidateMs = staleWhileRevalidateMs;
+    (cacheNode.props!.cache as CacheTable).default!.staleWhileRevalidateMs = staleWhileRevalidateMs;
   if (scale === "auto") scale = autoScale(explanationSimulation(d), d);
   const legacyExpected = analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))).cacheDemand!.cache[""]
     .hitRatio;
-  const expected = analyzePlanningCapacity(d, explanationSimulation(d)).cacheDemand!.cache[""].hitRatio;
+  const planned = analyzePlanningCapacity(d, explanationSimulation(d)).cacheDemand!.cache[""];
+  const expected = planned.hitRatio;
+  const expectedFetchShare = planned.fetchShare ?? 1 - expected;
   const e = createEngine({ seed, maxParticles: 0 });
   e.load(d, startingCacheRates(d));
   e.setScale(scale);
@@ -76,9 +93,48 @@ export function agreement(
     expected,
     legacyExpected,
     observed,
+    fetchShare,
+    expectedFetchShare,
     error: Math.abs(expected - observed),
-    fetchError: Math.abs(fetchShare - (1 - expected)) / (1 - expected),
+    fetchError: Math.abs(fetchShare - expectedFetchShare) / expectedFetchShare,
   };
+}
+
+for (const scale of [1, 10]) {
+  for (const keys of [1, 1000]) {
+    for (const coalesce of [false, true]) {
+      const batch = ((scale === 1 ? 0 : 4) + (keys === 1 ? 0 : 2) + (coalesce ? 1 : 0)) % 5;
+      const runs: ReturnType<typeof agreement>[] = [];
+      it.each([1, 7, 17, 42, 99])(
+        `A1: cache-aside observation (batch ${batch}, scale ${scale}, ${keys} items, coalesce ${coalesce}, seed %i)`,
+        (seed) => {
+          runs.push(agreement(seed, scale, keys, 5000, "typical", 2000, 60, coalesce, 0, true));
+        },
+      );
+      it(`A1: cache-aside agreement (batch ${batch}, scale ${scale}, ${keys} items, coalesce ${coalesce})`, () => {
+        expect(runs).toHaveLength(5);
+        const requests = runs.reduce((s, r) => s + r.requests, 0);
+        const observed = runs.reduce((s, r) => s + r.observed * r.requests, 0) / requests;
+        const error = Math.abs(observed - runs[0].expected);
+        console.info(
+          "cache-aside agreement",
+          JSON.stringify({ scale, keys, coalesce, requests, expected: runs[0].expected, observed, error }),
+        );
+        expect(error, JSON.stringify(runs)).toBeLessThanOrEqual(scale === 1 ? 0.02 : 0.03);
+        if (scale === 1 && !coalesce) {
+          const fetchError = runs.reduce((s, r) => s + r.fetchError, 0) / runs.length;
+          expect(fetchError, JSON.stringify(runs)).toBeLessThanOrEqual(0.05);
+        }
+      });
+      if (scale === 1 && coalesce)
+        it(`coalesced cache-aside fetch rate agrees with analysis at scale 1 (batch ${batch}, ${keys} items)`, () => {
+          expect(runs).toHaveLength(5);
+          const fetchError = runs.reduce((sum, run) => sum + run.fetchError, 0) / runs.length;
+          console.info("coalesced cache-aside fetch agreement", JSON.stringify({ keys, fetchError, runs }));
+          expect(fetchError, JSON.stringify(runs)).toBeLessThanOrEqual(0.05);
+        });
+    }
+  }
 }
 
 it.each([1, 7, 17, 42, 99])("A1: analysis and Live agree over a steady 20 s window, seed %i", (seed) => {

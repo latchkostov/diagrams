@@ -97,7 +97,7 @@ export interface Work extends ExecutionWork<Group> {
   /** Cache response latency includes local queue/service time before an origin fetch starts. */
   cacheAt?: number;
   cacheOwner?: import("../cache/cacheState").NodeCache;
-  cacheFlight?: { key: string; waiters: Work[]; waiting: number };
+  cacheFlight?: { key: string; waiters: Work[]; waiting: number; origins?: Edge[] };
   priority?: import("../types").QueuePriority;
   queueProtected?: boolean;
   queueSize?: number;
@@ -244,6 +244,8 @@ export interface Node {
   targets: Map<string, Edge>;
 }
 export interface Call extends LogicalCall {
+  deferred?: { edge: Edge; lookup: string }[];
+  aside?: Map<string, import("../cache/cacheAside").AsideFetch>;
   attempt: Attempt<Message>;
   replyMs?: number;
   replies?: number;
@@ -257,6 +259,7 @@ export interface Call extends LogicalCall {
   brokerHeld?: boolean;
 }
 export interface Logical {
+  cacheReply?: { cache: import("../cache/cacheState").NodeCache; lookup: import("../cache/cacheState").CacheLookup };
   outcome?: ClassifiedOutcome;
   backoffMs?: number;
   retry?: boolean;
@@ -277,6 +280,8 @@ export interface Logical {
   visualAt?: number;
 }
 export interface Edge {
+  onMiss?: string;
+  asideLookup?: boolean;
   priority?: import("../types").QueuePriority;
   breaker?: { policy: BreakerPolicy; state: BreakerState };
   policy?: CallPolicy;

@@ -1,0 +1,12 @@
+---
+title: Look up, then fetch
+---
+flowchart LR
+  readers(["Readers"])
+  catalog["Catalog"]
+  cache[("Product cache")]
+  database[("Catalog database")]
+  readers --> catalog
+  catalog --> cache
+  catalog --> database
+%% diagrams:{"v":1,"nodes":{"readers":["readers","client.browser"],"catalog":["catalog","generic.service"],"cache":["cache","generic.cache"],"database":["database","generic.database"]},"edges":["input","lookup","fetch"],"relations":{}}

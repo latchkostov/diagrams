@@ -76,6 +76,9 @@ export interface CacheRuleState {
   revalidationCredit?: number;
 }
 export interface NodeCache {
+  /** Direct read-through fetches share item leases with this cache's aside callers. */
+  aside?: true;
+  leases?: Map<string, import("./cacheAside").AsideLease>;
   cold?: {
     atMs: number;
     at: number;
@@ -101,6 +104,7 @@ export interface NodeCache {
   latency?: import("../latency").LatencyRecorder;
 }
 export interface CacheLookup {
+  aside?: true;
   origin?: string;
   rule?: CacheRuleState;
   item: number;

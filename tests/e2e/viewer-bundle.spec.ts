@@ -15,7 +15,7 @@ import type { ViewerAdapter } from "../../src/export/viewer/adapter";
 import latencyDiagram from "../../src/examples/where-the-time-goes.json" with { type: "json" };
 import { autoscalingFixture } from "../../src/lab/autoscalingFixture";
 import { hpaLesson } from "../../src/model/autoscalingLessons";
-import { CATCH_UP_MS } from "../../src/live/frameClock";
+import { CATCH_UP_MS, FRAME_STEP_MS } from "../../src/live/frameClock";
 import { exportHtml } from "../../src/export/inject";
 import { cacheFixture } from "../../src/lab/cacheFixture";
 
@@ -66,9 +66,11 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
   });
 }
 
-/** Set up engine state before capture without drawing every idle frame. */
+/** Consume a resumed frame normally, then batch the rest of the same setup interval. */
 async function advanceSetupClock(page: Page, duration: number) {
-  for (let remaining = duration; remaining > 0;) {
+  const prime = Math.min(duration, FRAME_STEP_MS);
+  await page.clock.runFor(prime);
+  for (let remaining = duration - prime; remaining > 0;) {
     const step = Math.min(remaining, CATCH_UP_MS);
     await page.clock.fastForward(step);
     remaining -= step;
@@ -146,6 +148,19 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
     await page.getByTestId("live-speed").selectOption("1");
     const badge = page.getByTestId("node-badge-worker");
     await expect(badge).toHaveAttribute("data-ready", "1");
+    // A resumed page intentionally discards its first frame's gap. Setup must
+    // still give the controller ordinary frames before batching larger gaps.
+    await page.evaluate(() => {
+      const own = Object.getOwnPropertyDescriptor(document, "visibilityState");
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      try {
+        document.dispatchEvent(new Event("visibilitychange"));
+      } finally {
+        if (own) Object.defineProperty(document, "visibilityState", own);
+        else Reflect.deleteProperty(document, "visibilityState");
+      }
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
     await advanceSetupClock(page, 1500);
     await expect.poll(async () => Number(await badge.getAttribute("data-desired"))).toBeGreaterThan(1);
     await expect.poll(async () => Number(await badge.getAttribute("data-starting"))).toBeGreaterThan(0);

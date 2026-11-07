@@ -276,6 +276,22 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
     expect(numbered.has("stencil.genericDatabaseName")).toBe(false);
   });
 
+  it("keeps long cache explanations compact without changing their translations", () => {
+    const numbered = numberedKeys([]);
+    for (const key of ["cache.rulesHint", "cache.dormant", "cache.noOrigin"] as const) {
+      const id = ids.indexOf(key);
+      expect(rewriteCalls(`${uses}${call("t", key)};`, numbered, fail)).toContain(
+        `t(${id},${JSON.stringify(en[key])})`,
+      );
+      for (const code of catalogLocales()) {
+        const source = compileCatalog(code, numbered);
+        const translated = readCatalog(code)[key];
+        if (translated !== undefined) expect(source).toContain(`${id}:${JSON.stringify(translated)}`);
+        expect(source).not.toContain(`${JSON.stringify(en[key])}:`);
+      }
+    }
+  });
+
   it("keeps the shared cache-authoring action compact in every core catalog", () => {
     const numbered = numberedKeys([]);
     const id = ids.indexOf("cache.addRules");

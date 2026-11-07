@@ -1,5 +1,5 @@
 ---
-title: "Shoppers on the web #1 · 220 ms end to end · 4 copies"
+title: "Shoppers on the web #1 · 230 ms end to end · 5 copies"
 ---
 sequenceDiagram
   participant web as Shoppers on the web
@@ -7,11 +7,14 @@ sequenceDiagram
   participant gateway as API gateway
   participant catalog_bff as Catalog BFF
   participant product_cache as Product cache
+  participant catalog_db as Catalog DB
   web->>cdn: Shoppers on the web (+0.00 s)<br/>HTTPS
   cdn->>gateway: Shoppers on the web (+0.03 s)<br/>API calls
   gateway->>catalog_bff: Shoppers on the web (+0.08 s)<br/>Products
   catalog_bff->>product_cache: Shoppers on the web (+0.13 s)
   product_cache-->>catalog_bff: reply (+0.14 s)
-  catalog_bff-->>gateway: reply (+0.15 s)
-  gateway-->>cdn: reply (+0.15 s)
-  cdn-->>web: reply (+0.20 s)
+  catalog_bff->>catalog_db: Shoppers on the web (+0.14 s)<br/>Cache miss
+  catalog_db-->>catalog_bff: reply (+0.15 s)
+  catalog_bff-->>gateway: reply (+0.16 s)
+  gateway-->>cdn: reply (+0.16 s)
+  cdn-->>web: reply (+0.21 s)

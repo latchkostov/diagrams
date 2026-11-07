@@ -130,16 +130,19 @@ export function Field({
   group,
   children,
   testId,
+  className,
 }: {
   label: string;
   hint?: string;
   group?: boolean;
   children: ReactNode;
   testId?: string;
+  /** A modifier on the row itself, so layout rules never need `:has()` to find it. */
+  className?: string;
 }) {
   const Tag = group ? "div" : "label";
   return (
-    <Tag className="insp-field" title={hint} data-testid={testId}>
+    <Tag className={className ? `insp-field ${className}` : "insp-field"} title={hint} data-testid={testId}>
       <span className="insp-label">{label}</span>
       {children}
     </Tag>

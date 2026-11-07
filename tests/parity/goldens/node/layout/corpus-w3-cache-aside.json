@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "readers": [40, 100], "catalog": [400, 100], "cache": [760, 40], "database": [760, 160] },
+    "TB": { "readers": [180, 40], "catalog": [180, 200], "cache": [40, 360], "database": [320, 360] }
+  },
+  "tidy": { "readers": [0, 60], "catalog": [300, 60], "cache": [600, 0], "database": [600, 120] },
+  "arrange": {
+    "alignLeft": { "readers": [0, 100], "catalog": [0, 100], "cache": [0, 0], "database": [0, 220] },
+    "alignMiddle": { "readers": [0, 110], "catalog": [280, 110], "cache": [560, 110], "database": [560, 110] },
+    "distributeH": { "readers": [0, 100], "catalog": [187, 100], "cache": [373, 0], "database": [560, 220] },
+    "distributeV": { "readers": [0, 73], "catalog": [280, 147], "cache": [560, 0], "database": [560, 220] },
+    "spreadH": { "readers": [0, 0], "catalog": [280, 0], "cache": [560, 0], "database": [820, 0] },
+    "boundaryAround": { "x": -40, "y": -64, "width": 860, "height": 396 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "readers": [40, 100], "catalog": [400, 100], "cache": [760, 40], "database": [760, 160] },
+    "groups": {}
+  }
+}

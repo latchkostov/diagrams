@@ -124,6 +124,7 @@ const simulationPrefixes = [
   "inspector.howManyConsumers",
 ];
 export function catalogBucket(key: string): CatalogBucket {
+  if (key === "cache.conditionNotCopied") return "selection";
   const namespace = key.split(".")[0];
   const matches = Object.entries(catalogBuckets).filter(([, prefixes]) =>
     (prefixes as readonly string[]).includes(namespace),
@@ -185,7 +186,9 @@ export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key>
       plain(key) &&
       // The gallery includes the caching promise on the start card. Numeric
       // lookups keep its English keys out of each locale without changing readiness.
+      // Long cache explanations use the same representation to retain locale headroom.
       (key.startsWith("examples.") ||
+        (key.startsWith("cache.") && en[key].length >= 64) ||
         (["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) && en[key].length >= 64))
     )
       out.add(key);

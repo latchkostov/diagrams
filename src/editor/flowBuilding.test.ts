@@ -20,6 +20,25 @@ import * as toasts from "../interop/ui/toast";
 import { parsePayload, makePayload } from "./clipboard";
 import { validateDiagram } from "../interop/native";
 import { ANNOTATION_LIMITS } from "../model/annotations";
+import { cacheAsideFixture } from "../lab/cacheAsideFixture";
+import { analyzeCapacity } from "../sim/capacity";
+
+it("reconnecting a conditional database call to a Shape keeps Checks usable", () => {
+  const d = cacheAsideFixture();
+  d.annotations = [
+    { id: "shape", kind: "shape", shape: "rect", text: "Archive", x: 800, y: 200, width: 160, height: 90 },
+  ];
+  const t = setup([], d);
+  expect(t.api.reconnectEdge("fetch", "target", "shape")).toBe(true);
+  t.commit();
+  const edited = t.api.getDiagram();
+  expect(edited.edges[2].to).toBe("shape");
+  expect(() => validateDiagram(edited)).not.toThrow();
+  const a = analyzeCapacity(edited);
+  expect(a.converged).toBe(true);
+  expect(a.connections.fetch).toBeUndefined();
+  expect(a.nodes.database.offered).toBe(0);
+});
 
 describe("connected annotation persistence", () => {
   it.each(["shape", "stencil", true] as const)(

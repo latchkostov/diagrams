@@ -14,6 +14,7 @@ import inlineRateLimit from "../examples/inline-rate-limit.json";
 import recommendations from "../examples/recommendations-feature-store.json";
 import { waitingFixture } from "./waitingFixture";
 import { cacheFixture } from "./cacheFixture";
+import { cacheAsideFixture } from "./cacheAsideFixture";
 import { staleCalloutFixture, purgeEditorFixture } from "./cachePurgeFixture";
 import stampede from "../examples/cache-stampede.json";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
@@ -407,6 +408,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "TTL hits, origin fetches and warm playback.",
     diagram: cacheFixture,
+  },
+  {
+    kind: "diagram",
+    id: "cache-aside",
+    title: "Look up, then fetch",
+    group: "Diagrams",
+    description: "Only cache misses call the database; successful replies fill the cache.",
+    diagram: cacheAsideFixture,
   },
   {
     kind: "diagram",

@@ -1,5 +1,5 @@
 ---
-title: "Shoppers on the web #443 · 10.6 s end to end · 31 copies · 2 retries · dead-lettered"
+title: "Shoppers on the web #450 · 10.6 s end to end · 31 copies · 2 retries · dead-lettered"
 ---
 sequenceDiagram
   participant web as Shoppers on the web
@@ -58,61 +58,61 @@ sequenceDiagram
   risk-->>checkout_api: reply (+0.23 s)
   inventory_db-->>inventory: reply (+0.24 s)
   inventory_db-)inventory_events: StockChanged (+0.24 s)<br/>CDC
-  tax-->>checkout_api: reply (+0.24 s)
   inventory-->>checkout_api: reply (+0.25 s)
-  payments->>stripe: Shoppers on the web (+0.26 s)<br/>PaymentIntent
-  stripe-->>payments: reply (+0.46 s)
-  payments-->>checkout_api: reply (+0.47 s)
+  payments->>stripe: Shoppers on the web (+0.25 s)<br/>PaymentIntent
+  tax-->>checkout_api: reply (+0.25 s)
+  stripe-->>payments: reply (+0.44 s)
+  payments-->>checkout_api: reply (+0.45 s)
   checkout_api-->>gateway: reply (+0.49 s)
   gateway-->>cdn: reply (+0.49 s)
-  outbox_relay-)orders: OrderPlaced (+0.53 s)
+  outbox_relay-)orders: OrderPlaced (+0.52 s)
   cdn-->>web: reply (+0.54 s)
   inventory_events-)search_indexer: StockChanged (+0.54 s)
-  orders-)fulfilment: OrderPlaced (+0.83 s)
-  orders-)loyalty: OrderPlaced (+0.83 s)
-  orders-)status_projector: OrderPlaced (+0.83 s)
-  orders-)notifier: OrderPlaced (+0.83 s)
-  orders-)lake_sink: OrderPlaced (+0.83 s)
+  orders-)fulfilment: OrderPlaced (+0.82 s)
+  orders-)loyalty: OrderPlaced (+0.82 s)
+  orders-)status_projector: OrderPlaced (+0.82 s)
+  orders-)notifier: OrderPlaced (+0.82 s)
+  orders-)lake_sink: OrderPlaced (+0.82 s)
   search_indexer->>search_index: StockChanged (+0.88 s)<br/>Reindex
   search_index-->>search_indexer: reply (+0.89 s)
-  status_projector->>status_cache: OrderPlaced (+1.16 s)<br/>Upsert
-  status_cache-->>status_projector: reply (+1.17 s)
-  notifier-)notify_q: OrderPlaced (+1.17 s)<br/>Notify
-  lake_sink->>lake: OrderPlaced (+1.17 s)<br/>Parquet
-  lake-->>lake_sink: reply (+1.18 s)
+  status_projector->>status_cache: OrderPlaced (+1.15 s)<br/>Upsert
+  notifier-)notify_q: OrderPlaced (+1.15 s)<br/>Notify
+  status_cache-->>status_projector: reply (+1.16 s)
+  lake_sink->>lake: OrderPlaced (+1.16 s)<br/>Parquet
   Note over loyalty: ✕ attempt 1 failed
-  loyalty--)orders: back to the broker after attempt 1 (+1.19 s)
-  fulfilment->>wms: OrderPlaced (+1.24 s)<br/>Pick request
-  wms-->>fulfilment: reply (+1.38 s)
-  fulfilment-)shipments: ShipmentCreated (+1.39 s)
-  notify_q-)email: OrderPlaced (+1.47 s)
-  notify_q-)push: OrderPlaced (+1.47 s)
-  orders-)loyalty: OrderPlaced (+1.49 s)
-  shipments-)notifier: ShipmentCreated (+1.69 s)
-  shipments-)status_projector: ShipmentCreated (+1.69 s)
-  push->>apns: OrderPlaced (+1.82 s)<br/>Send
+  loyalty--)orders: back to the broker after attempt 1 (+1.17 s)
+  lake-->>lake_sink: reply (+1.17 s)
+  fulfilment->>wms: OrderPlaced (+1.22 s)<br/>Pick request
+  wms-->>fulfilment: reply (+1.35 s)
+  fulfilment-)shipments: ShipmentCreated (+1.36 s)
+  notify_q-)email: OrderPlaced (+1.45 s)
+  notify_q-)push: OrderPlaced (+1.45 s)
+  orders-)loyalty: OrderPlaced (+1.47 s)
+  shipments-)notifier: ShipmentCreated (+1.66 s)
+  shipments-)status_projector: ShipmentCreated (+1.66 s)
+  push->>apns: OrderPlaced (+1.79 s)<br/>Send
   Note over loyalty: ✕ attempt 2 failed
-  loyalty--)orders: back to the broker after attempt 2 (+1.85 s)
-  email->>sendgrid: OrderPlaced (+1.86 s)<br/>Mail send
-  status_projector->>status_cache: ShipmentCreated (+2.02 s)<br/>Upsert
-  notifier-)notify_q: ShipmentCreated (+2.02 s)<br/>Notify
-  status_cache-->>status_projector: reply (+2.03 s)
-  apns-->>push: reply (+2.05 s)
-  sendgrid-->>email: reply (+2.15 s)
-  orders-)loyalty: OrderPlaced (+2.15 s)
-  notify_q-)email: ShipmentCreated (+2.32 s)
-  notify_q-)push: ShipmentCreated (+2.32 s)
+  loyalty--)orders: back to the broker after attempt 2 (+1.82 s)
+  email->>sendgrid: OrderPlaced (+1.83 s)<br/>Mail send
+  status_projector->>status_cache: ShipmentCreated (+1.99 s)<br/>Upsert
+  notifier-)notify_q: ShipmentCreated (+1.99 s)<br/>Notify
+  status_cache-->>status_projector: reply (+2.00 s)
+  apns-->>push: reply (+2.07 s)
+  sendgrid-->>email: reply (+2.10 s)
+  orders-)loyalty: OrderPlaced (+2.12 s)
+  notify_q-)email: ShipmentCreated (+2.29 s)
+  notify_q-)push: ShipmentCreated (+2.29 s)
   Note over loyalty: ✕ attempt 3 failed
-  loyalty--)orders: back to the broker after attempt 3 (+2.50 s)
-  push->>apns: ShipmentCreated (+2.67 s)<br/>Send
-  email->>sendgrid: ShipmentCreated (+2.70 s)<br/>Mail send
+  loyalty--)orders: back to the broker after attempt 3 (+2.48 s)
+  push->>apns: ShipmentCreated (+2.64 s)<br/>Send
+  email->>sendgrid: ShipmentCreated (+2.67 s)<br/>Mail send
   Note over orders: Dead-lettered after 3 deliveries
   rect rgba(209, 57, 63, 0.14)
-    orders-)orders_dlq: OrderPlaced (dead letter) (+2.80 s)
+    orders-)orders_dlq: OrderPlaced (dead letter) (+2.78 s)
   end
-  apns-->>push: reply (+2.89 s)
-  sendgrid-->>email: reply (+3.00 s)
-  Note over web,loyalty_db: ⏱ 7.04 s waiting in Orders DLQ
+  apns-->>push: reply (+2.93 s)
+  sendgrid-->>email: reply (+2.95 s)
+  Note over web,loyalty_db: ⏱ 7.06 s waiting in Orders DLQ
   orders_dlq-)dlq_triage: OrderPlaced (+10.14 s)
   dlq_triage->>loyalty: OrderPlaced (+10.55 s)<br/>Replay
   loyalty->>loyalty_db: OrderPlaced (+10.60 s)<br/>Points

@@ -16,6 +16,7 @@ import { expectLiveParticles } from "./node-identity";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { installParticleCounters, rendererCounters } from "./particle-counters";
+import { nextLiveReadout } from "./live-readout";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -26,6 +27,18 @@ const canvas = (page: Page) => page.getByTestId("live-canvas");
 const play = (page: Page) => page.getByTestId("live-play");
 const clockMs = async (page: Page) => Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
 const data = async (page: Page, name: string) => canvas(page).getAttribute(`data-${name}`);
+
+test("a paused readout capture waits for publication instead of reusing a stale frame", async ({ page }) => {
+  await page.setContent('<canvas data-testid="live-canvas" data-sim-time="1390" data-particle-sum="7"></canvas>');
+  const readout = nextLiveReadout(page);
+  await expect(canvas(page)).toHaveAttribute("data-readout-awaiting", "true");
+  await canvas(page).evaluate((element) => {
+    element.setAttribute("data-sim-time", "1430");
+    element.setAttribute("data-particle-sum", "11");
+  });
+  expect(await readout).toEqual({ time: "1430", sum: "11" });
+  await expect(canvas(page)).not.toHaveAttribute("data-readout-awaiting", /.*/);
+});
 /** The viewport transform, as numbers. */
 const view = (transform: string) => {
   const [x, y, zoom] = (transform.match(/-?[\d.]+(?:e-?\d+)?/g) ?? []).map(Number);
@@ -280,8 +293,7 @@ test.describe("slow motion", () => {
     await expect(play(page)).toHaveAttribute("data-state", "paused");
     await waitForCameraIdle(page);
     await animationFrames(page);
-    const time = await data(page, "sim-time");
-    const sum = await data(page, "particle-sum");
+    const { time, sum } = await nextLiveReadout(page);
     await waitForCameraIdle(page);
     const mark = await cameraJournalMark(page);
     await openNodeMenu(page, "payments", "sim.slowmo-from");

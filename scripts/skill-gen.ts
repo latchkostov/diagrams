@@ -40,7 +40,7 @@ const METRICS = METRIC_FIELDS;
 /** One line per simulation property. A new property fails generation until it's described here. */
 const NODE_PROP_NOTES: Record<string, string> = {
   cache:
-    "p3-w3 edge and cache nodes: ordered {rules:[{id,label?,match,policy}],default?}. GET/HEAD Requests only; policy has exactly one of ttlMs (100..86400000) and noStore:true, with keys (1..1000000, default 1000), popularity (even/gentle/typical/steep, default typical), and coalesce (boolean, default false: one origin fetch per tracked item, other requests wait). No stale windows or cache-aside yet. Older models keep rules dormant.",
+    "p3-w3 edge and cache nodes: ordered {rules:[{id,label?,match,policy}],default?}. GET/HEAD Requests only; policy has exactly one of ttlMs (100..86400000) and noStore:true, with keys (1..1000000, default 1000), popularity (even/gentle/typical/steep, default typical), coalesce (boolean, default false: one fetch per tracked item), and staleWhileRevalidateMs. A sibling caller.onMiss database call fills a cache-aside lookup implicitly. Older models keep rules dormant.",
   queue:
     "p3-w2 processors without admission only: {limit? (1..1000000 waiting real requests), whenFull? (reject-new or drop-oldest), order? (fifo or lifo), maxWaitMs?}. Pushed arrivals only; active work and broker-fed deliveries are exempt. Refusals return 503 throttled and count as rejected and shed. Earlier revisions keep the policy dormant.",
   api: "P3 admission: typed token buckets, concurrent calls, scoped account sharing, duration/errors and per-request token/cost sizes. Unknown budgets stay unknown. Every applicable bucket is charged atomically in real units.",
@@ -95,7 +95,7 @@ const EDGE_PROP_NOTES: Record<string, string> = {
     "p3-w2 incoming flows: critical, normal (default), or sheddable; higher priority serves first and lower-priority waiting work is evicted first. Retries keep their connection priority.",
   endpointId: "Request target endpoint id inside the target API node; dangling references reject rather than fall back",
   caller:
-    "p3-w1: wait, deadlineMs per attempt, replyMs and poolConnections; p3-w2 executes retry: maxAttempts (includes first, capped at 10), backoffMs, strategy, maxBackoffMs, jitter 0..1, retryOn, idempotent, budget {percent, minPerSec?}. A blocking caller holds its thread through backoff. Budget: ten-second whole-dot allowance max(minPerSec*10, percent/100*requests); absent minPerSec defaults to 10. Earlier revisions keep saved retries dormant.",
+    "p3-w1: wait, deadlineMs per attempt, replyMs and poolConnections; p3-w2 executes retry: maxAttempts (includes first, capped at 10), backoffMs, strategy, maxBackoffMs, jitter 0..1, retryOn, idempotent, budget {percent, minPerSec?}. A blocking caller holds its thread through backoff. Budget: ten-second whole-dot allowance max(minPerSec*10, percent/100*requests); absent minPerSec defaults to 10. p3-w3 onMiss names the same caller's unconditional Request to a cache: look up first, call only on a miss, fill on success. Earlier revisions keep it dormant.",
 
   networkDelayMs:
     "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",
