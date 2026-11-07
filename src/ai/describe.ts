@@ -13,7 +13,8 @@ import { scenarioPlans } from "../sim/scalingPlanner";
 import { planMessage } from "../checks/scalingFindings";
 import { messageTypesAt } from "../model/messageTypes";
 import { describeResilience } from "./resilience";
-import { cacheEnabled } from "../model/caching";
+import { cacheEnabled, cacheCapable, type CachePolicy } from "../model/caching";
+import { popularityTable } from "../sim/cache/popularity";
 import { cacheAsideOrigins } from "../model/cacheAside";
 import { stencilRole } from "../stencils/roles";
 
@@ -57,12 +58,34 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
   const resilience = describeResilience(d, topology, analysis);
+  const expectedCache = (node: string, rule: string, policy: CachePolicy) => {
+    const demand = analysis?.cacheDemand?.[node]?.[rule];
+    const hottestShare = policy.noStore ? 0 : popularityTable(policy.keys, policy.popularity).hottestShare;
+    return {
+      requestsPerSec: demand?.rate ?? null,
+      hitRatio: demand?.hitRatio ?? null,
+      offload: demand ? 1 - (demand.fetchShare ?? 1 - demand.hitRatio) : null,
+      originPerSec: demand ? demand.rate * (demand.fetchShare ?? 1 - demand.hitRatio) : null,
+      hottestShare,
+      herd: demand ? (demand.rate * hottestShare * demand.fetchMs) / 1000 : null,
+      coldOriginPerSec: demand?.rate ?? null,
+    };
+  };
+  const nodeCapabilities = (node: DiagramFile["nodes"][number]) => [
+    ...(connections[node.id] ?? []),
+    ...(cacheCapable(node.stencil, stencilRole(node.stencil)) ? ["cache"] : []),
+  ];
   const cache = (node: DiagramFile["nodes"][number]) =>
     cacheEnabled(d.planning, node.stencil, stencilRole(node.stencil), node.props?.cache)
       ? {
-          rules: node.props.cache.rules.map((rule) => ({
+          rules: [
+            ...node.props.cache.rules,
+            ...(node.props.cache.default
+              ? [{ id: "", label: "Other requests", match: {}, policy: node.props.cache.default }]
+              : []),
+          ].map((rule) => ({
             ...rule,
-            expected: analysis?.cacheDemand?.[node.id]?.[rule.id] ?? null,
+            expected: expectedCache(node.id, rule.id, rule.policy),
           })),
           ...(node.props.cache.default ? { default: node.props.cache.default } : {}),
           origin: [
@@ -121,7 +144,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       nodes: take(nodes).map((n) => ({
         ...n,
         ...typeFields("arrivingTypes", types.arriving.get(n.id)),
-        capabilities: connections[n.id] ?? [],
+        capabilities: nodeCapabilities(n),
         explanation: resolved(n.id),
         ...(threads(n.id) ? { requestsWait: threads(n.id) } : {}),
         ...(resilience.processor(n.id) ? { queue: resilience.processor(n.id) } : {}),
@@ -157,7 +180,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
   for (const n of shownNodes) {
     lines.push(
-      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""}${typeText("arrivingTypes", types.arriving.get(n.id))} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
+      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""}${typeText("arrivingTypes", types.arriving.get(n.id))} capabilities=${JSON.stringify(nodeCapabilities(n))}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
     );
     if (resilience.processor(n.id)) lines[lines.length - 1] += ` queue=${JSON.stringify(resilience.processor(n.id))}`;
     if (cache(n)) lines[lines.length - 1] += ` cache=${JSON.stringify(cache(n))}`;

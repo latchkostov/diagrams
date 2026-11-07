@@ -1,6 +1,70 @@
 {
-  "summary": "Nothing to check. 21 checks ran.",
-  "findings": {},
-  "agentReport": { "findings": [], "summary": "Nothing to check. 21 checks ran." },
-  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 21 checks ran." }
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "cache-stampede:cache:": {
+      "title": "A hot item's expiry would flood Catalog database.",
+      "message": "Other requests's most popular item gets 200/s. Each time it expires, about 28 requests reach Catalog database before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+      "rationale": "Cache benefits depend on item reuse. Cold-cache probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked.",
+      "shownMessage": "⁨Other requests⁩'s most popular item gets 200/s. Each time it expires, about 28 requests reach ⁨Catalog database⁩ before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+      "shownRationale": "Cache benefits depend on item reuse. Probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked."
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "cache-stampede:cache:",
+        "cacheFinding": {
+          "kind": "cache-stampede",
+          "node": "cache",
+          "rule": "",
+          "origin": "database",
+          "nodeName": "Product cache",
+          "ruleName": "Other requests",
+          "originName": "Catalog database",
+          "hitRatio": 0.8733624454148472,
+          "herd": 28,
+          "coldPerSec": 200,
+          "capacityPerSec": null,
+          "ttlMs": 1000,
+          "hottestPerSec": 200,
+          "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": true }
+        },
+        "rule": "cache-stampede",
+        "severity": "warning",
+        "title": "A hot item's expiry would flood Catalog database.",
+        "message": "Other requests's most popular item gets 200/s. Each time it expires, about 28 requests reach Catalog database before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+        "targets": ["cache", "database"]
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "cache-stampede:cache:",
+        "cacheFinding": {
+          "kind": "cache-stampede",
+          "node": "cache",
+          "rule": "",
+          "origin": "database",
+          "nodeName": "Product cache",
+          "ruleName": "Other requests",
+          "originName": "Catalog database",
+          "hitRatio": 0.8733624454148472,
+          "herd": 28,
+          "coldPerSec": 200,
+          "capacityPerSec": null,
+          "ttlMs": 1000,
+          "hottestPerSec": 200,
+          "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": true }
+        },
+        "rule": "cache-stampede",
+        "severity": "warning",
+        "title": "A hot item's expiry would flood Catalog database.",
+        "message": "Other requests's most popular item gets 200/s. Each time it expires, about 28 requests reach Catalog database before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+        "targets": ["cache", "database"]
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
 }

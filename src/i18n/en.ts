@@ -10,6 +10,37 @@
 // stays.
 
 const en = {
+  "cacheChecks.stampedeName": "A hot item could flood the origin",
+  "cacheChecks.stampedeAbout":
+    "Checks hot-item demand and a Cold cache probe at configured rates. Offers a replay-proven cache policy.",
+  "cacheChecks.coldName": "The origin cannot carry a cold cache",
+  "cacheChecks.coldAbout":
+    "Checks origin capacity and recovery within 10 s of a purge. At most three caches are probed.",
+  "cacheChecks.ttlName": "Items expire before they are reused",
+  "cacheChecks.ttlAbout":
+    "Checks rules below 20% expected hits where most requests are for rarely reused items. A longer lifetime needs a 30 s replay.",
+  "cacheChecks.methodName": "These requests are never stored",
+  "cacheChecks.methodAbout":
+    "Checks rules matching only methods other than GET and HEAD. Those requests always reach the origin.",
+  "cacheChecks.stampedeTitle": "A hot item's expiry would flood {origin}.",
+  "cacheChecks.stampedeMessage":
+    "{rule}'s most popular item gets {rate}/s. Each time it expires, about {herd} requests reach {origin} before the first reply.",
+  "cacheChecks.coldTitle": "{origin} can't carry {node}'s traffic when the cache is cold.",
+  "cacheChecks.coldMessage":
+    "After a purge or deploy, {origin} gets {cold}/s, {ratio}× its capacity, until the cache refills. The probe did not recover within 10 s.",
+  "cacheChecks.ttlTitle": "Most {rule} items are reused less often than every {seconds} s.",
+  "cacheChecks.ttlMessage": "So {hit}% hit. If they can be up to {longer} s old, {better}% would.",
+  "cacheChecks.methodTitle": "{rule} matches {method} requests, which are never stored.",
+  "cacheChecks.methodMessage": "They always reach {origin}.",
+  "cacheChecks.probe": "Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+  "cacheChecks.why":
+    "Cache benefits depend on item reuse. Probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked.",
+  "cacheChecks.coalesce": "One fetch per item",
+  "cacheChecks.stale": "Serve stale while refreshing",
+  "cacheChecks.keep": "Keep for {seconds} s",
+  "cacheChecks.deleteRule": "Delete this cache rule",
+  "cacheChecks.replicas": "Add replicas ({count})",
+  "cacheChecks.notChecked": "{count} caches not checked by the Cold cache probe",
   "selection.extend": "Extend selection…",
   "selection.remove": "Remove from selection…",
   "selection.area": "Inside this area…",

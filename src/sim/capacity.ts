@@ -78,7 +78,18 @@ export interface NodeCapacity {
 export interface CapacityAnalysis {
   cacheDemand?: Record<
     string,
-    Record<string, { rate: number; fetchMs: number; hitRatio: number; fetchShare?: number }>
+    Record<
+      string,
+      {
+        rate: number;
+        fetchMs: number;
+        hitRatio: number;
+        fetchShare?: number;
+        /** Cold demand each origin receives with this cache cold, as propagation dispatches it (cache-aside: by each
+         * caller's own conditional call); shared by Checks and planning. */
+        origins?: Record<string, { rate: number; fetchMs: number; edge: string }>;
+      }
+    >
   >;
   /** Per-connection configured demand in real msg/s, computed by the same routing pass. */
   connections: Record<string, number>;
@@ -621,8 +632,13 @@ export function analyzeCapacity(
       send(next, edge, type, rate * fraction, route);
     });
   }
-  function cachedRate(id: string, c: TrafficClass, value: number, admitted = 1): number {
-    const rule = cacheMatchers.get(id)?.(c.type, c.route, !!c.sync);
+  function cachedRate(
+    id: string,
+    c: TrafficClass,
+    value: number,
+    rule: { id: string; policy: import("../model/caching").CachePolicy } | undefined,
+    admitted = 1,
+  ): number {
     if (!rule) return value;
     const cache = cacheDemand[id]?.[rule.id];
     const hit = cache?.hitRatio ?? 0;
@@ -633,6 +649,54 @@ export function analyzeCapacity(
     }
     return value * (cache?.fetchShare ?? 1 - hit);
   }
+  /** Connection shares for ordinary forwarding and cold-origin projection use the same caller semantics. */
+  function connectionShare(edge: CompiledEdge, type: string, injected = false): number {
+    return forwardingShare(
+      entries.get(edge.from)!.role,
+      edge,
+      type,
+      injected ? "injected" : "output",
+      undefined,
+      undefined,
+      cacheMatchers.has(edge.from),
+    );
+  }
+  // Cold-cache origin demand by cache, rule and origin connection, recorded where propagation dispatches each fetch:
+  // a cache records its own forwarding, a cache-aside caller its own conditional call. No parallel projection, so
+  // callers sharing one cache, shares, filters, renamed lookups and routing tables all keep propagation's attribution.
+  let coldFetches = new Map<string, Map<string, Map<CompiledEdge, number>>>();
+  function recordCold(cache: string, rule: string, edge: CompiledEdge, rate: number): void {
+    if (!(rate > 0) || !edge.sync || edge.deny || edge.dlq) return;
+    let byRule = coldFetches.get(cache);
+    if (!byRule) coldFetches.set(cache, (byRule = new Map()));
+    let byEdge = byRule.get(rule);
+    if (!byEdge) byRule.set(rule, (byEdge = new Map()));
+    byEdge.set(edge, (byEdge.get(edge) ?? 0) + rate);
+  }
+  /** The rule a cache-aside lookup's own traffic class matches at its cache: its type (renamed or not), address, kind. */
+  function lookupRule(lookup: CompiledEdge, type: string, route: CompiledRoute | undefined) {
+    return cacheMatchers.get(lookup.to)?.(lookup.emits ?? type, branchRoute(lookup, route), lookup.sync);
+  }
+  /** A conditional origin call sent at `rate` by a router: with its lookup's cache cold, all of it is that cache's. */
+  function recordAsideCold(edge: CompiledEdge, type: string, route: CompiledRoute | undefined, rate: number): void {
+    const lookup = aside.size ? compiledEdges.get(aside.get(edge.id) ?? "") : undefined;
+    const rule = lookup && lookupRule(lookup, type, route);
+    if (rule) recordCold(lookup.to, rule.id, edge, rate);
+  }
+  /** An origin fetch's modeled response time; a cache-aside fetch adds the lookup reply and the caller's dispatch. */
+  function originResponse(cache: Entry, edge: CompiledEdge): number {
+    const target = entries.get(edge.to)!;
+    const delay = edgeInputs.get(edge.id)?.props?.networkDelayMs;
+    const lookup = aside.get(edge.id);
+    const lookupDelay = lookup && edgeInputs.get(lookup)?.props?.networkDelayMs;
+    return (
+      10 +
+      // The lookup reply and the caller's second dispatch each cross a logical tick.
+      (lookup ? 20 + resolvedTiming(cache.props).workMs + (typeof lookupDelay === "number" ? lookupDelay : 0) : 0) +
+      (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
+      2 * (typeof delay === "number" ? delay : 0)
+    );
+  }
   function propagate(next: Rates, entry: Entry, key: string, rate: number, injected: boolean): void {
     if (!rate) return;
     const id = entry.input.id;
@@ -640,6 +704,7 @@ export function analyzeCapacity(
     let type = c.type;
     const route = c.route;
     if (routes) routeDemandAt(id, route).offered += rate;
+    const rule = hasCaches ? cacheMatchers.get(id)?.(c.type, route, !!c.sync) : undefined;
     type = outputType(entry.role, entry.props.emits, type);
     const self = { type, route };
     if (entry.table && entry.role === "gateway") {
@@ -668,16 +733,19 @@ export function analyzeCapacity(
               },
             });
         }
-        const forwarded = cachedRate(id, c, rate, decision.forwarded);
+        const forwarded = cachedRate(id, c, rate, rule, decision.forwarded);
         if (c.aside) return;
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
           send(next, edge, type, (forwarded * decision.weights[i]) / decision.sum, route);
+          if (rule) recordCold(id, rule.id, edge, (rate * decision.weights[i]) / decision.sum);
+          recordAsideCold(edge, type, route, (forwarded * decision.weights[i]) / decision.sum);
         });
         return;
       }
     }
-    rate = cachedRate(id, c, rate);
+    const offered = rate;
+    rate = cachedRate(id, c, rate, rule);
     // A service's lookup replies locally; that service owns the conditional origin call.
     if (c.aside) return;
     const routesOut = (outgoing.get(id) ?? []).filter((edge) => takes(edge, { type, route: branchRoute(edge, route) }));
@@ -701,39 +769,30 @@ export function analyzeCapacity(
       // blocked at this node and goes no further.
       const healthy = entry.props.healthChecks ? routesOut.filter((edge) => !entries.get(edge.to)!.down) : routesOut;
       const pool = healthy.length ? healthy : routesOut;
-      for (const edge of pool) send(next, edge, type, rate / pool.length, route);
+      for (const edge of pool) {
+        send(next, edge, type, rate / pool.length, route);
+        if (rule) recordCold(id, rule.id, edge, offered / pool.length);
+        recordAsideCold(edge, type, route, rate / pool.length);
+      }
     } else {
       for (const edge of routesOut) {
         if (edge.deny) continue;
-        const share = forwardingShare(
-          entry.role,
-          edge,
-          type,
-          injected ? "injected" : "output",
-          undefined,
-          undefined,
-          cacheMatchers.has(id),
-        );
+        const share = connectionShare(edge, type, injected);
         if (!share) continue;
         const lookupId = aside.get(edge.id);
         let missShare = 1;
         if (lookupId) {
           const lookup = compiledEdges.get(lookupId);
           if (!lookup || !routesOut.includes(lookup)) continue;
-          const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
-          const cached = rule && cacheDemand[lookup.to]?.[rule.id];
-          missShare = cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0);
-          missShare *= forwardingShare(
-            entry.role,
-            lookup,
-            type,
-            injected ? "injected" : "output",
-            undefined,
-            undefined,
-            cacheMatchers.has(id),
-          );
+          const asideRule = lookupRule(lookup, type, route);
+          const cached = asideRule && cacheDemand[lookup.to]?.[asideRule.id];
+          const lookupShare = connectionShare(lookup, type, injected);
+          missShare = (cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0)) * lookupShare;
+          // With that cache cold every lookup misses: this caller's own conditional call is that cache's cold demand.
+          if (asideRule) recordCold(lookup.to, asideRule.id, edge, rate * share * lookupShare);
         }
         send(next, edge, type, rate * share * missShare, branchRoute(edge, route));
+        if (rule) recordCold(id, rule.id, edge, offered * share * missShare);
       }
     }
   }
@@ -751,6 +810,7 @@ export function analyzeCapacity(
     routed.clear();
     arrivals.clear();
     if (hasCaches) {
+      coldFetches = new Map();
       cacheDemand = Object.create(null);
       for (const [id, matcher] of cacheMatchers) {
         const byRule: NonNullable<CapacityAnalysis["cacheDemand"]>[string] = Object.create(null);
@@ -776,21 +836,13 @@ export function analyzeCapacity(
                     takes(edge, { type: c.type, route: branchRoute(edge, c.route) }),
                 )
               : decision.eligible;
+          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0, origins: Object.create(null) });
           let fetchMs = 0;
+          // Fetch latency for the hit model; each origin's cold demand is recorded by propagation (recordCold).
           origins.forEach((edge, index) => {
             if (edge.deny) return;
-            const target = entries.get(edge.to)!;
-            const delay = edgeInputs.get(edge.id)?.props?.networkDelayMs;
-            const lookup = aside.get(edge.id);
-            const lookupDelay = lookup && edgeInputs.get(lookup)?.props?.networkDelayMs;
-            const response =
-              10 +
-              // The lookup reply and the caller's second dispatch each cross a logical tick.
-              (lookup
-                ? 20 + resolvedTiming(entry.props).workMs + (typeof lookupDelay === "number" ? lookupDelay : 0)
-                : 0) +
-              (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
-              2 * (typeof delay === "number" ? delay : 0);
+            const response = originResponse(entry, edge);
+            if ((entry.role !== "gateway" || c.aside) && !connectionShare(edge, c.type)) return;
             if (entry.role === "gateway" && !c.aside)
               fetchMs +=
                 response *
@@ -799,7 +851,6 @@ export function analyzeCapacity(
                   : decision.weights[index] / decision.forwarded / decision.sum);
             else fetchMs = Math.max(fetchMs, response);
           });
-          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0 });
           item.rate += rate * admitted;
           item.fetchMs += rate * admitted * fetchMs;
           policies.set(rule.id, rule.policy);
@@ -890,6 +941,22 @@ export function analyzeCapacity(
         const injection = external.get(id)?.get(key) ?? 0;
         propagate(next, entry, key, injection, true);
         propagate(next, entry, key, Math.max(0, rate - injection), false);
+      }
+    }
+    // This pass's cold origin demand, timed with the waiting plan its cache demand used.
+    for (const [id, byRule] of coldFetches) {
+      const entry = entries.get(id)!;
+      for (const [ruleId, byEdge] of byRule) {
+        const item = cacheDemand[id]?.[ruleId];
+        if (!item) continue;
+        const origins: NonNullable<typeof item.origins> = Object.create(null);
+        for (const [edge, rate] of byEdge) {
+          const demand = (origins[edge.to] ??= { rate: 0, fetchMs: 0, edge: edge.id });
+          demand.rate += rate;
+          demand.fetchMs += rate * originResponse(entry, edge);
+        }
+        for (const origin of Object.values(origins)) origin.fetchMs /= origin.rate;
+        item.origins = origins;
       }
     }
     let error = 0;

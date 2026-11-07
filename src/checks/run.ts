@@ -18,6 +18,7 @@ import { blockedThreads, scalingBlind, callTimeout, provideRequestFindings } fro
 import type { CheckContext } from "./context";
 import { resilienceRules } from "./resilienceFindings";
 import { requestFindings } from "./requestFindings";
+import { cacheRules, CACHE_RULES } from "./cacheFindings";
 
 /**
  * Every rule, in CHECK_RULES order (the order findings list them). `dropped` is raised only by Run simulations
@@ -36,6 +37,7 @@ export const RULES: readonly CheckRule[] = [
   scalingBlind,
   callTimeout,
   ...resilienceRules(requestFindings),
+  ...cacheRules(requestFindings),
   singlePoint,
   secretIdentity,
   schemaRegistry,
@@ -75,17 +77,20 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
   const detected = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
   // A bounded rule's count of what it couldn't list: reported beside the findings, never as one.
   const omitted = detected.flatMap((f) => (f.omitted ? [{ rule: f.rule, count: f.omitted }] : []));
-  const retryStorm = detected.reduce((n, f) => n + (f.unchecked ?? 0), 0);
+  const retryStorm = detected.reduce((n, f) => n + (f.rule === "retry-storm" ? (f.unchecked ?? 0) : 0), 0);
+  const cache = detected.reduce((n, f) => n + (f.rule.startsWith("cache-") ? (f.unchecked ?? 0) : 0), 0);
   const all = detected.filter((f) => !f.omitted && !f.unchecked);
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));
   return {
-    findings: all.filter((f) => !ignores.has(f.id)),
-    ignored: all.filter((f) => ignores.has(f.id)),
+    findings: all.filter((f) => !ignores.has(`${f.rule}:${f.target}`)),
+    ignored: all.filter((f) => ignores.has(`${f.rule}:${f.target}`)),
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
     ...(omitted.length ? { omitted } : {}),
-    ...(retryStorm ? { notChecked: { retryStorm } } : {}),
+    ...(retryStorm || cache
+      ? { notChecked: { ...(retryStorm ? { retryStorm } : {}), ...(cache ? { cache } : {}) } }
+      : {}),
   };
 }
 
@@ -104,7 +109,18 @@ export function onlyRules(result: CheckResult, rules?: readonly CheckRuleId[]): 
     ignored: result.ignored.filter(wanted),
     ran: result.ran.filter((id) => rules.includes(id)),
     ...(kept.length ? { omitted: kept } : {}),
-    ...(notChecked && rules.includes("retry-storm") ? { notChecked } : {}),
+    ...(notChecked &&
+    ((notChecked.retryStorm && rules.includes("retry-storm")) ||
+      (notChecked.cache && rules.some((r) => CACHE_RULES.includes(r as (typeof CACHE_RULES)[number]))))
+      ? {
+          notChecked: {
+            ...(rules.includes("retry-storm") && notChecked.retryStorm ? { retryStorm: notChecked.retryStorm } : {}),
+            ...(rules.some((r) => CACHE_RULES.includes(r as (typeof CACHE_RULES)[number])) && notChecked.cache
+              ? { cache: notChecked.cache }
+              : {}),
+          },
+        }
+      : {}),
   };
 }
 
@@ -132,7 +148,8 @@ export function askedWithEvidence(full: CheckResult, asked: CheckResult, rules?:
  */
 export function recheckRules(rule: CheckRuleId): CheckRuleId[] {
   if (rule === "retry-budget" || rule === "call-breaker") return [rule, "retry-storm"];
-  return rule === "capacity" ? ["capacity", ...WAIT_RULES] : [rule];
+  if (CACHE_RULES.includes(rule as (typeof CACHE_RULES)[number])) return [...CACHE_RULES];
+  return rule === "capacity" ? ["capacity", ...WAIT_RULES, "cache-stampede"] : [rule];
 }
 
 /** Warnings first, then rule order, then reading order (`rank`), then id: the order every list of findings uses. */
@@ -158,12 +175,13 @@ export function summarize(result: CheckResult): string {
     ...(result.notChecked?.retryStorm
       ? [`${result.notChecked.retryStorm} retried calls not checked for retry storms`]
       : []),
+    ...(result.notChecked?.cache ? [`${result.notChecked.cache} caches not checked by the Cold cache probe`] : []),
     ...(result.omitted ?? []).map((o) => `${o.count} more ${o.rule} finding${o.count === 1 ? "" : "s"} not listed`),
     result.ignored.length ? `${result.ignored.length} ignored` : "",
     result.off.length ? `${plural(result.off.length, "check")} off` : "",
   ].filter(Boolean);
   const head =
-    result.findings.length || result.omitted?.length || result.notChecked?.retryStorm
+    result.findings.length || result.omitted?.length || result.notChecked?.retryStorm || result.notChecked?.cache
       ? `${plural(warnings, "warning")}, ${plural(suggestions, "suggestion")}`
       : `Nothing to check. ${plural(result.ran.length, "check")} ran`;
   return `${[head, ...extra].join("; ")}.`;

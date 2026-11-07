@@ -18,6 +18,10 @@
     "call-breaker",
     "queue-limit",
     "retry-storm",
+    "cache-stampede",
+    "cache-cold-start",
+    "cache-ttl-short",
+    "cache-method",
     "single-point",
     "secret-identity",
     "schema-registry"

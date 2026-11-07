@@ -21,6 +21,10 @@ export const REQUEST_RULES = [
   "call-breaker",
   "queue-limit",
   "retry-storm",
+  "cache-stampede",
+  "cache-cold-start",
+  "cache-ttl-short",
+  "cache-method",
 ] as const satisfies readonly CheckRuleId[];
 
 /**
@@ -62,7 +66,9 @@ function store(key: string, result: RequestCheckResult) {
 export function rememberRequestChecks(d: DiagramFile, findings: Finding[]): void {
   store(simulationContent(d), {
     status: "ready",
-    findings: findings.filter((f) => !!f.requestFinding || !!f.resilienceFinding || !!f.omitted || !!f.unchecked),
+    findings: findings.filter(
+      (f) => !!f.requestFinding || !!f.resilienceFinding || !!f.cacheFinding || !!f.omitted || !!f.unchecked,
+    ),
   });
 }
 export function rememberedRequestChecks(d: DiagramFile): Finding[] | undefined {

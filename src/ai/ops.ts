@@ -27,6 +27,16 @@ import {
 } from "../model/requestRouting";
 import { nextAppearance } from "../model/routingAppearance";
 import { stencilRole } from "../stencils/roles";
+import { cacheCapable } from "../model/caching";
+
+function cachingProps(diagram: DiagramFile, node: DiagramNode): void {
+  if (!node.props?.cache) return;
+  if (!cacheCapable(node.stencil, stencilRole(node.stencil)))
+    throw new Error("Cache rules need a cache-capable stencil (an edge CDN or cache store).");
+  if (!revisionAtLeast(diagram.planning?.revision, "p3-w2"))
+    throw new Error("Upgrade the model first (Diagram properties ▸ Upgrade model).");
+  if (diagram.planning!.revision === "p3-w2") diagram.planning = { ...diagram.planning!, revision: "p3-w3" };
+}
 
 /**
  * Request routing settings an op writes on a node: a table only on an HTTP router and a mix only on a source (a
@@ -157,6 +167,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             ...(op.props ? { props: editMessageProps(op.props, {}) } : {}),
           });
           routedProps(next.nodes.at(-1)!, keys);
+          cachingProps(next, next.nodes.at(-1)!);
           fresh.push(id);
           Object.assign(result, { id, label: op.label, stencil });
           if (stencil.confidence === "low")
@@ -218,6 +229,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             if (op.props) {
               n.props = mergeProps(n.props, editMessageProps(op.props, n.props ?? {}));
               if (op.props.routeTable || op.props.trafficMix) routedProps(n, keys);
+              if (op.props.cache) cachingProps(next, n);
             }
             if (op.in === null) {
               delete n.group;

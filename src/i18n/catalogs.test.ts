@@ -276,9 +276,16 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
     expect(numbered.has("stencil.genericDatabaseName")).toBe(false);
   });
 
-  it("keeps long cache explanations compact without changing their translations", () => {
+  it("keeps cache and Checks words compact without changing their translations", () => {
     const numbered = numberedKeys([]);
-    for (const key of ["cache.rulesHint", "cache.dormant", "cache.noOrigin"] as const) {
+    for (const key of [
+      "cache.rulesHint",
+      "cache.dormant",
+      "cache.noOrigin",
+      "cache.coalesceHint",
+      "cacheChecks.stampedeName",
+      "resilienceChecks.backoffName",
+    ] as const) {
       const id = ids.indexOf(key);
       expect(rewriteCalls(`${uses}${call("t", key)};`, numbered, fail)).toContain(
         `t(${id},${JSON.stringify(en[key])})`,
