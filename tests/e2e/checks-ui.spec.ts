@@ -7,6 +7,7 @@ import {
   TEXT_START,
   test,
   performanceTest,
+  pauseClock,
   expect,
   gotoCanvas,
   openMissingDlq,
@@ -22,6 +23,7 @@ import { readFileSync } from "node:fs";
 import type { DiagramFile } from "../../src/model/types";
 import type { Locator, Page } from "@playwright/test";
 import { checksTyping } from "./checks-typing";
+import { flushMeasuredCheck } from "./checks-flush";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
@@ -375,6 +377,33 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
   const wrap = await boxOf(page.getByTestId("inspector-body"));
   expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(wrap.x + wrap.width);
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(wrap.y + wrap.height);
+});
+
+test("a forced measured check bypasses the idle quiet window and restores scheduling", async ({ page }) => {
+  await page.clock.install();
+  await pauseClock(page);
+  await page.evaluate(() => {
+    const probe = { order: [] as string[], idle: window.requestIdleCallback };
+    Object.assign(window, {
+      __checkFlushProbe: probe,
+      __checks: {
+        started: 0,
+        skipped: 0,
+        flush: () => requestIdleCallback(() => probe.order.push("started")),
+      },
+    });
+    // A pending timer gives the controlled idle API its ordinary quiet window.
+    setTimeout(() => probe.order.push("next task"), 2);
+  });
+  await page.evaluate(flushMeasuredCheck, { count: 0, controlled: true });
+  await page.clock.runFor(2);
+  expect(
+    await page.evaluate(() => {
+      const probe = (window as unknown as { __checkFlushProbe: { order: string[]; idle: typeof requestIdleCallback } })
+        .__checkFlushProbe;
+      return { order: probe.order, restored: window.requestIdleCallback === probe.idle };
+    }),
+  ).toEqual({ order: ["started", "next task"], restored: true });
 });
 
 performanceTest(

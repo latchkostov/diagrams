@@ -61,3 +61,32 @@ The repaired viewer fixture, cache-aside tests and all Inspector/viewport neighb
 pass five Linux repeats with six workers and six CPUs: 1,195 passed, zero failed,
 zero flaky and zero skipped. The final engine and complete-gate results are reported
 with the pushed commit.
+
+## Checks measurement fixture follow-up
+
+Subsequent complete Build runs passed every engine, bundle and parity stage, but
+reported a cancelled PNG download and a whole-test timeout in Checks typing. Only
+those two spec files ran twice on clean master
+8d86d8660dfde4f96d644ca4cc81641a6bdb4ffb: 36 passed, zero failed and two skipped.
+Five focused branch repeats also passed (90 passed, five skipped). These comparisons
+do not establish identical pre-existing failures. The download passed the next
+complete run; the typing fixture timed out again.
+
+The fixture explicitly flushes a measured check, but the controlled idle API still
+waited for its ordinary quiet window. That flush now requests the first positive
+virtual tick and restores normal idle scheduling immediately. The same 1,500-node
+diagram, 21 measurement pairs, four start frames, two final paint frames, native
+worker calls, render-count equality, medians and whole-test timeout remain intact.
+The CPU benchmark keeps ordinary idle scheduling. An event-order regression fails
+when the forced-start override is removed: fifteen cases passed, one failed and
+one skipped in that mutation run.
+
+Batching unrelated debounce drains and caching frame-detail DOM membership were
+investigated and rejected: neither explained the observed delay. Those experiments
+and temporary profiling hooks are removed; production rendering is unchanged.
+
+Final loaded verification separates the native-capture neighbours from the large
+typing fixture. Each group passes five Linux repeats with six workers and eight
+CPUs: 1,195 neighbour cases and 95 Checks/export cases passed, zero failed or flaky,
+with five existing skips. The combined-load viewer readiness observation and its
+limits are recorded in `docs/backlog/2026-11-07-native-viewer-load-readiness.md`.

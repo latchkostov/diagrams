@@ -14,6 +14,7 @@ import {
 import { typingWork, median } from "./typing-work";
 import { installChecksMeasurement } from "./checks-measurement";
 import { installCheckNotifications, waitForCheckCompletion } from "./checks-notifications";
+import { flushMeasuredCheck } from "./checks-flush";
 import { RENDER_HOOK } from "../bench/ui/instrument";
 
 type Renders = ReturnType<NonNullable<Window["__benchRenders"]>["stop"]>;
@@ -150,12 +151,9 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
   // tests cover that). Start the scheduled idle callback explicitly, without paying 400 ms for every
   // unmeasured prefix restoration. A run that already started on a busy machine is never queued twice.
   const flush = async (before: { started: number; skipped: number }) => {
-    await page.evaluate((count) => {
-      const stats = (window as unknown as { __checks: CheckRunStats }).__checks;
-      if (stats.started + stats.skipped === count) stats.flush();
-    }, before.started + before.skipped);
-    // Playwright's controlled idle callback runs after 50 ms when edit timers are pending.
-    // Advance four clock frames, then await the scheduler's actual start signal below.
+    await page.evaluate(flushMeasuredCheck, { count: before.started + before.skipped, controlled });
+    // Retain all four start frames, including after the explicitly forced idle
+    // request, then await the scheduler's actual start signal below.
     if (controlled) await page.clock.runFor(64);
   };
   // Completion messages follow the scheduler's cleanup without accumulating polling delays over 42 samples.
