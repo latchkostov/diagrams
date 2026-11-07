@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"]
-//                                     [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
+//                                     [--title "text"] [--sim <id>] [--no-autoplay] [--password-file <path> | --password <value>] [--force]
 // Exports the app's offline, read-only interactive HTML (pan, zoom and simulations).
 // CSP forbids network requests; nothing is stored in the browser. Anyone with the file can open it.
 // Viewer, injection and icons come from ./lib (pnpm skill:release); its rules validate the payload.
 // --password uses the app's encryption and hides the diagram, title and file name until unlocked.
-// Read the password from LIVEDIAGRAMS_HTML_PASSWORD or a hidden terminal prompt (confirmed twice),
-// never a command argument that shell history, process lists or transcripts could retain.
+// Explicit input only: prefer a user-created password file; a literal value appears in the conversation.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { readViewer, readIcons } from "./lib/viewer.mjs";
 import { checkFile } from "./lib/check.mjs";
 import {
   lockedFileName,
@@ -23,12 +23,9 @@ import {
 import { buildPayload, htmlFileName, injectLocked, injectPayload, scriptSafeJson } from "./lib/inject.mjs";
 
 const USAGE =
-  'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]';
-const VALUED = ["--out", "--theme", "--banner", "--title", "--sim", "--exported-on"];
-const FLAGS = ["--no-autoplay", "--password", "--force"];
-const PASSWORD_ENV = "LIVEDIAGRAMS_HTML_PASSWORD";
-const NO_PASSWORD_ARG = `--password takes no value: a password on the command line stays in shell history and the process list. Set ${PASSWORD_ENV}, or run the command in a terminal to be asked for it.`;
-
+  'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password-file <path> | --password <value>] [--force]';
+const VALUED = ["--out", "--theme", "--banner", "--title", "--sim", "--exported-on", "--password-file", "--password"];
+const FLAGS = ["--no-autoplay", "--force"];
 function fail(message, code = 2) {
   console.error(message);
   process.exit(code);
@@ -40,14 +37,15 @@ const files = [];
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (VALUED.includes(a)) {
-    if (i + 1 >= args.length) fail(`${a} needs a value.\n${USAGE}`);
+    if (i + 1 >= args.length || args[i + 1].startsWith("--")) fail(`${a} needs a value.\n${USAGE}`);
     opts[a] = args[++i];
   } else if (FLAGS.includes(a)) opts[a] = true;
-  else if (a.startsWith("--password=")) fail(NO_PASSWORD_ARG);
+  else if (a.startsWith("--password=")) fail("Use --password <value> or --password-file <path>. Nothing was written.");
   else if (a.startsWith("--")) fail(`Unknown option ${a}.\n${USAGE}`);
   else files.push(a);
 }
-if (opts["--password"] && files.length > 1) fail(NO_PASSWORD_ARG);
+if (opts["--password"] !== undefined && opts["--password-file"] !== undefined)
+  fail("Choose either --password-file or --password. Nothing was written.");
 if (files.length !== 1) fail(USAGE);
 const [file] = files;
 const theme = opts["--theme"] ?? "light";
@@ -78,9 +76,8 @@ if (opts["--sim"] !== undefined) {
 }
 if (opts["--no-autoplay"]) start = null;
 
-const lib = new URL("./lib/", import.meta.url);
-const template = readFileSync(new URL("viewer-template.html", lib), "utf8");
-const iconSvgs = JSON.parse(readFileSync(new URL("icons.json", lib), "utf8"));
+const template = readViewer();
+const iconSvgs = readIcons();
 const title = opts["--title"]?.trim() || diagram.title;
 // exportHtml's two steps, so the payload can be checked between them.
 const payload = buildPayload(template, {
@@ -110,54 +107,22 @@ if (problem) {
   console.error(`Can't export ${file}: the viewer wouldn't show the file as made. ${problem}`);
   process.exit(1);
 }
-/** One line typed without echo (a terminal only). Ctrl+C cancels. */
-function askHidden(question) {
-  const { stdin, stderr } = process;
-  stderr.write(question);
-  stdin.setRawMode(true);
-  stdin.setEncoding("utf8");
-  stdin.resume();
-  return new Promise((resolve) => {
-    let value = "";
-    const finish = (result) => {
-      stdin.off("data", onData);
-      stdin.setRawMode(false);
-      stdin.pause();
-      stderr.write("\n");
-      if (result === null) fail("Cancelled. Nothing was written.", 130);
-      resolve(result);
-    };
-    const onData = (chunk) => {
-      if (chunk.startsWith("\u001b")) return; // arrow keys and the like
-      for (const ch of chunk) {
-        if (ch === "\r" || ch === "\n" || ch === "\u0004") return finish(value);
-        if (ch === "\u0003") return finish(null);
-        if (ch === "\u007f" || ch === "\b") value = [...value].slice(0, -1).join("");
-        else if (ch >= " ") value += ch;
-      }
-    };
-    stdin.on("data", onData);
-  });
-}
-
-/** The password, from the environment or a prompt: never from argv (see the header). */
-async function readPassword() {
-  const fromEnv = process.env[PASSWORD_ENV];
-  if (fromEnv) return fromEnv;
-  if (!process.stdin.isTTY)
-    fail(`--password needs the password in ${PASSWORD_ENV}, or a terminal to ask for it in. Nothing was written.`);
-  const first = await askHidden(`Password for the HTML file (at least ${MIN_PASSWORD_LENGTH} characters): `);
-  if (first.length >= MIN_PASSWORD_LENGTH) {
-    const again = await askHidden("The same password again: ");
-    if (again !== first) fail("The two passwords don't match. Nothing was written.", 1);
+// Read only the user-selected path. Strip a single final line ending for ordinary text files;
+// preserve every other character, including spaces. Never print or persist the password.
+let password = opts["--password"];
+if (opts["--password-file"] !== undefined) {
+  try {
+    password = readFileSync(opts["--password-file"], "utf8").replace(/\r?\n$/, "");
+  } catch {
+    fail("Could not read --password-file. Supply a readable local text file. Nothing was written.", 1);
   }
-  return first;
 }
-
-const password = opts["--password"] ? await readPassword() : undefined;
 let html;
 if (password === undefined) html = injectPayload(template, payload);
 else {
+  // The viewer's password box is a single line, so a password with a line break inside could never be typed.
+  if (/[\r\n]/.test(password))
+    fail("The password can't contain a line break; put it on one line. Nothing was written.", 1);
   if (password.length < MIN_PASSWORD_LENGTH)
     fail(`Use a password of at least ${MIN_PASSWORD_LENGTH} characters. Nothing was written.`, 1);
   const strength = passwordStrength(password);

@@ -33,7 +33,7 @@ The app lists public links and embeds last.
 ## Interactive HTML file
 
 ```sh
-node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
+node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password-file <path> | --password <value>] [--force]
 ```
 
 This is the app's **File > Export as > Interactive HTML…** output: one read-only file with pan,
@@ -56,20 +56,23 @@ can open the file from disk.
 
 ### A password on the file
 
-`--password` uses the app's AES-256-GCM encryption with PBKDF2-SHA-256 at 600,000 iterations.
+`--password-file <path>` or `--password <value>` uses the app's AES-256-GCM encryption with PBKDF2-SHA-256 at 600,000 iterations.
 Nothing, including the title, is readable without the password. The filename is
 `Diagram (password protected) <random>.html` to avoid collisions. The file asks for the password,
 reports wrong passwords and decrypts offline in the browser without network access.
 
-Never ask for a password in chat, invent one or put it in a command: transcripts, shell history
-and process lists retain it. The script refuses `--password=…` and a following password argument.
-It reads `LIVEDIAGRAMS_HTML_PASSWORD` when already set by the user; otherwise a terminal prompt
-asks twice without echoing. Only run it yourself when that environment variable is already set;
-never set or echo it. Otherwise give the user:
+Ask which route the user prefers. Recommend `--password-file <path>`: the user creates a local
+UTF-8 text file and gives its path. The script reads only that path, removes one final line ending
+(if present) and preserves all other characters. Do not read or echo the file yourself.
 
 ```sh
-node <skill folder>/scripts/export-html.mjs <file> --password
+node <skill folder>/scripts/export-html.mjs <file> --password-file <user-provided-path>
 ```
+
+The fallback `--password <value>` puts the value in the conversation, shell history and process
+list; explain this before the user chooses it. Never invent a password, store one in plugin
+configuration, or reuse one. There is no environment lookup or hidden terminal prompt: the same
+non-interactive script serves the plugin and standalone ZIP. The script never saves the password.
 
 Require at least 8 characters; several random words are good. Weak passwords produce a warning.
 Tell the user to send the password separately. It cannot be recovered; if lost, export again.

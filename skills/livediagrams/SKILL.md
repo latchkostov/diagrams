@@ -76,10 +76,11 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
 7. **Make the output they chose.**
    - HTML: `node scripts/export-html.mjs <file>` (add `--banner "Confidential"` for work diagrams). It
      prints the path of `<title>.html`.
-   - HTML with a password: add `--password`. **Never ask for the password in the chat, and never put it in a
-     command**: you'd see it, and the transcript and shell history would keep it. Give the user the command to run
-     in their own terminal, where it asks for the password without echoing it (twice). If they've set
-     `LIVEDIAGRAMS_HTML_PASSWORD` in the environment you run in, you can run it yourself; never set it for them.
+   - HTML with a password: ask which explicit input route the user wants. Prefer `--password-file <path>`:
+     the user creates a local text file and supplies its path; the script reads only that path, so the password
+     stays out of the conversation. The fallback `--password <value>` puts the value in the conversation,
+     shell history and process list; explain that before they choose it. Never invent, save or reuse a plugin
+     password. Scripts run non-interactively, with no terminal prompt or environment password lookup.
      The file is `Diagram (password protected) <random>.html`. Details in
      [reference/outputs.md](reference/outputs.md#a-password-on-the-file).
    - Diagram file: it's done. It opens at livediagrams.dev with **File > Open…**, read in the browser.

@@ -4,8 +4,6 @@
     "skills/livediagrams/scripts/lib/spec.json",
     "skills/livediagrams/scripts/lib/app.mjs",
     "skills/livediagrams/scripts/lib/inject.mjs",
-    "skills/livediagrams/scripts/lib/icons.json",
-    "skills/livediagrams/scripts/lib/viewer-template.html",
     "skills/livediagrams/reference/stencils.md",
     "deploy/self-host/nginx.conf",
     "deploy/self-host/_headers",
@@ -27,7 +25,22 @@
     "deploy/self-host/aws/response-headers-policy.json",
     "deploy/self-host/aws/embed-response-headers-policy.json",
     "deploy/self-host/aws/assets-response-headers-policy.json",
-    "deploy/self-host/aws/auth-response-headers-policy.json"
+    "deploy/self-host/aws/auth-response-headers-policy.json",
+    "skills/livediagrams/scripts/lib/icons-0.json",
+    "skills/livediagrams/scripts/lib/icons-1.json",
+    "skills/livediagrams/scripts/lib/icons.json",
+    "skills/livediagrams/scripts/lib/viewer-0.css",
+    "skills/livediagrams/scripts/lib/viewer-0.js",
+    "skills/livediagrams/scripts/lib/viewer-1.js",
+    "skills/livediagrams/scripts/lib/viewer-2.js",
+    "skills/livediagrams/scripts/lib/viewer-3.js",
+    "skills/livediagrams/scripts/lib/viewer-4.js",
+    "skills/livediagrams/scripts/lib/viewer-5.js",
+    "skills/livediagrams/scripts/lib/viewer-6.js",
+    "skills/livediagrams/scripts/lib/viewer-font-0.woff2",
+    "skills/livediagrams/scripts/lib/viewer-font-1.woff2",
+    "skills/livediagrams/scripts/lib/viewer-template.html",
+    "skills/livediagrams/scripts/lib/viewer.json"
   ],
   "regions": ["skills/livediagrams/reference/format.md", "skills/livediagrams/reference/simulation.md"]
 }

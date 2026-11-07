@@ -33,9 +33,9 @@ describe("the directory plugin bundle", () => {
       keywords: expect.arrayContaining(["diagrams", "architecture", "simulation"]),
       skills: ["./"],
     });
-    // Unversioned on purpose: Claude Code then tracks the git commit, so every commit on master reaches
-    // users (AGENTS.md forbids manual version bumps). A fixed version would pin cached installs.
-    expect(metadata).not.toHaveProperty("version");
+    // Owner-requested directory version; generation never edits it.
+    expect(metadata).toHaveProperty("version", "1.0.0");
+    expect(metadata).not.toHaveProperty("userConfig");
     expect(metadata.description.length).toBeGreaterThan(40);
     expect(metadata).not.toHaveProperty("author.email");
     for (const entry of metadata.skills) {
