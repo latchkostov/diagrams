@@ -231,6 +231,16 @@ describe("the brand name in index.html", () => {
 describe("unreachable files", () => {
   const chunk = (code: string, isEntry = false) => ({ type: "chunk" as const, code, isEntry });
   const asset = (source: string) => ({ type: "asset" as const, source });
+  it("retains styles distributed through a downloadable JSON manifest", () => {
+    expect(
+      unreachableFiles({
+        "index.html": asset(""),
+        "skill/scripts/lib/viewer.json": asset('{"style":[{"file":"viewer-0.css"}]}'),
+        "skill/scripts/lib/viewer-0.css": asset("body{color:red}"),
+        "assets/orphan.css": asset(""),
+      }),
+    ).toEqual(["assets/orphan.css"]);
+  });
   it("drops the scripts and stylesheets nothing names, and keeps everything something does", () => {
     const bundle = {
       "index.html": asset('<script src="./assets/index-a.js"></script><link href="./assets/index-a.css">'),

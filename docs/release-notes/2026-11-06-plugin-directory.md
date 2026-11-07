@@ -10,6 +10,8 @@ The generated viewer ships plain JavaScript statements and CSS, real WOFF2 fonts
 icon JSON. The exporter joins their original bytes and encodes fonts only when creating HTML.
 The old single-template viewer and the assembled viewer are byte-identical; three public examples
 also compare complete exports byte for byte. Every JavaScript chunk parses independently.
+Production asset pruning follows downloadable JSON manifests as well as HTML, so the site's
+split viewer keeps its CSS; truly unreferenced stylesheets are still removed.
 
 | Asset                                               |  Before (bytes) |                                                       After (bytes) |
 | --------------------------------------------------- | --------------: | ------------------------------------------------------------------: |
