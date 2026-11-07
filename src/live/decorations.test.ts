@@ -22,6 +22,7 @@ class FakeElement {
   }
   getAttribute = (n: string) => this.attrs.get(n) ?? null;
   hasAttribute = (n: string) => this.attrs.has(n);
+  closest = () => null;
   setAttribute = (n: string, v: string) => {
     this.writes++;
     this.attrs.set(n, v);

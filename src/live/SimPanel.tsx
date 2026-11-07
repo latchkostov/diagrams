@@ -527,11 +527,13 @@ export function SimPanel({
               data-testid="sim-panel-invalid"
             >
               {fieldErrors.length
-                ? fieldErrors.map((error) => (
-                    <p key={error.field} id={`${error.field}-error`}>
-                      {error.text}
-                    </p>
-                  ))
+                ? fieldErrors
+                    .filter((error) => !error.field.endsWith("-fault-rule"))
+                    .map((error) => (
+                      <p key={error.field} id={`${error.field}-error`}>
+                        {error.text}
+                      </p>
+                    ))
                 : invalid}
             </div>
             {warnings.length > 0 && (

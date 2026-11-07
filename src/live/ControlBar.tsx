@@ -47,7 +47,6 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
   const options = [...ui.simulations];
   if (ui.draft && !options.some((s) => s.id === ui.draft!.id)) options.push(ui.draft);
   const expectations = run?.expectations ?? [];
-  const passed = expectations.filter((e) => e.status === "pass").length;
   const failed = expectations.some((e) => e.status === "fail");
   // Slow motion: play, restart and the timeline drive the replay; live is paused meanwhile. While it
   // records the journey ahead (a few frames), live's own controls wait (the controller is held).
@@ -184,7 +183,7 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
                   data-status={failed ? "fail" : "pass"}
                 >
                   <LiveIcon name={failed ? "x" : "check"} size={12} />
-                  {expectations.length ? `${passed}/${expectations.length}` : "Done"}
+                  {t("common.done")}
                 </span>
               )}
             </>

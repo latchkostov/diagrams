@@ -161,6 +161,8 @@ it("validates purge rules in stable playback order and shares the effective conf
   const configurations = faultStepCaches(d, repeated);
   expect(configurations.get(1)!.table).toBe(configurations.get(0)!.table);
   expect(configurations.get(3)!.table).toBe(configurations.get(0)!.table);
+  expect(configurations.get(1)!.targets).toBe(configurations.get(0)!.targets);
+  expect(configurations.get(3)!.targets).toBe(configurations.get(0)!.targets);
   draft.timeline!.push({
     atMs: 2000,
     action: { do: "props", node: "cache", props: { cache: { rules: [], default: { ttlMs: 1000, keys: 1 } } } },
@@ -177,6 +179,36 @@ it("validates purge rules in stable playback order and shares the effective conf
   ]);
   draft.timeline![0].action = { do: "fault", fault: { kind: "purge", node: "cache" } };
   expect(simulationFieldErrors(draft, d)).toEqual([]);
+});
+
+it("validates a setup-only purge past editor list admission with 5,000 nodes and 199 slow steps", () => {
+  const d = cacheFixture();
+  const cache = d.nodes.find((n) => n.id === "cache")!.props!.cache;
+  delete d.nodes.find((n) => n.id === "cache")!.props!.cache;
+  d.nodes.push(...Array.from({ length: 5000 - d.nodes.length }, (_, i) => ({ ...diagram.nodes[0], id: `extra${i}` })));
+  const draft: Simulation = {
+    id: "setup-purge",
+    title: "Setup purge",
+    traffic: [],
+    setup: { props: { cache: { cache } } },
+    timeline: [
+      ...Array.from({ length: 199 }, (_, atMs) => ({
+        atMs,
+        action: { do: "fault" as const, fault: { kind: "slow" as const, node: "origin", factor: 1 as const } },
+      })),
+      { atMs: 200, action: { do: "fault", fault: { kind: "purge", node: "cache", rule: "pages" } } },
+    ],
+  };
+  // Use an actual setup rule, then prove the missing-rule path still validates independently.
+  const table = cache as import("../model/caching").CacheTable;
+  draft.timeline!.at(-1)!.action = {
+    do: "fault",
+    fault: { kind: "purge", node: "cache", rule: table.rules[0]?.id ?? "" },
+  };
+  expect(faultStepCaches(d, draft).size).toBe(0);
+  expect(simulationFieldErrors(draft, d)).toEqual([]);
+  draft.timeline!.at(-1)!.action = { do: "fault", fault: { kind: "purge", node: "cache", rule: "missing" } };
+  expect(simulationFieldErrors(draft, d).map((e) => e.field)).toEqual(["sim-panel-step-199-fault-rule"]);
 });
 
 it("keeps the imported 5,000-node / 10,000-step amplification case linear without cloning node records", () => {

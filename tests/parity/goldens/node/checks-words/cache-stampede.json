@@ -9,7 +9,7 @@
         "label": "One fetch per item",
         "options": [{ "label": "Serve stale while refreshing", "short": "Serve stale while refreshing" }]
       },
-      "shownMessage": "⁨Launch page⁩'s most popular item gets 320/s. Each time it expires, about 61 requests reach ⁨Product API⁩ before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+      "shownMessage": "⁨Launch page⁩'s most popular item gets 320/s. Each time it expires, about 61 requests reach ⁨Product API⁩ before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates. Readers may receive old data while it refreshes. Choose this only where that loss of freshness is acceptable.",
       "shownRationale": "Cache benefits depend on item reuse. Probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked."
     },
     "cache-cold-start:cdn:launch": {

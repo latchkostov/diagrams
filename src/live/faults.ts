@@ -35,13 +35,20 @@ export function faultStepCaches(diagram: DiagramFile, simulation: Simulation): M
   // each needs the purge targets in effect at that point. Admit their worst-case size before the walk.
   for (const { action } of simulation.timeline ?? []) if (action.do === "fault") work += diagram.nodes.length;
   if (work > MAX_FAULT_WORK) return result;
-  for (const [fault, caches, index] of timelineConfigurations(diagram, simulation))
-    result.set(index, {
-      targets: diagram.nodes.filter((n) =>
+  let revision = -1;
+  let targets: PurgeConfiguration["targets"] = [];
+  for (const [fault, caches, index, current] of timelineConfigurations(diagram, simulation)) {
+    if (revision !== current) {
+      targets = diagram.nodes.filter((n) =>
         cacheEnabled(diagram.planning, n.stencil, stencilRole(n.stencil), caches.get(n.id)),
-      ),
+      );
+      revision = current;
+    }
+    result.set(index, {
+      targets,
       table: fault.kind === "purge" ? caches.get(fault.node) : undefined,
     });
+  }
   return result;
 }
 export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: string; label: string }[] {

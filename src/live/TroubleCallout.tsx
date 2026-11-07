@@ -114,6 +114,11 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       <div className="cap-callout-text">
         <strong data-testid="trouble-headline">{trouble.headline}</strong>
         {detail && <span data-testid="trouble-detail">{detail}</span>}
+        {trouble.action.kind === "cache" && trouble.action.step === "stale" && (
+          <span className="trouble-stale-tradeoff" data-testid="trouble-stale-tradeoff">
+            {t("cache.staleTradeoff")}
+          </span>
+        )}
       </div>
       {onAction && (
         <button
