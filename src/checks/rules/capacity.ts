@@ -33,6 +33,13 @@ export const capacity: CheckRule = {
     const waitTargets = new Set(
       replacing.length ? requestFindings(ctx).flatMap((f) => (replacing.includes(f.rule) ? [f.target] : [])) : [],
     );
+    const cacheTargets = new Set(
+      !ctx.ran || ctx.ran.has("cache-stampede")
+        ? requestFindings(ctx).flatMap((f) =>
+            f.rule === "cache-stampede" && f.cacheFinding ? [f.cacheFinding.origin] : [],
+          )
+        : [],
+    );
     const analysis = threadCapacity(ctx);
     const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
     // Scenario sizing from saved simulations outranks configured steady-state arithmetic for the same node.
@@ -116,6 +123,7 @@ export const capacity: CheckRule = {
       .filter(
         (n) =>
           !resourceTargets.has(n.id) &&
+          !cacheTargets.has(n.id) &&
           // Before choosing the busiest: a diagnosed caller never hides another service's warning. Nor does a
           // healthy broker it reads from stand in for it: that broker's capacity is what its consumers drain, so its
           // backlog is the caller's, already reported with its fix. A broker saved down or paused is an outage of its

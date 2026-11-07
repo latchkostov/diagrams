@@ -9,6 +9,7 @@ import { coalesceRule, staleRule } from "../sim/cachePresets";
 import { THREAD_FIX_LIMITS, THREAD_FIX_WORK, threadFixWork } from "./threadFixPlan";
 import type { TroubleAction } from "./observedTrouble";
 import { herdThreshold } from "./cacheHerd";
+import { cacheAsideOrigins } from "../model/cacheAside";
 
 export function cacheLadder(table: CacheTable, rule: string, fetchMs = 0) {
   const policy = rule === "" ? table.default : table.rules.find((r) => r.id === rule)?.policy;
@@ -52,6 +53,8 @@ export function confirmedCacheFix({
   time,
   budget,
   proven,
+  baseline,
+  step,
 }: {
   context: VerificationContext;
   node: string;
@@ -61,6 +64,9 @@ export function confirmedCacheFix({
   time: number;
   budget?: { work: number; messages: { remaining: number } };
   proven?: (before: CacheFixEvidence, after: CacheFixEvidence) => void;
+  /** Checks may reuse the identical baseline while independently proving the other policy option. */
+  baseline?: CacheFixEvidence;
+  step?: "coalesce" | "stale";
 }): Extract<TroubleAction, { kind: "cache" }> | undefined {
   const d = context.origin.diagram,
     base = context.origin.simulation;
@@ -72,7 +78,11 @@ export function confirmedCacheFix({
   if (!table) return;
   const ladder = cacheLadder(table, rule);
   if (!ladder.length) return;
-  const origin = effective.edges.find((e) => e.from === node && e.kind === "sync" && (!edge || e.id === edge))?.to;
+  const origins = [
+    ...effective.edges.filter((e) => e.from === node && e.kind === "sync"),
+    ...cacheAsideOrigins(effective, node),
+  ];
+  const origin = origins.find((e) => !edge || e.id === edge)?.to;
   if (!origin) return;
   const ancestors = new Set([node]);
   for (let changed = true; changed;) {
@@ -143,9 +153,10 @@ export function confirmedCacheFix({
     return run.state().time >= horizon ? out : undefined;
   };
   try {
-    const before = measure(sim);
+    const before = baseline ?? measure(sim);
     if (!before) return;
     for (const candidate of cacheLadder(table, rule, before.fetchMs)) {
+      if (step && candidate.step !== step) continue;
       const next = structuredClone(sim);
       next.setup = {
         ...next.setup,

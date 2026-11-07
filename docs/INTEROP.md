@@ -1,5 +1,21 @@
 # Import, export and storage
 
+## Caching and agents
+
+Native W3 diagrams and draw.io round-trip cache rules in `dg_props`, cache-aside `caller.onMiss`,
+purge Drills in `dg_simulations` and the revision in `dg_planning`. Mermaid preserves the drawing
+and drops simulation settings, including caching. Interactive HTML and offline viewers include
+the cache runtime and payload schema; they exclude Checks and authoring code.
+
+`describe_diagram` names cache-capable stencils with the `cache` capability. Its rule estimates
+include request rate, hit ratio, offload, origin rate, hottest-item share, herd and cold origin rate;
+unknown values are null. JSON fields and text `cache=JSON` agree. `requestsWait.holdMs` includes
+cache-aside misses. `check_diagram` returns `cacheFinding`, ordinary update operations and options,
+and `notChecked.cache` for skipped probes. Agent/worker wording stays deterministic English.
+`set_simulation` accepts purge faults and purge events with hard/soft mode, rule and deploy reason.
+`edit_diagram` rejects cache rules on incapable stencils, atomically upgrades W2 cache edits to W3,
+and asks older models to upgrade first. The full and lite skills derive from the same source.
+
 Everything runs in the browser. There's no backend: the app is a static site (first at
 [livediagrams.dev](https://www.livediagrams.dev), deployed from this repo on Vercel). Code lives in `src/interop/`.
 

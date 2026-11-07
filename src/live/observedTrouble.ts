@@ -19,7 +19,7 @@ import { HEALTH_WINDOW_MS, HEALTH_SAMPLE_MS, queueGrowthThreshold } from "./heal
 import { requestResponseMs } from "../sim/timing";
 import type { CacheTable } from "../model/caching";
 import { coalesceRule } from "../sim/cachePresets";
-import { cacheHerd } from "./cacheHerd";
+import { cacheHerd, cacheHarmed } from "./cacheHerd";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
 // that's down, a node losing messages, a broker whose lag keeps rising. The live callout reports it on its own, with
@@ -387,10 +387,9 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       .reverse()
       .find((sample) => sample.time <= frame.time - 1000 && sample.time >= frame.time - 2000);
     if (!before) continue;
-    const rising = (frame.nodes[origin]?.backlog ?? 0) > (before.lag.get(origin) ?? 0);
-    const slowing = [...d.cacheSources(id)].some(
-      (source) =>
-        (before.p95.get(source) ?? 0) > 0 && (frame.nodes[source]?.latency?.p95 ?? 0) > 2 * before.p95.get(source)!,
+    const rising = cacheHarmed(frame.nodes[origin]?.backlog ?? 0, before.lag.get(origin) ?? 0, 0, 0);
+    const slowing = [...d.cacheSources(id)].some((source) =>
+      cacheHarmed(0, 0, frame.nodes[source]?.latency?.p95 ?? 0, before.p95.get(source) ?? 0),
     );
     if (!rising && !slowing) continue;
     const headline = t("cache.stampedeHeadline", { origin: name(origin) });

@@ -125,7 +125,10 @@ export interface SimulationSpec {
   events?: {
     atSec: number;
     node: Ref;
-    do: "down" | "up" | "pause" | "slow" | "set";
+    do: "down" | "up" | "pause" | "slow" | "set" | "purge";
+    mode?: "hard" | "soft";
+    rule?: string;
+    reason?: "purge" | "deploy";
     latencyMs?: number;
     props?: NodeProps;
     note?: string;

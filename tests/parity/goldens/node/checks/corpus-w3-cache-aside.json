@@ -18,12 +18,18 @@
     "call-breaker",
     "queue-limit",
     "retry-storm",
+    "cache-stampede",
+    "cache-cold-start",
+    "cache-ttl-short",
+    "cache-method",
     "single-point",
     "secret-identity",
     "schema-registry"
   ],
   "off": [],
-  "findings": [],
+  "findings": [
+    { "id": "cache-stampede:cache:", "rule": "cache-stampede", "severity": "warning", "target": "cache", "elements": ["cache", "database"] }
+  ],
   "ignored": [],
   "fixes": {}
 }

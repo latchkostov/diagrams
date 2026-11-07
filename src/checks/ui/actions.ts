@@ -78,7 +78,7 @@ export async function applyFix(editor: EditorApi, finding: Finding, option?: str
     editor.openInspector("autoscaling-target");
   }
   const added = diff.added.nodes.map((id) => result.diagram.nodes.find((n) => n.id === id)?.label).filter(Boolean);
-  const translated = !!fresh?.requestFinding || !!fresh?.resilienceFinding;
+  const translated = !!fresh?.requestFinding || !!fresh?.resilienceFinding || !!fresh?.cacheFinding;
   const displayed = fresh && translated ? presentFinding(fresh) : fresh;
   const displayedOption = optionIndex;
   const label = displayed?.fix?.options?.[displayedOption]?.label ?? displayed?.fix?.label ?? "";

@@ -3,6 +3,32 @@
 The live view animates messages flowing through any diagram, driven only by the diagram itself:
 each node's stencil `simRole`, edge direction and `kind`, plus optional `props`. API: `src/sim/types.ts`.
 
+## Caching
+
+New diagrams use `p3-w3`. An edge CDN or cache store's ordered `props.cache.rules` matches request
+addresses and types; the first match wins, then optional Default. A storing policy sets `ttlMs`,
+item count (`keys`) and popularity (Even, Gentle, Typical or Steep). `noStore: true` passes through.
+Only GET/HEAD Requests store. Routing denials and rate limits run first, including for cache hits.
+Expected hit ratio and origin offload derive from traffic rate, reuse, fetch time and lifetime;
+they are estimates, not observed measurements or configurable hit percentages.
+
+`coalesce` collapses tracked misses to one real origin fetch per item. An optional
+`staleWhileRevalidateMs` serves stale copies while one refresh runs. Hard `purge` empties copies;
+soft purge retains them as expired, so a stale window can serve them during refresh. Neither
+cancels an in-flight fetch. Runs start warm; a purge at 0 ms starts cold. Purges reset latency windows.
+
+For cache-aside, a service first calls its cache, then a sibling origin Request whose
+`caller.onMiss` names the unconditional cache connection. Only misses call the origin; success
+implicitly writes back. Caller thread holds include the miss share. All replicas share one cache;
+there are no per-location caches, eviction, storage limits or stale-if-error guarantees.
+Statistical tail warm-up and soft purge are approximations; stores report rate and never queue.
+
+Checks use one Cold cache probe per caching node (at most three): configured free-play traffic,
+hard purge at 5 s, replay to 20 s. They flag harmful hot-item expiry, failure to recover within
+10 s when cold demand exceeds capacity, short lifetimes and non-cacheable methods. Unrun probes
+are counted in `notChecked.cache`. Same-seed replays confirm policy fixes. The stampede ladder
+never scales the origin or silently changes freshness; cold-capacity sizing may add replicas.
+
 ## Replicas, real units and sampling
 
 ### Caching sampling gaps (W3)
@@ -13,11 +39,11 @@ Untracked items use the same renewal formula as analysis with a measured request
 
 Statistical bands with positive planned demand retain that formula between healthy sampled fills, even when those fills are farther apart than a TTL. Unplanned injections keep fill-bounded expiry. A pending fill starts a progress clock using the measured mean fetch duration (or the planned duration before measurements). Successful fills advance it; new arrivals cannot. If pending fills stop making progress by that clock, or a fill fails, hits are bounded by the last successful fill's TTL. This is a rule-wide approximation, not per-item expiry tracking; a successful fill can restore the statistical band while other fetches remain pending.
 
-Expiry and fills resolve on ten-millisecond ticks. All replicas share one cache; there are no per-location caches. Stores still accept unlimited parallel work, so an origin store's load appears as request rate rather than queueing pain. Stale responses, purges and cache-aside are not enabled yet.
+Expiry and fills resolve on ten-millisecond ticks. All replicas share one cache; there are no per-location caches. Stores still accept unlimited parallel work, so an origin store's load appears as request rate rather than queueing pain.
 
 With `coalesce: true`, a tracked item's first miss starts one cache-owned fetch representing exactly one real request at any scale. All shopper dots remain whole and park off-thread, including the first. A leader dot of N requests counts one miss and N − 1 coalesced requests. Origin deadlines, pools, retries and breakers apply to that fetch. A failure fails every waiter; a shopper's own deadline leaves its waiter parked, so completion is a late reply and a successful fetch still fills. Statistical items do not coalesce.
 
-`itemFetches` is the most real origin fetches in flight for one tracked item now. The lightning pill appears only above `max(20, 4 × scale)` fetches or waiters. A herd with a rising origin backlog or doubled source p95 takes precedence over thread trouble. Its only PR 3 fix is **One fetch per item**: a bounded same-seed replay must observe two further expiries with at most one fetch, backlog within pre-herd backlog plus origin threads, and p95 within 1.2× its pre-herd value. Insufficient or refused evidence offers Events; a later expiry may supply a measurable baseline. Scaling and longer TTLs are excluded. Many CDNs collapse requests like this by default; new rules leave it off for teaching.
+`itemFetches` is the most real origin fetches in flight for one tracked item now. The lightning pill appears only above `max(20, 4 × scale)` fetches or waiters. A herd with a rising origin backlog or doubled source p95 takes precedence over thread trouble. The fix ladder tries **One fetch per item**, then **Serve stale while refreshing**: a bounded same-seed replay must observe two further expiries with at most one fetch, backlog within pre-herd backlog plus origin threads, and p95 within 1.2× its pre-herd value. Insufficient or refused evidence offers Events; a later expiry may supply a measurable baseline. Scaling and longer TTLs are excluded. Many CDNs collapse requests like this by default; new rules leave it off for teaching.
 
 Replicas multiply a service's available parallel slots; they do not multiply an API account's
 shared limit. Live can represent several real requests with one animated dot to keep large runs

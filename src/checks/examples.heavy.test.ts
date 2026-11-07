@@ -19,7 +19,11 @@ const bySlug = Object.fromEntries(
 const EXPECTED: Record<string, string[]> = {
   "vendor-edge-storefront": [],
   // One origin replica is intentional; availability advice is separate from the expiry lesson.
-  "cache-stampede": ["suggestion single-point:origin"],
+  "cache-stampede": [
+    "warning cache-stampede:cdn:launch",
+    "warning cache-cold-start:cdn:launch",
+    "suggestion single-point:origin",
+  ],
   "retry-storm": [
     "warning no-reader:orders",
     "warning retry-backoff:pay",
@@ -209,6 +213,8 @@ describe("simulation evidence on the public examples", () => {
       expect(shown.counted).toBe(3);
     } else if (slug === "cache-stampede") {
       expect(shown.result.findings.map((f) => f.id)).toEqual([
+        "cache-stampede:cdn:launch",
+        "cache-cold-start:cdn:launch",
         "single-point:origin",
         "dropped:shoppers",
         "dropped:cdn",

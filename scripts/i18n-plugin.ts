@@ -186,9 +186,13 @@ export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key>
       plain(key) &&
       // The gallery includes the caching promise on the start card. Numeric
       // lookups keep its English keys out of each locale without changing readiness.
-      // Long cache explanations use the same representation to retain locale headroom.
+      // Cache and resilience Checks use numeric lookups too: their optional diagnostics
+      // must not repeat English lookup strings in every translated catalog.
       (key.startsWith("examples.") ||
-        (key.startsWith("cache.") && en[key].length >= 64) ||
+        key.startsWith("cache.") ||
+        key.startsWith("cacheChecks.") ||
+        key.startsWith("resilienceChecks.") ||
+        key.startsWith("waitChecks.") ||
         (["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) && en[key].length >= 64))
     )
       out.add(key);

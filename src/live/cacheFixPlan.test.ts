@@ -10,6 +10,27 @@ import { TroubleWatcher } from "./observedTrouble";
 import * as headless from "../sim/headless";
 import "../sim/cache/cacheRuntime";
 import { staleCalloutFixture } from "../lab/cachePurgeFixture";
+import aside from "../../tests/parity/corpus/w3-cache-aside.diagram.json";
+
+it("verifies against a cache-aside origin and keeps refused replay evidence inconclusive", () => {
+  const diagram = structuredClone(aside) as DiagramFile;
+  const simulation = { ...diagram.simulations![0], timeline: [], durationMs: 20000 };
+  const spy = vi.spyOn(headless, "createHeadlessRun").mockImplementation(() => {
+    throw new Error("refused");
+  });
+  try {
+    const result = confirmedCacheFix({
+      context: { revision: 0, origin: { diagram, simulation, initialTraffic: false }, controls: [] },
+      node: "cache",
+      rule: "",
+      time: 6000,
+    });
+    expect(spy).toHaveBeenCalledOnce();
+    expect(result).toBeUndefined();
+  } finally {
+    spy.mockRestore();
+  }
+});
 
 const context = (seed = 7) => {
   const diagram = structuredClone(example) as DiagramFile;

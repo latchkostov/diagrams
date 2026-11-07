@@ -1,4 +1,4 @@
-import { canCutLink } from "../model/faultRuntime";
+import { canCutLink, faultTimelineProblem } from "../model/faultRuntime";
 import type { DiagramFile, Simulation, TrafficShape, TimelineStep } from "../model/types";
 import { simulationProblem, simulationReferenceWarnings } from "../interop/native";
 import { autoScale } from "../sim/scale";
@@ -78,7 +78,22 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
   for (const e of spec.events ?? []) {
     const atMs = e.atSec * 1000,
       node = nodeRef(e.node);
-    if (e.do === "set") {
+    if (e.do === "purge") {
+      timeline.push({
+        atMs,
+        action: {
+          do: "fault",
+          fault: {
+            kind: "purge",
+            node,
+            ...(e.mode ? { mode: e.mode } : {}),
+            ...(e.rule !== undefined ? { rule: e.rule } : {}),
+            ...(e.reason ? { reason: e.reason } : {}),
+          },
+          drill: "cold-cache",
+        },
+      });
+    } else if (e.do === "set") {
       if (!e.props) throw new Error("set events need props.");
       timeline.push({ atMs, action: { do: "props", node, props: e.props } });
     } else if (e.do === "slow") {
@@ -133,6 +148,8 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
   );
   const problem = simulationProblem(simulation);
   if (problem) throw new Error(problem);
+  const faultProblem = faultTimelineProblem(diagram, simulation);
+  if (faultProblem) throw new Error(faultProblem);
   const warnings = simulationReferenceWarnings(simulation, new Set(diagram.nodes.map((n) => n.id)), diagram);
   if (warnings.length) throw new Error(warnings.join(" "));
   validated({ ...diagram, simulations: [...sims.filter((s) => s.id !== id), simulation] });

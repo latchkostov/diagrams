@@ -78,7 +78,17 @@ export interface NodeCapacity {
 export interface CapacityAnalysis {
   cacheDemand?: Record<
     string,
-    Record<string, { rate: number; fetchMs: number; hitRatio: number; fetchShare?: number }>
+    Record<
+      string,
+      {
+        rate: number;
+        fetchMs: number;
+        hitRatio: number;
+        fetchShare?: number;
+        /** Cold demand routed to each origin, before cache offload; shared by Checks and planning. */
+        origins?: Record<string, { rate: number; fetchMs: number; edge: string }>;
+      }
+    >
   >;
   /** Per-connection configured demand in real msg/s, computed by the same routing pass. */
   connections: Record<string, number>;
@@ -633,6 +643,18 @@ export function analyzeCapacity(
     }
     return value * (cache?.fetchShare ?? 1 - hit);
   }
+  /** Connection shares for ordinary forwarding and cold-origin projection use the same caller semantics. */
+  function connectionShare(edge: CompiledEdge, type: string, injected = false): number {
+    return forwardingShare(
+      entries.get(edge.from)!.role,
+      edge,
+      type,
+      injected ? "injected" : "output",
+      undefined,
+      undefined,
+      cacheMatchers.has(edge.from),
+    );
+  }
   function propagate(next: Rates, entry: Entry, key: string, rate: number, injected: boolean): void {
     if (!rate) return;
     const id = entry.input.id;
@@ -705,15 +727,7 @@ export function analyzeCapacity(
     } else {
       for (const edge of routesOut) {
         if (edge.deny) continue;
-        const share = forwardingShare(
-          entry.role,
-          edge,
-          type,
-          injected ? "injected" : "output",
-          undefined,
-          undefined,
-          cacheMatchers.has(id),
-        );
+        const share = connectionShare(edge, type, injected);
         if (!share) continue;
         const lookupId = aside.get(edge.id);
         let missShare = 1;
@@ -723,15 +737,7 @@ export function analyzeCapacity(
           const rule = cacheMatchers.get(lookup.to)?.(type, branchRoute(lookup, route), true);
           const cached = rule && cacheDemand[lookup.to]?.[rule.id];
           missShare = cached?.fetchShare ?? 1 - (cached?.hitRatio ?? 0);
-          missShare *= forwardingShare(
-            entry.role,
-            lookup,
-            type,
-            injected ? "injected" : "output",
-            undefined,
-            undefined,
-            cacheMatchers.has(id),
-          );
+          missShare *= connectionShare(lookup, type, injected);
         }
         send(next, edge, type, rate * share * missShare, branchRoute(edge, route));
       }
@@ -776,6 +782,7 @@ export function analyzeCapacity(
                     takes(edge, { type: c.type, route: branchRoute(edge, c.route) }),
                 )
               : decision.eligible;
+          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0, origins: Object.create(null) });
           let fetchMs = 0;
           origins.forEach((edge, index) => {
             if (edge.deny) return;
@@ -791,6 +798,16 @@ export function analyzeCapacity(
                 : 0) +
               (waiting.nodes.get(edge.to)?.memoryResidenceMs ?? resolvedTiming(target.props).workMs) +
               2 * (typeof delay === "number" ? delay : 0);
+            const fraction =
+              entry.role === "gateway" && !c.aside
+                ? decision === "legacy"
+                  ? 1 / origins.length
+                  : decision.weights[index] / decision.forwarded / decision.sum
+                : connectionShare(edge, c.type);
+            if (!fraction) return;
+            const demand = (item.origins![edge.to] ??= { rate: 0, fetchMs: 0, edge: edge.id });
+            demand.rate += rate * admitted * fraction;
+            demand.fetchMs += rate * admitted * fraction * response;
             if (entry.role === "gateway" && !c.aside)
               fetchMs +=
                 response *
@@ -799,7 +816,6 @@ export function analyzeCapacity(
                   : decision.weights[index] / decision.forwarded / decision.sum);
             else fetchMs = Math.max(fetchMs, response);
           });
-          const item = (byRule[rule.id] ??= { rate: 0, fetchMs: 0, hitRatio: 0 });
           item.rate += rate * admitted;
           item.fetchMs += rate * admitted * fetchMs;
           policies.set(rule.id, rule.policy);
@@ -807,6 +823,7 @@ export function analyzeCapacity(
         for (const [ruleId, policy] of policies) {
           const item = byRule[ruleId];
           item.fetchMs /= item.rate;
+          for (const origin of Object.values(item.origins ?? {})) origin.fetchMs /= origin.rate;
           const prior = hitMemo.get(policy);
           if (prior?.rate === item.rate && prior.fetchMs === item.fetchMs) item.hitRatio = prior.hit;
           else {

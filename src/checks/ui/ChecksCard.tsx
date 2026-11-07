@@ -208,7 +208,7 @@ export function ChecksCard(p: ChecksCardProps) {
         <p className="checks-note" data-testid="checks-running">
           Checking…
         </p>
-      ) : r.findings.length || r.omitted?.length || r.notChecked?.retryStorm ? (
+      ) : r.findings.length || r.omitted?.length || r.notChecked?.retryStorm || r.notChecked?.cache ? (
         // Findings too many to list are counted here: a bounded result never reads as all clear.
         <p className="checks-note" data-testid="checks-summary">
           {[
@@ -216,6 +216,7 @@ export function ChecksCard(p: ChecksCardProps) {
             suggestions.length ? plural(suggestions.length, "suggestion") : "",
             r.omitted?.length ? `${r.omitted.reduce((n, o) => n + o.count, 0)} more not listed` : "",
             r.notChecked?.retryStorm ? t("resilienceChecks.notChecked", { count: r.notChecked.retryStorm }) : "",
+            r.notChecked?.cache ? t("cacheChecks.notChecked", { count: r.notChecked.cache }) : "",
           ]
             .filter(Boolean)
             .join(" · ")}

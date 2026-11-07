@@ -17,6 +17,10 @@
   { "id": "call-breaker", "name": "Failing dependencies need a circuit breaker", "about": "A breaker fails calls fast while a dependency keeps failing. Checks retried external, model and failure-prone calls.", "onDemand": false },
   { "id": "queue-limit", "name": "Queues can outlive the caller", "about": "At configured rates an overloaded processor can queue work past its caller's deadline. Suggests a wait and queue limit.", "onDemand": false },
   { "id": "retry-storm", "name": "A slowdown could become a retry storm", "about": "Probes up to three retried Requests at configured rates: slow the callee fivefold at 5 s, clear at 10 s, replay to 30 s. Offers only the first cumulative fix proven to recover.", "onDemand": false },
+  { "id": "cache-stampede", "name": "A hot item could flood the origin", "about": "Checks hot-item demand and a Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates. Offers a replay-proven cache policy.", "onDemand": false },
+  { "id": "cache-cold-start", "name": "The origin cannot carry a cold cache", "about": "Checks whether origin demand exceeds capacity and a Cold cache probe fails to recover within 10 s. At most three caches are probed.", "onDemand": false },
+  { "id": "cache-ttl-short", "name": "Items expire before they are reused", "about": "Checks rules below 20% expected hits where most requests are for items reused less than once per TTL. A longer TTL is offered only after a 30 s replay.", "onDemand": false },
+  { "id": "cache-method", "name": "These requests are never stored", "about": "Checks cache rules matching only methods other than GET and HEAD. Those requests always reach the origin.", "onDemand": false },
   {
     "id": "single-point",
     "name": "Every request goes through one replica",

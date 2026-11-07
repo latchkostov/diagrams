@@ -22,13 +22,14 @@ Nothing is uploaded and nobody needs an account or a key.
    `azure.service-bus.queue`, `aws.sqs`, `postgres`, `service.dotnet`, `client.browser`. If nothing fits, use a
    `generic.*` stencil.
 4. **Write `<name>.diagram.json`.** The format is in [reference/format.md](reference/format.md). Leave out
-   x and y. New diagrams use planning `p3-w2`, including partition assignment, caller waits and resilience.
-   Preserve an existing diagram's model; never silently upgrade it:
+   x and y. New diagrams use planning `p3-w3`, including partition assignment, caller waits, resilience and caching.
+   Preserve an existing diagram's model. Adding cache rules to `p3-w2` upgrades to `p3-w3` in the same edit;
+   older models need an explicit upgrade first:
 
    ```json
    {
      "format": "diagrams/v2",
-     "planning": { "revision": "p3-w2" },
+     "planning": { "revision": "p3-w3" },
      "title": "Order events",
      "nodes": [
        { "id": "api", "stencil": "service.node", "label": "Orders API" },
@@ -54,6 +55,8 @@ Nothing is uploaded and nobody needs an account or a key.
    For thread exhaustion, timeouts or connection pools, use `p3-w1` and read the Requests that wait section
    in [reference/simulation.md](reference/simulation.md). Preserve older models unless the user asks to upgrade.
    For executable retries, circuit breakers or load shedding, use `p3-w2` and its resilience section.
+   For caching, use `p3-w3` and the Caching section: ordered cache rules on an edge CDN or cache store,
+   cache-aside calls with `caller.onMiss`, and Cold cache Drills with hard or soft purge steps.
 
 5. **Check by hand.** Compare every field with [reference/format.md](reference/format.md) and
    [spec.json](spec.json): exact stencil ids, unique ids, connection endpoints, boundary membership,
