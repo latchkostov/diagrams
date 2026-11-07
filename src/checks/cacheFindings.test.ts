@@ -38,6 +38,63 @@ it.each(["read-through", "cache-aside"])("sizes a fractional %s origin from its 
   expect(finding?.fix?.ops).toContainEqual({ op: "update", target: origin.id, props: { replicas: 4 } });
 });
 
+it("scopes a shared cache's cold-start warning and replica sizing to the failing caller's own origin", () => {
+  // Two services share one cache, request type and address: their lookups merge into one traffic class.
+  const d = cacheAsideFixture();
+  d.nodes.find((n) => n.id === "source")!.props!.ratePerSec = 300;
+  d.nodes.find((n) => n.id === "service")!.props!.concurrency = 1000;
+  d.nodes.find((n) => n.id === "database")!.props!.latencyMs = 1;
+  d.nodes.find((n) => n.id === "cache")!.props!.cache = {
+    rules: [],
+    default: { ttlMs: 600000, keys: 10000, popularity: "even" },
+  };
+  d.nodes.push(
+    { id: "other-readers", stencil: "client.browser", label: "Other readers", x: 0, y: 400, props: { ratePerSec: 30 } },
+    {
+      id: "other-service",
+      stencil: "generic.service",
+      label: "Reviews",
+      x: 280,
+      y: 400,
+      props: { latencyMs: 10, jitter: 0, concurrency: 1000, failureRate: 0 },
+    },
+    {
+      id: "other-database",
+      stencil: "generic.service",
+      label: "Reviews database",
+      x: 560,
+      y: 400,
+      props: { latencyMs: 100, concurrency: 1, replicas: 1, jitter: 0 },
+    },
+  );
+  d.edges.push(
+    { id: "other-input", from: "other-readers", to: "other-service", kind: "sync", props: { travelMs: 10 } },
+    {
+      id: "other-lookup",
+      from: "other-service",
+      to: "cache",
+      kind: "sync",
+      props: { travelMs: 10, caller: { wait: "blocking" } },
+    },
+    {
+      id: "other-fetch",
+      from: "other-service",
+      to: "other-database",
+      kind: "sync",
+      props: { travelMs: 10, caller: { wait: "blocking", onMiss: "other-lookup" } },
+    },
+  );
+  const origins = analyzeCapacity(d).cacheDemand!.cache[""].origins!;
+  expect.soft(origins.database.rate).toBeCloseTo(300);
+  expect.soft(origins["other-database"].rate).toBeCloseTo(30);
+  const findings = runChecks(d, { rules: ["cache-cold-start"] }).findings.filter((f) => f.cacheFinding);
+  expect(findings.map((f) => f.cacheFinding?.origin)).toEqual(["other-database"]);
+  expect.soft(findings[0].cacheFinding).toMatchObject({ coldPerSec: 30, capacityPerSec: 10 });
+  expect.soft(findings[0].message).toContain("gets 30/s, 3.0×");
+  expect.soft(findings[0].fix?.cacheLabel).toEqual({ kind: "replicas", value: 6 });
+  expect(findings[0].fix?.ops).toContainEqual({ op: "update", target: "other-database", props: { replicas: 6 } });
+});
+
 it("covers the small cache example with probe evidence and undoable fixes", () => {
   const d = structuredClone(small) as DiagramFile;
   const result = runChecks(d, { rules: CACHE_RULES });
