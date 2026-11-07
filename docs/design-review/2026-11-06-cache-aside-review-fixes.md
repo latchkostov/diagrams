@@ -19,3 +19,7 @@ The Checks typing fixture forces its explicitly requested idle start before the
 existing measured paint boundaries. Both retain their original assertions and
 timeouts. These changes add no product controls, text, viewport behavior or camera
 rules. Broader frame-detail rendering changes were rejected after profiling.
+
+The paused replay-return comparison also waits for a newly published readout before
+capturing its baseline. Exact simulation time, particle checksum and viewport
+restoration remain the requirements; no tolerances or timeouts change.

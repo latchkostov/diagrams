@@ -90,3 +90,27 @@ typing fixture. Each group passes five Linux repeats with six workers and eight
 CPUs: 1,195 neighbour cases and 95 Checks/export cases passed, zero failed or flaky,
 with five existing skips. The combined-load viewer readiness observation and its
 limits are recorded in `docs/backlog/2026-11-07-native-viewer-load-readiness.md`.
+
+## Paused readout capture follow-up
+
+The complete Build run on c5233295bbbafe4e244322ef0cda78e55bbc7656 passed
+16,644 unit/heavy cases, all parity records and 3,435 browser cases, with one
+browser failure and twelve skips. Only `slowmo.spec.ts` then ran twice on clean
+master 8d86d8660dfde4f96d644ca4cc81641a6bdb4ffb: all 34 cases passed. The failure
+is therefore not classified as identical pre-existing behavior.
+
+The paused simulation was stable, but the test captured its last displayed time
+before the next UI readout publication. Two animation frames do not guarantee that
+slower publication has occurred. The fixture now observes the next readout
+publication and captures time and particle checksum together. It retains every
+exact time, checksum and viewport equality and every existing frame/readiness wait.
+Production clocks and rendering are unchanged.
+
+Restoring immediate capture fails the new stale-readout regression and the original
+pause/restore equality (1,330 ms before replay versus 1,340 ms afterward); sixteen
+other cases passed. The restored publication wait passes all eighteen cases.
+
+The restored slow-motion spec and all native viewer, cache-aside, annotation,
+drawing, platform, Inspector and viewport neighbours pass five Linux Build repeats
+with six workers and eight CPUs: 1,285 passed, zero failed, zero flaky and zero
+skipped. The final complete Dev gate is reported with the pushed commit.
