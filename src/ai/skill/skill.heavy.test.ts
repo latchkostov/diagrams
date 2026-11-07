@@ -1180,6 +1180,16 @@ describe("export-html.mjs", () => {
     const both = run("export-html.mjs", kafka, "--password", "secret-value", "--password-file", "unused", "--out", dir);
     expect(both.code).toBe(2);
     expect(both.err).not.toContain("secret-value");
+    // The viewer's password box is one line: a password with a line break left in could never unlock the file.
+    const multiline = path.join(tmp, "multiline-password.txt");
+    writeFileSync(multiline, "correct horse battery\n\n");
+    const broken = run("export-html.mjs", kafka, "--password-file", multiline, "--out", dir);
+    expect(broken.code).toBe(1);
+    expect(broken.err).toContain("can't contain a line break");
+    expect(broken.err).not.toContain("correct horse");
+    const literal = run("export-html.mjs", kafka, "--password", "correct horse\rbattery", "--out", dir);
+    expect(literal.code).toBe(1);
+    expect(literal.err).toContain("can't contain a line break");
     const short = run("export-html.mjs", kafka, "--password", "short", "--out", dir);
     expect(short.code).toBe(1);
     expect(short.err).toMatch(/at least 8 characters/);

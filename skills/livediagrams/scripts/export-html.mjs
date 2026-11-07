@@ -120,6 +120,9 @@ if (opts["--password-file"] !== undefined) {
 let html;
 if (password === undefined) html = injectPayload(template, payload);
 else {
+  // The viewer's password box is a single line, so a password with a line break inside could never be typed.
+  if (/[\r\n]/.test(password))
+    fail("The password can't contain a line break; put it on one line. Nothing was written.", 1);
   if (password.length < MIN_PASSWORD_LENGTH)
     fail(`Use a password of at least ${MIN_PASSWORD_LENGTH} characters. Nothing was written.`, 1);
   const strength = passwordStrength(password);
