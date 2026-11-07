@@ -48,6 +48,37 @@ it("describes expected cache traffic with named fields and the cache capability"
   expect(describeDiagram(d)).toContain("cache=");
 });
 
+it("describes Default estimates and uses null for unavailable analysis", () => {
+  const d = cacheFixture();
+  const node = () =>
+    JSON.parse(describeDiagram(d, { format: "json" })).nodes.find((n: { id: string }) => n.id === "cache");
+  expect(node().cache.rules[0]).toMatchObject({ id: "", expected: { requestsPerSec: 200 } });
+  for (let i = 0; i < 200; i++)
+    d.nodes.push({ id: `extra-${i}`, stencil: "generic.service", label: "Service", x: 0, y: 0 });
+  expect(node().cache.rules[0].expected).toEqual({
+    requestsPerSec: null,
+    hitRatio: null,
+    offload: null,
+    originPerSec: null,
+    hottestShare: 0.05,
+    herd: null,
+    coldOriginPerSec: null,
+  });
+});
+
+it("rolls back an upgrade when a later operation refuses the batch", () => {
+  const d = cacheFixture();
+  d.planning!.revision = "p3-w2";
+  delete d.nodes[1].props!.cache;
+  const result = applyOps(d, [
+    { op: "update", target: "cache", props: { cache } },
+    { op: "update", target: "missing", label: "Absent" },
+  ]);
+  expect(result.ok).toBe(false);
+  expect(result.diagram).toBe(d);
+  expect(result.diagram.planning!.revision).toBe("p3-w2");
+});
+
 it("authors purge events using node references and validates their rule", () => {
   const d = cacheFixture();
   d.nodes[1].props!.cache = cache;

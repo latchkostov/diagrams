@@ -34,7 +34,9 @@ it("leaves Black Friday's configured traffic clean and does not ask scenario siz
   ctx.plans = () => {
     throw new Error("Caching must not grow scenario sizing");
   };
-  expect(computeCacheFindings(ctx).filter((f) => !f.unchecked && !f.omitted)).toEqual([]);
+  const findings = computeCacheFindings(ctx);
+  expect(findings.filter((f) => !f.unchecked && !f.omitted)).toEqual([]);
+  expect(findings.filter((f) => f.unchecked).map((f) => f.unchecked)).toEqual([1]);
 });
 
 it("removes an uncacheable method row without broadening it or changing other rules", () => {
@@ -99,4 +101,43 @@ it("keeps W2 rules dormant", () => {
   const d = cacheFixture();
   d.planning!.revision = "p3-w2";
   expect(runChecks(d, { rules: CACHE_RULES }).findings).toEqual([]);
+});
+
+it("replaces generic capacity on the cache origin before choosing another overloaded service", () => {
+  const d = structuredClone(small) as DiagramFile;
+  d.nodes.find((n) => n.id === "origin")!.props!.concurrency = 1;
+  d.nodes.push(
+    { id: "other-source", stencil: "client.browser", label: "Other readers", x: 0, y: 600, props: { ratePerSec: 2 } },
+    {
+      id: "other",
+      stencil: "generic.service",
+      label: "Other service",
+      x: 600,
+      y: 600,
+      props: { latencyMs: 1000, concurrency: 1, replicas: 1, jitter: 0 },
+    },
+  );
+  d.edges.push({ id: "other-request", from: "other-source", to: "other", kind: "sync" });
+  const all = runChecks(d, { rules: ["capacity", "cache-stampede"] });
+  expect(all.findings.some((f) => f.rule === "cache-stampede")).toBe(true);
+  expect(all.findings.find((f) => f.rule === "capacity")?.target).toBe("other");
+  expect(runChecks(d, { rules: ["capacity"] }).findings.find((f) => f.rule === "capacity")?.target).toBe("origin");
+});
+
+it("honours node-scoped ignores for per-rule findings, and preserves probe omissions in a cold-only check", () => {
+  const d = structuredClone(small) as DiagramFile;
+  d.checks = { ignore: [{ rule: "cache-stampede", target: "cdn" }] };
+  const result = runChecks(d, { rules: CACHE_RULES });
+  expect(result.ignored.map((f) => f.id)).toEqual(["cache-stampede:cdn:launch"]);
+  expect(result.findings.some((f) => f.rule === "cache-stampede")).toBe(false);
+  const spy = vi.spyOn(headless, "createHeadlessRun").mockImplementation(() => {
+    throw new Error("refused");
+  });
+  try {
+    const next = cacheFixture();
+    next.title = "A refused cold-only probe";
+    expect(runChecks(next, { rules: ["cache-cold-start"] }).notChecked).toEqual({ cache: 1 });
+  } finally {
+    spy.mockRestore();
+  }
 });

@@ -78,7 +78,12 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const cache = (node: DiagramFile["nodes"][number]) =>
     cacheEnabled(d.planning, node.stencil, stencilRole(node.stencil), node.props?.cache)
       ? {
-          rules: node.props.cache.rules.map((rule) => ({
+          rules: [
+            ...node.props.cache.rules,
+            ...(node.props.cache.default
+              ? [{ id: "", label: "Other requests", match: {}, policy: node.props.cache.default }]
+              : []),
+          ].map((rule) => ({
             ...rule,
             expected: expectedCache(node.id, rule.id, rule.policy),
           })),

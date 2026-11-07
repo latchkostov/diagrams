@@ -27,7 +27,9 @@
     "schema-registry"
   ],
   "off": [],
-  "findings": [],
+  "findings": [
+    { "id": "cache-stampede:cache:", "rule": "cache-stampede", "severity": "warning", "target": "cache", "elements": ["cache", "database"] }
+  ],
   "ignored": [],
   "fixes": {}
 }

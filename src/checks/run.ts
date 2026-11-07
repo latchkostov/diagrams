@@ -79,12 +79,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
   const omitted = detected.flatMap((f) => (f.omitted ? [{ rule: f.rule, count: f.omitted }] : []));
   const retryStorm = detected.reduce((n, f) => n + (f.rule === "retry-storm" ? (f.unchecked ?? 0) : 0), 0);
   const cache = detected.reduce((n, f) => n + (f.rule.startsWith("cache-") ? (f.unchecked ?? 0) : 0), 0);
-  const origins = new Set(
-    detected.filter((f) => f.rule === "cache-stampede" && f.cacheFinding).map((f) => f.cacheFinding!.origin),
-  );
-  const all = detected.filter(
-    (f) => !f.omitted && !f.unchecked && !(f.rule === "capacity" && origins.has(f.target) && !f.resourceFinding),
-  );
+  const all = detected.filter((f) => !f.omitted && !f.unchecked);
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));
   return {
@@ -154,7 +149,7 @@ export function askedWithEvidence(full: CheckResult, asked: CheckResult, rules?:
 export function recheckRules(rule: CheckRuleId): CheckRuleId[] {
   if (rule === "retry-budget" || rule === "call-breaker") return [rule, "retry-storm"];
   if (CACHE_RULES.includes(rule as (typeof CACHE_RULES)[number])) return [...CACHE_RULES];
-  return rule === "capacity" ? ["capacity", ...WAIT_RULES] : [rule];
+  return rule === "capacity" ? ["capacity", ...WAIT_RULES, "cache-stampede"] : [rule];
 }
 
 /** Warnings first, then rule order, then reading order (`rank`), then id: the order every list of findings uses. */

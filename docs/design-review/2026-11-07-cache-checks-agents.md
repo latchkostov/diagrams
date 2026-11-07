@@ -15,3 +15,6 @@ English or Arabic descriptors, isolating authored names and methods for bidirect
 
 Production-build regressions exercise keyboard application, alternative policy, undo, the compact
 1024 px Arabic card and agent parity on public examples. Screenshots are collected outside the repo.
+The English and Arabic screenshots were inspected: actions and names fit, the Arabic card remains
+inside the 1024 px viewport, and authored Latin names stay isolated. Existing generic Checks chrome
+still uses its earlier English fallback where it has not been converted; the new caching copy is Arabic.
