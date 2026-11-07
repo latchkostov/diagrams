@@ -68,7 +68,7 @@ export const check_diagramSchema: JsonSchema = {
         items: { type: "string", enum: [...CHECK_RULES] },
         maxItems: CHECK_RULES.length,
         description:
-          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), message-loop (a message type is forwarded around a processor cycle; retries and broker redelivery excluded), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), blocked-threads (waiting calls exhaust threads), scaling-blind (CPU scaling misses waiting threads), call-timeout (an outside or model API call has no deadline), retry-backoff (retries arrive in waves), retry-budget (unbounded added load), retry-idempotency (unsafe repeated side effects), retry-layers (more than tenfold amplification), call-breaker (failing dependency without a breaker), queue-limit (work outlives the caller), retry-storm (up to three configured-rate slowdown probes; only one replay-proven fix; skipped calls in notChecked.retryStorm), single-point (every request goes through one replica), secret-identity (services read secrets without an identity), schema-registry (Avro or Protobuf on Kafka without a schema registry), dropped (messages a saved simulation loses that no other check explains; only with simulations: true, and never with a fix).",
+          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), message-loop (a message type is forwarded around a processor cycle; retries and broker redelivery excluded), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), blocked-threads (waiting calls exhaust threads), scaling-blind (CPU scaling misses waiting threads), call-timeout (an outside or model API call has no deadline), retry-backoff (retries arrive in waves), retry-budget (unbounded added load), retry-idempotency (unsafe repeated side effects), retry-layers (more than tenfold amplification), call-breaker (failing dependency without a breaker), queue-limit (work outlives the caller), retry-storm (up to three configured-rate slowdown probes; only one replay-proven fix; skipped calls in notChecked.retryStorm), cache-stampede (harmful hot-item expiry; replay-proven policy and options), cache-cold-start (origin overload without recovery within 10 s of purge), cache-ttl-short (low reuse; replay-confirmed longer lifetime), cache-method (non-GET/HEAD requests never store); Cold cache probes: at most three caching nodes, hard purge at 5 s, replay to 20 s at configured rates; skipped caches in notChecked.cache; single-point (every request goes through one replica), secret-identity (services read secrets without an identity), schema-registry (Avro or Protobuf on Kafka without a schema registry), dropped (messages a saved simulation loses that no other check explains; only with simulations: true, and never with a fix).",
       },
       include: {
         type: "string",
@@ -517,8 +517,15 @@ export const set_simulationSchema: JsonSchema = {
             },
             do: {
               type: "string",
-              enum: ["down", "up", "pause", "slow", "set"],
+              enum: ["down", "up", "pause", "slow", "set", "purge"],
             },
+            mode: { enum: ["hard", "soft"], description: "For purge; defaults to hard." },
+            rule: {
+              type: "string",
+              maxLength: 200,
+              description: "For purge: one cache rule id; omitted means all rules.",
+            },
+            reason: { enum: ["purge", "deploy"], description: "For purge narration." },
             latencyMs: {
               type: "number",
               minimum: 0,
@@ -618,7 +625,7 @@ export const toolDescriptions = {
   edit_diagram:
     "Add, connect, change or remove diagram elements in one atomic step (one undo). Describe kinds in plain words ('.NET consumer', 'Kafka topic'); the app picks the icon and position. Put a whole request in one call.",
   set_simulation:
-    "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds. Use faults for named drills: zone-outage, region-connectivity, slow-dependency or error-spike. Faults can take down a boundary, slow a node, inject failures or cut a flow between boundaries; use another fault step to restore it.",
+    "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds. Use faults for named drills: zone-outage, region-connectivity, slow-dependency, error-spike or cold-cache. Purge a caching node with hard/soft mode, optional rule and deploy reason; events also accept do: purge. Other faults can take down a boundary, slow a node, inject failures or cut a flow between boundaries; use another fault step to restore it.",
   new_diagram: "Start a new, empty diagram. The current one stays in the library.",
   get_share_link:
     "Get a link that opens the current diagram. The diagram is stored in the link itself; nothing is uploaded.",

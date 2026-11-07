@@ -18,12 +18,87 @@
     "call-breaker",
     "queue-limit",
     "retry-storm",
+    "cache-stampede",
+    "cache-cold-start",
+    "cache-ttl-short",
+    "cache-method",
     "single-point",
     "secret-identity",
     "schema-registry"
   ],
   "off": [],
   "findings": [
+    {
+      "id": "cache-stampede:cdn:launch",
+      "rule": "cache-stampede",
+      "severity": "warning",
+      "target": "cdn",
+      "elements": ["cdn", "origin"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "cdn",
+            "props": {
+              "cache": {
+                "rules": [
+                  {
+                    "id": "launch",
+                    "label": "Launch page",
+                    "match": { "path": { "kind": "exact", "value": "/launch" } },
+                    "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                  },
+                  {
+                    "id": "products",
+                    "label": "Other products",
+                    "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                    "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "needsChoice": false,
+        "options": [
+          {
+            "kind": null,
+            "ops": [
+              {
+                "op": "update",
+                "target": "cdn",
+                "props": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true, "staleWhileRevalidateMs": 10000 }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "cache-cold-start:cdn:launch",
+      "rule": "cache-cold-start",
+      "severity": "warning",
+      "target": "cdn",
+      "elements": ["cdn", "origin"],
+      "fix": { "ops": [{ "op": "update", "target": "origin", "props": { "replicas": 15 } }], "needsChoice": false }
+    },
     {
       "id": "single-point:origin",
       "rule": "single-point",
@@ -35,7 +110,27 @@
   ],
   "ignored": [],
   "fixes": {
-    "single-point:origin (default)": {
+    "cache-stampede:cdn:launch (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "cdn" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["cache-cold-start:cdn:launch", "single-point:origin"]
+    },
+    "cache-stampede:cdn:launch (option 1)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "cdn" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["cache-cold-start:cdn:launch", "single-point:origin"]
+    },
+    "cache-cold-start:cdn:launch (default)": {
       "ok": true,
       "errors": [],
       "warnings": [],
@@ -44,6 +139,16 @@
       "nodes": 4,
       "edges": 3,
       "findingsAfter": []
+    },
+    "single-point:origin (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "origin" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["cache-stampede:cdn:launch", "cache-cold-start:cdn:launch"]
     }
   }
 }

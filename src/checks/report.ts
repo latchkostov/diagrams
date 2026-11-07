@@ -27,6 +27,7 @@ const MAX_EVIDENCE = 3;
 const MAX_SIMULATIONS = 300;
 
 export interface AgentFinding {
+  cacheFinding?: Finding["cacheFinding"];
   resilienceFinding?: Finding["resilienceFinding"];
   id: string;
   rule: CheckRuleId;
@@ -111,6 +112,7 @@ function bounded(f: Finding): AgentFinding {
   return {
     id: clip(f.id, MAX_ID),
     ...(f.resilienceFinding ? { resilienceFinding: f.resilienceFinding } : {}),
+    ...(f.cacheFinding ? { cacheFinding: f.cacheFinding } : {}),
     rule: f.rule,
     severity: f.severity,
     title: clip(f.title, MAX_TITLE),

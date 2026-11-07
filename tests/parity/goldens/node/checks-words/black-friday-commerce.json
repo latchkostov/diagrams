@@ -1,14 +1,14 @@
 {
-  "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms.",
+  "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms; 1 caches not checked by the Cold cache probe.",
   "findings": {},
   "agentReport": {
-    "notChecked": { "retryStorm": 1 },
+    "notChecked": { "retryStorm": 1, "cache": 1 },
     "findings": [],
-    "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms."
+    "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms; 1 caches not checked by the Cold cache probe."
   },
   "agentReportWarnings": {
-    "notChecked": { "retryStorm": 1 },
+    "notChecked": { "retryStorm": 1, "cache": 1 },
     "findings": [],
-    "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms."
+    "summary": "0 warnings, 0 suggestions; 1 retried calls not checked for retry storms; 1 caches not checked by the Cold cache probe."
   }
 }

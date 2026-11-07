@@ -1,6 +1,25 @@
 {
-  "summary": "0 warnings, 1 suggestion.",
+  "summary": "2 warnings, 1 suggestion.",
   "findings": {
+    "cache-stampede:cdn:launch": {
+      "title": "A hot item's expiry would flood Product API.",
+      "message": "Launch page's most popular item gets 320/s. Each time it expires, about 61 requests reach Product API before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+      "rationale": "Cache benefits depend on item reuse. Cold-cache probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked.",
+      "fix": {
+        "label": "One fetch per item",
+        "options": [{ "label": "Serve stale while refreshing", "short": "Serve stale while refreshing" }]
+      },
+      "shownMessage": "⁨Launch page⁩'s most popular item gets 320/s. Each time it expires, about 61 requests reach ⁨Product API⁩ before the first reply. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+      "shownRationale": "Cache benefits depend on item reuse. Probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked."
+    },
+    "cache-cold-start:cdn:launch": {
+      "title": "Product API can't carry Edge CDN's traffic when the cache is cold.",
+      "message": "After a purge or deploy, Product API gets 400/s, 8.0× its capacity, until the cache refills. Cold cache probe: hard purge at 5 s, replay to 20 s; no recovery within 10 s.",
+      "rationale": "Cache benefits depend on item reuse. Cold-cache probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked.",
+      "fix": { "label": "Add replicas (15)" },
+      "shownMessage": "After a purge or deploy, ⁨Product API⁩ gets 400/s, 8× its capacity, until the cache refills. The probe did not recover within 10 s. Cold cache probe: hard purge at 5 s, replay to 20 s at configured rates.",
+      "shownRationale": "Cache benefits depend on item reuse. Probes use configured traffic, not saved story peaks; replay budgets can leave caches unchecked."
+    },
     "single-point:origin": {
       "title": "Every request goes through one Product API",
       "message": "It runs 1 replica, and every request from Shoppers goes through it: if it stops, Shoppers gets nothing.",
@@ -11,20 +30,117 @@
   "agentReport": {
     "findings": [
       {
-        "id": "single-point:origin",
-        "rule": "single-point",
-        "severity": "suggestion",
-        "title": "Every request goes through one Product API",
-        "message": "It runs 1 replica, and every request from Shoppers goes through it: if it stops, Shoppers gets nothing.",
-        "targets": ["origin", "shoppers"],
+        "id": "cache-stampede:cdn:launch",
+        "cacheFinding": {
+          "kind": "cache-stampede",
+          "node": "cdn",
+          "rule": "launch",
+          "origin": "origin",
+          "nodeName": "Edge CDN",
+          "ruleName": "Launch page",
+          "originName": "Product API",
+          "hitRatio": 0.9628114093152004,
+          "herd": 60.8,
+          "coldPerSec": 320,
+          "capacityPerSec": 50,
+          "ttlMs": 5000,
+          "hottestPerSec": 320,
+          "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": false }
+        },
+        "rule": "cache-stampede",
+        "severity": "warning",
+        "title": "A hot item's expiry would flood Product API.",
+        "targets": ["cdn", "origin"],
         "fix": {
-          "label": "Set replicas to 2",
-          "ops": [{ "op": "update", "target": "origin", "props": { "replicas": 2 } }]
+          "label": "One fetch per item",
+          "ops": [
+            {
+              "op": "update",
+              "target": "cdn",
+              "props": {
+                "cache": {
+                  "rules": [
+                    {
+                      "id": "launch",
+                      "label": "Launch page",
+                      "match": { "path": { "kind": "exact", "value": "/launch" } },
+                      "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                    },
+                    {
+                      "id": "products",
+                      "label": "Other products",
+                      "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                      "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "elsewhere": "Also possible, too long for this reply (the person can pick it in the Checks card): Serve stale while refreshing."
         }
       }
     ],
-    "summary": "0 warnings, 1 suggestion.",
-    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    "summary": "2 warnings, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "2 more findings omitted; call check_diagram with rules to see them."
   },
-  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 1 suggestion." }
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "cache-stampede:cdn:launch",
+        "cacheFinding": {
+          "kind": "cache-stampede",
+          "node": "cdn",
+          "rule": "launch",
+          "origin": "origin",
+          "nodeName": "Edge CDN",
+          "ruleName": "Launch page",
+          "originName": "Product API",
+          "hitRatio": 0.9628114093152004,
+          "herd": 60.8,
+          "coldPerSec": 320,
+          "capacityPerSec": 50,
+          "ttlMs": 5000,
+          "hottestPerSec": 320,
+          "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": false }
+        },
+        "rule": "cache-stampede",
+        "severity": "warning",
+        "title": "A hot item's expiry would flood Product API.",
+        "targets": ["cdn", "origin"],
+        "fix": {
+          "label": "One fetch per item",
+          "ops": [
+            {
+              "op": "update",
+              "target": "cdn",
+              "props": {
+                "cache": {
+                  "rules": [
+                    {
+                      "id": "launch",
+                      "label": "Launch page",
+                      "match": { "path": { "kind": "exact", "value": "/launch" } },
+                      "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                    },
+                    {
+                      "id": "products",
+                      "label": "Other products",
+                      "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                      "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "elsewhere": "Also possible, too long for this reply (the person can pick it in the Checks card): Serve stale while refreshing."
+        }
+      }
+    ],
+    "summary": "2 warnings, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "1 more finding omitted; call check_diagram with rules to see them."
+  }
 }

@@ -16,6 +16,22 @@ import azureOrders from "./fixtures/azure-orders.drawio?raw";
 import twoPages from "./fixtures/two-pages-compressed.drawio?raw";
 import shaped from "../../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import { ROUTE_LIMITS } from "../../model/edgeRoute";
+import cacheAside from "../../../tests/parity/corpus/w3-cache-aside.diagram.json";
+
+it("preserves W3 cache rules, cache-aside calls and purge Drills", async () => {
+  const d = structuredClone(cacheAside) as DiagramFile;
+  d.simulations![0].timeline![0].action = {
+    do: "fault",
+    fault: { kind: "purge", node: "cache", mode: "soft", reason: "deploy" },
+    drill: "cold-cache",
+  };
+  const imported = await importFirst(diagramToDrawio(d));
+  expect(imported.warnings).toEqual([]);
+  expect(imported.diagram.planning).toEqual(d.planning);
+  expect(imported.diagram.nodes.map((n) => n.props)).toEqual(d.nodes.map((n) => n.props));
+  expect(imported.diagram.edges.map((e) => e.props)).toEqual(d.edges.map((e) => e.props));
+  expect(imported.diagram.simulations).toEqual(d.simulations);
+});
 
 // Public examples only (the glob does not descend into ./private).
 const examples = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });

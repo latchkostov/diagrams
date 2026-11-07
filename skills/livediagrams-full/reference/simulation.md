@@ -18,6 +18,34 @@ Stencil roles are listed in [stencils.md](stencils.md):
 Broker-delivered processing failures retry up to `maxDeliveryCount` (default 3), then follow a
 broker edge with `props.dlq: true` (or a DLQ/dead-letter target label), or drop without one.
 
+## Caching
+
+New diagrams use `p3-w3`. On cache-capable edge CDNs and cache stores, `props.cache` is an ordered
+`{rules: [{id, label?, match, policy}], default?}` table. Matches use paths, hosts, methods, headers,
+query and message types like routing. Only GET/HEAD Requests store; Messages and other methods pass.
+Policy has exactly one of `ttlMs` (100–86400000) or `noStore: true`; `keys` is item count (default 1000),
+`popularity` is even/gentle/typical/steep. Never invent a hit-ratio slider: reuse, rate and lifetime derive it.
+`coalesce: true` makes one fetch per tracked item; `staleWhileRevalidateMs` serves old copies during refresh.
+Many CDNs coalesce by default; the simulator leaves it off for teaching. Caches start warm, share all replicas,
+have no eviction or size limit, and approximate untracked items statistically. Stores do not queue.
+
+For cache-aside, draw a service's unconditional Request to a cache, then a sibling origin Request with
+`props.caller.onMiss` naming the cache connection id. The service looks up first and calls the origin only
+on a miss, then implicitly fills the cache on success. Keep the remaining caller settings.
+
+A Cold cache Drill is a timeline action `{do: "fault", fault: {kind: "purge", node: "edge",
+mode: "hard"}, drill: "cold-cache"}`. Optional `rule` limits the purge to one rule (`""` means Default);
+`mode: "soft"` expires retained copies for stale serving, and `reason: "deploy"` changes narration only.
+To start cold, purge at 0 ms. Agent `set_simulation` also accepts `events: [{atSec: 5, node: "edge",
+do: "purge", mode: "hard"}]`. Checks probe up to three caches at configured rates: hard purge at 5 s,
+replay to 20 s. `notChecked.cache` means incomplete, never clean. Stampede fixes use the shared replay-proven
+ladder: one fetch per item, then stale serving. Scaling is only a cold-capacity fix; longer lifetime is a
+freshness decision. Older-than-W2 agent edits must request an upgrade before adding rules.
+
+Node metrics: `hitRatio` is percent hits, `originOffload` percent origin work avoided, `originFetches` real
+fetch count, `itemFetches` the largest real fetch count in flight for one tracked item now (not cumulative),
+and `p95` response latency in ms. At coarse scale an untracked herd may be absent; expected values are estimates.
+
 ## Retries, breakers and shedding
 
 `p3-w2` executes Request `props.caller.retry`: `maxAttempts` includes the first (execution caps at 10),

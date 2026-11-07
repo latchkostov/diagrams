@@ -1,6 +1,6 @@
 # The diagrams/v1 file format
 
-Planning uses `diagrams/v2` and `planning.revision` (`p1`, `p2`, `p3`, `p3-a1`, `p3-w1`, `p3-w2`).
+Planning uses `diagrams/v2` and `planning.revision` (`p1`, `p2`, `p3`, `p3-a1`, `p3-w1`, `p3-w2`, `p3-w3`).
 Preserve existing revisions: the app's upgrade pins effective values and previews compatibility.
 Unknown revisions are refused. Files are `<name>.diagram.json`; schemas are at
 `https://www.livediagrams.dev/schema/diagram.v1.json`, `diagram.v2.json` and `stencils.json`.
@@ -18,7 +18,7 @@ Concurrency; `averageValue.value` is threads per pod. This is a modelled custom 
 
 ## Top level
 
-- `format` (required): `"diagrams/v2"` with `planning: { "revision": "p3" }` for new planning diagrams; `"diagrams/v1"` for legacy playback.
+- `format` (required): `"diagrams/v2"` with `planning: { "revision": "p3-w3" }` for new planning diagrams; `"diagrams/v1"` for legacy playback.
 - `title` (required) and an optional `description` of one or two sentences.
 - `color` (optional): the canvas background tint, using an annotation palette colour or hex (`#RGB`, `#RGBA`,
   `#RRGGBB` or `#RRGGBBAA`). Omit it for the theme's default background. Alpha is preserved.

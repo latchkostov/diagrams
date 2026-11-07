@@ -1,5 +1,5 @@
 export const catalogBuckets = {
-  core: "toast rail workbench examples route workspaceInspector messageTypes messageLoop viewerForge node latency liveSession inspector format cloud fileToast fileType importReport library importReason passwordLink importDetail importKind fileDialog embedDialog password exportToast collab storage workspaceLive live common topbar view file status shared privacy export gallery present start privateDialog clear language shortcuts edge keys menu command canvas edit chrome shape camera routing runResult trouble workspaceRoom workspaceValidation fault liveMenu resilience hover waitChecks health resilienceChecks".split(
+  core: "toast rail workbench examples route workspaceInspector messageTypes messageLoop viewerForge node latency liveSession inspector format cloud fileToast fileType importReport library importReason passwordLink importDetail importKind fileDialog embedDialog password exportToast collab storage workspaceLive live common topbar view file status shared privacy export gallery present start privateDialog clear language shortcuts edge keys menu command canvas edit chrome shape camera routing runResult trouble workspaceRoom workspaceValidation fault liveMenu resilience hover waitChecks health resilienceChecks cacheChecks".split(
     " ",
   ),
   tutorials: ["tutorials"],

@@ -1,5 +1,14 @@
 # Example gallery metadata
 
+## Caching examples
+
+**A cache stampede** shows an expiry herd within ten seconds. Its five same-seed runs compare TTL only,
+one fetch per item, stale serving, hard purge and soft purge. Checks deliberately flag the expiry herd
+and cold origin overload; the single-origin availability suggestion is separate from the caching lesson.
+**Black Friday commerce** shows edge rules, cache-aside, a doorbuster and a deploy purge. Its configured
+morning traffic stays free of findings; saved peak stories are not configured-rate Checks failures.
+Both examples carry `shows: ["caching", …]`; evidence requires a storing W3 rule receiving traffic.
+
 The picker names your work; Browse examples opens a lazy gallery. The start card keeps four featured
 examples and links to the same gallery. Search matches every word across title, slug, description,
 summary and translated feature tags. Themes retain catalog order; items retain their order within a theme.

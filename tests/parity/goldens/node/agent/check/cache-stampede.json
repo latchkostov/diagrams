@@ -4,46 +4,184 @@
     "output": {
       "findings": [
         {
-          "id": "single-point:origin",
-          "rule": "single-point",
-          "severity": "suggestion",
-          "title": "Every request goes through one Product API",
-          "message": "It runs 1 replica, and every request from Shoppers goes through it: if it stops, Shoppers gets nothing.",
-          "targets": ["origin", "shoppers"],
+          "id": "cache-stampede:cdn:launch",
+          "cacheFinding": {
+            "kind": "cache-stampede",
+            "node": "cdn",
+            "rule": "launch",
+            "origin": "origin",
+            "nodeName": "Edge CDN",
+            "ruleName": "Launch page",
+            "originName": "Product API",
+            "hitRatio": 0.9628114093152004,
+            "herd": 60.8,
+            "coldPerSec": 320,
+            "capacityPerSec": 50,
+            "ttlMs": 5000,
+            "hottestPerSec": 320,
+            "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": false }
+          },
+          "rule": "cache-stampede",
+          "severity": "warning",
+          "title": "A hot item's expiry would flood Product API.",
+          "targets": ["cdn", "origin"],
           "fix": {
-            "label": "Set replicas to 2",
-            "ops": [{ "op": "update", "target": "origin", "props": { "replicas": 2 } }]
+            "label": "One fetch per item",
+            "ops": [
+              {
+                "op": "update",
+                "target": "cdn",
+                "props": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "elsewhere": "Also possible, too long for this reply (the person can pick it in the Checks card): Serve stale while refreshing."
           }
         }
       ],
-      "summary": "0 warnings, 1 suggestion.",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+      "summary": "2 warnings, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "2 more findings omitted; call check_diagram with rules to see them."
     }
   },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 1 suggestion." } },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "cache-stampede:cdn:launch",
+          "cacheFinding": {
+            "kind": "cache-stampede",
+            "node": "cdn",
+            "rule": "launch",
+            "origin": "origin",
+            "nodeName": "Edge CDN",
+            "ruleName": "Launch page",
+            "originName": "Product API",
+            "hitRatio": 0.9628114093152004,
+            "herd": 60.8,
+            "coldPerSec": 320,
+            "capacityPerSec": 50,
+            "ttlMs": 5000,
+            "hottestPerSec": 320,
+            "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": false }
+          },
+          "rule": "cache-stampede",
+          "severity": "warning",
+          "title": "A hot item's expiry would flood Product API.",
+          "targets": ["cdn", "origin"],
+          "fix": {
+            "label": "One fetch per item",
+            "ops": [
+              {
+                "op": "update",
+                "target": "cdn",
+                "props": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "elsewhere": "Also possible, too long for this reply (the person can pick it in the Checks card): Serve stale while refreshing."
+          }
+        }
+      ],
+      "summary": "2 warnings, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "1 more finding omitted; call check_diagram with rules to see them."
+    }
+  },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
     "output": {
       "findings": [
         {
-          "id": "single-point:origin",
-          "rule": "single-point",
-          "severity": "suggestion",
-          "title": "Every request goes through one Product API",
-          "message": "It runs 1 replica, and every request from Shoppers goes through it: if it stops, Shoppers gets nothing.",
-          "targets": ["origin", "shoppers"],
+          "id": "cache-stampede:cdn:launch",
+          "cacheFinding": {
+            "kind": "cache-stampede",
+            "node": "cdn",
+            "rule": "launch",
+            "origin": "origin",
+            "nodeName": "Edge CDN",
+            "ruleName": "Launch page",
+            "originName": "Product API",
+            "hitRatio": 0.9628114093152004,
+            "herd": 60.8,
+            "coldPerSec": 320,
+            "capacityPerSec": 50,
+            "ttlMs": 5000,
+            "hottestPerSec": 320,
+            "probe": { "kind": "cold-cache", "startMs": 5000, "horizonMs": 20000, "recovered": false }
+          },
+          "rule": "cache-stampede",
+          "severity": "warning",
+          "title": "A hot item's expiry would flood Product API.",
+          "targets": ["cdn", "origin"],
           "fix": {
-            "label": "Set replicas to 2",
-            "ops": [{ "op": "update", "target": "origin", "props": { "replicas": 2 } }]
+            "label": "One fetch per item",
+            "ops": [
+              {
+                "op": "update",
+                "target": "cdn",
+                "props": {
+                  "cache": {
+                    "rules": [
+                      {
+                        "id": "launch",
+                        "label": "Launch page",
+                        "match": { "path": { "kind": "exact", "value": "/launch" } },
+                        "policy": { "ttlMs": 5000, "keys": 1, "coalesce": true }
+                      },
+                      {
+                        "id": "products",
+                        "label": "Other products",
+                        "match": { "path": { "kind": "prefix", "value": "/products/" } },
+                        "policy": { "ttlMs": 300000, "keys": 20000, "popularity": "typical" }
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "elsewhere": "Also possible, too long for this reply (the person can pick it in the Checks card): Serve stale while refreshing."
           }
-        },
-        { "id": "dropped:shoppers", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Shoppers are lost", "message": "Shoppers fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["shoppers"], "evidence": ["7,908 dropped in “TTL only”", "1,482 dropped in “A purge at the peak”"] },
-        { "id": "dropped:cdn", "rule": "dropped", "severity": "suggestion", "title": "Failed requests to Edge CDN are lost", "message": "Edge CDN fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["cdn"], "evidence": ["7,914 dropped in “TTL only”", "1,484 dropped in “A purge at the peak”"] }
+        }
       ],
-      "summary": "0 warnings, 3 suggestions.",
+      "summary": "2 warnings, 3 suggestions.",
       "simulations": "Played 5 saved simulations (at most 60 s each).",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "4 more findings omitted; call check_diagram with rules to see them."
     }
   }
 }

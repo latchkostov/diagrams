@@ -12,6 +12,7 @@ export type { CheckRuleId } from "../model/checks";
 export type CheckSeverity = "warning" | "suggestion";
 
 export interface CheckFix {
+  cacheLabel?: { kind: "coalesce" | "stale" | "ttl" | "method" | "replicas"; value?: number; method?: string };
   resilienceLabel?: { kind: string; value?: number; name?: string };
   messageLabel?: { kind: "filter" | "rename"; types: string[] };
   planLabel?: NonNullable<Finding["scalingPlan"]>;
@@ -32,6 +33,7 @@ export interface CheckFix {
 }
 
 export interface CheckFixOption {
+  cacheLabel?: CheckFix["cacheLabel"];
   resilienceLabel?: CheckFix["resilienceLabel"];
   messageLabel?: CheckFix["messageLabel"];
   requestLabel?: CheckFix["requestLabel"];
@@ -47,6 +49,25 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  cacheFinding?: {
+    kind: "cache-stampede" | "cache-cold-start" | "cache-ttl-short" | "cache-method";
+    node: string;
+    rule: string;
+    origin: string;
+    nodeName: string;
+    ruleName: string;
+    originName: string;
+    hitRatio: number;
+    herd: number;
+    coldPerSec: number;
+    capacityPerSec: number | null;
+    ttlMs: number;
+    suggestedTtlMs?: number;
+    suggestedHitRatio?: number;
+    hottestPerSec: number;
+    method?: string;
+    probe?: { kind: "cold-cache"; startMs: number; horizonMs: number; recovered: boolean };
+  };
   /** Diagram diagnostics have no element actions or per-element ignore; absent means element scope. */
   scope?: "element" | "diagram";
   /** Internal count marker, moved to CheckResult.notChecked by runChecks. */
@@ -181,7 +202,7 @@ export interface CheckRule {
 }
 
 export interface CheckResult {
-  notChecked?: { retryStorm: number };
+  notChecked?: { retryStorm?: number; cache?: number };
   /** Shown: warnings first, then suggestions; within each, rule order, then reading order. */
   findings: Finding[];
   /** Found, but a person ignored them in this diagram (`checks.ignore`). */

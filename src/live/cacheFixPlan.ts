@@ -52,6 +52,8 @@ export function confirmedCacheFix({
   time,
   budget,
   proven,
+  baseline,
+  step,
 }: {
   context: VerificationContext;
   node: string;
@@ -61,6 +63,9 @@ export function confirmedCacheFix({
   time: number;
   budget?: { work: number; messages: { remaining: number } };
   proven?: (before: CacheFixEvidence, after: CacheFixEvidence) => void;
+  /** Checks may reuse the identical baseline while independently proving the other policy option. */
+  baseline?: CacheFixEvidence;
+  step?: "coalesce" | "stale";
 }): Extract<TroubleAction, { kind: "cache" }> | undefined {
   const d = context.origin.diagram,
     base = context.origin.simulation;
@@ -143,9 +148,10 @@ export function confirmedCacheFix({
     return run.state().time >= horizon ? out : undefined;
   };
   try {
-    const before = measure(sim);
+    const before = baseline ?? measure(sim);
     if (!before) return;
     for (const candidate of cacheLadder(table, rule, before.fetchMs)) {
+      if (step && candidate.step !== step) continue;
       const next = structuredClone(sim);
       next.setup = {
         ...next.setup,

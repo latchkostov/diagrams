@@ -17,6 +17,20 @@ Types: `Simulation` in `src/model/types.ts`; runner API in `src/sim/types.ts`.
 Nothing we found combines these on _your own_ architecture diagram: existing system-design simulators
 use generic boxes, and Kafka visualizers simulate a fixed toy topology.
 
+## Cold cache Drills and metrics
+
+On `p3-w3`, save `{atMs: 5000, action: {do: "fault", fault: {kind: "purge", node: "cdn",
+mode: "hard"}, drill: "cold-cache"}}` in the timeline. `rule` optionally selects one cache rule;
+`mode: "soft"` retains expired copies for stale serving, and `reason: "deploy"` changes narration.
+Purge at 0 ms to start cold. Setup may replace `cache` policies and `caller.onMiss` connections.
+Cache-aside fills automatically on origin success; a saved run must not fake misses with route shares.
+
+Expectations support `hitRatio` and `originOffload` (percent), `originFetches` (real fetches),
+`itemFetches` (the maximum real fetches currently in flight for one tracked item) and `p95` (ms).
+For example, `{node: "cdn", field: "itemFetches"} < 5, always` catches tracked stampedes;
+untracked items are statistical, so an absent herd is not proof of no risk. Checks' Cold cache
+probe uses configured rates; saved peak-load Drills remain deliberate stories.
+
 ## Anatomy
 
 ```jsonc
