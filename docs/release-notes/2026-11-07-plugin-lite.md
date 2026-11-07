@@ -8,4 +8,7 @@ Open a diagram without numeric node positions from a file, paste or share link a
 with the existing layout engine, then quietly reports it. Positioned files follow the existing load path,
 including their fixed connection sides and waypoints. No controls were added.
 
-Output parity goldens are expected to remain unchanged: full layout, validation and export behavior stay the same.
+The only changed parity golden is `node/i18n/catalogs.json`: the new layout notice adds one message,
+updates each locale's `fileToast` digest and adds one English fallback in untranslated locales (the
+pseudo-locale translates it automatically). Full-plugin layout, validation and export goldens, and all
+browser render/export goldens, remain unchanged. No ZIP cap or bundle budget changed.
