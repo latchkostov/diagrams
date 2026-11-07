@@ -37,8 +37,7 @@ const allIcons = () =>
 describe("interactive viewer template", () => {
   it("keeps drawing styles while excluding unreachable editor surfaces from the skill", () => {
     const style = blocks(template, "style").join("");
-    for (const selector of [".nb-sub", ".fe-path", ".grp", ".ann-note", ".cm-item"])
-      expect(style, selector).toContain(selector);
+    for (const selector of [".nb-sub", ".fe-path", ".grp", ".ann-note"]) expect(style, selector).toContain(selector);
     for (const selector of [
       ".sheet-resize{",
       ".palette{",
@@ -49,6 +48,9 @@ describe("interactive viewer template", () => {
       ".mode-switch{",
       ".app-main{",
       ".segmented{",
+      // The read-only viewer has no context menu.
+      ".cm-layer{",
+      ".cm-item{",
     ])
       expect(style, selector).not.toContain(selector);
   });
