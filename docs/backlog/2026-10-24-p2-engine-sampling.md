@@ -1,15 +1,15 @@
 ## P2 triage: Engine and sampling (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 22 / STALE 0 / OPEN 15 (deduplicated actionable findings).
+Refreshed against `origin/master` at `3e4b93050182` on 2026-11-07. DONE 23 / STALE 0 / OPEN 14 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Attempt and held-call ownership (1 OPEN)
+## Batch 1: Attempt and held-call ownership (1 DONE)
 
-1. **ES-05 — OPEN: Minimize the fractional managed-retry held-call leak.** `src/sim/engine.ts:243`. Queue: #236 sweep.
-   Seed 453919836 reports a committed attempt reused by a new continuation at scale 1.5, leaving held=1. Preserve a local minimal fixture if the historical temporary artifact is unavailable, replay it on current master and fix attempt/lease ownership only after reproduction.
+1. **ES-05 — DONE: Minimize the fractional managed-retry held-call leak.** `src/sim/recoveryLeaks.test.ts:57`. Queue: #236 sweep.
+   #302 (`4a58a7fc5`) retains the four-message managed-join fixture for seed 453919836 and repairs reentrant admission. The regression checks held calls, reservations, logical ownership, terminal processing and exact checkpoint replay. The separate nested-deadline seed 538282733 is covered in the same file.
 
 ## Batch 2: Narrowed caller outcomes (1 OPEN)
 
@@ -46,8 +46,8 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 2. **ES-15 — OPEN: A finite pool wider than its caller must not trigger the guard.** `src/sim/waits.sampling.heavy.test.ts:285`. Queue: #231.
    Existing narrow-pool cases do not prove the inverse. Set pool width above caller capacity and compare throughput/outcomes with the unconstrained pool at the same arrivals.
 
-3. **ES-17 — OPEN: A retried narrowed probe completes its entire caller route.** `src/sim/breaker.sampling.heavy.test.ts:65`. Queue: #253 final.
-   The route-credit statement is not independently pinned. Enable routing in the allowed retry-budget fixture, require sent=completed=200 and a fully drained engine; mutation-check removing route credit.
+3. **ES-17 — OPEN: A retried narrowed probe completes its entire caller route.** `src/sim/breaker.test.ts:466`. Queue: #253 final.
+   Rechecked on 2026-11-07: #256's existing all-failure routing test at line 567 pins route credit, but does not cover the requested allowed-retry-budget fixture with sent=completed=200 and an asserted fully drained engine. Add that independent successful-route contract and mutation-check removing route credit. ES-06's caller-outcome discrepancy remains separate.
 
 ## Batch 6: Evidence comparison and draft guards (3 OPEN)
 

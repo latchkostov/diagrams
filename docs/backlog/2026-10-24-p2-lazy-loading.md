@@ -1,12 +1,12 @@
 ## P2 triage: Lazy loading (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 18 / STALE 0 / OPEN 1 (deduplicated actionable findings).
+Refreshed against `origin/master` at `3e4b93050182` on 2026-11-07. DONE 19 / STALE 0 / OPEN 0 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Loader ownership and HMR (1 OPEN, 1 DONE)
+## Batch 1: Loader ownership and HMR (2 DONE)
 
 1. **LL-01 — DONE: Give cold node details a keyboard focus handoff.** `src/live/NodeBadges.tsx:33`. Queue: #189.
    The shared loader provides recovery but does not itself prove the original cold keyboard-entry contract. Hold node details, enter by keyboard and transfer logical focus only while the request still owns it.
@@ -18,8 +18,8 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
    advancing to the next node. Removing shell focus, handoff, ownership or its final Tab stop
    fails the corresponding browser regression.
 
-2. **LL-02 — OPEN: Make surface registrations survive HMR.** `src/lib/lazySurfaces.ts:77`. Queue: #271.
-   Module-owned registrations replace their previous hot evaluation, preserve mounted consumers in output readiness, and dispose inactive registrations. Genuine duplicates still throw. Registry and dev-transform regressions cover replacement before/during an export; the generated hold-the-chunk browser contracts remain unchanged. Implemented on `fix/p2-tooling-followups` (merge pending).
+2. **LL-02 — DONE: Make surface registrations survive HMR.** `src/lib/lazySurfaces.ts:108`. Queue: #271.
+   Merged in #301 (`606cc3e7b`), with retired-generation pruning completed in #305 (`fd7e2bb95`). Module-owned registrations preserve mounted output consumers across hot replacement, dispose inactive registrations and reject genuine duplicates. Registry/dev-transform and 100-replacement regressions remain enabled.
 
 ## Batch 2: Output, retry and late-load regressions (5 DONE)
 
