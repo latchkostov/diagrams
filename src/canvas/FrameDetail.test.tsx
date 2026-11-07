@@ -5,6 +5,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { FrameDetail } from "./FrameDetail";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { ops } from "../test/opCounter";
+import { suspendFrameCapture } from "./camera/frameCapture";
+import type { FrameRoutesState } from "./edges/frameRoute";
 
 const fixture = vi.hoisted(() => ({
   locale: "en",
@@ -19,7 +21,11 @@ const fixture = vi.hoisted(() => ({
   listeners: new Set<() => void>(),
 }));
 vi.mock("@xyflow/react", () => {
-  const store = { getState: () => fixture.state, subscribe: () => () => {} };
+  const store = {
+    getState: () => fixture.state,
+    setState: (next: object) => Object.assign(fixture.state, next),
+    subscribe: () => () => {},
+  };
   return {
     useStoreApi: () => store,
     useStore: () => "",
@@ -53,6 +59,80 @@ afterEach(() => {
   document.body.replaceChildren();
   fixture.listeners.clear();
   fixture.locale = "en";
+});
+
+it("restores every route consumer during capture and reapplies the effective frame on release", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  fixture.camera.subscribe.mockReturnValue(() => {});
+  fixture.camera.state.view = "focus";
+  fixture.camera.state.mode = "edit";
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  const frames = new Map<number, FrameRequestCallback>();
+  let seq = 0;
+  vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+    frames.set(++seq, run);
+    return seq;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  const nodes = [0, 1].map((i) => ({
+    id: String(i),
+    type: "diagram",
+    selected: i === 0,
+    position: { x: i * 1600 + 200, y: 200 },
+    internals: { positionAbsolute: { x: i * 1600 + 200, y: 200 } },
+    measured: { width: 220, height: 72 },
+    data: { label: `Service ${i}`, stencil: "service.go" },
+  })) as FlowNode[];
+  fixture.state = {
+    nodes,
+    edges: [{ id: "0", source: "0", target: "1" }] as DiagramFlowEdge[],
+    nodeLookup: new Map(nodes.map((n) => [n.id, n])),
+    transform: [0, 0, 1],
+  };
+  const host = document.createElement("div");
+  Object.defineProperties(host, { clientWidth: { value: 1000 }, clientHeight: { value: 800 } });
+  host.innerHTML =
+    '<div class="react-flow__viewport"><div class="react-flow__node react-flow__node-diagram" data-id="0"></div><div class="react-flow__node react-flow__node-diagram" data-id="1"></div><svg class="react-flow__edge" data-id="0"><g class="fe"><path class="fe-path"/><path class="fe-halo"/><path class="react-flow__edge-interaction"/></g></svg></div>';
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    if (this === host) return new DOMRect(0, 0, 1000, 800);
+    return new DOMRect(this.getAttribute("data-id") === "1" ? 1800 : 200, 200, 220, 72);
+  });
+  const mount = document.createElement("div");
+  document.body.append(host, mount);
+  const root = createRoot(mount);
+  const flush = () =>
+    act(async () => {
+      await Promise.resolve();
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const run of pending) run(0);
+    });
+  const paths = () => [...host.querySelectorAll("path")].map((p) => p.getAttribute("d"));
+  try {
+    await act(() =>
+      root.render(<FrameDetail host={{ current: host }} routing={{ style: "straight", direction: "LR" }} decorate />),
+    );
+    await flush();
+    const framed = paths();
+    expect(new Set(framed).size).toBe(1);
+    expect(framed[0]).not.toBe("M0,0h100");
+    const frame = (fixture.state as FrameRoutesState).ldFrameRoutes!.get("0")!;
+    expect(frame.displayed.path).toBe(framed[0]);
+    expect(frame.displayed.points).not.toEqual(frame.natural.points);
+    let resume = () => {};
+    await act(() => {
+      resume = suspendFrameCapture(host.firstElementChild!);
+    });
+    expect(paths()).toEqual(["M0,0h100", "M0,0h100", "M0,0h100"]);
+    expect((fixture.state as FrameRoutesState).ldFrameRoutes).toBeUndefined();
+    resume();
+    await flush();
+    expect(paths()).toEqual(framed);
+    expect((fixture.state as FrameRoutesState).ldFrameRoutes!.get("0")!.displayed.path).toBe(framed[0]);
+  } finally {
+    await act(() => root.unmount());
+  }
 });
 
 it("spares off-screen cards layout reads in Custom while retaining selection and the full DOM", async () => {

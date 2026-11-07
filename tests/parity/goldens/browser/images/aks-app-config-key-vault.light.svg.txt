@@ -64,43 +64,43 @@ svg width=2056 height=865 viewBox=0 0 2056 865
       div .react-flow__viewport-portal width:1368px height:848px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
 == edge-api-to-ai
             g #edge-api-to-ai .fe.fe-dep.fe-rel-telemetry
-              path .fe-halo d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-api-to-ai .fe-halo d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-api-to-ai .fe-path.react-flow__edge-path d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke:rgb(124, 109, 152) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke-width:22px
+              path #connection-hit-api-to-ai .react-flow__edge-interaction d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke-width:22px
               title "Telemetry · sends telemetry to"
 == edge-api-to-appcfg
             g #edge-api-to-appcfg .fe.fe-dep.fe-rel-config
-              path .fe-halo d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-api-to-appcfg .fe-halo d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-api-to-appcfg .fe-path.react-flow__edge-path d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke:rgb(42, 138, 131) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke-width:22px
+              path #connection-hit-api-to-appcfg .react-flow__edge-interaction d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke-width:22px
               title "Config · reads config Read at startup and refreshed, not on every request, so no messages flow over it."
 == edge-api-to-mi
             g #edge-api-to-mi .fe.fe-dep.fe-rel-identity
-              path .fe-halo d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-api-to-mi .fe-halo d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-api-to-mi .fe-path.react-flow__edge-path d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgb(90, 97, 196) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke-width:22px
+              path #connection-hit-api-to-mi .react-flow__edge-interaction d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke-width:22px
               title "Identity · gets tokens from"
 == edge-api-to-sb
             g #edge-api-to-sb .fe.fe-async
-              path .fe-halo d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-api-to-sb .fe-halo d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-api-to-sb .fe-path.react-flow__edge-path d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke-width:22px
+              path #connection-hit-api-to-sb .react-flow__edge-interaction d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke-width:22px
 == edge-api-to-sql
             g #edge-api-to-sql .fe.fe-sync
-              path .fe-halo d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-api-to-sql .fe-halo d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-api-to-sql .fe-path.react-flow__edge-path d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke-width:22px
+              path #connection-hit-api-to-sql .react-flow__edge-interaction d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke-width:22px
 == edge-appcfg-to-kv
             g #edge-appcfg-to-kv .fe.fe-dep.fe-rel-secret
-              path .fe-halo d=M1080,596 L1300,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-appcfg-to-kv .fe-halo d=M1080,596 L1300,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-appcfg-to-kv .fe-path.react-flow__edge-path d=M1080,596 L1300,596 fill:none stroke:rgb(166, 114, 12) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M1080,596 L1300,596 fill:none stroke-width:22px
+              path #connection-hit-appcfg-to-kv .react-flow__edge-interaction d=M1080,596 L1300,596 fill:none stroke-width:22px
               title "Secret · reads secrets Read at startup and refreshed, not on every request, so no messages flow over it. Each app resolves these with its own identity; App Configuration never calls Key Vault."
 == edge-fd-to-api
             g #edge-fd-to-api .fe.fe-sync
-              path .fe-halo d=M660,336 L860,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-fd-to-api .fe-halo d=M660,336 L860,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-fd-to-api .fe-path.react-flow__edge-path d=M660,336 L860,336 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M660,336 L860,336 fill:none stroke-width:22px
+              path #connection-hit-fd-to-api .react-flow__edge-interaction d=M660,336 L860,336 fill:none stroke-width:22px
 == edge-label-api-to-ai
         div #edge-label-api-to-ai .fe-chip.fe-label.fe-rel-telemetry.is-glyph.nodrag.nopan width:20px height:20px transform:matrix(1, 0, 0, 1, 960, 192) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) display:grid font-size:11.9px font-weight:560 border-top-color:oklab(0.794655 0.0113743 -0.0260164) border-top-width:1px border-radius:999px
           span #edge-glyph-api-to-ai .fe-glyph-icon width:14px height:14px color:rgb(124, 109, 152) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(124, 109, 152)
@@ -142,20 +142,20 @@ svg width=2056 height=865 viewBox=0 0 2056 865
         div #edge-label-web-to-fd .fe-label.fe-label-sync.is-full.nodrag.nopan width:54.6875px height:22px transform:matrix(1, 0, 0, 1, 316.656, 325) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "HTTPS"
 == edge-mi-to-entra
             g #edge-mi-to-entra .fe.fe-dep.fe-rel-identity
-              path .fe-halo d=M440,596 L260,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-mi-to-entra .fe-halo d=M440,596 L260,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-mi-to-entra .fe-path.react-flow__edge-path d=M440,596 L260,596 fill:none stroke:rgb(90, 97, 196) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M440,596 L260,596 fill:none stroke-width:22px
+              path #connection-hit-mi-to-entra .react-flow__edge-interaction d=M440,596 L260,596 fill:none stroke-width:22px
               title "Identity · gets tokens from"
 == edge-sb-to-notify
             g #edge-sb-to-notify .fe.fe-async
-              path .fe-halo d=M1520,456 L1720,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-sb-to-notify .fe-halo d=M1520,456 L1720,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-sb-to-notify .fe-path.react-flow__edge-path d=M1520,456 L1720,456 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1520,456 L1720,456 fill:none stroke-width:22px
+              path #connection-hit-sb-to-notify .react-flow__edge-interaction d=M1520,456 L1720,456 fill:none stroke-width:22px
 == edge-web-to-fd
             g #edge-web-to-fd .fe.fe-sync
-              path .fe-halo d=M260,336 L440,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-web-to-fd .fe-halo d=M260,336 L440,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-web-to-fd .fe-path.react-flow__edge-path d=M260,336 L440,336 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M260,336 L440,336 fill:none stroke-width:22px
+              path #connection-hit-web-to-fd .react-flow__edge-interaction d=M260,336 L440,336 fill:none stroke-width:22px
 == export-header
       div #export-header .export-header width:1100px height:60.9375px left:40px top:-89px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
         h1 width:1100px height:31.1875px color:rgb(21, 24, 30) font-size:25.9px font-weight:700 border-top-color:rgb(21, 24, 30) "AKS orders API with App Configuration"

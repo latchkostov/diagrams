@@ -36,20 +36,20 @@
     "ingest-dlq-to-ingest-triage": "M640,676 L800,676"
   },
   "labels": {
-    "user-to-rag-api": { "style": "transform: translate(-50%, -50%) translate(335.5px, 196px); --fe-w: 74.94px; --fe-h: 22px;", "text": "POST /ask" },
-    "rag-api-to-cache": { "style": "transform: translate(-50%, -50%) translate(534.5px, 291px); --fe-w: 92.44000000000001px; --fe-h: 22px;", "text": "Cache lookup" },
-    "rag-api-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(724.5px, 293px); --fe-w: 91.87999999999998px; --fe-h: 22px;", "text": "Top-k chunks" },
-    "rag-api-to-llm": { "style": "transform: translate(-50%, -50%) translate(715px, 196px); --fe-w: 112.21px; --fe-h: 22px;", "text": "Prompt + context" },
-    "rag-api-to-feedback": { "style": "transform: translate(-50%, -50%) translate(721px, 129px); --fe-w: 97.99px; --fe-h: 22px;", "text": "Rated answers" },
-    "feedback-to-eval-job": { "style": "transform: translate(-50%, -50%) translate(1133px, 69px); --fe-w: 82.72px; --fe-h: 22px;", "text": "group: evals" },
-    "eval-job-to-llm": { "style": "transform: translate(-50%, -50%) translate(1100px, 139.5px); --fe-w: 93.16px; --fe-h: 22px;", "text": "Grade answer" },
-    "eval-job-to-quality": { "style": "transform: translate(-50%, -50%) translate(1480.5px, 76px); --fe-w: 54.42px; --fe-h: 22px;", "text": "Scores" },
-    "docs-to-ingest-q": { "style": "transform: translate(-50%, -50%) translate(343.5px, 516px); --fe-w: 95.36999999999999px; --fe-h: 22px;", "text": "Page changed" },
-    "ingest-q-to-embed-worker": { "style": "transform: translate(-50%, -50%) translate(717.5px, 516px); --fe-w: 123.94px; --fe-h: 22px;", "text": "Competing workers" },
-    "embed-worker-to-embeddings": { "style": "transform: translate(-50%, -50%) translate(1074px, 523px); --fe-w: 90.09999999999998px; --fe-h: 22px;", "text": "Embed batch" },
-    "embed-worker-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(912px, 457px); --fe-w: 96.07999999999998px; --fe-h: 22px;", "text": "Upsert chunks" },
+    "user-to-rag-api": { "style": "transform: translate(-50%, -50%) translate(335.5px, 196px); --fe-w: 74.94px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "POST /ask" },
+    "rag-api-to-cache": { "style": "transform: translate(-50%, -50%) translate(534.5px, 291px); --fe-w: 92.44000000000001px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Cache lookup" },
+    "rag-api-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(724.5px, 293px); --fe-w: 91.87999999999998px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Top-k chunks" },
+    "rag-api-to-llm": { "style": "transform: translate(-50%, -50%) translate(715px, 196px); --fe-w: 112.21px; --fe-h: 22px;", "text": "" },
+    "rag-api-to-feedback": { "style": "transform: translate(-50%, -50%) translate(721px, 129px); --fe-w: 97.99px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Rated answers" },
+    "feedback-to-eval-job": { "style": "transform: translate(-50%, -50%) translate(1133px, 69px); --fe-w: 82.72px; --fe-h: 22px;", "text": "" },
+    "eval-job-to-llm": { "style": "transform: translate(-50%, -50%) translate(1100px, 139.5px); --fe-w: 93.16px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Grade answer" },
+    "eval-job-to-quality": { "style": "transform: translate(-50%, -50%) translate(1480.5px, 76px); --fe-w: 54.42px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Scores" },
+    "docs-to-ingest-q": { "style": "transform: translate(-50%, -50%) translate(343.5px, 516px); --fe-w: 95.36999999999999px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Page changed" },
+    "ingest-q-to-embed-worker": { "style": "transform: translate(-50%, -50%) translate(717.5px, 516px); --fe-w: 123.94px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px; translate: 6.00002px 2.16478e-05px;", "text": "Competing workers" },
+    "embed-worker-to-embeddings": { "style": "transform: translate(-50%, -50%) translate(1074px, 523px); --fe-w: 90.09999999999998px; --fe-h: 22px;", "text": "" },
+    "embed-worker-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(912px, 457px); --fe-w: 96.07999999999998px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "Upsert chunks" },
     "rag-api-to-vault": { "style": "transform: translate(-50%, -50%) translate(914px, 276px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
     "embed-worker-to-vault": { "style": "transform: translate(-50%, -50%) translate(1196px, 436px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-    "ingest-q-to-ingest-dlq": { "style": "transform: translate(-50%, -50%) translate(533.5px, 575px); --fe-w: 80.28px; --fe-h: 22px;", "text": "After 5 tries" }
+    "ingest-q-to-ingest-dlq": { "style": "transform: translate(-50%, -50%) translate(533.5px, 575px); --fe-w: 80.28px; --fe-h: 22px; font-size: 14.771px; width: max-content; height: auto; line-height: 22px;", "text": "After 5 tries" }
   }
 }

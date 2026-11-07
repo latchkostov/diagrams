@@ -77,19 +77,19 @@ svg width=2256 height=857 viewBox=0 0 2256 857
       div .react-flow__viewport-portal width:1368px height:848px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
 == edge-dashboard-to-metrics
             g #edge-dashboard-to-metrics .fe.fe-sync
-              path .fe-halo d=M1940,676 L1780,676 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-dashboard-to-metrics .fe-halo d=M1940,676 L1780,676 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-dashboard-to-metrics .fe-path.react-flow__edge-path d=M1940,676 L1780,676 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1940,676 L1780,676 fill:none stroke-width:22px
+              path #connection-hit-dashboard-to-metrics .react-flow__edge-interaction d=M1940,676 L1780,676 fill:none stroke-width:22px
 == edge-gateway-to-orders
             g #edge-gateway-to-orders .fe.fe-sync
-              path .fe-halo d=M658,316 L800,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-gateway-to-orders .fe-halo d=M658,316 L800,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-gateway-to-orders .fe-path.react-flow__edge-path d=M658,316 L800,316 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M658,316 L800,316 fill:none stroke-width:22px
+              path #connection-hit-gateway-to-orders .react-flow__edge-interaction d=M658,316 L800,316 fill:none stroke-width:22px
 == edge-inventory-to-stock-db
             g #edge-inventory-to-stock-db .fe.fe-sync
-              path .fe-halo d=M1803,196 L1940,196 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-inventory-to-stock-db .fe-halo d=M1803,196 L1940,196 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-inventory-to-stock-db .fe-path.react-flow__edge-path d=M1803,196 L1940,196 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1803,196 L1940,196 fill:none stroke-width:22px
+              path #connection-hit-inventory-to-stock-db .react-flow__edge-interaction d=M1803,196 L1940,196 fill:none stroke-width:22px
 == edge-label-dashboard-to-metrics
         div #edge-label-dashboard-to-metrics .fe-label.fe-label-sync.is-full.nodrag.nopan width:62.4062px height:22px transform:matrix(1, 0, 0, 1, 1834.8, 665) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "PromQL"
 == edge-label-gateway-to-orders
@@ -122,64 +122,64 @@ svg width=2256 height=857 viewBox=0 0 2256 857
         div #edge-label-shopper-to-gateway .fe-label.fe-label-sync.is-full.nodrag.nopan width:54.6875px height:22px transform:matrix(1, 0, 0, 1, 310.656, 305) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "HTTPS"
 == edge-metrics-to-orders
             g #edge-metrics-to-orders .fe.fe-sync
-              path .fe-halo d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-metrics-to-orders .fe-halo d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-metrics-to-orders .fe-path.react-flow__edge-path d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke-width:22px
+              path #connection-hit-metrics-to-orders .react-flow__edge-interaction d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke-width:22px
 == edge-notifications-to-notify-cache
             g #edge-notifications-to-notify-cache .fe.fe-sync
-              path .fe-halo d=M1804,436 L1940,436 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-notifications-to-notify-cache .fe-halo d=M1804,436 L1940,436 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-notifications-to-notify-cache .fe-path.react-flow__edge-path d=M1804,436 L1940,436 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1804,436 L1940,436 fill:none stroke-width:22px
+              path #connection-hit-notifications-to-notify-cache .react-flow__edge-interaction d=M1804,436 L1940,436 fill:none stroke-width:22px
 == edge-order-events-to-inventory
             g #edge-order-events-to-inventory .fe.fe-async
-              path .fe-halo d=M1428,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-order-events-to-inventory .fe-halo d=M1428,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-order-events-to-inventory .fe-path.react-flow__edge-path d=M1428,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1428,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke-width:22px
+              path #connection-hit-order-events-to-inventory .react-flow__edge-interaction d=M1428,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke-width:22px
 == edge-order-events-to-notifications
             g #edge-order-events-to-notifications .fe.fe-async
-              path .fe-halo d=M1428,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-order-events-to-notifications .fe-halo d=M1428,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-order-events-to-notifications .fe-path.react-flow__edge-path d=M1428,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1428,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke-width:22px
+              path #connection-hit-order-events-to-notifications .react-flow__edge-interaction d=M1428,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke-width:22px
 == edge-order-events-to-payments
             g #edge-order-events-to-payments .fe.fe-async
-              path .fe-halo d=M1428,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-order-events-to-payments .fe-halo d=M1428,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-order-events-to-payments .fe-path.react-flow__edge-path d=M1428,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1428,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke-width:22px
+              path #connection-hit-order-events-to-payments .react-flow__edge-interaction d=M1428,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke-width:22px
 == edge-orders-to-order-db
             g #edge-orders-to-order-db .fe.fe-sync
-              path .fe-halo d=M930,352 L930,520 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-orders-to-order-db .fe-halo d=M930,352 L930,520 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-orders-to-order-db .fe-path.react-flow__edge-path d=M930,352 L930,520 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M930,352 L930,520 fill:none stroke-width:22px
+              path #connection-hit-orders-to-order-db .react-flow__edge-interaction d=M930,352 L930,520 fill:none stroke-width:22px
 == edge-orders-to-order-events
             g #edge-orders-to-order-events .fe.fe-async
-              path .fe-halo d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-orders-to-order-events .fe-halo d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-orders-to-order-events .fe-path.react-flow__edge-path d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke-width:22px
+              path #connection-hit-orders-to-order-events .react-flow__edge-interaction d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke-width:22px
 == edge-orders-to-schemas
             g #edge-orders-to-schemas .fe.fe-sync
-              path .fe-halo d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-orders-to-schemas .fe-halo d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-orders-to-schemas .fe-path.react-flow__edge-path d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke-width:22px
+              path #connection-hit-orders-to-schemas .react-flow__edge-interaction d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke-width:22px
 == edge-payment-events-to-orders
             g #edge-payment-events-to-orders .fe.fe-async
-              path .fe-halo d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-payment-events-to-orders .fe-halo d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-payment-events-to-orders .fe-path.react-flow__edge-path d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke-width:22px
+              path #connection-hit-payment-events-to-orders .react-flow__edge-interaction d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke-width:22px
 == edge-payments-to-payment-db
             g #edge-payments-to-payment-db .fe.fe-sync
-              path .fe-halo d=M1814,316 L1940,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-payments-to-payment-db .fe-halo d=M1814,316 L1940,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-payments-to-payment-db .fe-path.react-flow__edge-path d=M1814,316 L1940,316 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1814,316 L1940,316 fill:none stroke-width:22px
+              path #connection-hit-payments-to-payment-db .react-flow__edge-interaction d=M1814,316 L1940,316 fill:none stroke-width:22px
 == edge-payments-to-payment-events
             g #edge-payments-to-payment-events .fe.fe-async
-              path .fe-halo d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-payments-to-payment-events .fe-halo d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-payments-to-payment-events .fe-path.react-flow__edge-path d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke-width:22px
+              path #connection-hit-payments-to-payment-events .react-flow__edge-interaction d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke-width:22px
 == edge-shopper-to-gateway
             g #edge-shopper-to-gateway .fe.fe-sync
-              path .fe-halo d=M268,316 L420,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-shopper-to-gateway .fe-halo d=M268,316 L420,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-shopper-to-gateway .fe-path.react-flow__edge-path d=M268,316 L420,316 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M268,316 L420,316 fill:none stroke-width:22px
+              path #connection-hit-shopper-to-gateway .react-flow__edge-interaction d=M268,316 L420,316 fill:none stroke-width:22px
 == export-header
       div #export-header .export-header width:688px height:60.9375px left:40px top:-49px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
         h1 width:688px height:31.1875px color:rgb(21, 24, 30) font-size:25.9px font-weight:700 border-top-color:rgb(21, 24, 30) "Kafka order pipeline"

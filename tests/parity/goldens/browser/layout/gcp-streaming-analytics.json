@@ -24,14 +24,14 @@
       "looker-to-bigquery": "M260,76 L1069.7,76 Q1079.7,76 1079.7,86 L1079.7,130 Q1079.7,140 1089.7,140 L1462.4,140 Q1472.4,140 1472.4,130 L1472.4,93 Q1472.4,83 1482.4,83 L1541.9,83"
     },
     "labels": {
-      "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(322.137px, 196px); --fe-w: 101.55px; --fe-h: 22px;", "text": "HTTPS batches" },
-      "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(706.55px, 136px); --fe-w: 57.480000000000004px; --fe-h: 22px;", "text": "Publish" },
-      "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1118.8px, 76px); --fe-w: 64.86px; --fe-h: 38px;", "text": "sub: dataflow" },
-      "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1106.05px, 196px); --fe-w: 95.33999999999999px; --fe-h: 38px;", "text": "Cloud Storage subscription" },
-      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1460.89px, 69px); --fe-w: 65.4px; --fe-h: 22px;", "text": "Sessions" },
-      "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1461.39px, 159.5px); --fe-w: 83.27px; --fe-h: 22px;", "text": "Parse errors" },
-      "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1807.89px, 196px); --fe-w: 82.50999999999999px; --fe-h: 22px;", "text": "sub: archive" },
-      "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(670.86px, 76px); --fe-w: 40.06px; --fe-h: 22px;", "text": "SQL" }
+      "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(322.137px, 196px); --fe-w: 101.55px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px; translate: 13.305px 7.20814e-06px;", "text": "HTTPS batches" },
+      "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(706.55px, 136px); --fe-w: 57.480000000000004px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "Publish" },
+      "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1118.8px, 76px); --fe-w: 64.86px; --fe-h: 38px;", "text": "" },
+      "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1106.05px, 196px); --fe-w: 95.33999999999999px; --fe-h: 38px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px; translate: -16.6841px 7.20814e-06px;", "text": "Cloud Storage subscription" },
+      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1460.89px, 69px); --fe-w: 65.4px; --fe-h: 22px;", "text": "" },
+      "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1461.39px, 159.5px); --fe-w: 83.27px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "Parse errors" },
+      "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1807.89px, 196px); --fe-w: 82.50999999999999px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px; translate: 14px 7.20814e-06px;", "text": "sub: archive" },
+      "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(670.86px, 76px); --fe-w: 40.06px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "SQL" }
     }
   },
   "tidy": {
@@ -59,11 +59,11 @@
       "looker-to-bigquery": "M1940,156 L1780,156"
     },
     "labels": {
-      "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(334px, 276px); --fe-w: 101.55px; --fe-h: 22px;", "text": "HTTPS batches" },
+      "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(334px, 276px); --fe-w: 101.55px; --fe-h: 22px;", "text": "" },
       "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(714px, 276px); --fe-w: 57.480000000000004px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "Publish" },
       "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1100px, 212.5px); --fe-w: 89.83999999999999px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "sub: dataflow" },
       "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1100px, 339.5px); --fe-w: 165.9px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "Cloud Storage subscription" },
-      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1449.25px, 149px); --fe-w: 65.4px; --fe-h: 22px;", "text": "Sessions" },
+      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1449.25px, 149px); --fe-w: 65.4px; --fe-h: 22px;", "text": "" },
       "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1485.5px, 219.5px); --fe-w: 83.27px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "Parse errors" },
       "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1854px, 276px); --fe-w: 82.50999999999999px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "sub: archive" },
       "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1866px, 156px); --fe-w: 40.06px; --fe-h: 22px; font-size: 18.238px; width: max-content; height: auto; line-height: 27px;", "text": "SQL" }

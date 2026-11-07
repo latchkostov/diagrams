@@ -7,7 +7,12 @@ import { workTogether } from "../tutorials/catalog/workTogether";
 import { reviewAgentChanges } from "../tutorials/catalog/reviewAgentChanges";
 import { workbenchTour } from "../tutorials/catalog/workbenchTour";
 import { libraryReuse } from "../tutorials/catalog/libraryReuse";
-import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixture";
+import {
+  frameRoutingFixture,
+  frameDependencyFixture,
+  frameCrowdedFixture,
+  frameFanFixture,
+} from "./frameRoutingFixture";
 import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import inlineRateLimit from "../examples/inline-rate-limit.json";
@@ -1410,6 +1415,23 @@ export const presets: readonly Preset[] = [
     group: "Edges",
     description: "An unselected dependency label retains its text floor in Custom view.",
     diagram: frameDependencyFixture,
+  },
+  {
+    kind: "diagram",
+    id: "frame-fan",
+    title: "Frame lanes",
+    group: "Edges",
+    description:
+      "A mixed dependency, Message and Request fan shares its drawn lanes with pointer targets and editing controls.",
+    diagram: frameFanFixture,
+  },
+  {
+    kind: "diagram",
+    id: "frame-crowded",
+    title: "Crowded frame captions",
+    group: "Edges",
+    description: "A flow caption hides when its readable size has no clear home and returns when room opens.",
+    diagram: () => frameCrowdedFixture(),
   },
   {
     kind: "diagram",

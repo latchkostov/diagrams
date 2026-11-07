@@ -22,7 +22,11 @@ const fixture = vi.hoisted(() => ({
   },
 }));
 vi.mock("@xyflow/react", () => {
-  const store = { getState: () => fixture.state, subscribe: () => () => {} };
+  const store = {
+    getState: () => fixture.state,
+    setState: (next: object) => Object.assign(fixture.state, next),
+    subscribe: () => () => {},
+  };
   return {
     useStoreApi: () => store,
     useStore: () => "",

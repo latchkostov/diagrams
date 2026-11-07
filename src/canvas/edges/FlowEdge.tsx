@@ -17,6 +17,7 @@ import type { DiagramFlowEdge, DiagramNodeData } from "../types";
 import { pointAlong } from "../geometry/path";
 import type { LabelPlacement } from "../geometry/labels";
 import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
+import { editingRoute, useFrameRoute } from "./frameRoute";
 import { relationInfo } from "./relationInfo";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { requireEdgeModules } from "./readiness";
@@ -57,6 +58,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const detailsSnapshot = useCallback(() => (dependency ? edgeDetailsSnapshot() : undefined), [dependency]);
   const Details = useSyncExternalStore(subscribeEdgeDetails, detailsSnapshot, detailsSnapshot);
   const route = useEdgeRoute(id, useRoutingOptions());
+  const displayed = useFrameRoute(id, route);
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
     useCallback(
@@ -78,10 +80,12 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
   if (!route) return custom && !routeGeometry ? <g data-route-pending="shaped" /> : null;
-  const { path, label } = route;
+  const { path } = displayed ?? route;
+  const { label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
+  const displayedMid = displayed?.label ?? pointAlong((displayed ?? route).points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
-  const deny = denied ? Details?.denyPoint(route.points) : undefined;
+  const deny = denied ? Details?.denyPoint((displayed ?? route).points) : undefined;
   const tip = relation ? Details?.dependencyTip(relation, dep, sourceStencil) : undefined;
   const marker = selected
     ? relation
@@ -108,7 +112,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     relation && Details ? <Details.RelationGlyph id={id} relation={relation} size={size} /> : null;
 
   const controls = selected && reconnect && route.points.length > 1 && (
-    <EdgeControls id={id} source={source} target={target} route={route} />
+    <EdgeControls id={id} source={source} target={target} route={editingRoute(displayed, route)} />
   );
   const denyMarker = deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />;
   const settingsCard = card && settings.length > 0 && Details && (
@@ -118,8 +122,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       relation={relation!}
       settings={settings}
       note={Details.referenceNote(relation!, sourceStencil)}
-      x={mid.x}
-      y={mid.y - (label?.height ?? 0) / 2}
+      x={displayedMid.x}
+      y={displayedMid.y - ((displayed ?? route).label?.height ?? 0) / 2}
     />
   );
   if (chip) {
@@ -221,14 +225,21 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       data-relation={relation ?? undefined}
       data-deny={deny ? "true" : undefined}
     >
-      <path d={path} className="fe-halo" />
+      <path d={path} className="fe-halo" data-testid={`connection-halo-${id}`} />
       <path
         data-testid={`connection-stroke-${id}`}
         d={path}
         className="fe-path react-flow__edge-path"
         markerEnd={`url(#${marker})`}
       />
-      <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
+      <path
+        d={path}
+        className="react-flow__edge-interaction"
+        data-testid={`connection-hit-${id}`}
+        fill="none"
+        strokeOpacity={0}
+        strokeWidth={22}
+      />
       {title(deny ? Details?.denyTip : tip)}
       {denyMarker}
       {controls}

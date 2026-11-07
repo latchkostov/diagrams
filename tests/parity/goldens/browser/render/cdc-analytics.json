@@ -28,16 +28,16 @@
     "debezium-to-registry": "M662,302 L715.5,302 Q725.5,302 725.5,292 L725.5,86 Q725.5,76 735.5,76 L800,76"
   },
   "labels": {
-    "sql-to-debezium": { "style": "transform: translate(-50%, -50%) translate(335.5px, 316px); --fe-w: 136.29px; --fe-h: 22px;", "text": "CDC · transaction log" },
-    "debezium-to-orders-topic": { "style": "transform: translate(-50%, -50%) translate(761.25px, 196px); --fe-w: 63.79px; --fe-h: 54px;", "text": "Order row changes" },
-    "debezium-to-customers-topic": { "style": "transform: translate(-50%, -50%) translate(731px, 383px); --fe-w: 143.42000000000002px; --fe-h: 22px;", "text": "Customer row changes" },
-    "orders-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1117.25px, 189px); --fe-w: 136.45px; --fe-h: 22px;", "text": "group: retail-projector" },
-    "customers-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1103.5px, 376px); --fe-w: 136.45px; --fe-h: 22px;", "text": "group: retail-projector" },
-    "processor-to-search": { "style": "transform: translate(-50%, -50%) translate(1500px, 252.5px); --fe-w: 117.44999999999999px; --fe-h: 22px;", "text": "Bulk index / delete" },
-    "processor-to-warehouse": { "style": "transform: translate(-50%, -50%) translate(1500px, 379.5px); --fe-w: 93.8px; --fe-h: 22px;", "text": "Batch MERGE" },
-    "orders-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1125.5px, 256px); --fe-w: 134.30999999999997px; --fe-h: 22px;", "text": "group: retail-raw-sink" },
-    "customers-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1114.5px, 503px); --fe-w: 134.30999999999997px; --fe-h: 22px;", "text": "group: retail-raw-sink" },
-    "s3-sink-to-lake": { "style": "transform: translate(-50%, -50%) translate(1474px, 556px); --fe-w: 126.75999999999998px; --fe-h: 22px;", "text": "PutObject · Parquet" },
-    "debezium-to-registry": { "style": "transform: translate(-50%, -50%) translate(725.5px, 149px); --fe-w: 108.78px; --fe-h: 22px;", "text": "Register schema" }
+    "sql-to-debezium": { "style": "transform: translate(-50%, -50%) translate(335.5px, 316px); --fe-w: 136.29px; --fe-h: 22px;", "text": "" },
+    "debezium-to-orders-topic": { "style": "transform: translate(-50%, -50%) translate(761.25px, 196px); --fe-w: 63.79px; --fe-h: 54px;", "text": "" },
+    "debezium-to-customers-topic": { "style": "transform: translate(-50%, -50%) translate(731px, 383px); --fe-w: 143.42000000000002px; --fe-h: 22px; font-size: 15.353px; width: max-content; height: auto; line-height: 23px;", "text": "Customer row changes" },
+    "orders-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1117.25px, 189px); --fe-w: 136.45px; --fe-h: 22px;", "text": "" },
+    "customers-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1103.5px, 376px); --fe-w: 136.45px; --fe-h: 22px;", "text": "" },
+    "processor-to-search": { "style": "transform: translate(-50%, -50%) translate(1500px, 252.5px); --fe-w: 117.44999999999999px; --fe-h: 22px; font-size: 15.353px; width: max-content; height: auto; line-height: 23px;", "text": "Bulk index / delete" },
+    "processor-to-warehouse": { "style": "transform: translate(-50%, -50%) translate(1500px, 379.5px); --fe-w: 93.8px; --fe-h: 22px; font-size: 15.353px; width: max-content; height: auto; line-height: 23px;", "text": "Batch MERGE" },
+    "orders-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1125.5px, 256px); --fe-w: 134.30999999999997px; --fe-h: 22px;", "text": "" },
+    "customers-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1114.5px, 503px); --fe-w: 134.30999999999997px; --fe-h: 22px;", "text": "" },
+    "s3-sink-to-lake": { "style": "transform: translate(-50%, -50%) translate(1474px, 556px); --fe-w: 126.75999999999998px; --fe-h: 22px; font-size: 15.353px; width: max-content; height: auto; line-height: 23px; translate: 5.99995px 2.76156e-05px;", "text": "PutObject · Parquet" },
+    "debezium-to-registry": { "style": "transform: translate(-50%, -50%) translate(725.5px, 149px); --fe-w: 108.78px; --fe-h: 22px; font-size: 15.353px; width: max-content; height: auto; line-height: 23px;", "text": "Register schema" }
   }
 }

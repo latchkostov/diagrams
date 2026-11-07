@@ -26,15 +26,15 @@
     "tableau-to-marts": "M1940,356 L1780,356"
   },
   "labels": {
-    "app-db-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(340px, 269px); --fe-w: 83.14999999999999px; --fe-h: 22px;", "text": "Incremental" },
-    "crm-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(334px, 356px); --fe-w: 62.900000000000006px; --fe-h: 22px;", "text": "Bulk API" },
-    "billing-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(340px, 443px); --fe-w: 75.33px; --fe-h: 22px;", "text": "Events API" },
+    "app-db-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(340px, 269px); --fe-w: 83.14999999999999px; --fe-h: 22px; font-size: 17.884px; width: max-content; height: auto; line-height: 26px;", "text": "Incremental" },
+    "crm-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(334px, 356px); --fe-w: 62.900000000000006px; --fe-h: 22px;", "text": "" },
+    "billing-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(340px, 443px); --fe-w: 75.33px; --fe-h: 22px; font-size: 17.884px; width: max-content; height: auto; line-height: 26px;", "text": "Events API" },
     "airflow-to-airbyte": { "style": "transform: translate(-50%, -50%) translate(664px, 76px); --fe-w: 123.74px; --fe-h: 22px;", "text": "1 · Sync sources" },
     "airflow-to-dbt": { "style": "transform: translate(-50%, -50%) translate(1156px, 76px); --fe-w: 99.17999999999998px; --fe-h: 22px;", "text": "2 · dbt build" },
-    "airbyte-to-raw": { "style": "transform: translate(-50%, -50%) translate(714px, 356px); --fe-w: 80.52000000000001px; --fe-h: 22px;", "text": "COPY INTO" },
+    "airbyte-to-raw": { "style": "transform: translate(-50%, -50%) translate(714px, 356px); --fe-w: 80.52000000000001px; --fe-h: 22px; font-size: 17.884px; width: max-content; height: auto; line-height: 26px;", "text": "COPY INTO" },
     "dbt-to-raw": { "style": "transform: translate(-50%, -50%) translate(1106px, 356px); --fe-w: 76.36px; --fe-h: 22px;", "text": "SELECT" },
-    "dbt-to-marts": { "style": "transform: translate(-50%, -50%) translate(1474px, 356px); --fe-w: 119.91px; --fe-h: 22px;", "text": "CREATE TABLE AS" },
-    "dbt-to-slack": { "style": "transform: translate(-50%, -50%) translate(1290px, 450px); --fe-w: 73.41px; --fe-h: 22px;", "text": "Test failed" },
-    "tableau-to-marts": { "style": "transform: translate(-50%, -50%) translate(1866px, 356px); --fe-w: 107.11999999999999px; --fe-h: 22px;", "text": "Refresh extracts" }
+    "dbt-to-marts": { "style": "transform: translate(-50%, -50%) translate(1474px, 356px); --fe-w: 119.91px; --fe-h: 22px;", "text": "" },
+    "dbt-to-slack": { "style": "transform: translate(-50%, -50%) translate(1290px, 450px); --fe-w: 73.41px; --fe-h: 22px; font-size: 17.884px; width: max-content; height: auto; line-height: 26px;", "text": "Test failed" },
+    "tableau-to-marts": { "style": "transform: translate(-50%, -50%) translate(1866px, 356px); --fe-w: 107.11999999999999px; --fe-h: 22px; font-size: 17.884px; width: max-content; height: auto; line-height: 26px; translate: -6.00015px -2.71475e-05px;", "text": "Refresh extracts" }
   }
 }
