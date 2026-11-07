@@ -1,8 +1,8 @@
 {
   "name": "livediagrams",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Live Diagrams",
-  "description": "Draw architecture and event-driven system diagrams with live message-flow simulations as offline interactive HTML files, editable diagram files, or share links.",
+  "description": "Draw architecture and event-driven system diagrams with live message-flow simulations as editable .diagram.json files.",
   "author": {
     "name": "Live Diagrams",
     "url": "https://github.com/latchkostov/diagrams"
@@ -15,6 +15,14 @@
   "repository": "https://github.com/latchkostov/diagrams",
   "license": "MIT",
   "icon": "./.claude-plugin/icon.png",
-  "keywords": ["diagrams", "architecture", "event-driven", "simulation", "offline"],
-  "skills": ["./"]
+  "keywords": [
+    "diagrams",
+    "architecture",
+    "event-driven",
+    "simulation",
+    "offline"
+  ],
+  "skills": [
+    "./"
+  ]
 }

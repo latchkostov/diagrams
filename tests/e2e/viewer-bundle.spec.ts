@@ -1,4 +1,4 @@
-import { readViewer } from "../../skills/livediagrams/scripts/lib/viewer.mjs";
+import { readViewer } from "../../skills/livediagrams-full/scripts/lib/viewer.mjs";
 import { openLiveNodeDetails } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
@@ -33,7 +33,7 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
       const template = readViewer(
         new URL(
           viewer === "skill"
-            ? "../../skills/livediagrams/scripts/lib/"
+            ? "../../skills/livediagrams-full/scripts/lib/"
             : `../../${E2E_PROFILES.e2e.outDir}/skill/scripts/lib/`,
           import.meta.url,
         ),
@@ -119,7 +119,7 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
       const template = readViewer(
         new URL(
           viewer === "skill"
-            ? "../../skills/livediagrams/scripts/lib/"
+            ? "../../skills/livediagrams-full/scripts/lib/"
             : `../../${E2E_PROFILES.e2e.outDir}/skill/scripts/lib/`,
           import.meta.url,
         ),

@@ -215,9 +215,9 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
   {
     name: "the autoscaling editor",
     path: "/src/planning/AutoscalingFields.tsx",
-    // Layout's stylesheet also has shared planning-readout rules. Preserve its side effect and cascade position.
+    // Keep the shared planning readout at the same cascade position without the unreachable inspector layout.
     stub: (root) =>
-      `import ${JSON.stringify(normalizePath(resolve(root, "src/styles/inspector-layout.css")))}; export const AutoscalingFields = () => null;`,
+      `import ${JSON.stringify(normalizePath(resolve(root, "src/styles/readout.css")))}; export const AutoscalingFields = () => null;`,
   },
   {
     name: "the docked node Live readout",

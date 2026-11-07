@@ -3,6 +3,8 @@ import type { DiagramFile } from "../../model/types";
 import { examples, loadExample } from "../../examples";
 import { LazyCanvasView as CanvasView, preloadCanvasView } from "../../canvas/loadCanvasView";
 import { decodeShare, sharePayloadFromHash } from "../share";
+import { wasLaidOutOnOpen } from "../openNative";
+import { t } from "../../i18n/core";
 import { encryptedPayloadFromHash, parseEncrypted } from "../passwordLink";
 import { UnlockDialog } from "../ui/lazyDialogs";
 import { Glyph } from "../ui/glyphs";
@@ -112,6 +114,7 @@ function UrlEmbedView() {
       void resolve().then((s) => {
         if (request !== navigation.current) return;
         if (s.status === "error" && s.toast) notify(s.message, { kind: "error" });
+        if (s.status === "ready" && wasLaidOutOnOpen(s.diagram)) notify(t("fileToast.laidOutOnOpen"), { kind: "info" });
         setState(s.status === "locked" ? { ...s, session: ++unlockSession.current } : s);
       });
     };
@@ -183,15 +186,16 @@ function UrlEmbedView() {
                 const diagram = await decodeEncryptedShare(state.token, password);
                 if (request !== navigation.current || session !== unlockSession.current) return;
                 const base = `${window.location.origin}${window.location.pathname}`;
-                setState(
-                  embeddable(diagram, {
-                    status: "ready",
-                    diagram,
-                    key: `e:${state.token.length}:${state.token.slice(-16)}`,
-                    // Still encrypted: opening it in the app asks for the password again.
-                    openHref: `${base}#e=${state.token}`,
-                  }),
-                );
+                const next = embeddable(diagram, {
+                  status: "ready",
+                  diagram,
+                  key: `e:${state.token.length}:${state.token.slice(-16)}`,
+                  // Still encrypted: opening it in the app asks for the password again.
+                  openHref: `${base}#e=${state.token}`,
+                });
+                if (next.status === "ready" && wasLaidOutOnOpen(diagram))
+                  notify(t("fileToast.laidOutOnOpen"), { kind: "info" });
+                setState(next);
               }}
               onClose={() => {
                 unlockSession.current++;

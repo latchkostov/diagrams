@@ -51,6 +51,7 @@ describe("interactive viewer template", () => {
       // The read-only viewer has no context menu.
       ".cm-layer{",
       ".cm-item{",
+      ".insp-paired",
     ])
       expect(style, selector).not.toContain(selector);
   });
@@ -130,7 +131,11 @@ describe("interactive viewer template", () => {
   });
 
   it("keeps planning readouts without the lazy barrel's routing and autoscaling editors", () => {
-    for (const path of ["/src/planning/RoutingFields.tsx", "/src/planning/AutoscalingFields.tsx"])
+    for (const path of [
+      "/src/planning/RoutingFields.tsx",
+      "/src/planning/AutoscalingFields.tsx",
+      "/src/styles/inspector-layout.css",
+    ])
       expect(
         modules.some((id) => id.endsWith(path)),
         path,
@@ -139,7 +144,7 @@ describe("interactive viewer template", () => {
       "/src/planning/NodePlanning.tsx",
       "/src/sim/autoscaling.ts",
       "/src/model/requestRouting.ts",
-      "/src/styles/inspector-layout.css",
+      "/src/styles/readout.css",
     ])
       expect(
         modules.some((id) => id.endsWith(path)),

@@ -524,7 +524,7 @@ test("survey2 viewer pipeline@500", async ({ browser }) => {
   const input = join(DIR, "pipeline-500.diagram.json");
   writeFileSync(input, w.text);
   const path = join(DIR, "pipeline-500.html");
-  execFileSync(process.execPath, ["skills/livediagrams/scripts/export-html.mjs", input, "--out", path, "--force"]);
+  execFileSync(process.execPath, ["skills/livediagrams-full/scripts/export-html.mjs", input, "--out", path, "--force"]);
   record("viewer-file-bytes-500", statSync(path).size);
   for (let sample = 0; sample < SAMPLES; sample++) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });

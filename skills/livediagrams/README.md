@@ -1,73 +1,19 @@
 # Live Diagrams
 
-Draw architecture and event-driven system diagrams with live message-flow simulations as offline interactive HTML files, editable diagram files, or share links.
+Draw architecture and event-driven system diagrams with live message-flow simulations as editable .diagram.json files.
 
-Live Diagrams turns a system description into a diagram you can inspect, edit and replay. Show traffic,
-outages, retries and dead-letter queues without connecting to a real system. The plugin includes one
-skill and its local Node.js scripts. No account, API key, package install or browser automation is needed;
-the scripts require Node.js 20 or later and use its standard library.
+This script-free directory plugin writes diagram files and checks them by hand against the shared format and stencil references. The app lays out missing positions when you open the file. No account, API key or upload is required.
 
 ## Install and use
 
-The repository marketplace is available now. In Claude Code, run:
+Install from the Claude directory, or use `/plugin marketplace add latchkostov/diagrams` then `/plugin install livediagrams@livediagrams`. Ask for an event pipeline with a worker outage and recovery as an editable diagram file.
 
-```text
-/plugin marketplace add latchkostov/diagrams
-/plugin install livediagrams@livediagrams
-```
+## Privacy and outputs
 
-Ask for a diagram, or invoke `/livediagrams:livediagrams` with your request. For example:
+Open the file at livediagrams.dev with File > Open…; the browser reads it without uploading it. Use the app's Export menu for offline HTML or images and File > Share… for requested links. Anyone with a diagram file can read and edit it. Internal diagrams are marked Private; never include secrets, credentials or personal data. Files remain in your environment until you delete them. The agent platform handles conversations and files under its own policies. No connectors, hooks, telemetry or background services are supplied. This plugin is not intended for people under 18.
 
-- Draw an order service publishing events to a queue, two workers and a database. Return an editable diagram file.
-- Diagram a generic event pipeline with retries and a dead-letter queue. Return an offline interactive HTML file.
-- Show a worker outage and recovery in a live simulation. Return an interactive HTML file with a banner.
+## Two channels and releases
 
-Claude's plugin directory listing is coming soon, subject to approval. The separate skill ZIP at
-<https://www.livediagrams.dev/skill/> remains available for manual installation in compatible agents.
+Our marketplace recommends `livediagrams-full`, which adds one-step offline HTML export, exact layout and validation. The ZIP at https://www.livediagrams.dev/skill/ contains that full skill. Both channels share the same knowledge sources; `pnpm regen` or `pnpm skill:release` regenerates this entire folder. Never edit it by hand.
 
-## What runs and where data goes
-
-`SKILL.md` guides the agent to write a `.diagram.json` file, then run `scripts/layout.mjs` and
-`scripts/validate.mjs`. `scripts/export-html.mjs` creates a self-contained interactive HTML file and
-can encrypt it with explicit local password input. Claude asks which route the user wants:
-prefer `--password-file <path>` to a user-created UTF-8 text file, keeping the password out of the
-conversation; the fallback `--password <value>` exposes it in the conversation, shell history and
-process list. Claude never invents, stores or reuses a plugin password. The script reads only the
-supplied path, with no environment lookup or hidden terminal prompt. `scripts/share-link.mjs` only prints
-a URL when a share link is requested, and refuses diagrams marked private. No script uploads, fetches,
-calls another service, collects personal data or sends telemetry. There are no connectors, hooks or
-background services. Diagrams and exports are files in the user's environment; delete them there when
-no longer needed. The plugin operates on the files the user supplies, so avoid personal data and secrets
-in diagram content. The agent platform's handling of conversations and files is separate.
-
-Share links carry the diagram in the URL fragment (`#d=…`). Opening one requests the Live Diagrams
-website and its assets over HTTPS; the host receives ordinary request metadata such as the viewer's
-IP address, but the browser does not send the fragment in that HTTP request. The app decodes the diagram
-in the browser, removes the fragment from the address bar and keeps a shared copy in that browser's
-storage. Anyone with the full link can read it. This optional website visit differs from the offline
-HTML export, whose content security policy blocks network connections. The plugin itself has no
-server, collection or retention service, and is not intended for people under 18.
-
-The bundled viewer, icons, validator and layout code are generated from the public repository's sources
-and committed so installations work without a build. Some bundles exceed the directory's inspection
-threshold; they may require manual review. They contain code and assets, not remote dependencies.
-
-## Troubleshooting and support
-
-Check `node --version` if a script cannot start. Run `node scripts/validate.mjs <file.diagram.json>`
-from this folder to explain invalid diagram content. Run `node scripts/layout.mjs <file.diagram.json>`
-if coordinates are missing. Long share links can be truncated by messaging tools; use a file instead.
-Report product issues at <https://github.com/latchkostov/diagrams/issues>. For security concerns,
-contact the publisher through the directory listing; keep credentials and sensitive diagrams out of
-public issue reports.
-
-## Releases
-
-The plugin manifest declares the directory-requested `1.0.0` version. The marketplace entry has
-no separate version. `pnpm regen` and `pnpm sync` refresh generated assets without editing the
-manifest version. A fixed version pins Claude Code's cached git-marketplace installation until
-that version changes; directory publishing follows the developer portal's review process.
-The download contains only `SKILL.md`, `reference/` and `scripts/`; this README, licence,
-manifest and listing icon are plugin packaging, excluded from the skill ZIP.
-
-Licensed under MIT; see [LICENSE](LICENSE).
+Report issues at https://github.com/latchkostov/diagrams/issues, without credentials or sensitive diagrams. Licensed under MIT; see [LICENSE.md](LICENSE.md).

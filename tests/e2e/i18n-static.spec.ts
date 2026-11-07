@@ -25,7 +25,7 @@ const words = (code: string, key: keyof typeof en) => {
 // Authored commands are an independent baseline: never derive expectations from translated DOM.
 const commands = {
   marketplace: "/plugin marketplace add latchkostov/diagrams",
-  install: "/plugin install livediagrams@livediagrams",
+  install: "/plugin install livediagrams-full@livediagrams",
   codex:
     "curl -LO https://www.livediagrams.dev/livediagrams-skill.zip && unzip livediagrams-skill.zip -d ~/.agents/skills/",
   "codex-windows":

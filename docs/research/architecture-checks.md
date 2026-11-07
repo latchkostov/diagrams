@@ -688,7 +688,7 @@ diagrams, as every AI tool is.
   budget. A `dropped` finding never carries a `fix` (owner's call, 2026-10-13). Off by default: it costs seconds where the checks cost milliseconds.
 - **Ignoring stays a person's call.** No tool writes `checks.ignore`. An agent that silences warnings is the
   failure mode to avoid.
-- The skill (`skills/livediagrams/`) gets the rule table, so coding agents can run the same checks on a
+- The skill (`skills/livediagrams-full/`) gets the rule table, so coding agents can run the same checks on a
   `.diagram.json` (`scripts/` already runs the app's validation).
 
 ### Code shape

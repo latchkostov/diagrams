@@ -10,9 +10,9 @@ import { createServer, runnerImport } from "vite";
 const root = path.resolve(import.meta.dirname, "../..");
 const { skillAssetsPlugin } = (await runnerImport(path.join(root, "scripts/skill-assets.ts"), { configFile: false }))
   .module;
-const { readViewer } = await import("../../skills/livediagrams/scripts/lib/viewer.mjs");
+const { readViewer } = await import("../../skills/livediagrams-full/scripts/lib/viewer.mjs");
 const template = readViewer();
-const skeleton = readFileSync(path.join(root, "skills/livediagrams/scripts/lib/viewer-template.html"), "utf8");
+const skeleton = readFileSync(path.join(root, "skills/livediagrams-full/scripts/lib/viewer-template.html"), "utf8");
 const port = Number(process.env.SKILL_DEV_PORT ?? 6470);
 if (port === 5190 || port === 6000) throw new Error("Choose another skill benchmark port");
 const serverRoot = path.join(root, "tests/.output/skill-dev-server");

@@ -22,6 +22,37 @@ checkRepositoryTextEncoding(root);
 const viewer = await load("scripts/skill-viewer.ts");
 const { buildViewerTemplate } = await load("scripts/interactive-viewer.ts");
 const { SKILL_DIR } = await load("scripts/skill-gen.ts");
+const { LITE_DIR, generateLiteFiles } = await load("scripts/skill-lite.ts");
+const lite = generateLiteFiles(root);
+const liteRoot = path.join(root, LITE_DIR);
+const listLite = (dir, rel = "") =>
+  fs.existsSync(dir)
+    ? fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+        const name = rel ? `${rel}/${entry.name}` : entry.name;
+        return entry.isDirectory() ? listLite(path.join(dir, entry.name), name) : [name];
+      })
+    : [];
+const unexpected = listLite(liteRoot).filter((rel) => !Object.hasOwn(lite, rel));
+if (unexpected.length) {
+  console.error(`Unexpected lite plugin files: ${unexpected.join(", ")}. Remove them before releasing.`);
+  process.exit(1);
+}
+const liteStale = Object.keys(lite).filter((rel) => {
+  const file = path.join(root, LITE_DIR, rel);
+  return !fs.existsSync(file) || !fs.readFileSync(file).equals(Buffer.from(lite[rel]));
+});
+if (check && liteStale.length) {
+  console.error(`lite plugin is stale: ${liteStale.join(", ")}. Run pnpm regen.`);
+  process.exit(1);
+}
+if (!check) {
+  for (const rel of liteStale) {
+    const file = path.join(root, LITE_DIR, rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, lite[rel]);
+  }
+  console.log(`lite plugin: ${liteStale.length} files refreshed.`);
+}
 
 const skill = path.join(root, SKILL_DIR);
 const read = (rel) => {

@@ -1,12 +1,12 @@
-// The agent skill's layout (skills/livediagrams/scripts/layout.mjs), bundled with the app's own code into
-// skills/livediagrams/scripts/lib/app.mjs by `pnpm schemas`. A diagram an agent writes without coordinates
+// The agent skill's layout (skills/livediagrams-full/scripts/layout.mjs), bundled with the app's own code into
+// skills/livediagrams-full/scripts/lib/app.mjs by `pnpm schemas`. A diagram an agent writes without coordinates
 // is laid out by the same code as a pasted file in the app (fileToDiagram in src/ai/ui/apply.ts); both keep
 // boundary membership as written. Unlike a paste, any node without x/y lays out every node (an agent writes
 // whole diagrams). Pure and dependency-free: it must run under plain Node.
 
 import type { DiagramFile } from "../../model/types";
 import { normalizeAnnotation } from "../../model/annotations";
-import { validateDiagram } from "../../interop/native";
+import { validateDiagram, validBoundary } from "../../interop/native";
 import { estimateCardSize } from "../../canvas/nodes/size";
 import { fitGroups, placeNew } from "../place";
 
@@ -59,6 +59,13 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
   const checked = validateDiagram(draft);
   if (!checked.ok) return { ok: false, error: checked.error };
   let d: DiagramFile = checked.diagram;
+  // Nodes are required; optional boundaries can be skipped. Capture each surviving slot's repaired
+  // identity before layout, so duplicate IDs and node/boundary clashes keep their own geometry.
+  const nodeIds = d.nodes.map((n) => n.id);
+  let groupIndex = 0;
+  const groupIds = Array.isArray(draft.groups)
+    ? draft.groups.map((g: unknown) => (validBoundary(g) ? d.groups?.[groupIndex++]?.id : undefined))
+    : [];
   // Validation skips malformed annotations and repairs IDs. Keep each authored slot's identity
   // before layout moves it; looking up the original ID aliases duplicate notes to the first one.
   let annotationIndex = 0;
@@ -68,7 +75,9 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
       )
     : [];
 
-  const unboxed = new Set(groupsIn.filter((g): g is Obj => isObj(g) && !hasBox(g)).map((g) => g.id as string));
+  const unboxed = new Set(
+    groupsIn.flatMap((g, index) => (isObj(g) && !hasBox(g) && groupIds[index] ? [groupIds[index]] : [])),
+  );
   let fitted: string[];
   if (needsLayout) {
     // Every id is "kept outside": a file's boundary membership is deliberate, so unlike an added
@@ -86,8 +95,8 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
   const groupAt = new Map((d.groups ?? []).map((g) => [g.id, g]));
   const out: Extract<LayoutResult, { ok: true }>["diagram"] = {
     ...input,
-    nodes: nodesIn.map((n) => {
-      const placed = isObj(n) && nodeAt.get(n.id as string);
+    nodes: nodesIn.map((n, index) => {
+      const placed = isObj(n) && nodeAt.get(nodeIds[index]);
       return placed ? { ...n, x: placed.x, y: placed.y } : n;
     }),
   };
@@ -98,8 +107,9 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
       return edge;
     });
   if (Array.isArray(input.groups))
-    out.groups = groupsIn.map((g) => {
-      const box = isObj(g) && fitted.includes(g.id as string) ? groupAt.get(g.id as string) : undefined;
+    out.groups = groupsIn.map((g, index) => {
+      const id = groupIds[index];
+      const box = id && fitted.includes(id) ? groupAt.get(id) : undefined;
       return box && isObj(g) ? { ...g, x: box.x, y: box.y, width: box.width, height: box.height } : g;
     });
 

@@ -1,4 +1,4 @@
-// Writes the generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts), vercel.json's
+// Writes the generated parts of the agent skill (skills/livediagrams-full/, see scripts/skill-gen.ts), vercel.json's
 // security headers (scripts/security-headers.ts) and the self-hosting samples in deploy/self-host/
 // (scripts/self-host-headers.ts) from the code, so they never drift from the app. Runs
 // before every build (`prebuild`); run it by hand with `pnpm schemas`. The sources are

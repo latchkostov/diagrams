@@ -184,7 +184,7 @@ publication work. Paused pan retains the Live DOM.
 | Self-contained file size                               |                          2,068,808 B | 1 generated file |
 | Renderer JS heap after controls, full GC               | 40,309,360 B (40,195,976–41,216,168) |                3 |
 
-Exported using `skills/livediagrams/scripts/export-html.mjs` from the same 500-node workload, preserving
+Exported using `skills/livediagrams-full/scripts/export-html.mjs` from the same 500-node workload, preserving
 its coordinates and opening the result from `file://`. No network load is involved.
 
 | Live @1500, elapsed wall time |                  Heap after GC |  DOM nodes |  Listeners | Samples |

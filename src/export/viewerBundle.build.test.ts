@@ -36,6 +36,7 @@ describe("static platform viewer", () => {
       "/src/live/resilienceFixPlan.ts",
       "/src/planning/RoutingFields.tsx",
       "/src/planning/AutoscalingFields.tsx",
+      "/src/styles/inspector-layout.css",
     ])
       expect(
         modules.some((id) => id.endsWith(path)),
@@ -48,7 +49,7 @@ describe("static platform viewer", () => {
       "/src/planning/NodePlanning.tsx",
       "/src/sim/autoscaling.ts",
       "/src/model/requestRouting.ts",
-      "/src/styles/inspector-layout.css",
+      "/src/styles/readout.css",
     ])
       expect(
         modules.some((id) => id.endsWith(path)),

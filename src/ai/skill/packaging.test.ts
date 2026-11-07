@@ -3,7 +3,7 @@ import path from "node:path";
 import { Script } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { releasedFiles } from "../../../scripts/skill-viewer";
-import { assembleViewer } from "../../../skills/livediagrams/scripts/lib/viewer.mjs";
+import { assembleViewer } from "../../../skills/livediagrams-full/scripts/lib/viewer.mjs";
 
 describe("directory-readable skill packaging", () => {
   it("ships at most 512 files, each at most 262144 bytes, without long encoded text", () => {
@@ -15,7 +15,7 @@ describe("directory-readable skill packaging", () => {
         else files.push(file);
       }
     };
-    walk("skills/livediagrams");
+    walk("skills/livediagrams-full");
     expect(files.length).toBeLessThanOrEqual(512);
     for (const file of files) {
       const data = readFileSync(file);

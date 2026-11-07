@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { readSkill } from "../../../scripts/skill-assets";
 
 const root = process.cwd();
-const plugin = path.join(root, "skills/livediagrams");
+const plugin = path.join(root, "skills/livediagrams-full");
 const read = (file: string) => readFileSync(path.join(plugin, file), "utf8");
 const manifest = () =>
   JSON.parse(read(".claude-plugin/plugin.json")) as {
@@ -19,12 +19,12 @@ describe("the directory plugin bundle", () => {
   it("declares listing metadata and discovers the existing root skill without moving it", () => {
     const metadata = manifest();
     expect(metadata).toMatchObject({
-      name: "livediagrams",
-      displayName: "Live Diagrams",
+      name: "livediagrams-full",
+      displayName: "Live Diagrams (full)",
       author: { name: "Live Diagrams", url: "https://github.com/latchkostov/diagrams" },
       homepage: "https://www.livediagrams.dev",
       // Listing links the directory reads from the manifest.
-      documentationUrl: "https://github.com/latchkostov/diagrams/tree/master/skills/livediagrams#readme",
+      documentationUrl: "https://github.com/latchkostov/diagrams/tree/master/skills/livediagrams-full#readme",
       supportUrl: "https://github.com/latchkostov/diagrams/issues",
       privacyPolicyUrl: "https://www.livediagrams.dev/privacy.html",
       termsOfServiceUrl: "https://www.livediagrams.dev/terms.html",
@@ -45,7 +45,8 @@ describe("the directory plugin bundle", () => {
     const marketplace = JSON.parse(readFileSync(path.join(root, ".claude-plugin/marketplace.json"), "utf8"));
     expect(marketplace.name).toBe("livediagrams");
     expect(marketplace.plugins).toEqual([
-      expect.objectContaining({ name: metadata.name, source: "./skills/livediagrams" }),
+      expect.objectContaining({ name: metadata.name, source: "./skills/livediagrams-full" }),
+      expect.objectContaining({ name: "livediagrams", source: "./skills/livediagrams" }),
     ]);
     expect(marketplace.plugins[0]).not.toHaveProperty("version");
   });
@@ -56,7 +57,7 @@ describe("the directory plugin bundle", () => {
     expect(readme).toContain(`# ${metadata.displayName}`);
     expect(readme).toContain(metadata.description);
     expect(readme.replace(/```[\s\S]*?```/g, "").split(/\s+/).length).toBeGreaterThanOrEqual(40);
-    expect(readme).toContain("/plugin install livediagrams@livediagrams");
+    expect(readme).toContain("/plugin install livediagrams-full@livediagrams");
     expect(read("LICENSE")).toBe(readFileSync(path.join(root, "LICENSE"), "utf8"));
     const iconPath = path.resolve(plugin, metadata.icon);
     expect(path.relative(plugin, iconPath)).not.toMatch(/^\.\./);

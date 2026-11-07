@@ -80,6 +80,16 @@ export const tooLargeMessage = (chars: number) =>
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+/** Boundaries are optional: validation skips invalid slots, including during automatic layout. */
+export const validBoundary = (g: unknown): g is Record<string, unknown> =>
+  isObj(g) &&
+  typeof g.id === "string" &&
+  !!g.id &&
+  [g.x, g.y, g.width, g.height].every(isNum) &&
+  (g.width as number) >= 0 &&
+  (g.height as number) >= 0 &&
+  [g.x, g.y, g.width, g.height].every((v) => Math.abs(v as number) <= LIMITS.maxCoordinate);
+
 /**
  * Upgrades from older formats, keyed by the format they read. Each step returns the next format's
  * raw object; `migrate` chains them until it reaches DIAGRAM_FORMAT. Empty today: v1 is the first
@@ -235,15 +245,7 @@ export function validateDiagram(data: unknown): NativeResult {
       warnings.push("The groups field wasn't a list and was ignored.");
     } else {
       d.groups.forEach((g, i) => {
-        if (
-          !isObj(g) ||
-          typeof g.id !== "string" ||
-          !g.id ||
-          ![g.x, g.y, g.width, g.height].every(isNum) ||
-          (g.width as number) < 0 ||
-          (g.height as number) < 0 ||
-          [g.x, g.y, g.width, g.height].some((v) => isNum(v) && Math.abs(v) > LIMITS.maxCoordinate)
-        ) {
+        if (!validBoundary(g)) {
           warnings.push(
             `${describe("Group", i, isObj(g) ? g.id : undefined)} was skipped: it needs an id, x, y, width and height.`,
           );

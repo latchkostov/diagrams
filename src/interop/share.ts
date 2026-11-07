@@ -8,7 +8,8 @@ import {
   textToBytes,
   TooLargeError,
 } from "./codec";
-import { LIMITS, parseNative } from "./native";
+import { LIMITS } from "./native";
+import { parseOpenedNative } from "./openNative";
 
 // Share links carry the whole diagram in the URL *fragment* (#d=...), which browsers never send
 // to the server: nothing is uploaded and nothing lands in server logs. Encoding: minified JSON ->
@@ -41,7 +42,7 @@ export async function diagramFromCompressed(bytes: Uint8Array): Promise<DiagramF
     throw new Error(DAMAGED, { cause: err });
   }
   // The same validator as every other way in (files, paste, Drive, storage).
-  const result = parseNative(json);
+  const result = await parseOpenedNative(json);
   if (!result.ok) {
     if (/isn't valid JSON/.test(result.error)) throw new Error("This share link doesn't contain a readable diagram.");
     throw new Error(`This share link's diagram can't be opened: ${result.error}`);

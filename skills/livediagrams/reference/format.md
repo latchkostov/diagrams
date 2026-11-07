@@ -26,8 +26,8 @@ Concurrency; `averageValue.value` is threads per pod. This is a modelled custom 
 - `nodes` and `edges` (required, may be empty), and optionally `groups`, `annotations` and `simulations`.
 - `private`: `true` marks a Private diagram. The app keeps it on the device (no share links, no cloud saves, no
   AI tools) and it stays private when it's opened again. Keep the field as it is, never make a share link for
-  it (`scripts/share-link.mjs` refuses) and don't upload it anywhere; hand the user the file or an Interactive HTML
-  file (`scripts/export-html.mjs`, see [outputs.md](outputs.md)).
+  it and don't upload it anywhere; hand the user the diagram file. For an Interactive HTML file,
+  use the app (see [outputs.md](outputs.md)).
 - `checks`: the architecture checks a person turned off (`"off": ["capacity"]`) or ignored for one element
   (`"ignore": [{ "rule": "dead-letter", "target": "<node id>", "reason": "..." }]`). Keep it as it is. Only the
   person decides it: never add entries to silence a finding; fix the design instead.
@@ -41,11 +41,11 @@ Concurrency; `averageValue.value` is threads per pod. This is a modelled custom 
 - `id`: unique and stable, short kebab-case. Edges and simulations refer to it. Nodes, edges, boundaries and
   annotations share one id space: never give an edge a node's id (the app renames a repeated id when it opens
   the file).
-- `stencil`: an id from [stencils.md](stencils.md). `validate.mjs` rejects unknown ids.
+- `stencil`: an id from [stencils.md](stencils.md). Check every id against the stencil reference.
 - `label`: the name people use. About 24 characters fit on the card; longer labels are cut off.
 - `sublabel` (optional): the second line, such as a topic or queue name, a consumer group or the technology.
   It wraps onto two lines of about 28 characters.
-- `x`, `y`: the card's top-left corner in pixels. Leave them out and run `scripts/layout.mjs`. If you place
+- `x`, `y`: the card's top-left corner in pixels. Leave them out for the app to lay out on open. If you place
   cards yourself, a card is 220 to 260 by 72 pixels. Left to right, columns are about 360 pixels apart and rows
   about 120.
 - `group` (optional): the id of the boundary the node sits in.
@@ -86,7 +86,7 @@ Concurrency; `averageValue.value` is threads per pod. This is a modelled custom 
 ```
 
 A boundary is a labelled box around the nodes whose `group` is its id: a cluster, a VNet or VPC, an account, a
-region or a third party. `layout.mjs` sets its `x`, `y`, `width` and `height`. If you set them yourself, the box
+region or a third party. The app's layout on open sets its `x`, `y`, `width` and `height`. If you set them yourself, the box
 must contain its members. Boundaries don't nest, and a node sits in at most one.
 
 ## Annotations
@@ -97,7 +97,7 @@ Annotations are documentation only, and the simulation never sees them. Use them
 { "id": "note-1", "kind": "note", "text": "Retried 3 times, then dead-lettered" }
 ```
 
-`layout.mjs` places a `note` or `text` without a position in a row under the diagram. A `zone` (a dashed region)
+The app's layout on open places a `note` or `text` without a position in a row under the diagram. A `zone` (a dashed region)
 and a `shape` (a plain outline, the only kind an edge may end on) need `x`, `y`, `width` and `height`.
 
 <!-- BEGIN edge-waypoints -->
@@ -185,7 +185,7 @@ Other keys in `props` are kept, so you can note facts such as `"replicationFacto
 
 ## Boundary example
 
-Run `layout.mjs` to position this diagram; `web` remains outside `aks`.
+Open this diagram in the app to position it; `web` remains outside `aks`.
 
 ```json
 {
@@ -206,8 +206,8 @@ Run `layout.mjs` to position this diagram; `web` remains outside `aks`.
 
 ## Share links
 
-Only make public share links when requested, never for a Private diagram. Use
-`node scripts/share-link.mjs <file>`; see [outputs.md](outputs.md) for output choices.
+For requested public share links, open the file in the app and use its Export menu, never for a Private diagram.
+See [outputs.md](outputs.md) for output choices.
 
 A link with a password (`#e=…`, encrypted in the browser) is made only in the app, with **File > Share… > Link with
 password…**. Don't build one, and never put a password in a link or in the same message as the link.

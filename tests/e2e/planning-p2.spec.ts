@@ -308,7 +308,7 @@ test("P2: released agent viewer preserves distinct broker assignments offline", 
   writeFileSync(file, JSON.stringify(d));
   const output = spawnSync(
     process.execPath,
-    [join(process.cwd(), "skills/livediagrams/scripts/export-html.mjs"), file, "--out", html],
+    [join(process.cwd(), "skills/livediagrams-full/scripts/export-html.mjs"), file, "--out", html],
     { encoding: "utf8" },
   );
   expect(output.status, output.stderr).toBe(0);

@@ -2,6 +2,45 @@ import { expect, expectTypeOf, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { placeNew } from "../place";
 import { layoutDiagram } from "./layout";
+import { validateDiagram } from "../../interop/native";
+
+it.each([false, true])("tracks repaired boundary slots through skipped entries (placed %s)", (placed) => {
+  const result = layoutDiagram({
+    format: "diagrams/v1",
+    title: "Repaired identities",
+    nodes: [
+      {
+        id: "shared",
+        stencil: "generic.service",
+        label: "First",
+        group: "shared",
+        ...(placed ? { x: 40, y: 40 } : {}),
+      },
+      {
+        id: "shared",
+        stencil: "generic.service",
+        label: "Second",
+        group: "shared",
+        ...(placed ? { x: 400, y: 40 } : {}),
+      },
+    ],
+    edges: [],
+    groups: [null, { label: "No ID" }, { id: "shared", label: "Workers" }],
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.error);
+  const checked = validateDiagram(result.diagram);
+  expect(checked.ok).toBe(true);
+  if (!checked.ok) throw new Error(checked.error);
+  expect(checked.diagram.groups).toHaveLength(1);
+  const boundary = checked.diagram.groups![0];
+  const nodes = checked.diagram.nodes;
+  expect(new Set([...nodes, boundary].map((n) => n.id)).size).toBe(3);
+  expect(new Set(nodes.map((n) => `${n.x},${n.y}`)).size).toBe(2);
+  expect(nodes.every((n) => n.group === boundary.id)).toBe(true);
+  expect(boundary.width).toBeGreaterThan(0);
+  expect(boundary.height).toBeGreaterThan(0);
+});
 
 it.each(["force", "missing coordinates", "already placed"])(
   "resets shaped routes only when laying out nodes (%s), preserving sides, metadata and input",
