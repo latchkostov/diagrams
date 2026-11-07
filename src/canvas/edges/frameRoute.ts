@@ -13,14 +13,19 @@ export function displayedRoute(
   s: FrameRoutesState,
   id: string,
   natural: EdgeRoute | undefined,
+  observe = true,
 ): DisplayedRoute | undefined {
+  if (!observe) return natural;
   const frame = s.ldFrameRoutes?.get(id);
   return frame?.natural === natural ? frame?.displayed : natural;
 }
 
-export function useFrameRoute(id: string, natural: EdgeRoute | undefined) {
+export function useFrameRoute(id: string, natural: EdgeRoute | undefined, observe = true) {
   return useStore(
-    useCallback((s: ReactFlowState) => displayedRoute(s as FrameRoutesState, id, natural), [id, natural]),
+    useCallback(
+      (s: ReactFlowState) => displayedRoute(s as FrameRoutesState, id, natural, observe),
+      [id, natural, observe],
+    ),
   );
 }
 

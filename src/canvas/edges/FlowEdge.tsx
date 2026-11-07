@@ -58,7 +58,6 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const detailsSnapshot = useCallback(() => (dependency ? edgeDetailsSnapshot() : undefined), [dependency]);
   const Details = useSyncExternalStore(subscribeEdgeDetails, detailsSnapshot, detailsSnapshot);
   const route = useEdgeRoute(id, useRoutingOptions());
-  const displayed = useFrameRoute(id, route);
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
     useCallback(
@@ -79,9 +78,13 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   }
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
+  // The frame paints all paths together. Only controls, open popovers and deny
+  // markers need React geometry updates; a pan must not re-render every edge.
+  const displayed = useFrameRoute(id, route, !!selected || card || denied);
   if (!route) return custom && !routeGeometry ? <g data-route-pending="shaped" /> : null;
-  const { path } = displayed ?? route;
-  const { label } = route;
+  // Keep the React path prop natural and stable: FrameDetail owns its temporary
+  // DOM geometry and resets it synchronously for capture.
+  const { path, label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
   const displayedMid = displayed?.label ?? pointAlong((displayed ?? route).points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.

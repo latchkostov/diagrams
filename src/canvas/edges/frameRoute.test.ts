@@ -28,6 +28,17 @@ it("shares displayed geometry until a router revision or capture clears it", () 
   expect(sameFrameRoutes(ldFrameRoutes, new Map())).toBe(false);
 });
 
+it("keeps inactive edge subscriptions stable while frame geometry changes", () => {
+  const first = { ...natural, path: "M0,0 L108,0 L108,200 L300,200" };
+  const second = { ...natural, path: "M0,0 L116,0 L116,200 L300,200" };
+  const a = { ldFrameRoutes: new Map([["flow", { natural, displayed: first }]]) };
+  const b = { ldFrameRoutes: new Map([["flow", { natural, displayed: second }]]) };
+  expect(displayedRoute(a, "flow", natural, false)).toBe(natural);
+  expect(displayedRoute(b, "flow", natural, false)).toBe(natural);
+  expect(displayedRoute(a, "flow", natural, true)).toBe(first);
+  expect(displayedRoute(b, "flow", natural, true)).toBe(second);
+});
+
 it("carries captions with the accepted lane, retaining their distance from its segment", () => {
   const displayed = natural.points.map((p, i) => (i === 1 || i === 2 ? { ...p, x: 108 } : p));
   const box = { x: 88, y: 90, width: 30, height: 20 };
