@@ -26,3 +26,25 @@ latest commit of the skill and self-hosted images on `master`.
 - The Claude skill's scripts run locally and make no network requests.
 - Third-party services (Atlassian, GitHub, Vercel, storage providers) have their own security programmes;
   report issues in them to those vendors.
+
+## Incident response
+
+If a security incident or a critical vulnerability affects Live Diagrams (for example, a flaw that could expose
+or alter diagram content in the Confluence app), the maintainer follows these steps:
+
+1. **Contain.** Stop the harm first: roll back or disable the affected Confluence app version, revert the
+   affected release of the web app, skill or images, and revoke any credential that might be involved.
+2. **Assess.** Work out what is affected, since when, which users and data, and whether it is still exploitable.
+   Keep a timestamped record of what was found and done.
+3. **Notify.** For the Confluence app, notify Atlassian through the ecosystem service desk
+   (ecosystem.atlassian.net), following Atlassian's
+   [security incident management guidelines](https://developer.atlassian.com/platform/marketplace/app-security-incident-management-guidelines/),
+   and notify affected customers using Atlassian's
+   [vulnerability notification template](https://developer.atlassian.com/platform/marketplace/app-vulnerability-notification-template/).
+   Report the private details only through those channels, never in a public issue.
+4. **Fix and release.** Release the fix from `master` within the timeframes in Atlassian's
+   [security bug fix policy](https://developer.atlassian.com/platform/marketplace/security-bugfix-policy/),
+   then confirm it with the reporter where possible.
+5. **Follow up.** Publish a security advisory once the fix is out, and record what changed to prevent a repeat.
+
+The maintainer is the security contact and holds an account on ecosystem.atlassian.net.
