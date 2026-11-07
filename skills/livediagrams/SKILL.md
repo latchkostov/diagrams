@@ -55,11 +55,10 @@ Nothing is uploaded and nobody needs an account or a key.
    in [reference/simulation.md](reference/simulation.md). Preserve older models unless the user asks to upgrade.
    For executable retries, circuit breakers or load shedding, use `p3-w2` and its resilience section.
 
-
 5. **Check by hand.** Compare every field with [reference/format.md](reference/format.md) and
    [spec.json](spec.json): exact stencil ids, unique ids, connection endpoints, boundary membership,
    model revisions, simulation properties and limits. Fix errors before handing back the file.
-   Positions are optional: the app uses its layout engine on open if any component lacks numeric x/y.
+   Positions are optional: the app lays out the diagram on open if x or y is absent. Present coordinates must be numbers.
 6. **Hand back the diagram file.** Say where it is and that anyone with the file can open and edit it.
    To make an offline HTML file (with or without a password), a share link or an image, tell the user to
    open it at livediagrams.dev with **File > Open…** (read in the browser, nothing uploaded), then use

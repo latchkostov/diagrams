@@ -16,11 +16,15 @@ export async function parseOpenedNative(text: string): Promise<NativeResult> {
     return original;
   }
   if (!raw || typeof raw !== "object" || !("nodes" in raw) || !Array.isArray(raw.nodes)) return original;
-  const missing = raw.nodes.some((node: unknown) => {
-    if (!node || typeof node !== "object") return false;
+  let missing = false;
+  for (const node of raw.nodes as unknown[]) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return original;
     const n = node as Record<string, unknown>;
-    return !Number.isFinite(n.x) || !Number.isFinite(n.y);
-  });
+    for (const axis of ["x", "y"]) {
+      if (!Object.hasOwn(n, axis)) missing = true;
+      else if (!Number.isFinite(n[axis])) return original;
+    }
+  }
   if (!missing) return original;
   const { layoutDiagram } = await import("../ai/skill/layout");
   const result = layoutDiagram(raw);

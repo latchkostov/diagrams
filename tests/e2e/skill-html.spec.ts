@@ -16,7 +16,7 @@ import { publicSchemaFiles } from "../../src/ai/webmcp/publicSchemas";
 // plays with zero requests; a private diagram gets a file but never a share link; and the site's /skill/ download
 // carries the current viewer, and the downloaded skill works on its own. Selectors are data-testid only.
 
-const SCRIPTS = join(process.cwd(), "skills", "livediagrams", "scripts");
+const SCRIPTS = join(process.cwd(), "skills", "livediagrams-full", "scripts");
 const BANNER = "Confidential: internal use only";
 
 test("the build publishes generated agent schemas", async ({ request }) => {

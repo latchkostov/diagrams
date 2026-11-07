@@ -7,16 +7,29 @@ export const LITE_DIR = "skills/livediagrams";
 export const LITE_DESCRIPTION =
   "Draw architecture and event-driven system diagrams with live message-flow simulations as editable .diagram.json files.";
 
+export function liteRegion(source: string, name: string): string {
+  const begin = `<!-- BEGIN lite:${name} -->`;
+  const end = `<!-- END lite:${name} -->`;
+  const start = source.indexOf(begin);
+  const stop = source.indexOf(end);
+  if (
+    start < 0 ||
+    stop < start + begin.length ||
+    source.indexOf(begin, start + begin.length) !== -1 ||
+    source.indexOf(end, stop + end.length) !== -1
+  )
+    throw new Error(`Expected one ordered lite:${name} region in the full SKILL.md`);
+  return source.slice(start + begin.length, stop).trim() + "\n";
+}
+
 export function generateLiteFiles(root: string): Record<string, string | Buffer> {
   const read = (name: string) => readFileSync(path.join(root, SKILL_DIR, name), "utf8").replace(/\r\n/g, "\n");
   const full = read("SKILL.md");
-  const plan = full.slice(full.indexOf("2. **Plan"), full.indexOf("5. **Lay it out."));
-  const rules = full
-    .slice(full.indexOf("## Rules"), full.indexOf("- If Node isn't available"))
-    .replace(
-      "After large changes, run `layout.mjs --force` to\n  lay out everything again.",
-      "Leave existing positions unchanged unless the user asks for a new layout.",
-    );
+  const plan = liteRegion(full, "plan");
+  const rules = liteRegion(full, "rules").replace(
+    "After large changes, run `layout.mjs --force` to\n  lay out everything again.",
+    "Leave existing positions unchanged unless the user asks for a new layout.",
+  );
   const skill = `---
 name: livediagrams
 description: ${LITE_DESCRIPTION} Use when the user wants to diagram, draw, sketch or visualize a system architecture, an event-driven or messaging flow, a data pipeline, microservices or any distributed system, including a live message-flow simulation of traffic, outages, retries and dead-letter queues. Needs no browser, account, API key or upload.
@@ -38,7 +51,7 @@ ${plan}
 5. **Check by hand.** Compare every field with [reference/format.md](reference/format.md) and
    [spec.json](spec.json): exact stencil ids, unique ids, connection endpoints, boundary membership,
    model revisions, simulation properties and limits. Fix errors before handing back the file.
-   Positions are optional: the app uses its layout engine on open if any node lacks numeric x/y.
+   Positions are optional: the app lays out the diagram on open if x or y is absent. Present coordinates must be numbers.
 6. **Hand back the diagram file.** Say where it is and that anyone with the file can open and edit it.
    To make an offline HTML file (with or without a password), a share link or an image, tell the user to
    open it at livediagrams.dev with **File > Open…** (read in the browser, nothing uploaded), then use

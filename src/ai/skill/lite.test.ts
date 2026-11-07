@@ -1,9 +1,24 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { generateLiteFiles, LITE_DIR } from "../../../scripts/skill-lite";
+import { generateLiteFiles, LITE_DIR, liteRegion } from "../../../scripts/skill-lite";
 
 describe("script-free directory channel", () => {
+  it.each(["plan", "rules"])("requires a unique ordered %s region", (name) => {
+    const begin = `<!-- BEGIN lite:${name} -->`;
+    const end = `<!-- END lite:${name} -->`;
+    const source = `${begin}\nShared knowledge\n${end}`;
+    expect(liteRegion(source, name)).toBe("Shared knowledge\n");
+    for (const invalid of [
+      source.replace(begin, ""),
+      source.replace(end, ""),
+      `${begin}\n${source}`,
+      `${source}\n${end}`,
+      `${end}\nShared knowledge\n${begin}`,
+    ])
+      expect(() => liteRegion(invalid, name)).toThrow(`Expected one ordered lite:${name} region`);
+  });
+
   it("is exactly the generated knowledge, with only directory-approved files", () => {
     const root = process.cwd();
     const expected = generateLiteFiles(root);
