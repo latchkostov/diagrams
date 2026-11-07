@@ -10,6 +10,129 @@ import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvar
 import { opGrowth } from "../test/opCounter";
 import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
+function renamedLookupFixture() {
+  const d = cacheAsideFixture();
+  d.planning!.requestRoutes = [
+    { id: "caller", address: { method: "GET", path: "/products/one" } },
+    { id: "lookup", address: { method: "GET", path: "/cache/one" } },
+  ];
+  d.nodes[1].props!.emits = "Read";
+  d.nodes[2].props!.emits = "CacheOutput";
+  (d.nodes[2].props!.cache as CacheTable).default = {
+    ttlMs: 1000,
+    keys: 1,
+    coalesce: true,
+    staleWhileRevalidateMs: 1000,
+  };
+  d.edges[0].props!.requestRouteId = "caller";
+  Object.assign(d.edges[1].props!, { emits: "CacheRead", requestRouteId: "lookup" });
+  d.nodes.push({ ...d.nodes[3], id: "required-database", props: { latencyMs: 300, jitter: 0 } });
+  d.edges.push({
+    ...d.edges[2],
+    id: "required-fetch",
+    to: "required-database",
+    props: { ...d.edges[2].props, filter: ["Read"] },
+  });
+  return d;
+}
+
+it.each([false, true])("renamed stale lookup refresh dispatches all caller origins (required down: %s)", (down) => {
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(renamedLookupFixture());
+  e.inject("source", 1);
+  e.step(1500);
+  expect(e.snapshot().nodes.cache.cache!.fills).toBe(1);
+  if (down) e.setNodeStatus("required-database", "down");
+  e.inject("source", 1);
+  e.step(60);
+  expect(e.snapshot().nodes.cache.cache!.staleHits).toBe(1);
+  expect(e.snapshot().edges.fetch.delivered).toBe(2);
+  expect(e.snapshot().edges["required-fetch"].delivered).toBe(2);
+  e.step(500);
+  expect(e.snapshot().nodes.cache.cache!.fills).toBe(down ? 1 : 2);
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("renamed stale lookup refresh sends the cold miss message type and request address", () => {
+  const watch = watchCheckpoints(2);
+  try {
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(renamedLookupFixture());
+    const dispatched = () => {
+      e.checkpoint();
+      const nodes = watch.sources.at(-1)![0];
+      return ["database", "required-database"].map((id) => {
+        const message = nodes.get(id)!.working[0]?.message;
+        return {
+          type: message?.type,
+          request: message?.request && { method: message.request.method, path: message.request.path },
+        };
+      });
+    };
+    e.inject("source", 1);
+    e.step(60);
+    const cold = dispatched();
+    expect(cold).toEqual([
+      { type: "Read", request: { method: "GET", path: "/products/one" } },
+      { type: "Read", request: { method: "GET", path: "/products/one" } },
+    ]);
+    e.step(1440);
+    e.inject("source", 1);
+    e.step(60);
+    expect(dispatched()).toEqual(cold);
+  } finally {
+    watch.stop();
+  }
+});
+
+it("renamed stale lookup replays caller selection before and during refresh from checkpoints", () => {
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(renamedLookupFixture());
+  e.inject("source", 1);
+  e.step(1500);
+  e.setNodeStatus("required-database", "down");
+  e.inject("source", 1);
+  e.step(30);
+  const lookup = e.checkpoint();
+  e.step(30);
+  const refresh = e.checkpoint();
+  e.step(500);
+  const result = e.snapshot();
+  expect(result.edges["required-fetch"].delivered).toBe(2);
+  expect(result.nodes.cache.cache!.fills).toBe(1);
+  expect(result.inSystem).toBe(0);
+  e.restore(lookup);
+  e.step(530);
+  expect(e.snapshot()).toEqual(result);
+  e.restore(refresh);
+  e.step(500);
+  expect(e.snapshot()).toEqual(result);
+});
+
+it("an ended caller skips renamed stale refresh deterministically after restore", () => {
+  const d = renamedLookupFixture();
+  d.edges[1].props!.caller = { wait: "blocking", deadlineMs: 100 };
+  const e = createEngine({ seed: 7, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1500);
+  expect(e.snapshot().nodes.cache.cache!.fills).toBe(1);
+  e.setNodeProps("cache", { latencyMs: 200 });
+  e.inject("source", 1);
+  e.step(150);
+  const token = e.checkpoint();
+  e.step(500);
+  const result = e.snapshot();
+  expect(result.nodes.cache.cache!.staleHits).toBe(1);
+  expect(result.edges.fetch.delivered).toBe(1);
+  expect(result.edges["required-fetch"].delivered).toBe(1);
+  expect(result.nodes.cache.cache!.fills).toBe(1);
+  expect(result.inSystem).toBe(0);
+  e.restore(token);
+  e.step(500);
+  expect(e.snapshot()).toEqual(result);
+});
+
 it("cancelling coalesced waiters is linear while another service owns the lease", () => {
   const prepare = (count: number) => {
     const d = cacheAsideFixture();

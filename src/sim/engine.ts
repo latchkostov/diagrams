@@ -1264,8 +1264,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** Choose each branch once, then join Requests before publishing Messages or replying upstream. */
   function beginCall(node: Node, work: Work, ok = true): boolean {
     if (!node.waits) return false;
-    let message = work.message;
-    message = rename(message, outputType(node.role, node.props.emits, message.type));
+    const message = work.cacheFlight?.origins
+      ? work.message
+      : rename(work.message, outputType(node.role, node.props.emits, work.message.type));
     const outgoing = !ok
       ? []
       : (work.cacheFlight?.origins ?? (work.route ? [work.route.edge] : outputRoutes(node, message)));
@@ -1465,14 +1466,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  /** Reuse the caller's selected branches: lookup renames, addresses and later edits cannot reselect them. */
+  function asideOrigins(call: Call, lookup: string): NonNullable<Call["deferred"]> {
+    const pending = call.deferred ?? [];
+    return pending.length === 1 && pending[0].lookup === lookup
+      ? pending
+      : pending.filter((item) => item.lookup === lookup);
+  }
+
   function continueAside(call: Call, edge: Edge, event: Logical): void {
     const pending = call.deferred!;
+    const matching = asideOrigins(call, edge.id);
     call.deferred =
       pending.length === 1 && pending[0].lookup === edge.id ? undefined : pending.filter((e) => e.lookup !== edge.id);
-    const matching =
-      pending.length === 1 && pending[0].lookup === edge.id
-        ? pending
-        : pending.filter((item) => item.lookup === edge.id);
     const hit = event.cacheReply?.lookup.outcome === "hit" || event.cacheReply?.lookup.outcome === "stale";
     if (!hit)
       for (const item of matching) {
@@ -2324,15 +2330,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (work.cache?.revalidate) {
       const lookup = work.cache;
       const cache = work.cacheOwner!;
-      if (cacheRuntime!.refreshReady(cache, lookup, time, 100_000 - calls.size)) {
+      const caller =
+        work.cache.aside && work.message.returnCall !== undefined ? calls.get(work.message.returnCall) : undefined;
+      const origins = caller && asideOrigins(caller, work.via!.id).map((item) => item.edge);
+      // An ended caller no longer owns the pre-lookup request. Do not invent a refresh from its lookup.
+      if (
+        (!work.cache.aside || (caller?.work.outputMessage && origins?.length)) &&
+        cacheRuntime!.refreshReady(cache, lookup, time, 100_000 - calls.size)
+      ) {
         spend();
         const fetch = cacheRuntime!.flight(work, time, nextMessage++, true);
         if (work.cache.aside) {
-          fetch.cacheFlight!.origins = work.via!.from.outgoing.filter(
-            (edge) =>
-              edge.onMiss === work.via!.id &&
-              accepts(edge, edge.requestRoute ? addressedView(work.message, edge.requestRoute) : work.message, true),
-          );
+          const message = caller!.work.outputMessage!;
+          fetch.cacheFlight!.origins = origins;
+          fetch.message = { ...fetch.message, type: message.type, color: message.color, request: message.request };
+          fetch.message.family.routesDone = message.request ? [message.request.id] : [];
         }
         inSystem++;
         if (!beginCall(node, fetch)) {
