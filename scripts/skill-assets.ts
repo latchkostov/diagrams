@@ -1,4 +1,4 @@
-// Serves the agent skill (skills/livediagrams/) from the site: every file under /skill/ (so
+// Serves the agent skill (skills/livediagrams-full/) from the site: every file under /skill/ (so
 // /skill/SKILL.md and its relative links work) and the whole folder as /livediagrams-skill.zip, the
 // upload format for Claude apps and a manual install for any agent. Emitted as separate assets, so the
 // app bundle doesn't grow. In dev, the same paths are served from the folder.
@@ -19,7 +19,7 @@ import { isReleased, releasedFiles, type ReleaseFile } from "./skill-viewer";
 export const SKILL_NAME = "livediagrams";
 export const SKILL_ZIP = "livediagrams-skill.zip";
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
-const SKILL_ROOT = path.join(REPO_ROOT, "skills", SKILL_NAME);
+const SKILL_ROOT = path.join(REPO_ROOT, "skills", "livediagrams-full");
 
 export interface SkillFile {
   /** Path inside the skill folder, with forward slashes. */

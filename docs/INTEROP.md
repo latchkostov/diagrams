@@ -597,11 +597,11 @@ const html = exportHtml(template, {
 writeFileSync(htmlFileName(diagram.title), html);
 ```
 
-**From the agent skill, offline.** `skills/livediagrams/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
+**From the agent skill, offline.** `skills/livediagrams-full/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
 [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]` makes the same kind of file on plain Node (20 or
 later, standard library only, no network): it validates the diagram with `validate.mjs`'s checks, then runs the
 bundled injection on the bundled template with the bundled icons, and checks the finished payload with the viewer's own
-`parsePayload` (size budgets, the diagram contract, icons, the 300-character banner) before writing anything, all in `skills/livediagrams/scripts/lib/`
+`parsePayload` (size budgets, the diagram contract, icons, the 300-character banner) before writing anything, all in `skills/livediagrams-full/scripts/lib/`
 (`scripts/skill-viewer.ts`). `--exported-on YYYY-MM-DD` fixes the footer's date. `--password` encrypts it with the
 app's own `lockPayload` (bundled in `lib/app.mjs`), decrypts it once more to check, and names it `Diagram (password
 protected) <random>.html`. It never replaces a file: a default name that's taken gets the next free one (" (2)", said on

@@ -79,12 +79,12 @@ function repository(
 
 describe("sync conflict classification", () => {
   it("only regenerates explicit outputs, preserving handwritten docs, translations, sources and goldens", () => {
-    expect(classifyConflict("skills/livediagrams/scripts/lib/app.mjs", generated)).toBe("generated");
-    expect(classifyConflict("skills/livediagrams/reference/format.md", generated)).toBe("regions");
+    expect(classifyConflict("skills/livediagrams-full/scripts/lib/app.mjs", generated)).toBe("generated");
+    expect(classifyConflict("skills/livediagrams-full/reference/format.md", generated)).toBe("regions");
     expect(classifyConflict("src/i18n/en.ts", generated)).toBe("english");
     expect(classifyConflict("tests/parity/goldens/node/skill.json", generated)).toBe("golden");
     for (const file of [
-      "skills/livediagrams/SKILL.md",
+      "skills/livediagrams-full/SKILL.md",
       "src/i18n/locales/de.json",
       "src/i18n/en/collab.ts",
       "deploy/self-host/README.md",
@@ -149,7 +149,7 @@ describe("sync git orchestration", () => {
   );
 
   it("sync preserves both sides of authored conflicts", async () => {
-    const reference = "skills/livediagrams/reference/format.md";
+    const reference = "skills/livediagrams-full/reference/format.md";
     const region = (opening: string, closing: string, generated: string) =>
       `${opening}\n\nMiddle.\n\n${closing}\n\n<!-- BEGIN GENERATED fields -->\n${generated}\n<!-- END GENERATED fields -->\n`;
     const english = "src/i18n/en.ts";
@@ -194,7 +194,7 @@ describe("sync git orchestration", () => {
   });
 
   it("sync leaves competing authored edits unresolved", async () => {
-    const reference = "skills/livediagrams/reference/format.md";
+    const reference = "skills/livediagrams-full/reference/format.md";
     const english = "src/i18n/en.ts";
     const fixture = repository(
       { [english]: en({ same: "Base" }), [reference]: "Base prose.\n" },

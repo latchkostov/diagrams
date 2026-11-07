@@ -15,7 +15,9 @@ import {
 import "../styles/lab.css";
 import type { DiagramFile } from "../model/types";
 import { useSettings, type Settings } from "../harness/settings";
-import { parseDiagram } from "../lib/diagramIO";
+import { parseOpenedNative, wasLaidOutOnOpen } from "../interop/openNative";
+import { notify } from "../interop/ui/toast";
+import { t } from "../i18n/core";
 import { Icon } from "../components/Icon";
 import { CUSTOM_PRESET_ID, CUSTOM_STORAGE_KEY, DEFAULT_PRESET_ID, getPreset, presets } from "./presets";
 import { defaultsOf, encodeValue, readValues, writeValues } from "./controls";
@@ -437,13 +439,15 @@ function JsonLoader({
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const apply = () => {
-    const r = parseDiagram(text);
+  const apply = async () => {
+    const r = await parseOpenedNative(text);
     if (!r.ok) return setError(r.error);
     const problems = diagramProblems(r.diagram);
     if (problems.length)
       return setError(`That diagram has problems: ${problems.slice(0, 3).join("; ")}${problems.length > 3 ? "…" : ""}`);
-    setError(onLoad(r.diagram) ?? null);
+    const problem = onLoad(r.diagram);
+    setError(problem ?? null);
+    if (!problem && wasLaidOutOnOpen(r.diagram)) notify(t("fileToast.laidOutOnOpen"), { kind: "info" });
   };
 
   return (

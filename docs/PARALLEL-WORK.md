@@ -137,7 +137,7 @@ to force a conflict in the generated minified viewer. All fixture changes stayed
 ```text
 scratch master> git merge --no-ff -S proof-a
 proof-b> pnpm sync
-regenerate: skills/livediagrams/scripts/lib/viewer-template.html
+regenerate: skills/livediagrams-full/scripts/lib/viewer-template.html
 merged: src/i18n/en.ts
 Synced with origin/master; generated artifacts refreshed.
 proof-b> pnpm i18n check          # 0 errors; two fixture keys use English fallback

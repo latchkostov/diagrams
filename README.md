@@ -38,7 +38,7 @@ in the browser. There is no account and no server.
 
 ## Use with your AI agent
 
-The **livediagrams** [Agent Skill](skills/livediagrams/SKILL.md) lets an agent draw diagrams for you. Ask "diagram
+The **livediagrams-full** [Agent Skill](skills/livediagrams-full/SKILL.md) lets an agent draw diagrams for you. Ask "diagram
 our order pipeline" and it writes a `.diagram.json` file, checks it, and asks what you want back:
 
 - an **interactive HTML file** (recommended for work and company diagrams): the app's Interactive HTML export, made
@@ -50,8 +50,8 @@ our order pipeline" and it writes a `.diagram.json` file, checks it, and asks wh
 
 No browser is needed and nothing is uploaded. The skill needs Node.js 20 or later and no keys. To install it:
 
-- **Claude Code**: `/plugin marketplace add latchkostov/diagrams`, then `/plugin install livediagrams@livediagrams`
-  (or, on Claude Code 2.1.275 or later, `/plugin install livediagrams --marketplace latchkostov/diagrams`).
+- **Claude Code**: `/plugin marketplace add latchkostov/diagrams`, then `/plugin install livediagrams-full@livediagrams`
+  (or, on Claude Code 2.1.275 or later, `/plugin install livediagrams-full --marketplace latchkostov/diagrams`).
 - **Claude apps** (claude.ai, desktop): download
   [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip) and upload it in **Settings >
   Capabilities > Skills**.
@@ -77,6 +77,9 @@ The app is static files, so a company can host its own copy behind its own sign-
 network. `pnpm build:internal` builds one with share links and AI tools off and new diagrams private, and
 `VITE_BRAND_NAME` names it. The [self-hosting guide](docs/SELF-HOSTING.md) covers Docker/Compose, Kubernetes/Helm,
 static-host templates, SSO, generated security headers, verification, offline bundles and upgrades.
+
+The Claude directory channel is script-free at [skills/livediagrams](skills/livediagrams/README.md). It returns
+editable diagram files; both channels use the same generated knowledge.
 
 ## Development
 

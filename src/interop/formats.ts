@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import type { DiagramFile } from "../model/types";
-import { LIMITS, parseNative, tooLargeMessage } from "./native";
+import { LIMITS, tooLargeMessage } from "./native";
+import { parseOpenedNative } from "./openNative";
 import type { ImportGraph, ImportReport } from "./infra/graph";
 import { looksLikeDrawio, looksLikeMermaid, sniffInfra } from "./sniff";
 import { loadOnce } from "../lib/lazyLoad";
@@ -105,7 +106,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   let readerErrors: (new (message?: string) => Error)[] = [];
   try {
     if (format === "native") {
-      const r = parseNative(text);
+      const r = await parseOpenedNative(text);
       return r.ok ? { ok: true, format, diagram: r.diagram, warnings: r.warnings } : { ok: false, error: r.error };
     }
     if (format === "drawio") {

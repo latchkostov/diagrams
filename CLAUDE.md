@@ -45,7 +45,7 @@ check the chrome budget and prefer context menus and the inspector. Every featur
   `vercel.json` and is served by `vite preview`): no inline scripts or `eval`, and a new outside endpoint goes in
   its connect-src. `tests/e2e/csp.spec.ts` fails on any violation.
 - New previews and test fixtures go in the Lab (`src/lab/presets.tsx`, `?view=lab`).
-- The agent skill (`skills/livediagrams/`) is partly generated: run `pnpm regen` after changing its sources.
+- The agent skill (`skills/livediagrams-full/`) is partly generated: run `pnpm regen` after changing its sources.
   The site's `/skill/` and zip are built fresh; `pnpm skill:check` reports viewer staleness.
 
 ## Parallel changes

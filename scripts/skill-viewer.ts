@@ -11,7 +11,7 @@ import { catalog } from "../src/stencils/catalog";
 import { FALLBACK_ICON } from "../src/export/inject";
 import { i18n } from "./i18n-plugin";
 
-/** The released files, by path under skills/livediagrams/. */
+/** The released files, by path under skills/livediagrams-full/. */
 export const RELEASED = {
   template: "scripts/lib/viewer-template.html",
   icons: "scripts/lib/icons.json",

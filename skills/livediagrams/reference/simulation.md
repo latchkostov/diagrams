@@ -119,8 +119,7 @@ Times are milliseconds from the start, and rates and counts are real messages.
 - `setup` (optional) applies settings before the start, for example
   `{ "status": { "payments": "paused" }, "props": { "payments": { "replicas": 2 } } }`.
 - `scale` (optional) sets how many real messages one animated dot stands for. Keep the animation under about 60
-  dots a second: for 2,000 orders a second, use `"scale": 50`. `validate.mjs` suggests a value when one is
-  needed.
+  dots a second: for 2,000 orders a second, use `"scale": 50`. Choose a scale that keeps traffic within the limits.
 - `durationMs` (optional) stops the run. By default it stops once the traffic and timeline are done and the
   system has drained.
 

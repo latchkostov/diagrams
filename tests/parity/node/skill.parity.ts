@@ -16,7 +16,7 @@ import { fingerprint } from "../lib/hash";
 import { stencilsDoc } from "../../../scripts/skill-gen";
 import { normalizeScriptOutput } from "../lib/scriptOutput";
 
-const SKILL = join(ROOT, "skills/livediagrams");
+const SKILL = join(ROOT, "skills/livediagrams-full");
 // Frozen inputs for the existing aggregate outputs, independent of later showcase additions. Retired examples left
 // the cohort with their files (docs/EXAMPLES.md); their A1 input lives on in the corpus as a1-image-workers.
 const ORIGINAL_EXAMPLES = [

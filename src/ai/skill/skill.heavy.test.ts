@@ -1,8 +1,9 @@
+import { generateLiteFiles, LITE_DIR } from "../../../scripts/skill-lite";
 import { planningP2Fixture } from "../../lab/planningP2Fixture";
-// The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
+// The agent skill (skills/livediagrams-full/): its generated files are current, its scripts agree with the app
 // (layout, share-link encoding, what the app will open, the HTML export's injection), its released viewer is
 // self-consistent, and validate.mjs explains what's wrong.
-import { assembleViewer, readViewer, readIcons } from "../../../skills/livediagrams/scripts/lib/viewer.mjs";
+import { assembleViewer, readViewer, readIcons } from "../../../skills/livediagrams-full/scripts/lib/viewer.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
@@ -116,6 +117,7 @@ describe("generated skill files", () => {
         .map(({ name }) => `${SKILL_DIR}/${name}`),
       ...Object.keys({ ...selfHostSamples(), ...hostingTemplates() }).map((name) => `deploy/self-host/${name}`),
       "vercel.json",
+      ...Object.keys(generateLiteFiles(root)).map((name) => `${LITE_DIR}/${name}`),
     ];
     expect([...generated.files, ...generated.regions].sort(), "sync must cover every committed output").toEqual(
       all.sort(),
@@ -138,7 +140,7 @@ describe("generated skill files", () => {
     const text = readFileSync(path.join(skill, "SKILL.md"), "utf8");
     const front = /^---\n([\s\S]*?)\n---\n/.exec(text.replace(/\r\n/g, "\n"))?.[1] ?? "";
     const field = (k: string) => new RegExp(`^${k}: (.+)$`, "m").exec(front)?.[1] ?? "";
-    expect(field("name")).toBe(path.basename(skill));
+    expect(field("name")).toBe("livediagrams");
     expect(field("name")).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     expect(field("description").length).toBeGreaterThan(50);
     expect(field("description").length).toBeLessThanOrEqual(1024);

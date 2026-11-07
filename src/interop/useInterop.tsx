@@ -59,6 +59,7 @@ import {
 } from "./formats";
 import type { ImportGraph, ImportReport } from "./infra/graph";
 import { clearUrlFragment, decodeShare, sharePayloadFromHash, sharePayloadFromInput } from "./share";
+import { wasLaidOutOnOpen } from "./openNative";
 import {
   BadEncryptedLinkError,
   encryptedPayloadFromHash,
@@ -844,7 +845,11 @@ export function useInterop({
         const d = await decodeShare(payload);
         setDialog(null);
         openShared(d);
-        toast.info(t("fileToast.openedTheSharedDiagramValue0ItsKept", { value0: d.title }));
+        toast.info(
+          wasLaidOutOnOpen(d)
+            ? t("fileToast.laidOutOnOpen")
+            : t("fileToast.openedTheSharedDiagramValue0ItsKept", { value0: d.title }),
+        );
       } catch (err) {
         toast.dismiss(busy);
         toast.error(message(err));
@@ -898,7 +903,11 @@ export function useInterop({
       // Opened: take the ciphertext out of the address bar and this tab's history entry.
       if (encryptedPayloadFromHash(window.location.hash) === token) clearUrlFragment();
       setDialog(null);
-      toast.info(t("fileToast.openedTheSharedDiagramValue0ItsKept", { value0: d.title }));
+      toast.info(
+        wasLaidOutOnOpen(d)
+          ? t("fileToast.laidOutOnOpen")
+          : t("fileToast.openedTheSharedDiagramValue0ItsKept", { value0: d.title }),
+      );
     },
     [openShared],
   );

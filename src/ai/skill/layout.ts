@@ -1,5 +1,5 @@
-// The agent skill's layout (skills/livediagrams/scripts/layout.mjs), bundled with the app's own code into
-// skills/livediagrams/scripts/lib/app.mjs by `pnpm schemas`. A diagram an agent writes without coordinates
+// The agent skill's layout (skills/livediagrams-full/scripts/layout.mjs), bundled with the app's own code into
+// skills/livediagrams-full/scripts/lib/app.mjs by `pnpm schemas`. A diagram an agent writes without coordinates
 // is laid out by the same code as a pasted file in the app (fileToDiagram in src/ai/ui/apply.ts); both keep
 // boundary membership as written. Unlike a paste, any node without x/y lays out every node (an agent writes
 // whole diagrams). Pure and dependency-free: it must run under plain Node.

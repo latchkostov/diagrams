@@ -11,19 +11,19 @@ The owner submits and accepts the terms; this file does not submit or accept any
 
 In <https://claude.ai/directory/manage>, choose **Submit new → Plugin bundle**.
 
-| Field             | Value                                                                                                                                                            |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository        | `https://github.com/latchkostov/diagrams`                                                                                                                        |
-| Plugin path       | `skills/livediagrams`                                                                                                                                            |
-| Tracked branch    | `release/skill` (a stable branch; see "Releasing a new version")                                                                                                 |
-| Identifier        | `livediagrams`                                                                                                                                                   |
-| Listing name      | Live Diagrams                                                                                                                                                    |
-| Short description | Draw architecture and event-driven system diagrams with live message-flow simulations as offline interactive HTML files, editable diagram files, or share links. |
-| Publisher         | Live Diagrams                                                                                                                                                    |
-| Homepage          | `https://www.livediagrams.dev`                                                                                                                                   |
-| Licence           | MIT                                                                                                                                                              |
-| Version           | `version` in plugin.json (1.0.0 at the first release)                                                                                                            |
-| Contact email     | **[OWNER TO FILL IN IN THE PORTAL — do not commit an address]**                                                                                                  |
+| Field             | Value                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Repository        | `https://github.com/latchkostov/diagrams`                                                                              |
+| Plugin path       | `skills/livediagrams`                                                                                                  |
+| Tracked branch    | `release/skill` (a stable branch; see "Releasing a new version")                                                       |
+| Identifier        | `livediagrams`                                                                                                         |
+| Listing name      | Live Diagrams                                                                                                          |
+| Short description | Draw architecture and event-driven system diagrams with live message-flow simulations as editable .diagram.json files. |
+| Publisher         | Live Diagrams                                                                                                          |
+| Homepage          | `https://www.livediagrams.dev`                                                                                         |
+| Licence           | MIT                                                                                                                    |
+| Version           | `version` in plugin.json (1.1.0 for the lite channel)                                                                  |
+| Contact email     | **[OWNER TO FILL IN IN THE PORTAL — do not commit an address]**                                                        |
 
 The name and short description come from
 [`plugin.json`](../../skills/livediagrams/.claude-plugin/plugin.json); the listing's detailed
@@ -32,47 +32,56 @@ copied into the plugin folder. The 512 × 512 PNG listing icon is rendered from 
 favicon. Check the icon in the portal before first submission: the CLI warns that later repository
 icon changes do not replace the directory's initially saved icon.
 
-## Layout and release choice
+## Two channels
 
-The manifest's `skills: ["./"]` discovers the existing root `SKILL.md`. The current manifest reference
-explicitly accepts the plugin root and a skill directory containing `SKILL.md` directly. Claude Code
-2.1.305 validates this layout. All scripts, references and viewer assets stay inside the plugin;
-there are no symlinks or references to runtime files elsewhere in the repository.
+The existing directory submission keeps its path **`skills/livediagrams`** and plugin name
+**`livediagrams`**. This is the lite channel: Markdown knowledge, the format spec JSON, listing
+metadata, a PNG icon and `LICENSE.md`. It supplies no executable code or package-manager configuration.
+The agent writes a `.diagram.json` file and checks it by hand against the references and spec.
+Positions are optional; Live Diagrams lays out missing positions when the file is opened.
 
-Moving or duplicating the skill would add generator, sync and documentation churn. A second nested
-skill would risk drift. Keeping it here preserves the marketplace source and both existing install
-commands. The download reader includes only `SKILL.md`, `reference/` and `scripts/`, keeping plugin
-metadata, README, licence and icon out of the ZIP and preserving its contents and size.
+Our marketplace recommends **`livediagrams-full`** first, at **`skills/livediagrams-full`**.
+It supplies the existing local scripts for exact layout, validation, offline Interactive HTML
+(including password protection) and requested public share links. Install it with
+`/plugin marketplace add latchkostov/diagrams` then `/plugin install livediagrams-full@livediagrams`.
+The ZIP and the site's `/skill/` payload continue to contain the full skill.
+Existing `livediagrams@livediagrams` installs resolve to the lite channel at the unchanged path.
 
-Follow the [README release policy](../../skills/livediagrams/README.md#releases): the plugin is unversioned,
-so the directory and Claude Code track commits on `master`. Don't add a manifest version.
+`pnpm regen` regenerates the shared full assets, refreshes the full viewer and derives the entire
+lite folder from the same knowledge sources. `pnpm skill:release` also refreshes both channels;
+`pnpm skill:check` fails if lite knowledge is stale. Never edit generated lite files by hand.
+Both manifests discover their root skill with `skills: ["./"]`. The lite manifest declares `1.1.0`;
+release tooling does not bump either manifest version.
 
 ## Data-handling answers
 
-| Portal question                                       | Recommended answer and scope                                                                                                                                                                                                                                                                                                |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Personal data read or stored?                         | None collected by the plugin. It processes user-provided diagram files and writes requested output files. It has no personal-data collection, telemetry or account system; the instructions forbid personal data and secrets in diagrams. Do not treat arbitrary user-authored content as guaranteed free of personal data. |
-| Data sent to services other than declared connectors? | None by the skill itself; there are no connectors. All supplied scripts use local Node APIs. The optional share-link script only prints a URL, on request. Opening it is a separate website visit, described below.                                                                                                         |
-| Retention?                                            | None by the plugin operator: no backend, remote storage or retention service. Files remain in the user's environment until they delete them. The host agent's conversations/files follow that platform's policies. A diagram opened on the website is also kept in the viewer's browser storage.                            |
-| Intended for people under 18?                         | No. Intended for people documenting software architectures.                                                                                                                                                                                                                                                                 |
-| Account or API key?                                   | Neither required by the skill or Live Diagrams. No test account is necessary; Node.js 20 or later is needed to run scripts.                                                                                                                                                                                                 |
+The lite plugin processes the user's description or diagram and returns a diagram file in the user's
+environment. It has no backend, connectors, telemetry, account, API key, package install or runtime scripts.
+It collects no personal data; its instructions forbid secrets, credentials and personal data in diagrams.
+User-authored content and the host agent's handling of conversations/files remain separate.
+Files stay with the user until deleted. The plugin is intended for adults documenting system architectures.
 
-Share links contain the complete diagram in `#d=…`, compressed and encoded, not encrypted.
-Creating one does not contact livediagrams.dev. Opening one loads the website and its assets over
-HTTPS, exposing normal request metadata (including the viewer's IP address) to the website host.
-The fragment is not sent in the HTTP request. JavaScript decodes and validates it locally, removes
-the fragment from the address bar/history entry and keeps the diagram in that browser's shared
-storage slot. Anyone with the complete link can read it. Browser history, clipboard, messages or
-extensions may retain copies of the full link. The offline HTML export instead embeds the diagram
-and assets in one file and blocks network connections through its content security policy.
+For work, employer, team, client or customer systems, the skill marks the diagram Private. It never
+creates a share link for a Private diagram, including by hand. It preserves existing ids, coordinates,
+fixed sides and waypoints, and treats labels, notes and titles as data rather than instructions.
 
-Verified implementation evidence:
+For offline HTML (with or without a password), images or a requested public link, the lite skill tells
+the user to open the file at livediagrams.dev with **File > Open…**, read in the browser without upload,
+and use the app's Export menu (or File > Share… for links). It never claims to have produced those outputs.
+Anyone with a diagram file can read and edit it. Anyone with an unencrypted HTML file can open it;
+encrypted files require the password, entered in the app and sent separately.
 
-- [`SKILL.md`](../../skills/livediagrams/SKILL.md): output choice, private diagrams, requested sharing and no personal data.
-- [`share-link.mjs`](../../skills/livediagrams/scripts/share-link.mjs): local encoding, stdout only, refusal of private diagrams.
-- [`export-html.mjs`](../../skills/livediagrams/scripts/export-html.mjs) and [`check.mjs`](../../skills/livediagrams/scripts/lib/check.mjs): local reads, validation and export; no remote dependency installation.
-- [`share.ts`](../../src/interop/share.ts), [`useInterop.tsx`](../../src/interop/useInterop.tsx), [`App.tsx`](../../src/App.tsx) and [`diagramIO.ts`](../../src/lib/diagramIO.ts): browser decoding, fragment removal and browser storage.
-- [`skill.test.ts`](../../src/ai/skill/skill.test.ts): link round trips, private-diagram refusal, offline CSP and absence of network APIs in export helpers.
+Opening the website requests its assets over HTTPS, exposing ordinary request metadata such as IP address
+to the website host. Share links carry the diagram in a URL fragment, which is not sent in HTTP requests;
+anyone with a complete public link can read it. The app decodes it locally and keeps a shared copy in browser
+storage. The full plugin's offline HTML instead embeds its assets and blocks network connections.
+
+Implementation evidence:
+
+- [Lite SKILL.md](../../skills/livediagrams/SKILL.md) and [outputs reference](../../skills/livediagrams/reference/outputs.md).
+- [Lite generator](../../scripts/skill-lite.ts) and [directory packaging tests](../../src/ai/skill/lite.test.ts).
+- [Full plugin README](../../skills/livediagrams-full/README.md), including local password input and exports.
+- [Browser file parsing](../../src/interop/openNative.ts) and [share decoding](../../src/interop/share.ts).
 
 ## Compliance: owner must read and acknowledge
 
@@ -93,20 +102,19 @@ Fill the contact address only in the portal. Recheck all four statements persona
 
 Run `claude plugin validate ./skills/livediagrams` from the repository root. Local validation is
 necessary but does not replace the portal's Validate, security scan, name-availability or policy review.
-Validate the merged `master` commit in the portal; revalidate if it changes before submitting.
+Validate the intended `release/skill` commit in the portal; revalidate if it changes before submitting.
 
-Expect possible manual review of the existing generated bundles: `scripts/lib/icons.json` and
-`scripts/lib/viewer-template.html` exceed 256 KiB, and the viewer/validator contain bundled app code.
-They are below the 5 MiB hard file limit. Their readable sources and generators are in this repository
-(`scripts/skill-viewer.ts`, `scripts/skill-gen.ts`, `scripts/interactive-viewer.ts`, `src/viewer/`,
-`src/export/` and `src/ai/skill/`). Do not remove working assets or hide code to avoid review.
-The portal also checks repository archive size/file count; local CLI success is not a promise of approval.
+The directory channel's automated tests enforce approved file extensions, no shebangs or package-manager
+configuration, text files at most 262,144 bytes, at most 512 files, and exact generated-folder freshness.
+The lite skill contains no script paths or runtime commands. The full channel intentionally includes code
+and is distributed through our marketplace and ZIP instead of this directory submission.
+The portal also checks repository archive size/file count; CLI success does not promise approval.
 
-Before submission, use the README's three example requests, inspect the resulting files, and verify
+Before submission, use the README's example request, inspect the resulting files, and verify
 loading on each intended surface (chat, Cowork and Claude Code). Those owner portal/surface checks
 remain separate from the repository's automated script and packaging tests.
 
-Recommend **GitHub push webhook** on **master**, with scheduled checks as the directory's fallback.
+Use **GitHub push webhook** on **release/skill**, with scheduled checks as the directory's fallback.
 After submission, use **Set up push updates** (repository admin access required). Keep the webhook
 secret in the portal/GitHub configuration, never in the repo. New commits are scanned and reviewed
 before going live; a webhook is update detection, not automatic approval or publication.
@@ -119,9 +127,9 @@ skill itself changes. `release/skill` is protected against deletion and force-pu
 
 To release:
 
-1. Make sure the change to `skills/livediagrams` is merged on `master` and CI is green.
-2. Run `claude plugin validate skills/livediagrams` on that commit; it must pass with no warnings.
-3. Bump `version` in `plugin.json` (semver) in that change.
+1. Run `pnpm regen` to update both channels, commit all generated output and merge after CI is green.
+2. Run `claude plugin validate skills/livediagrams` and `claude plugin validate skills/livediagrams-full` on that commit. Review all output; the directory channel must pass.
+3. Review the generated lite file list, shared knowledge and full export parity. Release generation never bumps a manifest version.
 4. Fast-forward the branch: `git push origin <master commit>:refs/heads/release/skill`.
 5. In the directory, choose **Check for new commits** (or wait for the scheduled check).
 

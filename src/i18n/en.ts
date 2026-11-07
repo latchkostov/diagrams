@@ -726,6 +726,7 @@ const en = {
   "fileDialog.alwaysPrivate": "Always private",
   "fileDialog.private": "Private",
   "fileDialog.pngOrSvg": "PNG or SVG",
+  "fileToast.laidOutOnOpen": "The diagram was laid out on open.",
   "fileToast.imported":
     "Imported “{title}”{format, select, native {} drawio { from draw.io} other { from Mermaid}}.{warning, select, none {} other { {warning}}}{more, plural, =0 {} one { (+# more)} other { (+# more)}}",
   "fileToast.files": "{count, plural, one {# file} other {# files}}",

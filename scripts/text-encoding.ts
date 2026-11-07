@@ -19,6 +19,7 @@ export function checkRepositoryTextEncoding(root: string): void {
     }
   };
   check(".claude-plugin/marketplace.json");
+  directory("skills/livediagrams-full", true);
   directory("skills/livediagrams", true);
   for (const stream of ["release-notes", "design-review", "backlog"]) directory(`docs/${stream}`, false);
   for (const history of ["RELEASE-NOTES", "DESIGN-REVIEW"]) check(`docs/${history}-HISTORY.md`);

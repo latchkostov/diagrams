@@ -1,6 +1,6 @@
 # Outputs: what to hand back
 
-Start with a validated, laid-out `<name>.diagram.json`. Ask which output the user wants unless
+Start with a hand-checked `<name>.diagram.json`. Ask which output the user wants unless
 already specified; offer these in order:
 
 | Output                  | Who can open it                   | Internet        | Editable |
@@ -20,88 +20,25 @@ export drops fixed sides and routes without a warning, including from its metada
 For work, employer, team, client or customer systems, or internal names, hosts, accounts or clusters,
 recommend HTML or a diagram file. Set `"private": true`: the app keeps it on the device, with no
 share links, cloud saves or AI tools. Offer HTML encryption because files get forwarded.
-Private diagrams never get share links, including hand-built ones; `share-link.mjs` refuses them.
+Private diagrams never get share links, including hand-built ones.
 Files remain the user's choice.
 
 For public or personal diagrams, any output is fine. Several outputs are fine too: a diagram file
-for editing and HTML for the team. If nobody can answer, make HTML and explain the alternatives.
+for editing and HTML for the team. If nobody can answer, return the diagram file and explain the alternatives.
 
 A link with a password is made **in the app only**: open the diagram and use
 **File > Share… > Link with password…**. Anyone with both can open it; a Private diagram gets no link.
 The app lists public links and embeds last.
 
-## Interactive HTML file
+## Making other outputs in the app
 
-```sh
-node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password-file <path> | --password <value>] [--force]
-```
+This plugin hands back the diagram file. For offline Interactive HTML (with or without a password),
+an image or a requested share link, open it at [livediagrams.dev](https://www.livediagrams.dev) with
+**File > Open…** or drag it onto the page. The browser reads it; nothing is uploaded.
+Use the app's **Export** menu for HTML and images, or **File > Share…** for links.
+Never claim the plugin produced HTML or a link. Never fake an image or pass off hand-drawn SVG as an export.
 
-This is the app's **File > Export as > Interactive HTML…** output: one read-only file with pan,
-zoom, fit and simulation playback, selection, pause, speed and trace. It bundles the diagram,
-viewer, simulations, used icons and fonts under strict CSP. It makes **no network requests**,
-works offline/from disk and stores nothing in the browser. The script also works offline.
-`scripts/lib/` contains the generated viewer and icons; don't read these large files.
-
-- Validation runs first; the script refuses a diagram the viewer cannot open.
-- `--out`: an HTML file or a folder; default `<title>.html` beside the diagram. Taken default names
-  become `<title> (2).html`, with a stderr notice. An explicit existing file requires `--force`.
-- `--theme`: light (default) or dark. `--banner`: a top line; use `"Confidential: internal use only"`
-  for work. `--title`: overrides the diagram title for the page and filename.
-- `--sim <id>`: initially selected simulation (default first). `--no-autoplay`: open static.
-  Every simulation remains included.
-
-Give the path and say anyone with the file can open it. Recommend sharing where the team already
-controls access: SharePoint, Confluence, an intranet or private repository. Any modern browser
-can open the file from disk.
-
-### A password on the file
-
-`--password-file <path>` or `--password <value>` uses the app's AES-256-GCM encryption with PBKDF2-SHA-256 at 600,000 iterations.
-Nothing, including the title, is readable without the password. The filename is
-`Diagram (password protected) <random>.html` to avoid collisions. The file asks for the password,
-reports wrong passwords and decrypts offline in the browser without network access.
-
-Ask which route the user prefers. Recommend `--password-file <path>`: the user creates a local
-UTF-8 text file and gives its path. The script reads only that path, removes one final line ending
-(if present) and preserves all other characters. Do not read or echo the file yourself.
-
-```sh
-node <skill folder>/scripts/export-html.mjs <file> --password-file <user-provided-path>
-```
-
-The fallback `--password <value>` puts the value in the conversation, shell history and process
-list; explain this before the user chooses it. Never invent a password, store one in plugin
-configuration, or reuse one. There is no environment lookup or hidden terminal prompt: the same
-non-interactive script serves the plugin and standalone ZIP. The script never saves the password.
-
-Require at least 8 characters; several random words are good. Weak passwords produce a warning.
-Tell the user to send the password separately. It cannot be recovered; if lost, export again.
-Anyone with the file and password can open it.
-
-## Diagram file
-
-Give the `.diagram.json` path. It preserves simulations and remains editable. Open at
-[livediagrams.dev](https://www.livediagrams.dev) using **File > Open…** or drop it onto the page.
-The browser reads it; nothing is uploaded.
-
-## Image
-
-No script renders images. Never pass off hand-drawn SVG or ASCII art as an export. Explain:
-
-1. Open the diagram at [livediagrams.dev](https://www.livediagrams.dev) with **File > Open…**.
-2. Use **File > Export PNG** for a 2× PNG, or **File > Export as > Image…** for PNG/SVG, sizing
-   and transparency.
-
-A browser tool can screenshot an Interactive HTML file from disk; label that output a screenshot.
-
-## Share link
-
-```sh
-node scripts/share-link.mjs <file> [--base <url>]
-```
-
-It prints `https://www.livediagrams.dev/#d=…`. The diagram is in the URL fragment, which browsers
-never send to servers. Nothing is uploaded, but **anyone with the link can open it**; chat history,
-email and previews retain it. Say so, and give a Markdown link titled with the diagram's title.
-If the script warns about exceeding 8,000 characters, offer the diagram file: chat apps may
-truncate links. Invalid and Private diagrams are refused.
+Anyone with an unencrypted file can open it. For company content, offer **Require a password** when
+exporting HTML in the app: anyone with the file and password can open it. Ask the user to enter their
+password in the app, never invent, save or reuse a plugin password. Send the password separately;
+it cannot be recovered. Public links are for requested public content only; anyone with the link can open it.

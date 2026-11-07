@@ -26,7 +26,10 @@ import { parsePayload, unlockPayload, type LockedFile } from "./viewer/payload";
 // PBKDF2 at 600,000 iterations takes a noticeable fraction of a second per derivation, by design.
 const SLOW = { timeout: 60_000 };
 
-const TEMPLATE = readFileSync(path.join(process.cwd(), "skills/livediagrams/scripts/lib/viewer-template.html"), "utf8");
+const TEMPLATE = readFileSync(
+  path.join(process.cwd(), "skills/livediagrams-full/scripts/lib/viewer-template.html"),
+  "utf8",
+);
 const SVGS = { kafka: "<svg><path d='M1 1'/></svg>", "generic-box": "<svg><rect/></svg>" };
 
 const PASSWORD = "quartz meadow tangle 81";
