@@ -153,9 +153,8 @@ export function CallWaitFields({
           }
         >
           {(choices.length > 0 || caller?.onMiss) && (
-            <Field label={t("cache.when")} testId="inspector-unit-onMiss">
+            <Field label={t("cache.when")} testId="inspector-unit-onMiss" className="insp-field-wide">
               <select
-                className="cache-aside-when"
                 data-testid="inspector-field-onMiss"
                 aria-label={t("cache.when")}
                 aria-describedby={activeCondition ? "cache-aside-hint" : undefined}
