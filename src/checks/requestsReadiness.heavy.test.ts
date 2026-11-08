@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { waitingFixture } from "../lab/waitingFixture";
+import { waitingFixture, twoBottlenecks } from "../lab/waitingFixture";
 import type { DiagramFile } from "../model/types";
 import type { Finding } from "./types";
 import { onlyRules, runChecks, summarize } from "./run";
@@ -38,24 +38,6 @@ afterEach(() => {
 function exhausted(): DiagramFile {
   const d = waitingFixture();
   d.nodes[0].props!.ratePerSec = 100;
-  return d;
-}
-
-/** An unrelated worker at 200% beside the exhausted caller. */
-function twoBottlenecks(): DiagramFile {
-  const d = exhausted();
-  d.nodes.push(
-    { id: "jobs", stencil: "client.user", label: "Jobs", x: 0, y: 600, props: { ratePerSec: 20 } },
-    {
-      id: "worker",
-      stencil: "generic.service",
-      label: "Report worker",
-      x: 330,
-      y: 600,
-      props: { replicas: 1, concurrency: 1, latencyMs: 100, jitter: 0 },
-    },
-  );
-  d.edges.push({ id: "jobs-in", from: "jobs", to: "worker" });
   return d;
 }
 

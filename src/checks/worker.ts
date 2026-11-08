@@ -12,7 +12,7 @@ import { confirmedResilienceFix } from "../live/resilienceFixPlan";
 import { confirmedCacheFix } from "../live/cacheFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
 
-export interface CheckRequest {
+interface CheckWork {
   id: number;
   diagram: DiagramFile;
   /** Scenario sizing only (live playback): the same memoized planner the capacity check uses. */
@@ -21,9 +21,9 @@ export interface CheckRequest {
   requests?: true;
   /** Optional targeted output; old whole-diagram requests retain their original shape and behavior. */
   target?: string;
-  cancel?: true;
   threadFix?: ThreadFixRequest;
 }
+export type CheckRequest = CheckWork | { id: number; cancel: true };
 export type CheckResponse =
   | { id: number; threadFix: TroubleAction | undefined }
   | {
@@ -44,7 +44,7 @@ const scope = self as unknown as WorkerScope;
 const queuedTargets = new Map<number, ReturnType<typeof setTimeout>>();
 
 scope.onmessage = (e) => {
-  if (e.data.cancel) {
+  if ("cancel" in e.data) {
     clearTimeout(queuedTargets.get(e.data.id));
     queuedTargets.delete(e.data.id);
     return;
@@ -63,7 +63,7 @@ scope.onmessage = (e) => {
   execute(e.data);
 };
 
-function execute(request: CheckRequest) {
+function execute(request: CheckWork) {
   const e = { data: request };
   const { id, diagram, plan } = e.data;
   try {

@@ -11,8 +11,7 @@ import {
 import { type CapacityAnalysis } from "../sim/capacity";
 import { analyzePlanningCapacity, sourceTraffic } from "../sim/capacityPlanning";
 import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
-import { readingOrder } from "../canvas/keyboardNav";
-import { estimateCardSize } from "../canvas/nodes/size";
+import { buildReadingRank } from "./readingRank";
 import {
   messageTypeBudget,
   messageTypesAt,
@@ -101,12 +100,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     else incoming.set(e.to, [e]);
   }
   const deadLetter = deadLetterRoutes(topology);
-  const order = new Map(
-    readingOrder(
-      diagram.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, ...estimateCardSize(n.label, n.sublabel) })),
-      diagram.direction ?? "LR",
-    ).map((b, i) => [b.id, i]),
-  );
+  const rank = buildReadingRank(diagram, edges);
   const role = (id: string) => roles.get(id) ?? "none";
   let planning: Simulation | undefined;
   let capacity: CapacityAnalysis | undefined;
@@ -162,7 +156,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     },
     typesAt: (id) => analyzeMessages().arriving.get(id) ?? new Set(),
     // A connection reads where it starts.
-    rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
+    rank,
     name: (id) => nodes.get(id)?.label.trim() || id,
     freshKey(base) {
       const taken = (key: string) => nodes.has(key) || edges.has(key) || otherIds().has(key);

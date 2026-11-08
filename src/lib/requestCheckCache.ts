@@ -46,7 +46,7 @@ export function requestChecksNeeded(d: DiagramFile, rules?: readonly string[]): 
 const rawCache = new Map<string, RequestCheckResult>();
 /** The newest attempt started for each content still working: only it settles that content's entry. */
 const latest = new Map<string, number>();
-const readers = new WeakMap<Promise<Finding[]>, { controller: AbortController; count: number }>();
+const readers = new WeakMap<Promise<Finding[]>, { abandon(): void; count: number }>();
 
 function read(done: Promise<Finding[]>, signal?: AbortSignal): Promise<Finding[]> {
   const shared = readers.get(done);
@@ -64,7 +64,7 @@ function read(done: Promise<Finding[]>, signal?: AbortSignal): Promise<Finding[]
     const cancel = () => {
       if (!release()) return;
       reject(signal?.reason);
-      if (!shared.count) shared.controller.abort();
+      if (!shared.count) shared.abandon();
     };
     signal?.addEventListener("abort", cancel, { once: true });
     done.then(
@@ -122,7 +122,8 @@ export function awaitRequestChecks(d: DiagramFile, options: RequestCheckOptions 
     if (whole?.status === "ready" && !whole.findings.some((f) => f.omitted || f.unchecked))
       return Promise.resolve(whole.findings.filter((f) => f.elements.includes(options.target!)));
   }
-  const known = requestCheckResult(d, options.target);
+  const key = keyOf(d, options.target);
+  const known = entries().get(key);
   if (known?.status === "ready") return Promise.resolve(known.findings);
   if (known?.status === "pending") return read(known.done, options.signal);
   const controller = new AbortController();
@@ -143,8 +144,18 @@ export function awaitRequestChecks(d: DiagramFile, options: RequestCheckOptions 
       return requestFindings(ctx);
     },
     options.target,
+    controller.signal,
   );
-  readers.set(done, { controller, count: 0 });
+  readers.set(done, {
+    count: 0,
+    abandon() {
+      // StrictMode's replacement reader can arrive before this attempt settles. Detach first;
+      // settlement still belongs to this attempt, and cannot publish an abandoned result.
+      const current = entries().get(key);
+      if (current?.status === "pending" && current.done === done) entries().delete(key);
+      controller.abort();
+    },
+  });
   return read(done, options.signal);
 }
 
@@ -157,6 +168,7 @@ export function trackRequestChecks(
   d: DiagramFile,
   compute: () => Promise<Finding[]>,
   target?: string,
+  signal?: AbortSignal,
 ): Promise<Finding[]> {
   const key = keyOf(d, target);
   const known = entries().get(key);
@@ -174,12 +186,15 @@ export function trackRequestChecks(
       (findings) => {
         const current = entries().get(key);
         // The newest attempt publishes; an older one only fills a gap (nothing there, or a newer failure).
-        if (settle() || !current || current.status === "failed") rememberRequestChecks(d, findings, target);
+        const newest = settle();
+        if (!signal?.aborted && (newest || !current || current.status === "failed"))
+          rememberRequestChecks(d, findings, target);
         return findings;
       },
       (cause: unknown) => {
         const error = cause instanceof Error ? cause : new Error(String(cause));
-        if (settle() && pending && entries().get(key) === pending) store(key, { status: "failed", error });
+        if (settle() && !signal?.aborted && pending && entries().get(key) === pending)
+          store(key, { status: "failed", error });
         throw error;
       },
     );

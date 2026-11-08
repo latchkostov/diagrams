@@ -76,7 +76,7 @@ export async function requestChecksOffThread(
     const cancel = () => {
       pending.get(id)?.reject(new DOMException("Request checks cancelled", "AbortError"));
       pending.delete(id);
-      w.postMessage({ id, diagram, cancel: true } satisfies CheckRequest);
+      w.postMessage({ id, cancel: true } satisfies CheckRequest);
     };
     try {
       const response = await new Promise<CheckResponse>((resolve, reject) => {

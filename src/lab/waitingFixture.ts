@@ -33,3 +33,22 @@ export function waitingFixture(): DiagramFile {
     ],
   };
 }
+
+/** Independent capacity bottleneck beside a caller exhausted by waiting requests. */
+export function twoBottlenecks(): DiagramFile {
+  const d = waitingFixture();
+  d.nodes[0].props!.ratePerSec = 100;
+  d.nodes.push(
+    { id: "jobs", stencil: "client.user", label: "Jobs", x: 0, y: 600, props: { ratePerSec: 20 } },
+    {
+      id: "worker",
+      stencil: "generic.service",
+      label: "Report worker",
+      x: 330,
+      y: 600,
+      props: { replicas: 1, concurrency: 1, latencyMs: 100, jitter: 0 },
+    },
+  );
+  d.edges.push({ id: "jobs-in", from: "jobs", to: "worker" });
+  return d;
+}

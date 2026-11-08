@@ -43,7 +43,7 @@ describe("checks worker", () => {
       const diagram = waitingFixture();
       diagram.nodes[0].props!.ratePerSec = 1;
       scope.onmessage!({ data: { id: 1, diagram, requests: true, target: "call" } });
-      scope.onmessage!({ data: { id: 1, diagram, cancel: true } });
+      scope.onmessage!({ data: { id: 1, cancel: true } });
       scope.onmessage!({ data: { id: 2, diagram, requests: true, target: "call" } });
       await vi.runAllTimersAsync();
       expect(posted).toHaveLength(1);
@@ -83,7 +83,7 @@ describe("checks worker", () => {
       await rejected;
       expect(posted).toEqual([
         { id: expect.any(Number), diagram, requests: true, target: "call" },
-        { id: posted[0].id, diagram, cancel: true },
+        { id: posted[0].id, cancel: true },
       ]);
       deliver[0]({ id: posted[0].id, requestsOnly: [] });
       expect(posted).toHaveLength(2);

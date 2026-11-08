@@ -13,7 +13,7 @@ import { findingOrder, selectedFinding } from "../../canvas/checks/findingOrder"
 import type { DiagramFile } from "../../model/types";
 import { awaitRequestChecks, REQUEST_RULES } from "../../lib/requestCheckCache";
 import { findingOrder as orderFindings } from "../run";
-import { buildContext } from "../context";
+import { readingRank } from "../readingRank";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -368,6 +368,13 @@ export function TargetFindings({
   }>();
   const [attempt, retry] = useState(0);
   const [expanded, setExpanded] = useState<{ id: string; count: number }>({ id: "", count: 3 });
+  const self = useRef<HTMLDivElement>(null);
+  const focusNew = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (focusNew.current === null) return;
+    self.current?.querySelectorAll<HTMLElement>("[data-check-head]")[focusNew.current]?.focus();
+    focusNew.current = null;
+  });
   const incomplete = !!result?.omitted?.some((entry) => REQUEST_RULES.some((rule) => rule === entry.rule));
   useEffect(() => {
     if (!diagram || !incomplete || state.stale) return;
@@ -393,15 +400,12 @@ export function TargetFindings({
     ) ?? [];
   const findings = [...new Map([...listed, ...additional].map((f) => [f.id, f])).values()];
   const hasAdditional = additional.length > 0;
-  const rank = useMemo(
-    () => (diagram && hasAdditional ? buildContext(diagram).rank : undefined),
-    [diagram, hasAdditional],
-  );
+  const rank = useMemo(() => (diagram && hasAdditional ? readingRank(diagram) : undefined), [diagram, hasAdditional]);
   if (rank) findings.sort(orderFindings(rank));
   const partial = current?.findings?.some((f) => result?.ran.includes(f.rule) && (f.omitted || f.unchecked));
   const count = expanded.id === id ? expanded.count : 3;
   return (
-    <div className="insp-target-findings" data-testid="inspector-target-checks">
+    <div ref={self} className="insp-target-findings" data-testid="inspector-target-checks">
       {incomplete && !current?.findings && (
         <p className="insp-note" data-testid="inspector-target-checks-status">
           {current?.failed ? t("fileDialog.loadFailed") : t("common.loading")}
@@ -422,13 +426,18 @@ export function TargetFindings({
           {t("workspaceChecks.targetIncomplete")}
         </p>
       )}
-      {findings.length > 0 && <InspectorFindings findings={findings.slice(0, count)} host={host} state={state} />}
+      {(findings.length > 0 || partial) && (
+        <InspectorFindings findings={findings.slice(0, count)} host={host} state={state} />
+      )}
       {findings.length > count && (
         <button
           type="button"
           className="link-btn"
           data-testid="inspector-target-checks-more"
-          onClick={() => setExpanded({ id, count: count + 3 })}
+          onClick={() => {
+            focusNew.current = count;
+            setExpanded({ id, count: count + 3 });
+          }}
         >
           {t("planning.more")}
         </button>
