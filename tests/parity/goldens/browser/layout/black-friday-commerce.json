@@ -377,7 +377,7 @@
       "checkout-api--inventory": { "style": "transform: translate(-50%, -50%) translate(1764px, 1016px); --fe-w: 60.769999999999996px; --fe-h: 22px;", "text": "" },
       "checkout-api--risk": { "style": "transform: translate(-50%, -50%) translate(1758.5px, 1196px); --fe-w: 48.47px; --fe-h: 22px;", "text": "" },
       "checkout-api--payments": { "style": "transform: translate(-50%, -50%) translate(1750.25px, 1376px); --fe-w: 69.78px; --fe-h: 22px;", "text": "" },
-      "checkout-api--orders-db": { "style": "transform: translate(-50%, -50%) translate(2015.75px, 1256px); --fe-w: 99.08px; --fe-h: 22px;", "text": "" },
+      "checkout-api--orders-db": { "style": "transform: translate(-50%, -50%) translate(2015.75px, 1256px); --fe-w: 99.08px; --fe-h: 22px; translate: 453.466px -58.2815px;", "text": "Order + outbox" },
       "payments--stripe": { "style": "transform: translate(-50%, -50%) translate(2261px, 754px); --fe-w: 98.67999999999998px; --fe-h: 22px;", "text": "" },
       "orders-db--outbox-relay": { "style": "transform: translate(-50%, -50%) translate(2704px, 1256px); --fe-w: 42.7px; --fe-h: 22px; font-size: 12.223px; width: max-content; height: auto; line-height: 18px;", "text": "CDC" },
       "outbox-relay--orders": { "style": "transform: translate(-50%, -50%) translate(3131px, 1256px); --fe-w: 85.72px; --fe-h: 22px;", "text": "" },

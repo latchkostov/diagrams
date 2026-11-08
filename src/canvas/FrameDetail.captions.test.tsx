@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { FrameDetail } from "./FrameDetail";
 
+const scenario = vi.hoisted(() => ({ view: "focus" }));
+
 vi.mock("@xyflow/react", () => {
   const nodes = ["source", "target"].map((id, i) => ({
     id,
@@ -17,7 +19,7 @@ vi.mock("@xyflow/react", () => {
   const state = {
     nodes,
     nodeLookup: new Map(nodes.map((n) => [n.id, n])),
-    edges: [{ id: "flow", source: "source", target: "target" }],
+    edges: [{ id: "flow", source: "source", target: "target", selected: true }],
     transform: [0, 0, 0.75],
   };
   const store = {
@@ -35,7 +37,13 @@ vi.mock("./camera/useCameraCore", () => {
   const camera = {
     phase: "idle",
     interacting: false,
-    state: { view: "focus", mode: "edit", live: { focus: [] } },
+    state: {
+      get view() {
+        return scenario.view;
+      },
+      mode: "edit",
+      live: { focus: [] },
+    },
     subscribe: () => () => {},
   };
   return { useCameraController: () => camera };
@@ -62,7 +70,19 @@ vi.mock("./edges/useEdgeRoute", () => ({
     ]),
 }));
 
-it("keeps the text floor when Focus brings an off-screen caption onto a visible segment", async () => {
+it.each([
+  {
+    name: "keeps the text floor when Focus brings an off-screen caption onto a visible segment",
+    view: "focus",
+    rejected: false,
+  },
+  ...["overview", "custom", "focus"].map((view) => ({
+    name: `keeps a selected full caption when enlargement is rejected in ${view}`,
+    view,
+    rejected: true,
+  })),
+])("$name", async ({ view, rejected }) => {
+  scenario.view = view;
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
@@ -77,11 +97,14 @@ it("keeps the text floor when Focus brings an off-screen caption onto a visible 
   const host = document.createElement("div");
   Object.defineProperties(host, { clientWidth: { value: 1000 }, clientHeight: { value: 800 } });
   host.innerHTML =
-    '<div class="react-flow__viewport"><div class="react-flow__node react-flow__node-diagram" data-id="source"></div><div class="react-flow__node react-flow__node-diagram" data-id="target"></div><svg class="react-flow__edge" data-id="flow"><g class="fe"><path class="fe-path"/></g></svg><div class="fe-label" data-testid="edge-label-flow">A caption</div></div>';
+    '<div class="react-flow__viewport"><div class="react-flow__node react-flow__node-diagram" data-id="source"></div><div class="react-flow__node react-flow__node-diagram" data-id="target"></div><svg class="react-flow__edge" data-id="flow"><g class="fe"><path class="fe-path"/></g></svg><div class="fe-label is-full is-selected" data-testid="edge-label-flow">A caption</div></div>';
   const label = host.querySelector<HTMLElement>('[data-testid="edge-label-flow"]')!;
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
     if (this === host) return new DOMRect(0, 0, 1000, 800);
-    if (this === label) return new DOMRect(-200, -200, label.style.width ? 180 : 100, 22);
+    if (this === label)
+      return rejected
+        ? new DOMRect(300, 350, label.style.width ? 1200 : 100, 22)
+        : new DOMRect(-200, -200, label.style.width ? 180 : 100, 22);
     return new DOMRect(this.getAttribute("data-id") === "source" ? 100 : 600, 200, 100, 72);
   });
   const mount = document.createElement("div");
@@ -96,8 +119,17 @@ it("keeps the text floor when Focus brings an off-screen caption onto a visible 
       for (const run of frames.splice(0)) run(0);
     });
     expect(label.hasAttribute("data-detail-hidden")).toBe(false);
-    expect(label.style.translate).not.toBe("");
-    expect(parseFloat(getComputedStyle(label).fontSize) * 0.75).toBeGreaterThanOrEqual(10.5);
+    if (rejected) {
+      expect([label.style.fontSize, label.style.width, label.style.height, label.style.lineHeight]).toEqual([
+        "",
+        "",
+        "",
+        "",
+      ]);
+    } else {
+      expect(label.style.translate).not.toBe("");
+      expect(parseFloat(getComputedStyle(label).fontSize) * 0.75).toBeGreaterThanOrEqual(10.5);
+    }
   } finally {
     await act(() => root.unmount());
     vi.restoreAllMocks();

@@ -815,15 +815,30 @@ const FrameDecoration = memo(
               label.style.lineHeight = reading.baseline.lineHeight;
             });
           const path = lanes.get(edge.id);
-          const homes = cropped ? nearby(edge.id, b).homes : [];
+          // Enlargement is optional. If its ink cannot fit, try the original
+          // caption before dropping the connection's label and pointer target.
+          // Keep this lookup local to the same indexed candidate envelope.
+          const fallback = enlarged && !floorPlacement ? nearby(edge.id, b) : null;
+          const baselinePlacement = fallback
+            ? placeFrameLabel(
+                home(edge.id, b),
+                path ?? [],
+                inner,
+                [...fallback.blocks, ...fallback.solids],
+                undefined,
+                fallback.homes,
+              )
+            : null;
+          const homes = cropped ? (fallback ?? nearby(edge.id, b)).homes : [];
           const placed =
             floorPlacement ??
+            baselinePlacement ??
             (cropped && ends.pill && path?.length
               ? placeFrameLabel(home(edge.id, b), path, inner, blockers, undefined, homes)
               : b);
           const hidden =
             far ||
-            (!!enlarged && !floorPlacement && !label.hasAttribute("data-dependency")) ||
+            (!!enlarged && !floorPlacement && !baselinePlacement && !label.hasAttribute("data-dependency")) ||
             (cropped &&
               (!ends.pill ||
                 (pin && label.classList.contains("fe-chip")) ||
@@ -835,7 +850,7 @@ const FrameDecoration = memo(
             if (
               !hidden &&
               placed &&
-              (cropped || floorPlacement) &&
+              (cropped || floorPlacement || baselinePlacement) &&
               (Math.abs(placed.x - b.x) > 0.01 || Math.abs(placed.y - b.y) > 0.01)
             )
               label.style.translate = `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`;
