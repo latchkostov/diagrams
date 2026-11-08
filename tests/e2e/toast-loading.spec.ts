@@ -160,12 +160,8 @@ test("failed renderer retries inside Share", async ({ page, context }) => {
   await expect(page.getByTestId("toast")).toContainText("Share link copied.");
 });
 
-test("failed renderer retries inside Share in a short window, inside the panel and in reach", async ({
-  page,
-  context,
-}) => {
+test("failed renderer moves existing Share recovery inside when the window shrinks", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.setViewportSize({ width: 1280, height: 340 });
   const held = await holdChunk(page, TOASTER);
   held.fail = true;
   await gotoCanvas(page, SLUG);
@@ -178,9 +174,12 @@ test("failed renderer retries inside Share in a short window, inside the panel a
   await copy.click();
   const dialog = page.getByTestId("share-link-dialog");
   const recovery = dialog.getByTestId("toast-load-error");
+  await expect(recovery).toHaveAttribute("data-place", "below");
+  await page.setViewportSize({ width: 1280, height: 340 });
   await expect(recovery).toHaveAttribute("data-place", "inside");
-  // The dialog's own controls keep their place.
-  expect(await copy.boundingBox()).toEqual(before);
+  // Shrinking moves the centered dialog, but recovery keeps the Copy action usable.
+  expect(before).not.toBeNull();
+  await copy.click({ trial: true });
   const box = await recovery.boundingBox();
   if (!box) throw new Error("Expected recovery geometry");
   expect(box.y + box.height).toBeLessThanOrEqual(340);
@@ -194,7 +193,15 @@ test("failed renderer retries during image export", async ({ page }) => {
   const held = await holdChunk(page, TOASTER);
   held.fail = true;
   const image = await holdChunk(page, IMAGE);
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+  });
   await gotoCanvas(page, SLUG);
+  const file = page.waitForEvent("download");
+  await page.keyboard.press("ControlOrMeta+s");
+  await file;
+  // Recovery already exists before the blocking task starts.
+  await expect(page.getByTestId("toast-load-retry")).toBeVisible();
   await page.getByTestId("file-button").click();
   await page.getByTestId("export-png").click();
   await expect.poll(image.requested).toBe(true);
@@ -211,4 +218,27 @@ test("failed renderer retries during image export", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toHaveCount(0);
   image.release();
+});
+
+test("removing page recovery returns Retry focus to its valid page owner", async ({ page }) => {
+  const held = await holdChunk(page, TOASTER);
+  held.fail = true;
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+  });
+  await gotoCanvas(page, SLUG);
+  const download = page.waitForEvent("download");
+  await page.keyboard.press("ControlOrMeta+s");
+  await download;
+  const canvas = page.getByTestId("canvas-wrap");
+  const cursor = await canvas.evaluate((el) => getComputedStyle(el).cursor);
+  await canvas.focus();
+  const retry = page.getByTestId("toast-load-retry");
+  await retry.focus();
+  held.fail = false;
+  held.release();
+  await page.keyboard.press("Enter");
+  await expect(retry).toHaveCount(0);
+  await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveCSS("cursor", cursor);
 });

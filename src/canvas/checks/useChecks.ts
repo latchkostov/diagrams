@@ -120,6 +120,7 @@ export class ChecksStore implements EvidenceSink {
   /** What shows: nothing while checks are off (live view, presenting). */
   readonly get = (): ChecksState => (this.enabled ? this.state : EMPTY);
   readonly getHot = (): string | null => this.hot;
+  readonly getDiagram = () => this.checked.diagram;
 
   set(result: CheckResult | null, diagram?: DiagramFile) {
     const json = JSON.stringify(result);

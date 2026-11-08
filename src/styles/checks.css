@@ -627,3 +627,7 @@ div.check-row-head {
   outline: none;
   box-shadow: inset 0 0 0 1px var(--tag-line);
 }
+.insp-target-findings {
+  scroll-snap-align: start;
+  scroll-margin-block-start: 57px;
+}

@@ -413,6 +413,18 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
   });
 
   for (const contact of ["pointer", "focus", "press"] as const) {
+    it(`updates a waiting task's progress by ID during dialog ${contact}`, () => {
+      open();
+      const first = toast.success("Copied");
+      interaction.contact(contact, true, first);
+      const task = toast.busy("Working");
+      toast.progress(task, 0.25);
+      toast.progress(task, 0.75);
+      expect(interaction.layered[0].toast.id).toBe(first);
+      interaction.contact(contact, false, first);
+      expect(interaction.layered[0].toast).toMatchObject({ id: task, progress: 0.75 });
+    });
+
     it(`holds engaged feedback during ${contact}; the latest waits, then follows the release`, () => {
       open();
       const first = toast.success("First copy");

@@ -1,5 +1,5 @@
 import "../../styles/checks.css";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { Icon } from "../../components/Icon";
 import { RULES, summarize } from "../run";
 import type { CheckResult, Finding } from "../types";
@@ -10,6 +10,10 @@ import { presentRule } from "../presentation";
 import { t, useLocale } from "../../i18n";
 import { useFallbackOnUnmount, useSurvivingCheckFocus } from "./survivingFocus";
 import { findingOrder, selectedFinding } from "../../canvas/checks/findingOrder";
+import type { DiagramFile } from "../../model/types";
+import { awaitRequestChecks, REQUEST_RULES } from "../../lib/requestCheckCache";
+import { findingOrder as orderFindings } from "../run";
+import { readingRank } from "../readingRank";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -343,6 +347,105 @@ export function ChecksCard(p: ChecksCardProps) {
 }
 
 /** The selection's findings at the top of the inspector, with their fixes. */
+/** Targeted analysis stays in the downloaded Checks UI, outside the canvas's first view. */
+export function TargetFindings({
+  target,
+  findings: listed,
+  host,
+  state,
+}: {
+  target: { id: string; diagram?: DiagramFile; result: CheckResult | null };
+  findings: Finding[];
+  host: RowHost & { open(): void };
+  state: RowState;
+}) {
+  const { id, diagram, result } = target;
+  const [scoped, setScoped] = useState<{
+    id: string;
+    diagram: typeof diagram;
+    findings?: Finding[];
+    failed?: boolean;
+  }>();
+  const [attempt, retry] = useState(0);
+  const [expanded, setExpanded] = useState<{ id: string; count: number }>({ id: "", count: 3 });
+  const self = useRef<HTMLDivElement>(null);
+  const focusNew = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (focusNew.current === null) return;
+    self.current?.querySelectorAll<HTMLElement>("[data-check-head]")[focusNew.current]?.focus();
+    focusNew.current = null;
+  });
+  const incomplete = !!result?.omitted?.some((entry) => REQUEST_RULES.some((rule) => rule === entry.rule));
+  useEffect(() => {
+    if (!diagram || !incomplete || state.stale) return;
+    const controller = new AbortController();
+    void awaitRequestChecks(diagram, { target: id, signal: controller.signal })
+      .then((findings) => {
+        if (!controller.signal.aborted) setScoped({ id, diagram, findings });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setScoped({ id, diagram, failed: true });
+      });
+    return () => controller.abort();
+  }, [diagram, id, incomplete, state.stale, attempt]);
+  const current = scoped?.id === id && scoped.diagram === diagram ? scoped : undefined;
+  const additional =
+    current?.findings?.filter(
+      (f) =>
+        !f.omitted &&
+        !f.unchecked &&
+        f.elements.includes(id) &&
+        result?.ran.includes(f.rule) &&
+        !diagram?.checks?.ignore?.some((entry) => entry.rule === f.rule && entry.target === f.target),
+    ) ?? [];
+  const findings = [...new Map([...listed, ...additional].map((f) => [f.id, f])).values()];
+  const hasAdditional = additional.length > 0;
+  const rank = useMemo(() => (diagram && hasAdditional ? readingRank(diagram) : undefined), [diagram, hasAdditional]);
+  if (rank) findings.sort(orderFindings(rank));
+  const partial = current?.findings?.some((f) => result?.ran.includes(f.rule) && (f.omitted || f.unchecked));
+  const count = expanded.id === id ? expanded.count : 3;
+  return (
+    <div ref={self} className="insp-target-findings" data-testid="inspector-target-checks">
+      {incomplete && !current?.findings && (
+        <p className="insp-note" data-testid="inspector-target-checks-status">
+          {current?.failed ? t("fileDialog.loadFailed") : t("common.loading")}
+          {current?.failed && (
+            <button
+              type="button"
+              className="link-btn"
+              data-testid="inspector-target-checks-retry"
+              onClick={() => retry((n) => n + 1)}
+            >
+              {t("common.retry")}
+            </button>
+          )}
+        </p>
+      )}
+      {partial && (
+        <p className="insp-note" data-testid="inspector-target-checks-incomplete">
+          {t("workspaceChecks.targetIncomplete")}
+        </p>
+      )}
+      {(findings.length > 0 || partial) && (
+        <InspectorFindings findings={findings.slice(0, count)} host={host} state={state} />
+      )}
+      {findings.length > count && (
+        <button
+          type="button"
+          className="link-btn"
+          data-testid="inspector-target-checks-more"
+          onClick={() => {
+            focusNew.current = count;
+            setExpanded({ id, count: count + 3 });
+          }}
+        >
+          {t("planning.more")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function InspectorFindings({
   findings,
   host,

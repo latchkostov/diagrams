@@ -1,4 +1,11 @@
-## Remaining toast P2 follow-ups
+## Resolved in P2-C
+
+Both follow-ups below are fixed by `toastRuntime.ts` progress-by-ID updates and synchronous queued ownership
+in `toast.ts`. `toast.test.ts` and `toastIngress.test.ts` cover waiting progress, early disposal, closed
+dialogs and nested tasks; the regressions fail against the prior implementation. See the
+[release fragment](../release-notes/2026-11-07-p2-c-notify-checks.md). The remaining text records the original findings.
+
+## Original toast P2 follow-ups
 
 PR #340's resumed P1 fixes also address R-150fd71dce (shortcuts ownership ordering) and
 R-1a8d8cc09b (consumed opener actions). The last review round's fixes cover R-a044ba1c44 and

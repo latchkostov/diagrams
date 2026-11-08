@@ -70,6 +70,7 @@ export interface Finding {
   };
   /** Diagram diagnostics have no element actions or per-element ignore; absent means element scope. */
   scope?: "element" | "diagram";
+  incompleteReasons?: ("timeline-forwarding" | "work-budget")[];
   /** Internal count marker, moved to CheckResult.notChecked by runChecks. */
   unchecked?: number;
   resilienceFinding?: {

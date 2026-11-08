@@ -21,6 +21,7 @@ import { messageTypesFixture } from "../../lab/messageTypesFixture";
 import * as propagation from "../../model/messageTypes";
 import { presentFinding } from "../presentation";
 import { validateDiagram } from "../../interop/native";
+import { twoBottlenecks } from "../../lab/waitingFixture";
 
 it("rejects cached message-loop filter and rename actions after quarantine", async () => {
   const d = messageTypesFixture();
@@ -187,6 +188,19 @@ const queue = (): DiagramFile => ({
 });
 
 describe("applyFix", () => {
+  it("applies a capacity fix beside a blocked caller", async () => {
+    const d = twoBottlenecks();
+    registerRequestChecks(undefined);
+    const result = runChecks(d);
+    expect(result.findings.map((f) => f.id)).toContain("blocked-threads:caller");
+    const finding = result.findings.find((f) => f.id === "capacity:worker")!;
+    const { api } = editorFor(d);
+    const caller = api.getNode("caller");
+    expect(await applyFix(api, finding)).toBe(true);
+    expect(api.getNode("worker")?.props?.replicas).toBeGreaterThan(1);
+    expect(api.getNode("caller")).toEqual(caller);
+  });
+
   it("applies a cached fix once: a second click (or the inspector's button) adds no second queue", async () => {
     const d = queue();
     const finding = runChecks(d).findings.find((f) => f.id === "dead-letter:q")!;
@@ -273,8 +287,7 @@ describe("applyFix with an option", () => {
 });
 
 describe("check settings", () => {
-  // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
-  it.skip("rejects diagram and targetless ignores visibly and keeps saved checks valid on reload", () => {
+  it("rejects diagram and targetless ignores visibly and keeps saved checks valid on reload", () => {
     const d = messageTypesFixture();
     d.checks = { off: ["no-reader"] };
     d.simulations = [
@@ -286,7 +299,7 @@ describe("check settings", () => {
       },
     ];
     const diagnostic = runChecks(d, { rules: ["message-loop"] }).findings.find(
-      (f) => f.id === "message-loop:incomplete",
+      (f) => f.id === "diagram:message-loop:incomplete",
     )!;
     expect(diagnostic).toMatchObject({ scope: "diagram", target: "", elements: [] });
     const { api, hint } = editorFor(d);

@@ -285,6 +285,8 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
       "cache.coalesceHint",
       "cacheChecks.stampedeName",
       "resilienceChecks.backoffName",
+      "workspaceChecks.incompleteTitle",
+      "workspaceChecks.targetIncomplete",
     ] as const) {
       const id = ids.indexOf(key);
       expect(rewriteCalls(`${uses}${call("t", key)};`, numbered, fail)).toContain(

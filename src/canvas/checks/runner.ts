@@ -6,6 +6,7 @@ import { rememberPlans } from "../../lib/scenarioPlanner";
 import { loadOnce } from "../../lib/lazyLoad";
 import type { ThreadFixRequest } from "../../live/threadFixPlan";
 import type { TroubleAction } from "../../live/observedTrouble";
+import type { RequestCheckOptions } from "../../lib/requestCheckProvider";
 
 // Runs the checks for the canvas: in a worker (src/checks/worker.ts) so the main thread only copies the
 // diagram, or, where workers aren't available, by loading the engine (a lazy chunk) and running it here.
@@ -58,27 +59,46 @@ function getWorker(): Worker | null {
  * Provider for awaitRequestChecks: request findings only, in the checks worker (else here, the same function), with no
  * other rule run and scenario sizing only if a blocked caller's verified fix reads it.
  */
-export async function requestChecksOffThread(diagram: DiagramFile): Promise<Finding[]> {
+export async function requestChecksOffThread(
+  diagram: DiagramFile,
+  options: RequestCheckOptions = {},
+): Promise<Finding[]> {
+  options.signal?.throwIfAborted();
   const w = typeof Worker === "function" ? getWorker() : null;
   if (w) {
     const id = ++seq;
-    const request: CheckRequest = { id, diagram, requests: true };
+    const request: CheckRequest = {
+      id,
+      diagram,
+      requests: true,
+      ...(options.target === undefined ? {} : { target: options.target }),
+    };
+    const cancel = () => {
+      pending.get(id)?.reject(new DOMException("Request checks cancelled", "AbortError"));
+      pending.delete(id);
+      w.postMessage({ id, cancel: true } satisfies CheckRequest);
+    };
     try {
       const response = await new Promise<CheckResponse>((resolve, reject) => {
         pending.set(id, { resolve, reject });
+        options.signal?.addEventListener("abort", cancel, { once: true });
         w.postMessage(request);
       });
-      if ("requestsOnly" in response) {
+      if ("requestsOnly" in response && (options.target === undefined || response.target === options.target)) {
         if (response.plans) rememberPlans(diagram, response.plans);
         return response.requestsOnly;
       }
     } catch {
+      options.signal?.throwIfAborted();
       // Fall through: the worker failed; the main thread works them out.
+    } finally {
+      options.signal?.removeEventListener("abort", cancel);
     }
   }
   await import("../../sim/cache/cacheBridge").then((m) => m.ensureCacheRuntime(diagram));
   const { executeRequestChecks } = await import("../../checks/execute");
-  const { requests, plans } = executeRequestChecks(diagram);
+  options.signal?.throwIfAborted();
+  const { requests, plans } = executeRequestChecks(diagram, options.target);
   if (plans) rememberPlans(diagram, plans);
   return requests;
 }

@@ -1,11 +1,15 @@
 // @vitest-environment happy-dom
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ChecksCard, InspectorFindings } from "./ChecksCard";
+import { ChecksCard, InspectorFindings, TargetFindings } from "./ChecksCard";
+import { registerRequestChecks } from "../../lib/requestCheckCache";
+import { waitingFixture } from "../../lab/waitingFixture";
 import { FindingRow } from "./FindingRow";
 import type { RowHost } from "./FindingRow";
 import type { Finding } from "../types";
+import * as navigation from "../../canvas/keyboardNav";
+import * as context from "../context";
 
 const finding = (id: string, severity: Finding["severity"] = "warning"): Finding => ({
   id,
@@ -37,6 +41,159 @@ afterEach(async () => {
   await act(() => root.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  registerRequestChecks(undefined);
+  vi.restoreAllMocks();
+});
+
+it("recovers omitted findings through StrictMode's cancellation replay", async () => {
+  const diagram = waitingFixture();
+  const recovered = { ...finding("timeout"), rule: "call-timeout" as const, target: "call", elements: ["call"] };
+  registerRequestChecks(async (_d, options) => {
+    options?.signal?.throwIfAborted();
+    return [recovered];
+  });
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <TargetFindings
+          findings={[]}
+          host={host}
+          state={state}
+          target={{
+            id: "call",
+            diagram,
+            result: {
+              findings: [],
+              ignored: [],
+              off: [],
+              ran: ["call-timeout"],
+              omitted: [{ rule: "call-timeout", count: 1 }],
+            },
+          }}
+        />
+      </StrictMode>,
+    ),
+  );
+  expect(byTestId("inspector-check-row-timeout")).not.toBeNull();
+  expect(byTestId("inspector-target-checks-retry")).toBeNull();
+});
+
+it("reuses a light reading-order index across recovered selections", async () => {
+  const diagram = waitingFixture();
+  const order = vi.spyOn(navigation, "readingOrder");
+  const analysis = vi.spyOn(context, "buildContext");
+  registerRequestChecks(async (_d, options) => [
+    { ...finding(`timeout-${options?.target}`), rule: "call-timeout", elements: [options!.target!] },
+  ]);
+  const render = (id: string) =>
+    root.render(
+      <TargetFindings
+        findings={[]}
+        host={host}
+        state={state}
+        target={{
+          id,
+          diagram,
+          result: {
+            findings: [],
+            ignored: [],
+            off: [],
+            ran: ["call-timeout"],
+            omitted: [{ rule: "call-timeout", count: 1 }],
+          },
+        }}
+      />,
+    );
+  for (const id of ["call", "input", "output"]) {
+    await act(async () => render(id));
+    expect(byTestId(`inspector-check-row-timeout-${id}`)).not.toBeNull();
+  }
+  expect(analysis).not.toHaveBeenCalled();
+  expect(order).toHaveBeenCalledTimes(1);
+});
+
+it.each(["omitted", "unchecked"] as const)(
+  "keeps All checks reachable for marker-only target results (%s)",
+  async (marker) => {
+    const diagram = waitingFixture();
+    registerRequestChecks(async () => [{ ...finding("marker"), rule: "call-timeout", [marker]: 1 }]);
+    await act(async () =>
+      root.render(
+        <TargetFindings
+          findings={[]}
+          host={host}
+          state={state}
+          target={{
+            id: "call",
+            diagram,
+            result: {
+              findings: [],
+              ignored: [],
+              off: [],
+              ran: ["call-timeout"],
+              omitted: [{ rule: "call-timeout", count: 1 }],
+            },
+          }}
+        />,
+      ),
+    );
+    expect(byTestId("inspector-target-checks-incomplete")).not.toBeNull();
+    expect(byTestId("inspector-open-checks")).not.toBeNull();
+    host.open.mockClear();
+    await act(() => byTestId("inspector-open-checks").click());
+    expect(host.open).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each([4, 5, 6])("focuses the first new finding after More reveals the final page (%s findings)", async (size) => {
+  const findings = Array.from({ length: size }, (_, i) => finding(`finding-${i}`));
+  await act(() =>
+    root.render(<TargetFindings findings={findings} host={host} state={state} target={{ id: "call", result: null }} />),
+  );
+  const more = byTestId("inspector-target-checks-more");
+  more.focus();
+  expect(document.activeElement).toBe(more);
+  await act(() => more.click());
+  expect(byTestId("inspector-target-checks-more")).toBeNull();
+  expect(document.activeElement).toBe(byTestId("inspector-check-select-finding-3"));
+});
+
+it("keeps recovered target warnings first, partial analysis visible and Properties compact", async () => {
+  const diagram = waitingFixture();
+  const recovered = Array.from({ length: 6 }, (_, i) => ({
+    ...finding(`retry-${i}`),
+    rule: "retry-backoff" as const,
+    target: "call",
+    elements: ["call"],
+  }));
+  registerRequestChecks(async () => [...recovered, { ...finding("omitted"), rule: "call-timeout", omitted: 1 }]);
+  const listed = [{ ...finding("timeout", "suggestion"), rule: "call-timeout" as const }];
+  const result = {
+    findings: listed,
+    ignored: [],
+    off: [],
+    ran: ["retry-backoff", "call-timeout"] as const,
+    omitted: [{ rule: "call-timeout" as const, count: 1 }],
+  };
+  await act(async () =>
+    root.render(
+      <TargetFindings
+        findings={listed}
+        host={host}
+        state={state}
+        target={{ id: "call", diagram, result: { ...result, ran: [...result.ran] } }}
+      />,
+    ),
+  );
+  expect(byTestId("inspector-target-checks-incomplete")?.textContent).toContain("Some findings are not listed");
+  const rows = [...byTestId("inspector-findings").children];
+  expect(rows).toHaveLength(3);
+  expect(rows[0].getAttribute("data-testid")).toBe("inspector-check-row-retry-0");
+  expect(byTestId("inspector-check-row-timeout")).toBeNull();
+  await act(() => byTestId("inspector-target-checks-more").click());
+  expect(byTestId("inspector-findings").children).toHaveLength(6);
+  await act(() => byTestId("inspector-target-checks-more").click());
+  expect(byTestId("inspector-check-row-timeout")).not.toBeNull();
 });
 
 it("R-f37e3018ec keeps focus inside docked Checks when the last finding disappears", async () => {
@@ -60,10 +217,9 @@ it("R-f37e3018ec keeps focus inside docked Checks when the last finding disappea
   expect(byTestId("checks-card").tabIndex).toBe(-1);
 });
 
-// quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
-it.skip("keeps diagram diagnostics and guidance reachable without element actions", async () => {
+it("keeps diagram diagnostics and guidance reachable without element actions", async () => {
   const diagnostic: Finding = {
-    ...finding("message-loop:incomplete"),
+    ...finding("diagram:message-loop:incomplete"),
     rule: "message-loop",
     scope: "diagram",
     target: "",
@@ -73,14 +229,14 @@ it.skip("keeps diagram diagnostics and guidance reachable without element action
     rationale: "Review message paths before and after timeline forwarding edits manually.",
   };
   await act(() => root.render(<FindingRow finding={diagnostic} host={host} state={state} />));
-  expect(byTestId("check-row-message-loop:incomplete").textContent).toContain(diagnostic.message);
-  expect(byTestId("check-select-message-loop:incomplete")).toBeNull();
-  expect(byTestId("check-why-message-loop:incomplete").textContent).toContain(diagnostic.rationale);
-  await act(() => byTestId("check-more-message-loop:incomplete").click());
-  expect(byTestId("check-ignore-message-loop:incomplete")).toBeNull();
-  expect(byTestId("check-turn-off-message-loop:incomplete")).not.toBeNull();
-  await act(() => byTestId("check-about-message-loop:incomplete").click());
-  expect(byTestId("check-about-text-message-loop:incomplete").textContent).toContain("Messages loop back");
+  expect(byTestId("check-row-diagram:message-loop:incomplete").textContent).toContain(diagnostic.message);
+  expect(byTestId("check-select-diagram:message-loop:incomplete")).toBeNull();
+  expect(byTestId("check-why-diagram:message-loop:incomplete").textContent).toContain(diagnostic.rationale);
+  await act(() => byTestId("check-more-diagram:message-loop:incomplete").click());
+  expect(byTestId("check-ignore-diagram:message-loop:incomplete")).toBeNull();
+  expect(byTestId("check-turn-off-diagram:message-loop:incomplete")).not.toBeNull();
+  await act(() => byTestId("check-about-diagram:message-loop:incomplete").click());
+  expect(byTestId("check-about-text-diagram:message-loop:incomplete").textContent).toContain("Messages loop back");
 });
 
 it("keeps All checks outside the findings list and returns its focus when findings unmount", async () => {

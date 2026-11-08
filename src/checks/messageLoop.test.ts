@@ -61,7 +61,7 @@ function routedFixture(): Pick<DiagramFile, "format" | "planning" | "nodes" | "e
 }
 
 describe("message-loop", () => {
-  it("omits the quarantined diagnostic without hiding an incomplete-named element finding or reporting clean", () => {
+  it("keeps diagram and element findings distinct through evidence and ignores", () => {
     const d = messageTypesFixture();
     d.nodes.push({ id: "incomplete", stencil: "service.go", label: "Processor", x: 0, y: 0 });
     d.edges.push(
@@ -77,13 +77,16 @@ describe("message-loop", () => {
     const loop = result.findings.filter((f) => f.id === "message-loop:incomplete");
     expect(loop).toHaveLength(1);
     expect(loop[0]).toMatchObject({ target: "incomplete", elements: ["incomplete", "loop"] });
-    expect(result.omitted).toEqual([{ rule: "message-loop", count: 1 }]);
+    expect(result.findings.some((f) => f.id === "diagram:message-loop:incomplete")).toBe(true);
+    expect(result.omitted).toBeUndefined();
     expect(askedWithEvidence(result, check(d), ["message-loop"]).findings).toEqual(result.findings);
     for (const target of ["incomplete", "api"]) {
       d.checks = { ignore: [...(d.checks?.ignore ?? []), { rule: "message-loop", target }] };
     }
     const ignored = check(d);
-    expect(ignored.findings).toEqual([]);
+    expect(ignored.findings).toEqual([
+      expect.objectContaining({ id: "diagram:message-loop:incomplete", scope: "diagram" }),
+    ]);
     expect(ignored.ignored.find((f) => f.id === "message-loop:incomplete")).toEqual(loop[0]);
     expect(ignored.omitted).toEqual(result.omitted);
     expect(summarize(ignored)).not.toContain("Nothing to check");
@@ -116,14 +119,15 @@ describe("message-loop", () => {
       ];
       expect(messageTypesAt(d).incompleteReasons).toEqual(["timeline-forwarding"]);
       const result = check(d);
-      expect(result.findings).toEqual([]);
-      expect(result.omitted).toEqual([{ rule: "message-loop", count: 1 }]);
+      expect(result.findings).toEqual([
+        expect.objectContaining({ scope: "diagram", incompleteReasons: ["timeline-forwarding"] }),
+      ]);
+      expect(result.omitted).toBeUndefined();
       expect(summarize(result)).not.toContain("Nothing to check");
     },
   );
 
-  // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
-  it.skip.each([{ deny: true }, { share: 0 }, { filter: ["Never"] }, { dlq: true }])(
+  it.each([{ deny: true }, { share: 0 }, { filter: ["Never"] }, { dlq: true }])(
     "keeps timeline uncertainty on processor cycles even with gated links: %j",
     (props) => {
       const d = messageTypesFixture();
@@ -135,7 +139,7 @@ describe("message-loop", () => {
       ];
       expect(check(d).findings).toContainEqual(
         expect.objectContaining({
-          id: "message-loop:incomplete",
+          id: "diagram:message-loop:incomplete",
           scope: "diagram",
           target: "",
           elements: [],
@@ -162,8 +166,7 @@ describe("message-loop", () => {
     expect(opGrowth(fixture(64), fixture(64 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 
-  // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
-  it.skip("keeps diagram diagnostics visible even when an element ignore has the same id suffix", () => {
+  it("keeps diagram diagnostics visible even when an element ignore has the same id suffix", () => {
     const d = messageTypesFixture();
     d.nodes.push({ id: "incomplete", stencil: "service.go", label: "Unrelated", x: 0, y: 0 });
     d.simulations = [
@@ -173,7 +176,7 @@ describe("message-loop", () => {
     ];
     d.checks = { ignore: [{ rule: "message-loop", target: "incomplete" }] };
     const result = check(d);
-    expect(result.findings.find((f) => f.id === "message-loop:incomplete")).toMatchObject({
+    expect(result.findings.find((f) => f.id === "diagram:message-loop:incomplete")).toMatchObject({
       scope: "diagram",
       target: "",
       elements: [],

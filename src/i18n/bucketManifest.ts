@@ -5,7 +5,7 @@ export const catalogBuckets = {
   tutorials: ["tutorials"],
   tutorialTitles: [],
   stencils: ["stencil"],
-  simulation: ["autoscaling", "admission", "threads", "broker", "planning", "cache", "cacheChecks"],
+  simulation: ["autoscaling", "admission", "threads", "broker", "planning", "cache", "cacheChecks", "workspaceChecks"],
   exports: ["htmlExport", "imageDialog", "storageDialog", "share"],
   selection: ["selection"],
   ai: ["ai"],

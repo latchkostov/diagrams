@@ -47,8 +47,12 @@ export function executeChecks(diagram: DiagramFile): CheckRun {
  * Request findings only, for a reader waiting on them (an agent's check, a fix): no other rule runs, and scenario
  * sizing only if a blocked caller's verified fix reads it.
  */
-export function executeRequestChecks(diagram: DiagramFile): { requests: Finding[]; plans?: ScalingPlan[] } {
+export function executeRequestChecks(
+  diagram: DiagramFile,
+  target?: string,
+): { requests: Finding[]; plans?: ScalingPlan[] } {
   const { context, planned } = localContext(diagram);
+  context.requestTarget = target;
   const requests = requestFindings(context);
   const plans = planned();
   return { requests, ...(plans ? { plans } : {}) };

@@ -81,10 +81,11 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
   const cache = detected.reduce((n, f) => n + (f.rule.startsWith("cache-") ? (f.unchecked ?? 0) : 0), 0);
   const all = detected.filter((f) => !f.omitted && !f.unchecked);
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
+  const ignored = (f: Finding) => f.scope !== "diagram" && ignores.has(`${f.rule}:${f.target}`);
   all.sort(findingOrder(ctx.rank));
   return {
-    findings: all.filter((f) => !ignores.has(`${f.rule}:${f.target}`)),
-    ignored: all.filter((f) => ignores.has(`${f.rule}:${f.target}`)),
+    findings: all.filter((f) => !ignored(f)),
+    ignored: all.filter(ignored),
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
     ...(omitted.length ? { omitted } : {}),

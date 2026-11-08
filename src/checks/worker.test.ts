@@ -9,6 +9,88 @@ import { waitingFixture } from "../lab/waitingFixture";
 // A diagram with the capacity check turned off plans nothing: no saved simulation plays after an edit.
 
 describe("checks worker", () => {
+  it("falls back to scoped analysis if an older worker returns an unacknowledged whole-diagram reply", async () => {
+    vi.resetModules();
+    class OldWorker {
+      onmessage?: (event: { data: CheckResponse }) => void;
+      postMessage(request: CheckRequest) {
+        queueMicrotask(() => this.onmessage?.({ data: { id: request.id, requestsOnly: [] } }));
+      }
+    }
+    vi.stubGlobal("Worker", OldWorker);
+    try {
+      const { requestChecksOffThread } = await import("../canvas/checks/runner");
+      const diagram = waitingFixture();
+      diagram.nodes[0].props!.ratePerSec = 1;
+      expect(await requestChecksOffThread(diagram, { target: "call" })).toMatchObject([
+        { target: "call", fix: { requestLabel: { kind: "timeout" } } },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("accepts bounded target requests and cancels queued targets without changing legacy replies", async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    const posted: CheckResponse[] = [];
+    const scope = {
+      onmessage: null as null | ((e: { data: CheckRequest }) => void),
+      postMessage: (message: CheckResponse) => posted.push(message),
+    };
+    vi.stubGlobal("self", scope);
+    try {
+      await import("./worker");
+      const diagram = waitingFixture();
+      diagram.nodes[0].props!.ratePerSec = 1;
+      scope.onmessage!({ data: { id: 1, diagram, requests: true, target: "call" } });
+      scope.onmessage!({ data: { id: 1, cancel: true } });
+      scope.onmessage!({ data: { id: 2, diagram, requests: true, target: "call" } });
+      await vi.runAllTimersAsync();
+      expect(posted).toHaveLength(1);
+      expect(posted[0]).toMatchObject({
+        id: 2,
+        requestsOnly: [{ target: "call", rule: "call-timeout", fix: { requestLabel: { kind: "timeout" } } }],
+      });
+      scope.onmessage!({ data: { id: 3, diagram, requests: true } });
+      expect(posted[1]).toMatchObject({ id: 3, requestsOnly: expect.any(Array) });
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("drops a cancelled worker reply without falling back to main-thread analysis", async () => {
+    vi.resetModules();
+    const posted: CheckRequest[] = [];
+    const deliver: ((response: CheckResponse) => void)[] = [];
+    class ChecksWorker {
+      onmessage?: (event: { data: CheckResponse }) => void;
+      constructor() {
+        deliver.push((data) => this.onmessage?.({ data }));
+      }
+      postMessage(message: CheckRequest) {
+        posted.push(message);
+      }
+    }
+    vi.stubGlobal("Worker", ChecksWorker);
+    try {
+      const { requestChecksOffThread } = await import("../canvas/checks/runner");
+      const controller = new AbortController();
+      const diagram = waitingFixture();
+      const done = requestChecksOffThread(diagram, { target: "call", signal: controller.signal });
+      const rejected = expect(done).rejects.toMatchObject({ name: "AbortError" });
+      controller.abort();
+      await rejected;
+      expect(posted).toEqual([
+        { id: expect.any(Number), diagram, requests: true, target: "call" },
+        { id: posted[0].id, cancel: true },
+      ]);
+      deliver[0]({ id: posted[0].id, requestsOnly: [] });
+      expect(posted).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it.each([false, true])(
     "request-only findings and required plans reach the caller (worker fails: %s)",
     async (fails) => {

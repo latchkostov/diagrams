@@ -1,4 +1,5 @@
 import type { CheckRequest, CheckResponse } from "../../src/checks/worker";
+import type { DiagramFile } from "../../src/model/types";
 
 /** Serialized before navigation. Only unmeasured restoration may reuse an identical, real worker result. */
 export function installChecksMeasurement() {
@@ -18,7 +19,7 @@ export function installChecksMeasurement() {
   const NativeWorker = window.Worker;
   window.Worker = class extends NativeWorker {
     private checks: boolean;
-    private requests = new Map<number, CheckRequest["diagram"]>();
+    private requests = new Map<number, DiagramFile>();
     private cached?: { key: string; response: CheckResponse };
 
     constructor(url: string | URL, options?: WorkerOptions) {
@@ -44,7 +45,7 @@ export function installChecksMeasurement() {
 
     postMessage(message: unknown, options?: Transferable[] | StructuredSerializeOptions) {
       const request = message as CheckRequest;
-      if (this.checks && !request.plan) {
+      if (this.checks && !("cancel" in request) && !request.plan) {
         if (state.restoring && this.cached?.key === JSON.stringify(request.diagram)) {
           state.cacheHits++;
           const data = { ...structuredClone(this.cached.response), id: request.id };

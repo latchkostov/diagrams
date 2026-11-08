@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom";
 import { lazyComponent, LOAD_FAILED } from "../../lib/lazyLoad";
 import { modalLayers } from "../../lib/modalLayers";
-import { inputHeld } from "../../lib/inputHold";
+import { inputHeld, subscribeInputHold } from "../../lib/inputHold";
 import { loadToastRenderer, subscribe, toast } from "./toast";
 import { t } from "../../i18n";
 
@@ -21,9 +21,30 @@ function Recovery({ retry }: { retry(): void }) {
   const slot = useSyncExternalStore(onModal, () => modalLayers.top?.feedback ?? null);
   const button = useRef<HTMLButtonElement>(null);
   const node = useRef<HTMLDivElement>(null);
+  const held = useSyncExternalStore(subscribeInputHold, inputHeld);
   useEffect(() => {
-    if (inputHeld()) button.current?.focus();
-  }, []);
+    if (!held) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const action = button.current;
+    action?.focus();
+    return () => {
+      const now = document.activeElement;
+      if (before?.isConnected && (now === action || now === document.body)) before.focus();
+    };
+  }, [held, slot]);
+  useLayoutEffect(() => {
+    const action = button.current;
+    const remember = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof HTMLElement && !node.current?.contains(event.relatedTarget))
+        owner = event.relatedTarget;
+    };
+    let owner = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    action?.addEventListener("focus", remember);
+    return () => {
+      action?.removeEventListener("focus", remember);
+      if (document.activeElement === action && owner?.isConnected) owner.focus();
+    };
+  }, [slot]);
   // Placed as the Toaster places a dialog's feedback (feedbackPlacement in toastFeedback.ts, deferred with it), before it
   // paints: below the panel, or, in a short window, inside it with the panel's height kept, so it is in reach and the
   // dialog's own controls stay where they were.
@@ -31,12 +52,18 @@ function Recovery({ retry }: { retry(): void }) {
     const el = node.current;
     const panel = el?.closest<HTMLElement>('[role="dialog"]');
     if (el?.dataset.place !== "below" || !panel) return;
-    const box = panel.getBoundingClientRect();
-    if (innerHeight - box.bottom >= el.offsetHeight + 20) return;
     const height = panel.style.height;
-    panel.style.height = `${box.height}px`;
-    el.dataset.place = "inside";
+    const place = () => {
+      if (el.dataset.place !== "below") return;
+      const box = panel.getBoundingClientRect();
+      if (innerHeight - box.bottom >= el.offsetHeight + 20) return;
+      panel.style.height = `${box.height}px`;
+      el.dataset.place = "inside";
+    };
+    place();
+    window.addEventListener("resize", place);
     return () => {
+      window.removeEventListener("resize", place);
       panel.style.height = height;
       // StrictMode replays this setup on the same node. Restore its starting placement too,
       // so the next setup measures the panel without the inline feedback and pins it again.

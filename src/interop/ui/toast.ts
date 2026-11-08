@@ -68,10 +68,50 @@ const queued: [Command, unknown[]][] = [];
 /** The last queued invalidation, while no notification has been queued after it. */
 let invalidation: unknown[] | undefined;
 
+/** Before mounting there can be no pointer/focus contact: keep only each layer's latest notice and live tasks. */
+function retireQueued(remove: (input: ToastInput) => boolean) {
+  const retired = queued.flatMap(([method, args]) =>
+    method === "show" && remove(args[0] as ToastInput) ? [args[0] as ToastInput] : [],
+  );
+  const ids = new Set(retired.map((input) => input.id));
+  for (let i = queued.length - 1; i >= 0; i--) {
+    const [method, args] = queued[i];
+    if (
+      (method === "show" && ids.has((args[0] as ToastInput).id)) ||
+      ((method === "progress" || method === "attach") && ids.has(args[0] as number))
+    )
+      queued.splice(i, 1);
+  }
+  for (const input of retired) input.onDismiss?.();
+}
+
+modalLayers.listeners.add(() => {
+  if (runtime) return;
+  let newest = 0;
+  for (const [method, args] of queued) {
+    if (method !== "show") continue;
+    const input = args[0] as ToastInput;
+    if (input.layer !== undefined && !modalLayers.stack.some((layer) => layer.id === input.layer))
+      input.layer = undefined;
+    if (!input.blocking && input.layer === undefined) newest = Math.max(newest, input.id);
+  }
+  retireQueued((input) => !input.blocking && input.layer === undefined && input.id !== newest);
+});
+
 function send<K extends Command>(method: K, ...args: Parameters<ToastRuntime[K]>) {
   // Each command keeps its input at the time of the call (not the state when the download completes).
   if (runtime) return (runtime[method] as (...args: unknown[]) => void)(...args);
   if (!queued.length && method !== "show") return;
+  if (method === "dismiss" || method === "dismissUndo") {
+    retireQueued((input) =>
+      method === "dismissUndo"
+        ? !!input.action?.undoes
+        : args[0] === undefined
+          ? !input.blocking
+          : input.id === args[0],
+    );
+    return;
+  }
   // Compact while waiting, however long the download takes: every canvas snapshot invalidates, a task reports often.
   // An invalidation joins the last one unless a notification came between (it commutes with everything else):
   // pending changes nothing, and two different entries leave no bound Undo standing, as a fresh one does.
@@ -80,7 +120,14 @@ function send<K extends Command>(method: K, ...args: Parameters<ToastRuntime[K]>
     if (invalidation) return void (invalidation[0] !== args[0] && (invalidation[0] = {}));
     invalidation = args;
   }
-  if (method === "show") invalidation = undefined;
+  if (method === "show") {
+    invalidation = undefined;
+    const input = args[0] as ToastInput;
+    const firstTask = !queued.some(([command, values]) => command === "show" && (values[0] as ToastInput).blocking);
+    retireQueued(
+      (old) => !old.blocking && (input.blocking ? firstTask && old.layer === undefined : old.layer === input.layer),
+    );
+  }
   const progress = method === "progress" && queued.find(([m, a]) => m === method && a[0] === args[0]);
   if (progress) progress[1] = args;
   else queued.push([method, args]);
@@ -121,7 +168,7 @@ function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
     text,
     history,
     undoEntryId: history?.capture(),
-    layer: opts.blocking ? undefined : modalLayers.top?.id,
+    layer: opts.blocking || !modalLayers.top?.feedback ? undefined : modalLayers.top.id,
   };
   send("show", next);
   void loadToastRenderer().catch(() => {});

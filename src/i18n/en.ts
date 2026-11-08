@@ -365,6 +365,11 @@ const en = {
   "messageTypes.timelineIncomplete": "Review message paths before and after timeline forwarding edits manually.",
   "messageTypes.hover": "Message types: {types}",
   "messageLoop.name": "Messages loop back",
+  "workspaceChecks.incompleteTitle": "Some message paths need review",
+  "workspaceChecks.targetIncomplete":
+    "Some findings are not listed or could not be checked. Review All checks for details.",
+  "workspaceChecks.incompleteTimeline": "Timeline forwarding edits cannot be analyzed completely.",
+  "workspaceChecks.reviewBudget": "Check a smaller diagram to enumerate every message path.",
   "messageLoop.about":
     "Finds message types forwarded around a processor cycle. Retries and broker redelivery do not count.",
   "messageLoop.message": "{type} messages loop back to {node}: each one is sent again.",

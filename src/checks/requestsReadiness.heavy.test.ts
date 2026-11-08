@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { waitingFixture } from "../lab/waitingFixture";
+import { waitingFixture, twoBottlenecks } from "../lab/waitingFixture";
 import type { DiagramFile } from "../model/types";
 import type { Finding } from "./types";
 import { onlyRules, runChecks, summarize } from "./run";
@@ -38,24 +38,6 @@ afterEach(() => {
 function exhausted(): DiagramFile {
   const d = waitingFixture();
   d.nodes[0].props!.ratePerSec = 100;
-  return d;
-}
-
-/** An unrelated worker at 200% beside the exhausted caller. */
-function twoBottlenecks(): DiagramFile {
-  const d = exhausted();
-  d.nodes.push(
-    { id: "jobs", stencil: "client.user", label: "Jobs", x: 0, y: 600, props: { ratePerSec: 20 } },
-    {
-      id: "worker",
-      stencil: "generic.service",
-      label: "Report worker",
-      x: 330,
-      y: 600,
-      props: { replicas: 1, concurrency: 1, latencyMs: 100, jitter: 0 },
-    },
-  );
-  d.edges.push({ id: "jobs-in", from: "jobs", to: "worker" });
   return d;
 }
 
@@ -373,6 +355,39 @@ describe("bounded request findings", () => {
     expect(agentReport(ignored).summary).toContain("not listed");
     // A diagram that fits says nothing of the kind.
     expect(runChecks(manyCalls(10), { rules: ["call-timeout"] }).omitted).toBeUndefined();
+  });
+
+  it("recovers a cutoff target without changing the whole-diagram or replay budget", async () => {
+    const d = manyCalls(3_000);
+    const whole = await awaitRequestChecks(d);
+    const target = d.edges.at(-1)!.id;
+    expect(whole.some((f) => f.target === target)).toBe(false);
+    const scoped = await awaitRequestChecks(d, { target });
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0]).toMatchObject({ target, rule: "call-timeout" });
+    expect(scoped[0].fix).toBeUndefined();
+    expect(JSON.stringify(scoped).length).toBeLessThan(1_000_000);
+    expect(requestCheckResult(d)).toMatchObject({ status: "ready", findings: whole });
+    expect(await awaitRequestChecks(d)).toEqual(whole);
+  });
+
+  it("verifies a target's timeout when its whole graph fits the existing replay budget", async () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 1;
+    const scoped = await awaitRequestChecks(d, { target: "call" });
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0]).toMatchObject({ target: "call", fix: { requestLabel: { kind: "timeout" } } });
+    expect(timeoutKeepsReplies(d, "call", scoped[0].requestFinding!.deadline!, { work: 2_000_000 })).toBe(true);
+  });
+
+  it("includes a blocked caller's finding when its dependency is the selected target", async () => {
+    const scoped = await awaitRequestChecks(exhausted(), { target: "partner" });
+    expect(scoped).toContainEqual(
+      expect.objectContaining({ rule: "blocked-threads", target: "caller", elements: ["caller", "call", "partner"] }),
+    );
+    expect(
+      scoped.every((finding) => finding.omitted || finding.unchecked || finding.elements.includes("partner")),
+    ).toBe(true);
   });
 
   it("timeout construction stops at the findings budget", () => {
