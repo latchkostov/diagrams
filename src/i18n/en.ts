@@ -6052,7 +6052,9 @@ const en = {
   "tutorials.cdnCache.offloadDone":
     "Fresh traffic showed the effect: hits answered here and fewer requests reached the origin.",
   "tutorials.cdnCache.finish":
-    "You added a cache rule; the hit ratio and origin counts showed less origin work. A hit can return older data: what freshness would your readers accept? To author a Drill, open Live → More → Simulations → New simulation → Timeline → Add step → Cold cache. For comparisons, open Examples and search for cache: Cache stampede and Black Friday commerce.",
+    "You added a cache rule; the hit ratio and origin counts showed less origin work. A hit can return older data: what freshness would your readers accept?",
+  "tutorials.cdnCache.guidance":
+    "Create a Drill: Live → More → Simulations → New simulation → Timeline → Add step → Cold cache. Compare examples: Examples → search “cache” → Cache stampede or Black Friday commerce.",
   "tutorials.derivedHitRatio.title": "Where the hit ratio comes from",
   "tutorials.derivedHitRatio.summary":
     "Predict how fewer requests and a longer freshness period change hits. Try Cache at the edge first; the ratio is calculated, never a slider.",

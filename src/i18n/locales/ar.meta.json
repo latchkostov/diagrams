@@ -3123,7 +3123,7 @@
     "tutorials.cdnCache.offloadTitle": "de619f27",
     "tutorials.cdnCache.offloadGoal": "65500546",
     "tutorials.cdnCache.offloadDone": "d9e9ae24",
-    "tutorials.cdnCache.finish": "ba81fd1f",
+    "tutorials.cdnCache.finish": "a2a57716",
     "tutorials.derivedHitRatio.title": "ff92942c",
     "tutorials.derivedHitRatio.summary": "15cbd385",
     "tutorials.derivedHitRatio.predictTitle": "3799d7b9",
@@ -3236,6 +3236,8 @@
     "cache.clearingAction": "104bef05",
     "cache.deployEmpty": "0d64e9cf",
     "cache.deployKeep": "0b253b2c",
-    "cache.keepExpired": "d9ed1adc"
+    "cache.keepExpired": "d9ed1adc",
+    "cache.missingPurgeRule": "d1e942d5",
+    "tutorials.cdnCache.guidance": "32215de6"
   }
 }

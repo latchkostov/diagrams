@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FinishHandoff } from "./FinishHandoff";
 import { ResetProgressDialog } from "./ResetProgressDialog";
 import { mobileApi } from "./catalog/mobileApi";
+import { cdnCache } from "./catalog/cdnCache";
 import { cancelLessonStart, startNextLesson, takeLessonStart } from "./handoff";
 import { tutorialRoute } from "./route";
 import { createTutorialStart } from "./start";
@@ -330,4 +331,15 @@ it("reads the recap once before next-lesson detail, with heading focus and no li
   expect(recap.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(host.textContent!.split(mobileApi.finish.text())).toHaveLength(2);
   expect(document.activeElement).toBe(host.querySelector('[data-testid="tutorial-handoff-heading"]'));
+});
+
+it("puts cache follow-up guidance in the scrollable reading region, outside the short recap", async () => {
+  await act(() => root.render(<FinishHandoff tutorial={cdnCache} catalog={[cdnCache]} before={{}} progress={{}} />));
+  const recap = host.querySelector('[data-testid="tutorial-handoff-recap"]')!;
+  const body = host.querySelector('[data-testid="tutorial-handoff-body"]')!;
+  const guidance = body.querySelector('[data-testid="tutorial-handoff-guidance"]')!;
+  expect(recap.textContent).toBe(cdnCache.finish.text());
+  expect(recap.textContent).not.toContain("New simulation");
+  expect(guidance.textContent).toBe(cdnCache.finish.guidance!());
+  expect(guidance.textContent).toContain("New simulation → Timeline → Add step → Cold cache");
 });

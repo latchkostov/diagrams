@@ -65,5 +65,5 @@ it("keeps the Arabic field → readout → purge learning path translated and is
   );
   expect(purge).toContain("إبقاء النسخ المنتهية (مسح مرن)");
   expect(purge).toContain("نشر · إبقاء");
-  expect(cdnCache.finish!.text()).toContain("إنشاء تدريب على الأعطال");
+  expect(cdnCache.finish.guidance!()).toContain("إنشاء تدريب على الأعطال");
 });

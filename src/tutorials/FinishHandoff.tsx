@@ -184,7 +184,7 @@ export function FinishHandoff({
         </header>
         {/* Native scroll keys stay in the reading region instead of reaching the canvas. */}
         <div
-          className="handoff-body"
+          className={tutorial.finish.guidance ? "handoff-body has-guidance" : "handoff-body"}
           data-testid="tutorial-handoff-body"
           role={next ? "region" : undefined}
           aria-label={next ? t("tutorials.handoff.nextLesson") : undefined}
@@ -194,6 +194,11 @@ export function FinishHandoff({
               event.stopPropagation();
           }}
         >
+          {tutorial.finish.guidance && (
+            <p className="handoff-guidance" data-testid="tutorial-handoff-guidance">
+              {tutorial.finish.guidance()}
+            </p>
+          )}
           {next && (
             <div className="tutorial-handoff-next" data-testid="tutorial-handoff-next">
               {next.optional && <p data-testid="tutorial-handoff-next-optional">{t("tutorials.sharing.optional")}</p>}

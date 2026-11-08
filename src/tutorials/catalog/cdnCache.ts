@@ -99,6 +99,7 @@ export const cdnCache: Tutorial = {
   ],
   finish: {
     text: msg("tutorials.cdnCache.finish"),
+    guidance: msg("tutorials.cdnCache.guidance"),
     example: { slug: "cache-stampede", label: msg("tutorials.caching.example") },
   },
 };
