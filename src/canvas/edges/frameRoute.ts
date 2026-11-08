@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useStore, type ReactFlowState } from "@xyflow/react";
+import { useCallback, useSyncExternalStore } from "react";
+import { useStoreApi } from "@xyflow/react";
 import type { EdgeRoute } from "../geometry/router";
 import { pointAlong } from "../geometry/path";
 import type { Point, Rect } from "../geometry/rect";
@@ -20,13 +20,67 @@ export function displayedRoute(
   return frame?.natural === natural ? frame?.displayed : natural;
 }
 
+/**
+ * A settled frame's displayed routes, beside React Flow's store rather than in it: publishing a pass
+ * notifies only the edges that show their displayed route and whose own entry changed. A store
+ * update would run every node and edge subscription on each keystroke that moves a card.
+ */
+export class FrameRoutes {
+  private routes: ReadonlyMap<string, FrameRoute> | undefined;
+  private readonly listeners = new Map<string, Set<() => void>>();
+
+  current(): ReadonlyMap<string, FrameRoute> | undefined {
+    return this.routes;
+  }
+
+  /** Unchanged entries keep their identity, so their observers neither re-render nor wake. */
+  publish(next: ReadonlyMap<string, FrameRoute> | undefined) {
+    const previous = this.routes;
+    if (next && sameFrameRoutes(previous, next)) return;
+    if (!next && !previous) return;
+    let merged: Map<string, FrameRoute> | undefined;
+    if (next) {
+      merged = new Map();
+      for (const [id, route] of next) {
+        const before = previous?.get(id);
+        merged.set(id, before && sameFrameRoute(before, route) ? before : route);
+      }
+    }
+    this.routes = merged;
+    for (const [id, listeners] of this.listeners)
+      if (previous?.get(id) !== merged?.get(id)) for (const listener of [...listeners]) listener();
+  }
+
+  subscribe(id: string, listener: () => void): () => void {
+    let listeners = this.listeners.get(id);
+    if (!listeners) this.listeners.set(id, (listeners = new Set()));
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+      if (!listeners.size) this.listeners.delete(id);
+    };
+  }
+}
+
+const frameRoutesByStore = new WeakMap<object, FrameRoutes>();
+
+/** The frame routes of one canvas, keyed by its React Flow store. */
+export function frameRoutesOf(store: object): FrameRoutes {
+  let routes = frameRoutesByStore.get(store);
+  if (!routes) frameRoutesByStore.set(store, (routes = new FrameRoutes()));
+  return routes;
+}
+
+const unsubscribed = () => {};
+
 export function useFrameRoute(id: string, natural: EdgeRoute | undefined, observe = true) {
-  return useStore(
-    useCallback(
-      (s: ReactFlowState) => displayedRoute(s as FrameRoutesState, id, natural, observe),
-      [id, natural, observe],
-    ),
+  const routes = frameRoutesOf(useStoreApi());
+  const subscribe = useCallback(
+    (listener: () => void) => (observe ? routes.subscribe(id, listener) : unsubscribed),
+    [routes, id, observe],
   );
+  const snapshot = () => displayedRoute({ ldFrameRoutes: routes.current() }, id, natural, observe);
+  return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 /** Keep the existing hidden tail until pin shaping has an explicit product rule (T05.02). */
@@ -34,28 +88,32 @@ export function editingRoute(displayed: DisplayedRoute | undefined, natural: Edg
   return displayed?.frameClipped ? natural : (displayed ?? natural);
 }
 
+/** The same flow-space geometry for the same router revision. */
+function sameFrameRoute(previous: FrameRoute, next: FrameRoute) {
+  const before = previous.displayed.label;
+  const after = next.displayed.label;
+  return (
+    previous.natural === next.natural &&
+    previous.displayed.path === next.displayed.path &&
+    previous.displayed.frameClipped === next.displayed.frameClipped &&
+    !!(
+      before === after ||
+      (before &&
+        after &&
+        before.x === after.x &&
+        before.y === after.y &&
+        before.width === after.width &&
+        before.height === after.height)
+    )
+  );
+}
+
 /** Preserve subscriptions when a pan produces the same flow-space geometry. */
 export function sameFrameRoutes(a: FrameRoutesState["ldFrameRoutes"], b: ReadonlyMap<string, FrameRoute>) {
   if (a?.size !== b.size) return false;
   for (const [id, next] of b) {
     const previous = a.get(id);
-    const before = previous?.displayed.label;
-    const after = next.displayed.label;
-    if (
-      previous?.natural !== next.natural ||
-      previous.displayed.path !== next.displayed.path ||
-      previous.displayed.frameClipped !== next.displayed.frameClipped ||
-      !(
-        before === after ||
-        (before &&
-          after &&
-          before.x === after.x &&
-          before.y === after.y &&
-          before.width === after.width &&
-          before.height === after.height)
-      )
-    )
-      return false;
+    if (!previous || !sameFrameRoute(previous, next)) return false;
   }
   return true;
 }

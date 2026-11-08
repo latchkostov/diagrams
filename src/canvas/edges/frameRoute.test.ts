@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { displayedRoute, editingRoute, frameLabelHome, sameFrameRoutes } from "./frameRoute";
+import { FrameRoutes, displayedRoute, editingRoute, frameLabelHome, sameFrameRoutes } from "./frameRoute";
 import { freezeRoute } from "./segments";
 import type { EdgeRoute } from "../geometry/router";
 
@@ -59,4 +59,40 @@ it("freezes the displayed complete lane for editing but never saves a pin proxy 
   expect(freezeRoute(editable.points)).toEqual(freezeRoute(points));
   expect(freezeRoute(editable.points)).not.toEqual(freezeRoute(natural.points));
   expect(editingRoute({ ...displayed, frameClipped: true }, natural)).toBe(natural);
+});
+
+it("wakes only the observers whose own frame route changed, keeping unchanged entries", () => {
+  const routes = new FrameRoutes();
+  const other: EdgeRoute = { ...natural, path: "M0,400 L300,400" };
+  const lane = { ...natural, path: "M0,0 L108,0 L108,200 L300,200" };
+  const woken: string[] = [];
+  const stop = ["flow", "other", "missing"].map((id) => routes.subscribe(id, () => woken.push(id)));
+  routes.publish(
+    new Map([
+      ["flow", { natural, displayed: lane }],
+      ["other", { natural: other, displayed: other }],
+    ]),
+  );
+  expect(woken.sort()).toEqual(["flow", "other"]);
+  const kept = routes.current()!.get("other");
+  woken.length = 0;
+  // A card edit revises one natural route; the neighbour's equal geometry keeps its entry.
+  const revised = { ...natural };
+  routes.publish(
+    new Map([
+      ["flow", { natural: revised, displayed: revised }],
+      ["other", { natural: other, displayed: { ...other } }],
+    ]),
+  );
+  expect(woken).toEqual(["flow"]);
+  expect(routes.current()!.get("other")).toBe(kept);
+  woken.length = 0;
+  routes.publish(new Map(routes.current()!));
+  expect(woken).toEqual([]);
+  routes.publish(undefined);
+  expect(woken.sort()).toEqual(["flow", "other"]);
+  for (const unsubscribe of stop) unsubscribe();
+  woken.length = 0;
+  routes.publish(new Map([["flow", { natural, displayed: lane }]]));
+  expect(woken).toEqual([]);
 });

@@ -6,7 +6,8 @@ import { FrameDetail } from "./FrameDetail";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { ops } from "../test/opCounter";
 import { suspendFrameCapture } from "./camera/frameCapture";
-import type { FrameRoutesState } from "./edges/frameRoute";
+import { frameRoutesOf } from "./edges/frameRoute";
+import { useStoreApi } from "@xyflow/react";
 
 const fixture = vi.hoisted(() => ({
   locale: "en",
@@ -117,7 +118,7 @@ it("restores every route consumer during capture and reapplies the effective fra
     const framed = paths();
     expect(new Set(framed).size).toBe(1);
     expect(framed[0]).not.toBe("M0,0h100");
-    const frame = (fixture.state as FrameRoutesState).ldFrameRoutes!.get("0")!;
+    const frame = frameRoutesOf(useStoreApi()).current()!.get("0")!;
     expect(frame.displayed.path).toBe(framed[0]);
     expect(frame.displayed.points).not.toEqual(frame.natural.points);
     let resume = () => {};
@@ -125,11 +126,11 @@ it("restores every route consumer during capture and reapplies the effective fra
       resume = suspendFrameCapture(host.firstElementChild!);
     });
     expect(paths()).toEqual(["M0,0h100", "M0,0h100", "M0,0h100"]);
-    expect((fixture.state as FrameRoutesState).ldFrameRoutes).toBeUndefined();
+    expect(frameRoutesOf(useStoreApi()).current()).toBeUndefined();
     resume();
     await flush();
     expect(paths()).toEqual(framed);
-    expect((fixture.state as FrameRoutesState).ldFrameRoutes!.get("0")!.displayed.path).toBe(framed[0]);
+    expect(frameRoutesOf(useStoreApi()).current()!.get("0")!.displayed.path).toBe(framed[0]);
   } finally {
     await act(() => root.unmount());
   }
@@ -644,4 +645,140 @@ it("indexes settled caption blockers once and inserts accepted captions incremen
   if (process.env.OP_LOG) console.info(`caption ops ${work[0]} -> ${work[1]}: ${work[1] / work[0]}x`);
   expect(work[0]).toBeGreaterThan(0);
   expect(work[1] / work[0]).toBeLessThanOrEqual(24);
+});
+
+it("re-measures only the captions an edit changed and places every caption as a fresh pass would", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  fixture.camera.subscribe.mockReturnValue(() => {});
+  fixture.camera.state.view = "custom";
+  fixture.camera.state.mode = "edit";
+  vi.stubGlobal("getComputedStyle", () => ({ fontSize: "10px", lineHeight: "12px", direction: "ltr" }));
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  const frames = new Map<number, FrameRequestCallback>();
+  let seq = 0;
+  vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+    frames.set(++seq, run);
+    return seq;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  let mutate = (_records: MutationRecord[]) => {};
+  const NativeMutationObserver = MutationObserver;
+  vi.stubGlobal(
+    "MutationObserver",
+    class extends NativeMutationObserver {
+      constructor(run: MutationCallback) {
+        super(run);
+        mutate = (records) => run(records, this);
+      }
+    },
+  );
+  const n = 64;
+  const nodes = Array.from({ length: n }, (_, i) => ({
+    id: String(i),
+    type: "diagram",
+    position: { x: i * 300, y: 200 },
+    internals: { positionAbsolute: { x: i * 300, y: 200 } },
+    measured: { width: 100, height: 72 },
+    data: { label: `Service ${i}`, stencil: "service.go" },
+  })) as FlowNode[];
+  fixture.state = {
+    nodes,
+    nodeLookup: new Map(nodes.map((node) => [node.id, node])),
+    edges: nodes
+      .slice(1)
+      .map((node, i) => ({ id: String(i), source: String(i), target: node.id })) as DiagramFlowEdge[],
+    transform: [0, 40, 0.75],
+  };
+  // React's caption position: every third caption sits on a card and has to move.
+  const at = (i: number) => `translate(-50%, -50%) translate(${i * 300 + (i % 3 ? 150 : 50)}px, ${i % 3 ? 60 : 210}px)`;
+  const host = document.createElement("div");
+  Object.defineProperties(host, { clientWidth: { value: n * 225 }, clientHeight: { value: 800 } });
+  host.innerHTML = `<div class="react-flow__viewport">${nodes.map((node) => `<div class="react-flow__node react-flow__node-diagram" data-id="${node.id}"></div>`).join("")}${fixture.state.edges.map((edge, i) => `<svg class="react-flow__edge" data-id="${edge.id}"><path class="fe-path"/></svg><div class="fe-label" data-testid="edge-label-${edge.id}" style="transform: ${at(i)}">Caption</div>`).join("")}</div>`;
+  const labels = [...host.querySelectorAll<HTMLElement>(".fe-label")];
+  const px = (value: string, pattern: RegExp) => (value.match(pattern) ?? []).slice(1, 3).map(Number);
+  let labelReads = 0;
+  vi.spyOn(Range.prototype, "getClientRects").mockImplementation(() => {
+    labelReads++;
+    return [] as unknown as DOMRectList;
+  });
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    const [tx, ty, zoom] = fixture.state.transform;
+    if (this === host) return new DOMRect(0, 0, n * 225, 800);
+    const el = this as HTMLElement;
+    if (el.classList.contains("fe-label")) {
+      labelReads++;
+      const [x, y] = px(el.style.transform, /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/);
+      const [dx = 0, dy = 0] = px(el.style.translate, /(-?[\d.]+)px (-?[\d.]+)px/);
+      const width = (el.textContent?.length ?? 0) * (el.style.width ? 9 : 6);
+      return new DOMRect((x + dx - width / 2) * zoom + tx, (y + dy - 11) * zoom + ty, width * zoom, 22 * zoom);
+    }
+    return new DOMRect(Number(el.dataset.id) * 300 * zoom + tx, 200 * zoom + ty, 100 * zoom, 72 * zoom);
+  });
+  const snapshot = () =>
+    labels.map((el) => [
+      el.style.translate,
+      el.style.fontSize,
+      el.style.width,
+      el.style.height,
+      el.style.lineHeight,
+      el.hasAttribute("data-detail-hidden"),
+    ]);
+  const flush = () =>
+    act(async () => {
+      await Promise.resolve();
+      for (let i = 0; i < 3; i++) {
+        const pending = [...frames.values()];
+        frames.clear();
+        for (const run of pending) run(0);
+        await Promise.resolve();
+      }
+    });
+  const mount = document.createElement("div");
+  document.body.append(host, mount);
+  let root = createRoot(mount);
+  const render = () =>
+    act(() =>
+      root.render(<FrameDetail host={{ current: host }} routing={{ style: "straight", direction: "LR" }} decorate />),
+    );
+  /** Settles the same DOM in a new FrameDetail: no cached measurement. */
+  const fresh = async () => {
+    await act(() => root.unmount());
+    root = createRoot(mount);
+    await render();
+    await flush();
+    return snapshot();
+  };
+  const settle = async () => {
+    labelReads = 0;
+    mutate([{ type: "attributes", target: host, attributeName: "data-detail-measure" } as unknown as MutationRecord]);
+    await flush();
+    return snapshot();
+  };
+  try {
+    await render();
+    await flush();
+    const first = snapshot();
+    expect(first.filter(([, , width]) => width === "max-content").length).toBeGreaterThan(n / 2);
+    expect(first.filter(([translate]) => translate).length).toBeGreaterThan(n / 4);
+    // Nothing a caption depends on changed: no caption is restyled or measured again.
+    expect(await settle()).toEqual(first);
+    expect(labelReads).toBe(0);
+    // An edit moves and renames one caption onto its neighbour: only that caption is measured,
+    // and the neighbour it now blocks is placed again from its cached boxes.
+    labels[4].style.transform = at(5);
+    labels[4].textContent = "Caption renamed";
+    const edited = await settle();
+    expect(labelReads).toBeLessThanOrEqual(3);
+    expect(edited[5]).not.toEqual(first[5]);
+    expect(edited).toEqual(await fresh());
+    // A pan moves every caption by the same offset: their boxes are reused, not measured.
+    await settle();
+    fixture.state.transform = [-37, 52, 0.75];
+    const panned = await settle();
+    expect(labelReads).toBe(0);
+    expect(panned).toEqual(await fresh());
+  } finally {
+    await act(() => root.unmount());
+  }
 });
