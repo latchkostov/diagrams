@@ -117,31 +117,31 @@ function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>
   }
 }
 
-/** A caption's boxes without the pan, valid while its `captionKey` holds. */
-type CaptionMeasure = { key: string; baseline: Rect; enlarged?: { box: Rect; lineHeight: string } };
+/** A caption's boxes without the pan, valid while its context and `captionKey` hold. */
+type CaptionMeasure = { context: string; key: string; baseline: Rect; enlarged?: { box: Rect; lineHeight: string } };
 /** FrameDetail's own caption declarations; every other inline style is a layout input. */
 const CAPTION_OWN = /^(?:translate|font-size|width|height|line-height)\s*:/;
 const CAPTION_SIGNALS = new Set(["data-detail-zoom", "data-detail-hover"]);
 
+/** What lays out every caption under `parent`: its ancestors' attributes. */
+function captionContext(parent: Element | null): string {
+  const parts: string[] = [];
+  for (let el = parent; el; el = el.parentElement)
+    for (const { name, value } of el.attributes)
+      // The viewport's own transform is the pan and zoom: the scope and the stored offset cover it.
+      // The zoom and hover signals on the root style nothing.
+      if (!CAPTION_SIGNALS.has(name) && (name !== "style" || !el.classList.contains("react-flow__viewport")))
+        parts.push(`${el.tagName}[${name}]${value}`);
+  return parts.join("\n");
+}
+
 /**
- * Everything that lays a caption out: its attributes, content and inline styles (React's
- * position and size floor), its ancestors' attributes, and the zoom, frame size and fonts.
- * Captions with a separate text run are not keyed: textDetail rewrites that run's font every pass.
+ * What lays out one caption besides its context: its attributes, content and inline styles
+ * (React's position and size floor). Captions with a separate text run are not keyed:
+ * textDetail rewrites that run's font every pass.
  */
-function captionKey(label: HTMLElement, scope: string, contexts: Map<Element | null, string>): string {
-  const parent = label.parentElement;
-  let context = contexts.get(parent);
-  if (context === undefined) {
-    const parts: string[] = [];
-    for (let el = parent; el; el = el.parentElement)
-      for (const { name, value } of el.attributes)
-        // The viewport's own transform is the pan and zoom: the scope and the stored offset cover it.
-        // The zoom and hover signals on the root style nothing.
-        if (!CAPTION_SIGNALS.has(name) && (name !== "style" || !el.classList.contains("react-flow__viewport")))
-          parts.push(`${el.tagName}[${name}]${value}`);
-    contexts.set(parent, (context = parts.join("\n")));
-  }
-  const parts = [scope, context, label.textContent ?? ""];
+function captionKey(label: HTMLElement): string {
+  const parts = [label.textContent ?? ""];
   for (const { name, value } of label.attributes)
     if (name === "style")
       for (const declaration of value.split(";")) {
@@ -207,6 +207,8 @@ const FrameDecoration = memo(
       const cardWidths = new WeakMap<HTMLElement, { key: FlowNode["data"]; width: number }>();
       const wrapCache = new WeakMap<HTMLElement, { text: string; width: number; wrapped: boolean }>();
       const captionMeasures = new WeakMap<HTMLElement, CaptionMeasure>();
+      // One string per distinct context, so an unchanged context compares by reference.
+      const canonicalContexts = new Map<string, string>();
       const published = frameRoutesOf(store);
       // A late web font changes every caption's ink without touching its inputs.
       let fontEpoch = 0;
@@ -685,17 +687,29 @@ const FrameDecoration = memo(
         const shift = (r: Rect, dx: number, dy: number): Rect => ({ ...r, x: r.x + dx, y: r.y + dy });
         const captionScope = `${zoom}|${origin.width}|${origin.height}|${fontEpoch}`;
         const captionContexts = new Map<Element | null, string>();
-        const captionKeys = new Map<HTMLElement, string>();
+        const contextOf = (label: HTMLElement) => {
+          const parent = label.parentElement;
+          let context = captionContexts.get(parent);
+          if (context === undefined) {
+            const text = `${captionScope}\n${captionContext(parent)}`;
+            context = canonicalContexts.get(text) ?? text;
+            if (canonicalContexts.size > 32) canonicalContexts.clear();
+            canonicalContexts.set(text, context);
+            captionContexts.set(parent, context);
+          }
+          return context;
+        };
+        const captionKeys = new Map<HTMLElement, { context: string; key: string }>();
         const textRuns = new Map<HTMLElement, HTMLElement | null>();
         const knownLabels = new Map<string, Rect>();
         const measuring: [string, HTMLElement][] = [];
         for (const [id, label] of edgeLabels) {
           const run = far ? null : label.querySelector<HTMLElement>(".fe-label-text");
           textRuns.set(label, run);
-          const key = far || run ? null : captionKey(label, captionScope, captionContexts);
-          const known = key === null ? undefined : captionMeasures.get(label);
-          if (key !== null) captionKeys.set(label, key);
-          if (known?.key === key) {
+          const keyed = far || run ? null : { context: contextOf(label), key: captionKey(label) };
+          const known = keyed && captionMeasures.get(label);
+          if (keyed) captionKeys.set(label, keyed);
+          if (known && known.context === keyed!.context && known.key === keyed!.key) {
             knownLabels.set(id, shift(known.baseline, tx, ty));
             continue;
           }
@@ -711,8 +725,8 @@ const FrameDecoration = memo(
         // Far labels are hidden entirely; retain the batched reads only for visible detail.
         const measured = new Map(measuring.map(([id, label]) => [id, box(label, origin)]));
         for (const [id, label] of measuring) {
-          const key = captionKeys.get(label);
-          if (key !== undefined) captionMeasures.set(label, { key, baseline: shift(measured.get(id)!, -tx, -ty) });
+          const keyed = captionKeys.get(label);
+          if (keyed) captionMeasures.set(label, { ...keyed, baseline: shift(measured.get(id)!, -tx, -ty) });
         }
         const baselineLabels = new Map<string, Rect>();
         if (!far) for (const id of edgeLabels.keys()) baselineLabels.set(id, knownLabels.get(id) ?? measured.get(id)!);
