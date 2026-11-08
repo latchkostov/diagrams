@@ -26,10 +26,10 @@ vi.mock("@xyflow/react", () => ({
       ],
       nodeLookup: new Map(),
     }),
-  // Frame routes are keyed by the canvas's store; one stable object stands in for it.
+  // Frame routes are keyed by the canvas store's getState; one stable object stands in for it.
   useStoreApi: () => flowStore,
 }));
-const flowStore = vi.hoisted(() => ({}));
+const flowStore = vi.hoisted(() => ({ getState: () => ({}) }));
 vi.mock("../DiagramContext", () => ({ useDiagram: () => ({}) }));
 vi.mock("../lowZoom", () => ({
   useChip: () => ({ value: { natural: "M0 0L100 0", path: "M0 0L100 0" }, chips: { Edge: () => null } }),

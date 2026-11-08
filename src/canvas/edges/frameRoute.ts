@@ -64,10 +64,13 @@ export class FrameRoutes {
 
 const frameRoutesByStore = new WeakMap<object, FrameRoutes>();
 
-/** The frame routes of one canvas, keyed by its React Flow store. */
-export function frameRoutesOf(store: object): FrameRoutes {
-  let routes = frameRoutesByStore.get(store);
-  if (!routes) frameRoutesByStore.set(store, (routes = new FrameRoutes()));
+/**
+ * The frame routes of one canvas. `useStoreApi()` returns a new wrapper per component;
+ * its `getState` is the canvas store's own function, the same for every caller.
+ */
+export function frameRoutesOf(store: { getState: () => unknown }): FrameRoutes {
+  let routes = frameRoutesByStore.get(store.getState);
+  if (!routes) frameRoutesByStore.set(store.getState, (routes = new FrameRoutes()));
   return routes;
 }
 

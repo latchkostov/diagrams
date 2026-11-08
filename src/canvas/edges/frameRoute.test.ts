@@ -1,5 +1,12 @@
 import { expect, it } from "vitest";
-import { FrameRoutes, displayedRoute, editingRoute, frameLabelHome, sameFrameRoutes } from "./frameRoute";
+import {
+  FrameRoutes,
+  displayedRoute,
+  editingRoute,
+  frameLabelHome,
+  frameRoutesOf,
+  sameFrameRoutes,
+} from "./frameRoute";
 import { freezeRoute } from "./segments";
 import type { EdgeRoute } from "../geometry/router";
 
@@ -95,4 +102,13 @@ it("wakes only the observers whose own frame route changed, keeping unchanged en
   woken.length = 0;
   routes.publish(new Map([["flow", { natural, displayed: lane }]]));
   expect(woken).toEqual([]);
+});
+
+it("shares one canvas's frame routes between every component's store wrapper", () => {
+  // React Flow's useStoreApi memoizes a new wrapper object per component around the same store.
+  const getState = () => ({});
+  const frameDetail = { getState, setState: () => {}, subscribe: () => () => {} };
+  const edge = { getState, setState: () => {}, subscribe: () => () => {} };
+  expect(frameRoutesOf(edge)).toBe(frameRoutesOf(frameDetail));
+  expect(frameRoutesOf({ getState: () => ({}) })).not.toBe(frameRoutesOf(frameDetail));
 });
