@@ -1,4 +1,9 @@
-import { frameCrowdedFixture, frameRoutingFixture, frameFanFixture } from "../../src/lab/frameRoutingFixture";
+import {
+  frameCrowdedFixture,
+  frameRoutingFixture,
+  frameFanFixture,
+  framePackedFanFixture,
+} from "../../src/lab/frameRoutingFixture";
 import { test, expect, gotoCanvas, waitForCameraIdle } from "./fixtures";
 
 for (const kind of ["async", "sync"] as const) {
@@ -160,4 +165,88 @@ test("mixed fan lanes share their hit targets and editable geometry", async ({ p
   }, id);
   expect(errors.length).toBeGreaterThan(2);
   for (const handle of errors) expect(handle.distance, handle.id ?? "Route control").toBeLessThan(1);
+});
+
+test("accepted and obstructed mixed fans use the shared packed lanes", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(
+    (diagram) => localStorage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify(diagram)),
+    framePackedFanFixture(),
+  );
+  await gotoCanvas(page, "kafka-order-pipeline");
+  const read = async () => {
+    const readings = [];
+    for (const id of ["dependency", "message", "request"])
+      readings.push(
+        await page.getByTestId(`connection-stroke-${id}`).evaluate((el) => {
+          const path = el as SVGPathElement;
+          const length = path.getTotalLength();
+          const start = path.getPointAtLength(0),
+            end = path.getPointAtLength(length);
+          const y = (start.y + end.y) / 2;
+          let track = start,
+            error = Infinity;
+          for (let at = 0; at <= length; at += 0.25) {
+            const p = path.getPointAtLength(at);
+            if (Math.abs(p.y - y) < error) {
+              error = Math.abs(p.y - y);
+              track = p;
+            }
+          }
+          const matrix = path.getScreenCTM();
+          if (!matrix) throw new Error("Expected the route transform");
+          const d = path.getAttribute("d");
+          if (!d) throw new Error("Expected the displayed route");
+          const screen = new DOMPoint(track.x, track.y).matrixTransform(matrix);
+          return {
+            start: { x: start.x, y: start.y },
+            end: { x: end.x, y: end.y },
+            track: track.x,
+            screen: { x: screen.x, y: screen.y },
+            d,
+          };
+        }),
+      );
+    return readings;
+  };
+  const natural = await read();
+  await page.getByTestId("canvas-wrap").press("ControlOrMeta+a");
+  await page.getByTestId("canvas-wrap").press("Shift+2");
+  await waitForCameraIdle(page);
+  await expect(page.getByTestId(/^focus-offscreen-/)).toHaveCount(0);
+  const accepted = await read();
+  const tracks = accepted.map((r) => r.screen.x).sort((a, b) => a - b);
+  // Every relationship participates, including the two outer lanes.
+  for (let i = 0; i < 3; i++) {
+    for (let j = i + 1; j < 3; j++) expect(Math.abs(tracks[j] - tracks[i] - (j - i) * 8)).toBeLessThan(0.1);
+    expect(accepted[i].start).toEqual(natural[i].start);
+    expect(accepted[i].end).toEqual(natural[i].end);
+  }
+  expect(accepted.map((r) => r.track)).not.toEqual(natural.map((r) => r.track));
+  const shared = async (readings: Awaited<ReturnType<typeof read>>) => {
+    for (const [i, id] of ["dependency", "message", "request"].entries()) {
+      await expect(page.getByTestId(`connection-hit-${id}`)).toHaveAttribute("d", readings[i].d);
+      await expect(page.getByTestId(`connection-halo-${id}`)).toHaveAttribute("d", readings[i].d);
+    }
+  };
+  await shared(accepted);
+  const centre = accepted[1].screen;
+  await page.getByTestId("rf__node-packing-obstacle").evaluate((el, centre) => {
+    const probe = window.__flowProbe?.();
+    if (!probe) throw new Error("Expected the canvas coordinate mapping");
+    const at = probe.toFlow(centre.x - 14, centre.y - 35);
+    const style = (el as HTMLElement).style;
+    style.transform = `translate(${at.x}px, ${at.y}px)`;
+    style.width = `${28 / probe.zoom}px`;
+    style.height = `${70 / probe.zoom}px`;
+  }, centre);
+  await page.getByTestId("canvas-wrap").evaluate((el) => el.setAttribute("data-detail-measure", "obstructed-fan"));
+  await expect.poll(async () => (await read()).map((r) => r.track)).toEqual(natural.map((r) => r.track));
+  const rejected = await read();
+  await shared(rejected);
+  expect(rejected.map((r) => r.d)).toEqual(natural.map((r) => r.d));
+  for (let i = 0; i < 3; i++) {
+    expect(rejected[i].start).toEqual(natural[i].start);
+    expect(rejected[i].end).toEqual(natural[i].end);
+  }
 });

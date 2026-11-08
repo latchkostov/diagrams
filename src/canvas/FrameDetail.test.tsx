@@ -562,3 +562,86 @@ it("re-places only call pills when traffic adds, removes or relabels one", async
     mount.remove();
   }
 });
+
+it("indexes settled caption blockers once and inserts accepted captions incrementally", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  fixture.camera.subscribe.mockReturnValue(() => {});
+  fixture.camera.state.view = "custom";
+  fixture.camera.state.mode = "edit";
+  vi.stubGlobal("getComputedStyle", () => ({ fontSize: "10px", lineHeight: "12px", direction: "ltr" }));
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  const work: number[] = [];
+  for (const n of [64, 512]) {
+    const frames = new Map<number, FrameRequestCallback>();
+    let seq = 0;
+    vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+      frames.set(++seq, run);
+      return seq;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+    const nodes = Array.from({ length: n }, (_, i) => ({
+      id: String(i),
+      type: "diagram",
+      position: { x: i * 300, y: 200 },
+      internals: { positionAbsolute: { x: i * 300, y: 200 } },
+      measured: { width: 100, height: 72 },
+      data: { label: `Service ${i}`, stencil: "service.go" },
+    })) as FlowNode[];
+    fixture.state = {
+      nodes,
+      nodeLookup: new Map(nodes.map((node) => [node.id, node])),
+      edges: nodes
+        .slice(1)
+        .map((node, i) => ({ id: String(i), source: String(i), target: node.id })) as DiagramFlowEdge[],
+      transform: [0, 0, 0.75],
+    };
+    const host = document.createElement("div");
+    Object.defineProperties(host, { clientWidth: { value: n * 300 }, clientHeight: { value: 800 } });
+    host.innerHTML = `<div class="react-flow__viewport">${nodes.map((node) => `<div class="react-flow__node react-flow__node-diagram" data-id="${node.id}"></div>`).join("")}${fixture.state.edges.map((edge) => `<svg class="react-flow__edge" data-id="${edge.id}"><path class="fe-path"/></svg><div class="fe-label" data-testid="edge-label-${edge.id}">Caption</div>`).join("")}</div>`;
+    const rectSpy = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      if (this === host) return new DOMRect(0, 0, n * 300, 800);
+      const el = this as HTMLElement;
+      if (el.dataset.testid?.startsWith("edge-label-"))
+        return new DOMRect(Number(el.dataset.testid.slice(11)) * 225 + 30, 20, el.style.width ? 90 : 60, 22);
+      return new DOMRect(Number(el.dataset.id) * 225, 200, 100, 72);
+    });
+    const mount = document.createElement("div");
+    document.body.append(host, mount);
+    const root = createRoot(mount);
+    try {
+      await act(() =>
+        root.render(<FrameDetail host={{ current: host }} routing={{ style: "straight", direction: "LR" }} decorate />),
+      );
+      let operations = 0;
+      await act(async () => {
+        await Promise.resolve();
+        for (let i = 0; i < 3; i++) {
+          const pending = [...frames.values()];
+          frames.clear();
+          for (const run of pending)
+            operations += ops(() => run(0), Infinity, [
+              "src/canvas/FrameDetail.tsx",
+              "src/canvas/camera/frameEdges.ts",
+              "src/canvas/geometry/spatial.ts",
+              "src/canvas/geometry/rect.ts",
+            ]);
+          await Promise.resolve();
+        }
+      });
+      const labels = [...host.querySelectorAll<HTMLElement>(".fe-label")];
+      expect(labels.every((el) => el.style.width === "max-content" && !el.hasAttribute("data-detail-hidden"))).toBe(
+        true,
+      );
+      work.push(operations);
+    } finally {
+      await act(() => root.unmount());
+      rectSpy.mockRestore();
+      host.remove();
+      mount.remove();
+    }
+  }
+  if (process.env.OP_LOG) console.info(`caption ops ${work[0]} -> ${work[1]}: ${work[1] / work[0]}x`);
+  expect(work[0]).toBeGreaterThan(0);
+  expect(work[1] / work[0]).toBeLessThanOrEqual(24);
+});

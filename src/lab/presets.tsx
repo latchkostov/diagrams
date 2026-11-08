@@ -12,6 +12,8 @@ import {
   frameDependencyFixture,
   frameCrowdedFixture,
   frameFanFixture,
+  framePackedFanFixture,
+  frameCaptionGridFixture,
 } from "./frameRoutingFixture";
 import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
@@ -1415,6 +1417,22 @@ export const presets: readonly Preset[] = [
     group: "Edges",
     description: "An unselected dependency label retains its text floor in Custom view.",
     diagram: frameDependencyFixture,
+  },
+  {
+    kind: "diagram",
+    id: "frame-caption-grid",
+    title: "Caption grid",
+    group: "Edges",
+    description: "1,500 services and 750 captioned connections for settled pan, zoom and edit benchmarks.",
+    diagram: frameCaptionGridFixture,
+  },
+  {
+    kind: "diagram",
+    id: "frame-packed-fan",
+    title: "Packed frame lanes",
+    group: "Edges",
+    description: "Select all, then Zoom to selection to pack a mixed fan into eight-pixel screen lanes.",
+    diagram: framePackedFanFixture,
   },
   {
     kind: "diagram",

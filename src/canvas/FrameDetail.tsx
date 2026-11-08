@@ -664,6 +664,10 @@ const FrameDecoration = memo(
         const originalLabels = new Map([...baselineLabels].map(([id, box]) => [id, home(id, box)]));
         const labelIndex = new SpatialGrid<string>();
         for (const [id, rect] of originalLabels) labelIndex.insert(rect, id);
+        // Cards, pins and badges are settled for this pass. Accepted labels join
+        // the same index below, so each caption only scans its candidate envelope.
+        const blockerIndex = new SpatialGrid<Rect>();
+        if (!far) for (const rect of blockers) blockerIndex.insert(rect, rect);
         const pathIndex = new SpatialGrid<string>();
         const obstacleIndex = new SpatialGrid<Rect>();
         if (!far) for (const rect of routeObstacles) obstacleIndex.insert(rect, rect);
@@ -674,10 +678,11 @@ const FrameDecoration = memo(
           }
         const nearby = (id: string, b: Rect) => {
           const area = inflate(
-            union([b, ...(lanes.get(id) ?? []).map((p) => ({ ...p, width: 0, height: 0 }))])!,
+            union([b, home(id, b), ...(lanes.get(id) ?? []).map((p) => ({ ...p, width: 0, height: 0 }))])!,
             Math.max(b.width, b.height),
           );
           return {
+            blocks: blockerIndex.query(area).map((e) => e.rect),
             solids: obstacleIndex.query(area).map((e) => e.rect),
             homes: labelIndex
               .query(area)
@@ -792,11 +797,11 @@ const FrameDecoration = memo(
           const enlarged = enlargedBoxes.get(edge.id);
           let floorPlacement: Rect | null = null;
           if (enlarged) {
-            const { homes, paths, solids } = nearby(edge.id, enlarged);
+            const { blocks, homes, paths, solids } = nearby(edge.id, enlarged);
             floorPlacement = placeTextFloor(
               home(edge.id, enlarged),
               inner,
-              [...blockers, ...homes, ...solids],
+              [...blocks, ...homes, ...solids],
               paths,
               lanes.get(edge.id),
             );
@@ -835,7 +840,10 @@ const FrameDecoration = memo(
             )
               label.style.translate = `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`;
           });
-          if (!hidden && placed) blockers.push(placed);
+          if (!hidden && placed) {
+            blockers.push(placed);
+            blockerIndex.insert(placed, placed);
+          }
           if (route && displayed) {
             const label =
               !hidden && placed && route.label
