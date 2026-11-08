@@ -78,48 +78,48 @@ svg width=1116 height=1639 viewBox=0 0 1116 1639
       div .react-flow__viewport-portal width:1368px height:848px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
 == edge-adc-web-1
             g #edge-adc-web-1 .fe.fe-sync
-              path .fe-halo d=M663,1072 L663,1106 Q663,1116 653,1116 L500,1116 Q490,1116 490,1126 L490,1160 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-adc-web-1 .fe-halo d=M663,1072 L663,1106 Q663,1116 653,1116 L500,1116 Q490,1116 490,1126 L490,1160 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-adc-web-1 .fe-path.react-flow__edge-path d=M663,1072 L663,1106 Q663,1116 653,1116 L500,1116 Q490,1116 490,1126 L490,1160 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M663,1072 L663,1106 Q663,1116 653,1116 L500,1116 Q490,1116 490,1126 L490,1160 fill:none stroke-width:22px
+              path #connection-hit-adc-web-1 .react-flow__edge-interaction d=M663,1072 L663,1106 Q663,1116 653,1116 L500,1116 Q490,1116 490,1126 L490,1160 fill:none stroke-width:22px
 == edge-adc-web-2
             g #edge-adc-web-2 .fe.fe-sync
-              path .fe-halo d=M677,1072 L677,1103.5 Q677,1113.5 687,1113.5 L840,1113.5 Q850,1113.5 850,1123.5 L850,1160 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-adc-web-2 .fe-halo d=M677,1072 L677,1103.5 Q677,1113.5 687,1113.5 L840,1113.5 Q850,1113.5 850,1123.5 L850,1160 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-adc-web-2 .fe-path.react-flow__edge-path d=M677,1072 L677,1103.5 Q677,1113.5 687,1113.5 L840,1113.5 Q850,1113.5 850,1123.5 L850,1160 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M677,1072 L677,1103.5 Q677,1113.5 687,1113.5 L840,1113.5 Q850,1113.5 850,1123.5 L850,1160 fill:none stroke-width:22px
+              path #connection-hit-adc-web-2 .react-flow__edge-interaction d=M677,1072 L677,1103.5 Q677,1113.5 687,1113.5 L840,1113.5 Q850,1113.5 850,1123.5 L850,1160 fill:none stroke-width:22px
 == edge-branch-edge
             g #edge-branch-edge .fe.fe-sync
-              path .fe-halo d=M1110,272 L1110,334 Q1110,344 1100,344 L685,344 Q677,344 677,352 L677,360 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-branch-edge .fe-halo d=M1110,272 L1110,334 Q1110,344 1100,344 L685,344 Q677,344 677,352 L677,360 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-branch-edge .fe-path.react-flow__edge-path d=M1110,272 L1110,334 Q1110,344 1100,344 L685,344 Q677,344 677,352 L677,360 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1110,272 L1110,334 Q1110,344 1100,344 L685,344 Q677,344 677,352 L677,360 fill:none stroke-width:22px
+              path #connection-hit-branch-edge .react-flow__edge-interaction d=M1110,272 L1110,334 Q1110,344 1100,344 L685,344 Q677,344 677,352 L677,360 fill:none stroke-width:22px
 == edge-customers-edge
             g #edge-customers-edge .fe.fe-sync
-              path .fe-halo d=M670,112 L670,232.5 Q670,236 666.5,236 L666.5,236 Q663,236 663,239.5 L663,360 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-customers-edge .fe-halo d=M670,112 L670,232.5 Q670,236 666.5,236 L666.5,236 Q663,236 663,239.5 L663,360 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-customers-edge .fe-path.react-flow__edge-path d=M670,112 L670,232.5 Q670,236 666.5,236 L666.5,236 Q663,236 663,239.5 L663,360 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M670,112 L670,232.5 Q670,236 666.5,236 L666.5,236 Q663,236 663,239.5 L663,360 fill:none stroke-width:22px
+              path #connection-hit-customers-edge .react-flow__edge-interaction d=M670,112 L670,232.5 Q670,236 666.5,236 L666.5,236 Q663,236 663,239.5 L663,360 fill:none stroke-width:22px
 == edge-edge-firewall
             g #edge-edge-firewall .fe.fe-sync
-              path .fe-halo d=M670,432 L670,475.5 Q670,476 670.5,476 L670.5,476 Q671,476 671,476.5 L671,520 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-edge-firewall .fe-halo d=M670,432 L670,475.5 Q670,476 670.5,476 L670.5,476 Q671,476 671,476.5 L671,520 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-edge-firewall .fe-path.react-flow__edge-path d=M670,432 L670,475.5 Q670,476 670.5,476 L670.5,476 Q671,476 671,476.5 L671,520 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M670,432 L670,475.5 Q670,476 670.5,476 L670.5,476 Q671,476 671,476.5 L671,520 fill:none stroke-width:22px
+              path #connection-hit-edge-firewall .react-flow__edge-interaction d=M670,432 L670,475.5 Q670,476 670.5,476 L670.5,476 Q671,476 671,476.5 L671,520 fill:none stroke-width:22px
 == edge-firewall-payments
             g #edge-firewall-payments .fe.fe-sync.is-deny
-              path .fe-halo d=M782,556 L1160,556 Q1170,556 1170,566 L1170,1160 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-firewall-payments .fe-halo d=M782,556 L1160,556 Q1170,556 1170,566 L1170,1160 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-firewall-payments .fe-path.react-flow__edge-path d=M782,556 L1160,556 Q1170,556 1170,566 L1170,1160 fill:none stroke:oklab(0.614047 0.120353 0.0436579) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M782,556 L1160,556 Q1170,556 1170,566 L1170,1160 fill:none stroke-width:22px
+              path #connection-hit-firewall-payments .react-flow__edge-interaction d=M782,556 L1160,556 Q1170,556 1170,566 L1170,1160 fill:none stroke-width:22px
               title "Firewall rule: deny. What's routed here is blocked"
               g #edge-deny-firewall-payments .fe-deny transform=translate(816 556)
                 circle r=7 fill:rgb(255, 255, 255) stroke:rgb(209, 57, 63) stroke-width:1.75px
                 path d=M-4.2 4.2 4.2-4.2 stroke:rgb(209, 57, 63) stroke-width:1.75px
 == edge-firewall-spine-1
             g #edge-firewall-spine-1 .fe.fe-sync
-              path .fe-halo d=M664,592 L664,626 Q664,636 654,636 L500,636 Q490,636 490,646 L490,680 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-firewall-spine-1 .fe-halo d=M664,592 L664,626 Q664,636 654,636 L500,636 Q490,636 490,646 L490,680 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-firewall-spine-1 .fe-path.react-flow__edge-path d=M664,592 L664,626 Q664,636 654,636 L500,636 Q490,636 490,646 L490,680 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M664,592 L664,626 Q664,636 654,636 L500,636 Q490,636 490,646 L490,680 fill:none stroke-width:22px
+              path #connection-hit-firewall-spine-1 .react-flow__edge-interaction d=M664,592 L664,626 Q664,636 654,636 L500,636 Q490,636 490,646 L490,680 fill:none stroke-width:22px
 == edge-firewall-spine-2
             g #edge-firewall-spine-2 .fe.fe-sync
-              path .fe-halo d=M678,592 L678,626 Q678,636 688,636 L840,636 Q850,636 850,646 L850,680 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-firewall-spine-2 .fe-halo d=M678,592 L678,626 Q678,636 688,636 L840,636 Q850,636 850,646 L850,680 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-firewall-spine-2 .fe-path.react-flow__edge-path d=M678,592 L678,626 Q678,636 688,636 L840,636 Q850,636 850,646 L850,680 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M678,592 L678,626 Q678,636 688,636 L840,636 Q850,636 850,646 L850,680 fill:none stroke-width:22px
+              path #connection-hit-firewall-spine-2 .react-flow__edge-interaction d=M678,592 L678,626 Q678,636 688,636 L840,636 Q850,636 850,646 L850,680 fill:none stroke-width:22px
 == edge-label-branch-edge
         div #edge-label-branch-edge .fe-label.fe-label-sync.is-full.nodrag.nopan width:103.062px height:22px transform:matrix(1, 0, 0, 1, 841.969, 333) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "SD-WAN tunnel"
 == edge-label-customers-edge
@@ -134,45 +134,45 @@ svg width=1116 height=1639 viewBox=0 0 1116 1639
         div #edge-label-web-1-payments .fe-label.fe-label-sync.is-full.nodrag.nopan width:57.375px height:22px transform:matrix(1, 0, 0, 1, 791.312, 1113.5) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "Charge"
 == edge-leaf-adc
             g #edge-leaf-adc .fe.fe-sync
-              path .fe-halo d=M674.5,912 L674.5,953.8 Q674.5,956 672.3,956 L672.3,956 Q670,956 670,958.3 L670,1000 fill:none stroke:oklab(0.53334 -0.0161909 -0.220409 / 0.14) stroke-width:8px
+              path #connection-halo-leaf-adc .fe-halo d=M674.5,912 L674.5,953.8 Q674.5,956 672.3,956 L672.3,956 Q670,956 670,958.3 L670,1000 fill:none stroke:oklab(0.53334 -0.0161909 -0.220409 / 0.14) stroke-width:8px
               path #connection-stroke-leaf-adc .fe-path.react-flow__edge-path d=M674.5,912 L674.5,953.8 Q674.5,956 672.3,956 L672.3,956 Q670,956 670,958.3 L670,1000 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M674.5,912 L674.5,953.8 Q674.5,956 672.3,956 L672.3,956 Q670,956 670,958.3 L670,1000 fill:none stroke-width:22px
+              path #connection-hit-leaf-adc .react-flow__edge-interaction d=M674.5,912 L674.5,953.8 Q674.5,956 672.3,956 L672.3,956 Q670,956 670,958.3 L670,1000 fill:none stroke-width:22px
               title "Message types: Checkout, BackOffice"
 == edge-spine-1-leaf
             g #edge-spine-1-leaf .fe.fe-sync
-              path .fe-halo d=M490,752 L490,786 Q490,796 500,796 L657.5,796 Q667.5,796 667.5,806 L667.5,840 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-spine-1-leaf .fe-halo d=M490,752 L490,786 Q490,796 500,796 L657.5,796 Q667.5,796 667.5,806 L667.5,840 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-spine-1-leaf .fe-path.react-flow__edge-path d=M490,752 L490,786 Q490,796 500,796 L657.5,796 Q667.5,796 667.5,806 L667.5,840 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M490,752 L490,786 Q490,796 500,796 L657.5,796 Q667.5,796 667.5,806 L667.5,840 fill:none stroke-width:22px
+              path #connection-hit-spine-1-leaf .react-flow__edge-interaction d=M490,752 L490,786 Q490,796 500,796 L657.5,796 Q667.5,796 667.5,806 L667.5,840 fill:none stroke-width:22px
 == edge-spine-2-leaf
             g #edge-spine-2-leaf .fe.fe-sync
-              path .fe-halo d=M850,752 L850,786 Q850,796 840,796 L691.5,796 Q681.5,796 681.5,806 L681.5,840 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-spine-2-leaf .fe-halo d=M850,752 L850,786 Q850,796 840,796 L691.5,796 Q681.5,796 681.5,806 L681.5,840 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-spine-2-leaf .fe-path.react-flow__edge-path d=M850,752 L850,786 Q850,796 840,796 L691.5,796 Q681.5,796 681.5,806 L681.5,840 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M850,752 L850,786 Q850,796 840,796 L691.5,796 Q681.5,796 681.5,806 L681.5,840 fill:none stroke-width:22px
+              path #connection-hit-spine-2-leaf .react-flow__edge-interaction d=M850,752 L850,786 Q850,796 840,796 L691.5,796 Q681.5,796 681.5,806 L681.5,840 fill:none stroke-width:22px
 == edge-staff-branch
             g #edge-staff-branch .fe.fe-sync
-              path .fe-halo d=M1110,112 L1110,200 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-staff-branch .fe-halo d=M1110,112 L1110,200 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-staff-branch .fe-path.react-flow__edge-path d=M1110,112 L1110,200 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1110,112 L1110,200 fill:none stroke-width:22px
+              path #connection-hit-staff-branch .react-flow__edge-interaction d=M1110,112 L1110,200 fill:none stroke-width:22px
 == edge-web-1-db
             g #edge-web-1-db .fe.fe-sync
-              path .fe-halo d=M490,1232 L490,1272.5 Q490,1276 486.5,1276 L486.5,1276 Q483,1276 483,1279.5 L483,1320 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-web-1-db .fe-halo d=M490,1232 L490,1272.5 Q490,1276 486.5,1276 L486.5,1276 Q483,1276 483,1279.5 L483,1320 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-web-1-db .fe-path.react-flow__edge-path d=M490,1232 L490,1272.5 Q490,1276 486.5,1276 L486.5,1276 Q483,1276 483,1279.5 L483,1320 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M490,1232 L490,1272.5 Q490,1276 486.5,1276 L486.5,1276 Q483,1276 483,1279.5 L483,1320 fill:none stroke-width:22px
+              path #connection-hit-web-1-db .react-flow__edge-interaction d=M490,1232 L490,1272.5 Q490,1276 486.5,1276 L486.5,1276 Q483,1276 483,1279.5 L483,1320 fill:none stroke-width:22px
 == edge-web-1-payments
             g #edge-web-1-payments .fe.fe-sync
-              path .fe-halo d=M600,1196 L660,1196 Q670,1196 670,1186 L670,1134.5 Q670,1124.5 680,1124.5 L1000,1124.5 Q1010,1124.5 1010,1134.5 L1010,1179 Q1010,1189 1020,1189 L1060,1189 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-web-1-payments .fe-halo d=M600,1196 L660,1196 Q670,1196 670,1186 L670,1134.5 Q670,1124.5 680,1124.5 L1000,1124.5 Q1010,1124.5 1010,1134.5 L1010,1179 Q1010,1189 1020,1189 L1060,1189 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-web-1-payments .fe-path.react-flow__edge-path d=M600,1196 L660,1196 Q670,1196 670,1186 L670,1134.5 Q670,1124.5 680,1124.5 L1000,1124.5 Q1010,1124.5 1010,1134.5 L1010,1179 Q1010,1189 1020,1189 L1060,1189 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M600,1196 L660,1196 Q670,1196 670,1186 L670,1134.5 Q670,1124.5 680,1124.5 L1000,1124.5 Q1010,1124.5 1010,1134.5 L1010,1179 Q1010,1189 1020,1189 L1060,1189 fill:none stroke-width:22px
+              path #connection-hit-web-1-payments .react-flow__edge-interaction d=M600,1196 L660,1196 Q670,1196 670,1186 L670,1134.5 Q670,1124.5 680,1124.5 L1000,1124.5 Q1010,1124.5 1010,1134.5 L1010,1179 Q1010,1189 1020,1189 L1060,1189 fill:none stroke-width:22px
 == edge-web-2-db
             g #edge-web-2-db .fe.fe-sync
-              path .fe-halo d=M850,1232 L850,1266 Q850,1276 840,1276 L507,1276 Q497,1276 497,1286 L497,1320 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-web-2-db .fe-halo d=M850,1232 L850,1266 Q850,1276 840,1276 L507,1276 Q497,1276 497,1286 L497,1320 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-web-2-db .fe-path.react-flow__edge-path d=M850,1232 L850,1266 Q850,1276 840,1276 L507,1276 Q497,1276 497,1286 L497,1320 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M850,1232 L850,1266 Q850,1276 840,1276 L507,1276 Q497,1276 497,1286 L497,1320 fill:none stroke-width:22px
+              path #connection-hit-web-2-db .react-flow__edge-interaction d=M850,1232 L850,1266 Q850,1276 840,1276 L507,1276 Q497,1276 497,1286 L497,1320 fill:none stroke-width:22px
 == edge-web-2-payments
             g #edge-web-2-payments .fe.fe-sync
-              path .fe-halo d=M960,1196 L1006.5,1196 Q1010,1196 1010,1199.5 L1010,1199.5 Q1010,1203 1013.5,1203 L1060,1203 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-halo-web-2-payments .fe-halo d=M960,1196 L1006.5,1196 Q1010,1196 1010,1199.5 L1010,1199.5 Q1010,1203 1013.5,1203 L1060,1203 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
               path #connection-stroke-web-2-payments .fe-path.react-flow__edge-path d=M960,1196 L1006.5,1196 Q1010,1196 1010,1199.5 L1010,1199.5 Q1010,1203 1013.5,1203 L1060,1203 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M960,1196 L1006.5,1196 Q1010,1196 1010,1199.5 L1010,1199.5 Q1010,1203 1013.5,1203 L1060,1203 fill:none stroke-width:22px
+              path #connection-hit-web-2-payments .react-flow__edge-interaction d=M960,1196 L1006.5,1196 Q1010,1196 1010,1199.5 L1010,1199.5 Q1010,1203 1013.5,1203 L1060,1203 fill:none stroke-width:22px
 == export-header
       div #export-header .export-header width:1020px height:82.6875px left:340px top:-111px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
         h1 width:1020px height:31.1875px color:rgb(21, 24, 30) font-size:25.9px font-weight:700 border-top-color:rgb(21, 24, 30) "Branch office to data centre"

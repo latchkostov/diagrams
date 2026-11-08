@@ -177,12 +177,21 @@ test("R-64f737571f presenting restores connections truncated by Focus", async ({
   await gotoCanvas(page, "kafka-order-pipeline");
   await goToNode(page, "payments");
   await page.getByTestId("node-payments").click();
-  await page.getByTestId("view-focus").click();
-  await waitForCameraIdle(page);
-  await expect.poll(async () => (await paths(page)).filter((p) => p.stroke !== p.model).length).toBeGreaterThan(0);
+  // Stroke, halo and hit target now share the displayed route. Capture the
+  // complete presentation geometry instead of treating the halo as the model.
   await page.getByTestId("present-toggle").click();
   await expect(page.getByTestId("frame-detail")).toHaveCount(0);
-  expect((await paths(page)).filter((p) => p.stroke !== p.model)).toEqual([]);
+  const complete = await paths(page);
+  const natural = new Map(complete.map((p) => [p.id, p.stroke]));
+  await page.getByTestId("present-exit").click();
+  await page.getByTestId("view-focus").click();
+  await waitForCameraIdle(page);
+  await expect
+    .poll(async () => (await paths(page)).filter((p) => p.stroke !== natural.get(p.id)).length)
+    .toBeGreaterThan(0);
+  await page.getByTestId("present-toggle").click();
+  await expect(page.getByTestId("frame-detail")).toHaveCount(0);
+  expect(await paths(page)).toEqual(complete);
 });
 
 for (const mode of ["overview", "focus"])

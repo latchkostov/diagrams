@@ -31,15 +31,15 @@
     "labels": {
       "sql-to-debezium": { "style": "transform: translate(-50%, -50%) translate(339.805px, 196px); --fe-w: 136.29px; --fe-h: 22px;", "text": "CDC · transaction log" },
       "debezium-to-orders-topic": { "style": "transform: translate(-50%, -50%) translate(743.61px, 196px); --fe-w: 120.18px; --fe-h: 22px;", "text": "Order row changes" },
-      "debezium-to-customers-topic": { "style": "transform: translate(-50%, -50%) translate(749.61px, 263px); --fe-w: 143.42000000000002px; --fe-h: 22px;", "text": "Customer row changes" },
+      "debezium-to-customers-topic": { "style": "transform: translate(-50%, -50%) translate(749.61px, 263px); --fe-w: 143.42000000000002px; --fe-h: 22px; font-size: 16.009px; width: max-content; height: auto; line-height: 23px;", "text": "Customer row changes" },
       "orders-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1153.84px, 129px); --fe-w: 136.45px; --fe-h: 22px;", "text": "group: retail-projector" },
       "customers-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1156.77px, 236px); --fe-w: 136.45px; --fe-h: 22px;", "text": "group: retail-projector" },
       "processor-to-search": { "style": "transform: translate(-50%, -50%) translate(1566.82px, 102.5px); --fe-w: 117.44999999999999px; --fe-h: 22px;", "text": "Bulk index / delete" },
-      "processor-to-warehouse": { "style": "transform: translate(-50%, -50%) translate(1552.37px, 143px); --fe-w: 93.8px; --fe-h: 22px;", "text": "Batch MERGE" },
+      "processor-to-warehouse": { "style": "transform: translate(-50%, -50%) translate(1552.37px, 143px); --fe-w: 93.8px; --fe-h: 22px; font-size: 16.009px; width: max-content; height: auto; line-height: 23px; translate: 14.45px 7.02001px;", "text": "Batch MERGE" },
       "orders-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1142.69px, 203px); --fe-w: 134.30999999999997px; --fe-h: 22px;", "text": "group: retail-raw-sink" },
       "customers-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1167.77px, 283px); --fe-w: 97.16999999999999px; --fe-h: 38px;", "text": "group: retail-raw-sink" },
-      "s3-sink-to-lake": { "style": "transform: translate(-50%, -50%) translate(1532.37px, 256px); --fe-w: 126.75999999999998px; --fe-h: 22px;", "text": "PutObject · Parquet" },
-      "debezium-to-registry": { "style": "transform: translate(-50%, -50%) translate(749.61px, 129px); --fe-w: 108.78px; --fe-h: 22px;", "text": "Register schema" }
+      "s3-sink-to-lake": { "style": "transform: translate(-50%, -50%) translate(1532.37px, 256px); --fe-w: 126.75999999999998px; --fe-h: 22px; font-size: 16.009px; width: max-content; height: auto; line-height: 23px; translate: 8.17994px 2.21103e-05px;", "text": "PutObject · Parquet" },
+      "debezium-to-registry": { "style": "transform: translate(-50%, -50%) translate(749.61px, 129px); --fe-w: 108.78px; --fe-h: 22px; font-size: 16.009px; width: max-content; height: auto; line-height: 23px;", "text": "Register schema" }
     }
   },
   "tidy": {

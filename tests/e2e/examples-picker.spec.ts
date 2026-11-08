@@ -383,21 +383,30 @@ for (const variant of ["dev", "build"] as const)
   );
 
 test("copy notice stays clear of expanded stencil controls", async ({ page }) => {
+  await page.clock.install();
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("inspector-field-label").fill("My storefront");
   const notice = page.getByTestId("example-copy-notice");
   await expect(notice).toBeVisible();
+  // Measure placement while the notice exists, independently of library load time.
+  await pauseClock(page);
   await openLibrary(page);
   const search = page.getByTestId("palette-search");
   if (!(await search.isVisible())) await openLibrary(page);
   await expect(search).toBeVisible();
   for (const control of [search, page.getByTestId("palette-toggle")]) {
-    const a = await notice.boundingBox();
-    const b = await control.boundingBox();
-    if (!a || !b) throw new Error("Missing notification or stencil control");
-    expect(a.x >= b.x + b.width || b.x >= a.x + a.width || a.y >= b.y + b.height || b.y >= a.y + a.height).toBe(true);
+    await expect
+      .poll(async () => {
+        // Deliver layout/avoidance frames, rather than waiting for wall time.
+        await page.clock.runFor(32);
+        const a = await notice.boundingBox();
+        const b = await control.boundingBox();
+        if (!a || !b) throw new Error("Missing notification or stencil control");
+        return a.x >= b.x + b.width || b.x >= a.x + a.width || a.y >= b.y + b.height || b.y >= a.y + a.height;
+      })
+      .toBe(true);
   }
 });
 

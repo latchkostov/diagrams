@@ -32,16 +32,16 @@
     "integration-topic-to-fraud": "M2050,160 L2050,139 Q2050,136 2053,136 L2053,136 Q2056,136 2056,133 L2056,112"
   },
   "labels": {
-    "app-to-gateway": { "style": "transform: translate(-50%, -50%) translate(334px, 376px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
-    "gateway-to-command-handler": { "style": "transform: translate(-50%, -50%) translate(707px, 282.5px); --fe-w: 121.35px; --fe-h: 22px;", "text": "POST · commands" },
-    "gateway-to-query-api": { "style": "transform: translate(-50%, -50%) translate(707px, 469.5px); --fe-w: 91.17999999999999px; --fe-h: 22px;", "text": "GET · queries" },
-    "command-handler-to-event-store": { "style": "transform: translate(-50%, -50%) translate(1094px, 196px); --fe-w: 109.35999999999999px; --fe-h: 38px;", "text": "Append · expectedVersion" },
+    "app-to-gateway": { "style": "transform: translate(-50%, -50%) translate(334px, 376px); --fe-w: 54.7px; --fe-h: 22px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px;", "text": "HTTPS" },
+    "gateway-to-command-handler": { "style": "transform: translate(-50%, -50%) translate(707px, 282.5px); --fe-w: 121.35px; --fe-h: 22px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px;", "text": "POST · commands" },
+    "gateway-to-query-api": { "style": "transform: translate(-50%, -50%) translate(707px, 469.5px); --fe-w: 91.17999999999999px; --fe-h: 22px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px;", "text": "GET · queries" },
+    "command-handler-to-event-store": { "style": "transform: translate(-50%, -50%) translate(1094px, 196px); --fe-w: 109.35999999999999px; --fe-h: 38px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px; translate: 5.99992px -1.22632e-05px;", "text": "Append · expectedVersion" },
     "event-store-to-publisher": { "style": "transform: translate(-50%, -50%) translate(1473px, 182px); --fe-w: 86.43999999999998px; --fe-h: 22px;", "text": "Subscription" },
     "publisher-to-integration-topic": { "style": "transform: translate(-50%, -50%) translate(1854px, 196px); --fe-w: 116.13px; --fe-h: 22px;", "text": "Integration events" },
     "balance-proj-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1444.25px, 443px); --fe-w: 61.03px; --fe-h: 38px;", "text": "Upsert balance" },
     "statement-proj-to-statements": { "style": "transform: translate(-50%, -50%) translate(1488.75px, 683px); --fe-w: 78.14999999999999px; --fe-h: 22px;", "text": "Index entry" },
-    "query-api-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1100px, 492.5px); --fe-w: 81.58px; --fe-h: 22px;", "text": "GetBalance" },
-    "query-api-to-statements": { "style": "transform: translate(-50%, -50%) translate(1100px, 619.5px); --fe-w: 94.91px; --fe-h: 22px;", "text": "GetStatement" },
-    "integration-topic-to-fraud": { "style": "transform: translate(-50%, -50%) translate(2053px, 136px); --fe-w: 83.57px; --fe-h: 22px;", "text": "group: fraud" }
+    "query-api-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1100px, 492.5px); --fe-w: 81.58px; --fe-h: 22px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px;", "text": "GetBalance" },
+    "query-api-to-statements": { "style": "transform: translate(-50%, -50%) translate(1100px, 619.5px); --fe-w: 94.91px; --fe-h: 22px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px;", "text": "GetStatement" },
+    "integration-topic-to-fraud": { "style": "transform: translate(-50%, -50%) translate(2053px, 136px); --fe-w: 83.57px; --fe-h: 22px; font-size: 17.985px; width: max-content; height: auto; line-height: 27px;", "text": "group: fraud" }
   }
 }

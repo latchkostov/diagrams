@@ -31,6 +31,7 @@ import type { Rect } from "./geometry/rect";
 import { inflate, intersects, union } from "./geometry/rect";
 import { SpatialGrid } from "./geometry/spatial";
 import { roundedPath } from "./geometry/path";
+import { frameLabelHome, frameRoutesOf, type DisplayedRoute, type FrameRoute } from "./edges/frameRoute";
 import { FAR_ZOOM, textDetail } from "./detail";
 import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
@@ -116,6 +117,41 @@ function placeRegionTitles(root: HTMLElement, s: Parameters<typeof selectRoutes>
   }
 }
 
+/** A caption's boxes without the pan, valid while its context and `captionKey` hold. */
+type CaptionMeasure = { context: string; key: string; baseline: Rect; enlarged?: { box: Rect; lineHeight: string } };
+/** FrameDetail's own caption declarations; every other inline style is a layout input. */
+const CAPTION_OWN = /^(?:translate|font-size|width|height|line-height)\s*:/;
+const CAPTION_SIGNALS = new Set(["data-detail-zoom", "data-detail-hover"]);
+
+/** What lays out every caption under `parent`: its ancestors' attributes. */
+function captionContext(parent: Element | null): string {
+  const parts: string[] = [];
+  for (let el = parent; el; el = el.parentElement)
+    for (const { name, value } of el.attributes)
+      // The viewport's own transform is the pan and zoom: the scope and the stored offset cover it.
+      // The zoom and hover signals on the root style nothing.
+      if (!CAPTION_SIGNALS.has(name) && (name !== "style" || !el.classList.contains("react-flow__viewport")))
+        parts.push(`${el.tagName}[${name}]${value}`);
+  return parts.join("\n");
+}
+
+/**
+ * What lays out one caption besides its context: its attributes, content and inline styles
+ * (React's position and size floor). Captions with a separate text run are not keyed:
+ * textDetail rewrites that run's font every pass.
+ */
+function captionKey(label: HTMLElement): string {
+  const parts = [label.textContent ?? ""];
+  for (const { name, value } of label.attributes)
+    if (name === "style")
+      for (const declaration of value.split(";")) {
+        const css = declaration.trim();
+        if (css && !CAPTION_OWN.test(css)) parts.push(css);
+      }
+    else if (!name.startsWith("data-detail-")) parts.push(`[${name}]${value}`);
+  return parts.join("\n");
+}
+
 type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
 const empty: Drawing = { pins: [], chips: [], hint: false };
 
@@ -170,6 +206,14 @@ const FrameDecoration = memo(
       const fonts = new WeakMap<Element, number>();
       const cardWidths = new WeakMap<HTMLElement, { key: FlowNode["data"]; width: number }>();
       const wrapCache = new WeakMap<HTMLElement, { text: string; width: number; wrapped: boolean }>();
+      const captionMeasures = new WeakMap<HTMLElement, CaptionMeasure>();
+      // One string per distinct context, so an unchanged context compares by reference.
+      const canonicalContexts = new Map<string, string>();
+      const published = frameRoutesOf(store);
+      // A late web font changes every caption's ink without touching its inputs.
+      let fontEpoch = 0;
+      const fontsLoaded = () => void fontEpoch++;
+      document.fonts?.addEventListener?.("loadingdone", fontsLoaded);
       const inViewport = viewportParts();
       const measure = document.createElement("canvas").getContext("2d");
       const box = (el: Element, origin: DOMRect): Rect => {
@@ -571,6 +615,12 @@ const FrameDecoration = memo(
         // Expanded cards can paint beyond their measured routing bounds.
         routeObstacles.push(
           ...[...cards.keys()].filter((id) => states.get(id) === "in").map((id) => cardBoxes.get(id)!),
+          ...frameNodes
+            .filter(
+              ({ n }) =>
+                n.type === "annotation" && "kind" in n.data && (n.data.kind === "note" || n.data.kind === "shape"),
+            )
+            .map(({ id }) => cardBoxes.get(id)!),
         );
         routeObstacles.push(...pins.map((p) => p.box));
         for (const edge of s.edges) {
@@ -631,8 +681,38 @@ const FrameDecoration = memo(
         }
         // Test enlarged ink against labels that have not been placed yet too.
         // In Overview/Custom a rejected neighbour keeps its original position.
-        const originalLabels = new Map<string, Rect>();
-        for (const label of edgeLabels.values()) {
+        // A caption whose layout inputs are unchanged keeps its measured boxes (captionKey):
+        // editing one card re-measures only the captions React moved or changed, not the mesh.
+        // Stored boxes exclude the pan, which moves every caption by the same screen offset.
+        const shift = (r: Rect, dx: number, dy: number): Rect => ({ ...r, x: r.x + dx, y: r.y + dy });
+        const captionScope = `${zoom}|${origin.width}|${origin.height}|${fontEpoch}`;
+        const captionContexts = new Map<Element | null, string>();
+        const contextOf = (label: HTMLElement) => {
+          const parent = label.parentElement;
+          let context = captionContexts.get(parent);
+          if (context === undefined) {
+            const text = `${captionScope}\n${captionContext(parent)}`;
+            context = canonicalContexts.get(text) ?? text;
+            if (canonicalContexts.size > 32) canonicalContexts.clear();
+            canonicalContexts.set(text, context);
+            captionContexts.set(parent, context);
+          }
+          return context;
+        };
+        const captionKeys = new Map<HTMLElement, { context: string; key: string }>();
+        const textRuns = new Map<HTMLElement, HTMLElement | null>();
+        const knownLabels = new Map<string, Rect>();
+        const measuring: [string, HTMLElement][] = [];
+        for (const [id, label] of edgeLabels) {
+          const run = far ? null : label.querySelector<HTMLElement>(".fe-label-text");
+          textRuns.set(label, run);
+          const keyed = far || run ? null : { context: contextOf(label), key: captionKey(label) };
+          const known = keyed && captionMeasures.get(label);
+          if (keyed) captionKeys.set(label, keyed);
+          if (known && known.context === keyed!.context && known.key === keyed!.key) {
+            knownLabels.set(id, shift(known.baseline, tx, ty));
+            continue;
+          }
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
           label.style.removeProperty("width");
@@ -640,12 +720,31 @@ const FrameDecoration = memo(
           label.style.removeProperty("line-height");
           // Keep the dependency text's counter-scaled font from textDetail above.
           if (far) setHidden(label, true);
+          else measuring.push([id, label]);
         }
         // Far labels are hidden entirely; retain the batched reads only for visible detail.
-        if (!far) for (const [id, label] of edgeLabels) originalLabels.set(id, box(label, origin));
+        const measured = new Map(measuring.map(([id, label]) => [id, box(label, origin)]));
+        for (const [id, label] of measuring) {
+          const keyed = captionKeys.get(label);
+          if (keyed) captionMeasures.set(label, { ...keyed, baseline: shift(measured.get(id)!, -tx, -ty) });
+        }
+        const baselineLabels = new Map<string, Rect>();
+        if (!far) for (const id of edgeLabels.keys()) baselineLabels.set(id, knownLabels.get(id) ?? measured.get(id)!);
+        const home = (id: string, box: Rect) => {
+          const natural = routes.get(id)?.points;
+          const displayed = lanes.get(id);
+          return cropped && natural && displayed ? frameLabelHome(box, natural.map(screen), displayed) : box;
+        };
+        const originalLabels = new Map([...baselineLabels].map(([id, box]) => [id, home(id, box)]));
         const labelIndex = new SpatialGrid<string>();
         for (const [id, rect] of originalLabels) labelIndex.insert(rect, id);
+        // Cards, pins and badges are settled for this pass. Accepted labels join
+        // the same index below, so each caption only scans its candidate envelope.
+        const blockerIndex = new SpatialGrid<Rect>();
+        if (!far) for (const rect of blockers) blockerIndex.insert(rect, rect);
         const pathIndex = new SpatialGrid<string>();
+        const obstacleIndex = new SpatialGrid<Rect>();
+        if (!far) for (const rect of routeObstacles) obstacleIndex.insert(rect, rect);
         if (!far)
           for (const [id, points] of lanes) {
             const bounds = union(points.map((p) => ({ ...p, width: 0, height: 0 })));
@@ -653,10 +752,12 @@ const FrameDecoration = memo(
           }
         const nearby = (id: string, b: Rect) => {
           const area = inflate(
-            union([b, ...(lanes.get(id) ?? []).map((p) => ({ ...p, width: 0, height: 0 }))])!,
+            union([b, home(id, b), ...(lanes.get(id) ?? []).map((p) => ({ ...p, width: 0, height: 0 }))])!,
             Math.max(b.width, b.height),
           );
           return {
+            blocks: blockerIndex.query(area).map((e) => e.rect),
+            solids: obstacleIndex.query(area).map((e) => e.rect),
             homes: labelIndex
               .query(area)
               .filter((e) => e.item !== id)
@@ -670,47 +771,75 @@ const FrameDecoration = memo(
         const labelReads = [...(far ? [] : edgeLabels)].map(([id, label]) => {
           const edge = edges.get(id);
           const text =
-            label.querySelector<HTMLElement>(".fe-label-text") ??
+            textRuns.get(label) ??
             (!label.classList.contains("fe-chip") && !label.classList.contains("is-dot") ? label : null);
-          if (text && !fonts.has(text)) fonts.set(text, parseFloat(getComputedStyle(text).fontSize));
+          const textStyle = text && !fonts.has(text) ? getComputedStyle(text) : null;
+          if (textStyle) fonts.set(text!, parseFloat(textStyle.fontSize));
           const baselineFont = text ? fonts.get(text)! : 0;
           const enlarge = !!(
             !far &&
             text &&
             edge &&
-            (active.has(edge.source) || active.has(edge.target)) &&
+            (cropped || intersects(frameBox, originalLabels.get(id)!)) &&
+            (!label.hasAttribute("data-dependency") || active.has(edge.source) || active.has(edge.target)) &&
             baselineFont * zoom < 11
           );
+          const cached = captionKeys.has(label) ? captionMeasures.get(label) : undefined;
+          const known = enlarge ? cached?.enlarged : undefined;
           return {
             id,
             label,
             text,
-            baseline: text?.style.fontSize,
+            // A cached caption may still carry the previous pass's styles; its baseline is the bare caption.
+            baseline: cached
+              ? { fontSize: "", width: "", height: "", lineHeight: "" }
+              : {
+                  fontSize: text?.style.fontSize,
+                  width: label.style.width,
+                  height: label.style.height,
+                  lineHeight: label.style.lineHeight,
+                },
             baselineFont,
             enlarge,
-            lineHeight: enlarge ? parseFloat(getComputedStyle(label).lineHeight) : 0,
+            cached,
+            known,
+            lineHeight:
+              enlarge && !known
+                ? parseFloat((text === label && textStyle ? textStyle : getComputedStyle(label)).lineHeight)
+                : 0,
           };
         });
         const enlargedFont = Math.ceil((11 / zoom) * 1000) / 1000;
-        for (const { label, text, enlarge } of labelReads)
-          if (enlarge && text) {
-            text.style.fontSize = `${enlargedFont}px`;
-            label.style.width = "max-content";
-            label.style.height = "auto";
-          }
-        const inkReads = labelReads
-          .filter((r) => r.enlarge)
-          .map((r) => {
-            const ink = document.createRange();
-            ink.selectNodeContents(r.text!);
-            let height = r.lineHeight * (enlargedFont / r.baselineFont);
-            for (const rect of ink.getClientRects()) height = Math.max(height, rect.height / zoom);
-            return { ...r, height };
-          });
-        for (const { label, height } of inkReads) label.style.lineHeight = `${Math.round(height) + 1}px`;
+        const inkMeasures = labelReads.filter((r) => r.enlarge && !r.known);
+        for (const { label, text } of inkMeasures) {
+          // A cached caption keeps its last placement until its ink is measured in place.
+          label.style.removeProperty("translate");
+          text!.style.fontSize = `${enlargedFont}px`;
+          label.style.width = "max-content";
+          label.style.height = "auto";
+        }
+        const inkReads = inkMeasures.map((r) => {
+          const ink = document.createRange();
+          ink.selectNodeContents(r.text!);
+          let height = r.lineHeight * (enlargedFont / r.baselineFont);
+          for (const rect of ink.getClientRects()) height = Math.max(height, rect.height / zoom);
+          return { ...r, inkLineHeight: `${Math.round(height) + 1}px` };
+        });
+        for (const { label, inkLineHeight } of inkReads) label.style.lineHeight = inkLineHeight;
         const enlargedBoxes = new Map(inkReads.map(({ id, label }) => [id, box(label, origin)]));
+        const inkLineHeights = new Map<string, string>();
+        for (const { id, cached, inkLineHeight } of inkReads) {
+          inkLineHeights.set(id, inkLineHeight);
+          if (cached) cached.enlarged = { box: shift(enlargedBoxes.get(id)!, -tx, -ty), lineHeight: inkLineHeight };
+        }
+        for (const { id, known } of labelReads)
+          if (known) {
+            enlargedBoxes.set(id, shift(known.box, tx, ty));
+            inkLineHeights.set(id, known.lineHeight);
+          }
         const labelsById = new Map(labelReads.map((r) => [r.id, r]));
         const labelWrites: (() => void)[] = [];
+        const frameRoutes = new Map<string, FrameRoute>();
         for (const el of edgeElements) {
           const edge = edges.get(el.dataset.id ?? "");
           if (!edge) continue;
@@ -732,18 +861,26 @@ const FrameDecoration = memo(
           el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
           const pin = edgePins.get(edge.id);
           const route = routes.get(edge.id);
-          const stroke = el.querySelector<SVGPathElement>(".fe:not(.fe-chip) .fe-path");
-          if (stroke && route) {
+          let displayed: DisplayedRoute | undefined = route;
+          if (route && el.querySelector(".fe:not(.fe-chip)")) {
             let path = route.path;
             const points = lanes.get(edge.id);
             if (cropped && points?.length && (style === "smoothstep" || pin)) {
-              path = roundedPath(
-                points.map((p) => ({ x: (p.x - tx) / zoom, y: (p.y - ty) / zoom })),
-                pin ? 0 : 10,
-              );
+              const flowPoints = points.map((p) => ({ x: (p.x - tx) / zoom, y: (p.y - ty) / zoom }));
+              path = roundedPath(flowPoints, pin ? 0 : 10);
+              displayed = {
+                ...route,
+                path,
+                points: flowPoints,
+                frameClipped: states.get(edge.source) !== "in" || states.get(edge.target) !== "in",
+              };
               if (pin && ends.draw) el.removeAttribute("data-detail-no-arrow");
             }
-            if (stroke.getAttribute("d") !== path) stroke.setAttribute("d", path);
+            for (const stroke of el.querySelectorAll<SVGPathElement>(
+              ".fe:not(.fe-chip) .fe-path, .fe:not(.fe-chip) .fe-halo, .fe:not(.fe-chip) .react-flow__edge-interaction",
+            ))
+              if (stroke.getAttribute("d") !== path) stroke.setAttribute("d", path);
+            frameRoutes.set(edge.id, { natural: route, displayed: displayed! });
           }
 
           const label = edgeLabels.get(edge.id);
@@ -752,24 +889,41 @@ const FrameDecoration = memo(
           const enlarged = enlargedBoxes.get(edge.id);
           let floorPlacement: Rect | null = null;
           if (enlarged) {
-            const { homes, paths } = nearby(edge.id, enlarged);
-            floorPlacement = placeTextFloor(enlarged, inner, [...blockers, ...homes], paths, lanes.get(edge.id));
+            const { blocks, homes, paths, solids } = nearby(edge.id, enlarged);
+            floorPlacement = placeTextFloor(
+              home(edge.id, enlarged),
+              inner,
+              [...blocks, ...homes, ...solids],
+              paths,
+              lanes.get(edge.id),
+            );
           }
-          const b = floorPlacement ? enlarged! : originalLabels.get(edge.id)!;
-          if (enlarged && !floorPlacement)
-            labelWrites.push(() => {
-              reading.text!.style.fontSize = reading.baseline!;
-              label.style.removeProperty("width");
-              label.style.removeProperty("height");
-              label.style.removeProperty("line-height");
-            });
+          const b = floorPlacement ? enlarged! : baselineLabels.get(edge.id)!;
           const path = lanes.get(edge.id);
-          const homes = cropped ? nearby(edge.id, b).homes : [];
+          // Enlargement is optional. If its ink cannot fit, try the original
+          // caption before dropping the connection's label and pointer target.
+          // Keep this lookup local to the same indexed candidate envelope.
+          const fallback = enlarged && !floorPlacement ? nearby(edge.id, b) : null;
+          const baselinePlacement = fallback
+            ? placeFrameLabel(
+                home(edge.id, b),
+                path ?? [],
+                inner,
+                [...fallback.blocks, ...fallback.solids],
+                undefined,
+                fallback.homes,
+              )
+            : null;
+          const homes = cropped ? (fallback ?? nearby(edge.id, b)).homes : [];
           const placed =
             floorPlacement ??
-            (cropped && ends.pill && path?.length ? placeFrameLabel(b, path, inner, blockers, undefined, homes) : b);
+            baselinePlacement ??
+            (cropped && ends.pill && path?.length
+              ? placeFrameLabel(home(edge.id, b), path, inner, blockers, undefined, homes)
+              : b);
           const hidden =
             far ||
+            (!!enlarged && !floorPlacement && !baselinePlacement && !label.hasAttribute("data-dependency")) ||
             (cropped &&
               (!ends.pill ||
                 (pin && label.classList.contains("fe-chip")) ||
@@ -778,17 +932,51 @@ const FrameDecoration = memo(
                 !placed));
           labelWrites.push(() => {
             setHidden(label, !!hidden);
-            if (
+            // Write only what differs: a cached caption already shows most of its last pass.
+            const ink = floorPlacement
+              ? {
+                  fontSize: `${enlargedFont}px`,
+                  width: "max-content",
+                  height: "auto",
+                  lineHeight: inkLineHeights.get(edge.id)!,
+                }
+              : reading.baseline;
+            if (reading.text && reading.text.style.fontSize !== ink.fontSize)
+              reading.text.style.fontSize = ink.fontSize!;
+            if (label.style.width !== ink.width) label.style.width = ink.width;
+            if (label.style.height !== ink.height) label.style.height = ink.height;
+            if (label.style.lineHeight !== ink.lineHeight) label.style.lineHeight = ink.lineHeight;
+            const translate =
               !hidden &&
               placed &&
-              (cropped || floorPlacement) &&
+              (cropped || floorPlacement || baselinePlacement) &&
               (Math.abs(placed.x - b.x) > 0.01 || Math.abs(placed.y - b.y) > 0.01)
-            )
-              label.style.translate = `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`;
+                ? `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`
+                : "";
+            if (label.style.translate !== translate)
+              if (translate) label.style.translate = translate;
+              else label.style.removeProperty("translate");
           });
-          if (!hidden && placed) blockers.push(placed);
+          if (!hidden && placed) {
+            blockers.push(placed);
+            blockerIndex.insert(placed, placed);
+          }
+          if (route && displayed) {
+            const label =
+              !hidden && placed && route.label
+                ? {
+                    ...route.label,
+                    x: (placed.x + placed.width / 2 - tx) / zoom,
+                    y: (placed.y + placed.height / 2 - ty) / zoom,
+                    width: placed.width / zoom,
+                    height: placed.height / zoom,
+                  }
+                : null;
+            frameRoutes.set(edge.id, { natural: route, displayed: { ...displayed, label } });
+          }
         }
         for (const write of labelWrites) write();
+        published.publish(frameRoutes);
         // Call annotations belong to their edge too; a pinned caller must not leave a clipped pill.
         // Pills are placed last: nothing above depends on them, so traffic adding, removing or
         // relabelling a pill re-runs only this step against the same settled blockers.
@@ -806,9 +994,8 @@ const FrameDecoration = memo(
               active.has(edge.source) || active.has(edge.target),
             );
             const b = pillBoxes.get(pill)!;
-            const path = routes.get(edge.id)?.points;
-            let placed =
-              cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
+            const path = lanes.get(edge.id);
+            let placed = cropped && ends.pill && path?.length ? placeFrameLabel(b, path, inner, blockers) : b;
             if (phone && cropped && ends.pill) {
               const subject = cards.get(states.get(edge.source) === "in" ? edge.source : edge.target);
               if (subject) {
@@ -989,10 +1176,15 @@ const FrameDecoration = memo(
       };
       window.addEventListener("keydown", key);
       const reset = () => {
+        published.publish(undefined);
         const routes = selectRoutes(store.getState(), { style, direction, captions, hideDependencies });
         for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
           const path = routes.get(el.dataset.id ?? "")?.path;
-          if (path) el.querySelector(".fe:not(.fe-chip) .fe-path")?.setAttribute("d", path);
+          if (path)
+            for (const stroke of el.querySelectorAll(
+              ".fe:not(.fe-chip) .fe-path, .fe:not(.fe-chip) .fe-halo, .fe:not(.fe-chip) .react-flow__edge-interaction",
+            ))
+              stroke.setAttribute("d", path);
           el.removeAttribute("data-live-near");
           el.removeAttribute("data-detail-selected-edge");
         }
@@ -1049,6 +1241,7 @@ const FrameDecoration = memo(
         uncam();
         observer.disconnect();
         window.removeEventListener("keydown", key);
+        document.fonts?.removeEventListener?.("loadingdone", fontsLoaded);
         unregister();
         reset();
       };

@@ -132,6 +132,31 @@ describe("Workbench frame detail", () => {
     expect(Math.abs(lanes.get("automatic")![1].x - 100)).toBeGreaterThanOrEqual(8);
     expect(routes).toEqual(before);
   });
+  it("shares accepted and rejected lane spacing across dependency, Message and Request fans", () => {
+    const routes = new Map(
+      ["dependency", "message", "request"].map((id, i) => [
+        id,
+        [
+          { x: 0, y: i * 14 },
+          { x: 100, y: i * 14 },
+          { x: 100, y: 200 + i * 14 },
+          { x: 300, y: 200 + i * 14 },
+        ],
+      ]),
+    );
+    const accepted = frameLanes(routes, []);
+    const tracks = [...accepted.values()].map((p) => p[1].x).sort((a, b) => a - b);
+    expect(tracks).toEqual([92, 100, 108]);
+    const rejected = frameLanes(routes, [
+      { x: 94, y: 50, width: 3, height: 100 },
+      { x: 103, y: 50, width: 3, height: 100 },
+    ]);
+    expect(rejected).toEqual(routes);
+    for (const [id, points] of routes) {
+      expect(accepted.get(id)![0]).toEqual(points[0]);
+      expect(accepted.get(id)!.at(-1)).toEqual(points.at(-1));
+    }
+  });
   it("reroutes pins around solid annotations, captions and boundary headers from the main route input", () => {
     const blocks = [
       { x: 180, y: 75, width: 60, height: 100 },

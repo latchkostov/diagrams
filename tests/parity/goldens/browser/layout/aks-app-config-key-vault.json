@@ -29,11 +29,11 @@
       "api-to-ai": "M878.5,280 L878.5,146 Q878.5,136 888.5,136 L1249.5,136 Q1259.5,136 1259.5,126 L1259.5,112"
     },
     "labels": {
-      "web-to-fd": { "style": "transform: translate(-50%, -50%) translate(328px, 316px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
-      "fd-to-api": { "style": "transform: translate(-50%, -50%) translate(692px, 316px); --fe-w: 90.3px; --fe-h: 22px;", "text": "POST /orders" },
-      "api-to-sql": { "style": "transform: translate(-50%, -50%) translate(1080.24px, 389.5px); --fe-w: 59.71px; --fe-h: 22px;", "text": "EF Core" },
-      "api-to-sb": { "style": "transform: translate(-50%, -50%) translate(1058.24px, 242.5px); --fe-w: 92.47999999999999px; --fe-h: 22px;", "text": "OrderCreated" },
-      "sb-to-notify": { "style": "transform: translate(-50%, -50%) translate(1439.98px, 196px); --fe-w: 86.43999999999998px; --fe-h: 22px;", "text": "Subscription" },
+      "web-to-fd": { "style": "transform: translate(-50%, -50%) translate(328px, 316px); --fe-w: 54.7px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "HTTPS" },
+      "fd-to-api": { "style": "transform: translate(-50%, -50%) translate(692px, 316px); --fe-w: 90.3px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "POST /orders" },
+      "api-to-sql": { "style": "transform: translate(-50%, -50%) translate(1080.24px, 389.5px); --fe-w: 59.71px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px; translate: 2.00162e-05px 6.34803px;", "text": "EF Core" },
+      "api-to-sb": { "style": "transform: translate(-50%, -50%) translate(1058.24px, 242.5px); --fe-w: 92.47999999999999px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px; translate: 4.37e-05px -14.674px;", "text": "OrderCreated" },
+      "sb-to-notify": { "style": "transform: translate(-50%, -50%) translate(1439.98px, 196px); --fe-w: 86.43999999999998px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "Subscription" },
       "api-to-appcfg": { "style": "transform: translate(-50%, -50%) translate(1184.36px, 256px); --fe-w: 140.9px; --fe-h: 22px;", "text": "4 settings · 2 secret" },
       "appcfg-to-kv": { "style": "transform: translate(-50%, -50%) translate(1439.98px, 316px); --fe-w: 100.22px; --fe-h: 22px;", "text": "2 references" },
       "api-to-mi": { "style": "transform: translate(-50%, -50%) translate(1128.49px, 490.5px); --fe-w: 73.02000000000001px; --fe-h: 22px;", "text": "runs as" },
