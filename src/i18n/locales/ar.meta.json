@@ -2203,9 +2203,9 @@
     "cache.purgeHint": "af0f15ee",
     "cache.softPurgeHint": "54fc8b54",
     "cache.purgeWindow": "482c7757",
-    "cache.coldLesson": "0056279b",
+    "cache.coldLesson": "a96fabd5",
     "cache.coldTailLesson": "c2d2dd00",
-    "cache.coldRecovered": "a377e44f",
+    "cache.coldRecovered": "a74d16cc",
     "cache.coldUnrecovered": "18493671",
     "cache.afterPurge": "5c2a855e",
     "cache.coalesceHint": "4d39fbd2",
@@ -3231,6 +3231,13 @@
     "cacheChecks.keep": "fb9d91e3",
     "cacheChecks.deleteRule": "4082b4ee",
     "cacheChecks.replicas": "80292223",
-    "cacheChecks.notChecked": "3ef9a0eb"
+    "cacheChecks.notChecked": "3ef9a0eb",
+    "cache.staleTradeoff": "8f607de5",
+    "cache.clearingAction": "104bef05",
+    "cache.deployEmpty": "0d64e9cf",
+    "cache.deployKeep": "0b253b2c",
+    "cache.keepExpired": "d9ed1adc",
+    "cache.missingPurgeRule": "d1e942d5",
+    "tutorials.cdnCache.guidance": "32215de6"
   }
 }

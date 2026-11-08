@@ -161,6 +161,15 @@ for (const id of cachingIds) {
     await runPointerSkipAll(page, consoleErrors, id);
     await expect(page.getByTestId("tutorial-handoff-recap")).toHaveText(recaps[id]);
     await expect(page.getByTestId("tutorial-handoff-heading")).toBeFocused();
+    if (id === "cdn-cache") {
+      const guidance = page.getByTestId("tutorial-handoff-body").getByTestId("tutorial-handoff-guidance");
+      await expect(guidance).toHaveText(
+        "Create a Drill: Live → More → Simulations → New simulation → Timeline → Add step → Cold cache. Compare examples: Examples → search “cache” → Cache stampede or Black Friday commerce.",
+      );
+      await guidance.scrollIntoViewIfNeeded();
+      await expect(guidance).toBeInViewport({ ratio: 1 });
+      expect(await guidance.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+    }
   });
 }
 

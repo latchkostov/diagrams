@@ -6,9 +6,8 @@ const PILLS = ".chip-trouble";
 
 /** Everything the chip view wrote under the Live root (it lives in this lazy chunk, not the Live session). */
 export function clear(root: ParentNode) {
-  for (const el of root.querySelectorAll(`[data-live-trouble], [data-live-rate], [data-live-cut], ${PILLS}`)) {
-    for (const attr of ["data-live-trouble", "data-live-rate", "data-live-cut", "data-failing"])
-      el.removeAttribute(attr);
+  for (const el of root.querySelectorAll(`[data-live-trouble], [data-live-rate], ${PILLS}`)) {
+    for (const attr of ["data-live-trouble", "data-live-rate", "data-failing"]) el.removeAttribute(attr);
     if (el.matches(PILLS)) el.textContent = "";
   }
 }
@@ -38,7 +37,6 @@ export function decorate(
   nodes: HTMLElement[],
   root: ParentNode,
   edges: HTMLElement[],
-  boundaries: HTMLElement[],
   { snapshot, health, zones }: DecorationInput,
   rates: ReadonlyMap<string, number>,
 ) {
@@ -48,8 +46,6 @@ export function decorate(
     if (value === null) el.removeAttribute(key);
     else el.setAttribute(key, value);
   };
-  const down = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "boundary" ? [f.boundary] : [])));
-  for (const el of boundaries) attr(el, "data-live-status", down.has(el.dataset.captionRoot!) ? "down" : null);
   for (const el of nodes) {
     const id = el.dataset.id!,
       n = snapshot.nodes[id];
@@ -70,7 +66,6 @@ export function decorate(
       }
   }
   rollup([...root.querySelectorAll<HTMLElement>(PILLS)], trouble);
-  const cut = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
   const rate = (id: string) => (rates.get(id) ?? 0) * (snapshot.scale ?? 1);
   for (const el of edges) {
     attr(el, "data-live-rate", String(rateLevel(rate(el.dataset.id!))));
@@ -78,6 +73,5 @@ export function decorate(
       const members: string[] = JSON.parse(section.getAttribute("data-chip-members")!);
       attr(section, "data-live-rate", String(rateLevel(members.reduce((sum, id) => sum + rate(id), 0))));
     }
-    attr(el, "data-live-cut", cut.has(el.dataset.id!) ? "1" : null);
   }
 }

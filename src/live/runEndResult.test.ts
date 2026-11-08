@@ -7,6 +7,37 @@ import { runEndResult } from "./runEndResult";
 import busy from "../examples/scale-on-busy-threads.json";
 import payment from "../examples/slow-payment-provider.json";
 import storm from "../examples/retry-storm.json";
+import { cacheFixture } from "../lab/cacheFixture";
+
+it("distinguishes traffic-weighted hot recovery from a complete deploy refill", () => {
+  const diagram = cacheFixture();
+  const state = {
+    run: { done: true, expectations: [] },
+    configuration: {},
+    snapshot: {
+      nodes: {
+        cache: {
+          cacheDetails: {
+            purge: {
+              peakFetchRate: 250,
+              edge: diagram.edges[1].id,
+              hard: true,
+              tailItems: 20000,
+              refillMs: 200000,
+              recoveredAfterMs: 1500,
+            },
+          },
+        },
+        origin: { backlog: 0 },
+      },
+      edges: {},
+    },
+  } as unknown as import("./controller").LiveState;
+  const result = runEndResult(state, diagram);
+  expect(result).toContain("After the purge or deploy");
+  expect(result).toContain("frequently requested items recovered");
+  expect(result).toContain("This does not mean every item has been refilled.");
+});
 
 it.each([
   { status: "up", requests: 0, succeeded: 0 },

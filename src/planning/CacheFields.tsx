@@ -82,7 +82,7 @@ function StaleWindow({
         </label>
       )}
       <p className="insp-note" id={`${id}-stale-hint`}>
-        {t("cache.staleHint")}
+        {t("cache.staleHint")} {t("cache.staleTradeoff")}
       </p>
     </>
   );

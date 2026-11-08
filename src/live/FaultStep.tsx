@@ -4,6 +4,8 @@ import { faultTarget, type Fault } from "../model/faults";
 import type { DiagramFile } from "../model/types";
 import { defaultFault, faultTargets, type PurgeConfiguration } from "./faults";
 import type { CacheTable } from "../model/caching";
+import { useContext } from "react";
+import { SimErrors } from "./validationContext";
 
 export function FaultStep({
   fault,
@@ -19,6 +21,7 @@ export function FaultStep({
   onChange(fault: Fault): void;
 }) {
   useLocale();
+  const ruleInvalid = useContext(SimErrors).has(`${testId}-fault-rule`);
   // `purge` carries the purge targets in effect at this step (setup and earlier edits included).
   const purgeTargets = purge?.targets ?? faultTargets(diagram, "purge");
   const targets = fault.kind === "purge" ? purgeTargets : faultTargets(diagram, fault.kind);
@@ -31,7 +34,7 @@ export function FaultStep({
         : fault.kind === "slow"
           ? String(fault.factor)
           : fault.kind === "purge"
-            ? (fault.mode ?? "hard")
+            ? `${fault.reason === "deploy" ? "deploy-" : ""}${fault.mode ?? "hard"}`
             : String(fault.rate);
   const table =
     fault.kind === "purge"
@@ -102,10 +105,10 @@ export function FaultStep({
         </ValidationSelect>
       </label>
       <label>
-        <span>{fault.kind === "purge" ? t("cache.purgeMode") : t("fault.magnitude")}</span>
+        <span>{fault.kind === "purge" ? t("cache.clearingAction") : t("fault.magnitude")}</span>
         <ValidationSelect
           value={value}
-          aria-label={fault.kind === "purge" ? t("cache.purgeMode") : t("fault.magnitude")}
+          aria-label={fault.kind === "purge" ? t("cache.clearingAction") : t("fault.magnitude")}
           data-testid={`${testId}-fault-value`}
           onChange={(e) =>
             onChange(
@@ -116,7 +119,11 @@ export function FaultStep({
                   : fault.kind === "slow"
                     ? { ...fault, factor: Number(e.target.value) as 1 | 2 | 5 | 10 }
                     : fault.kind === "purge"
-                      ? { ...fault, mode: e.target.value as "hard" | "soft" }
+                      ? {
+                          ...fault,
+                          mode: e.target.value.endsWith("soft") ? "soft" : "hard",
+                          reason: e.target.value.startsWith("deploy-") ? "deploy" : undefined,
+                        }
                       : { ...fault, rate: Number(e.target.value) as 0 | 0.1 | 0.5 },
             )
           }
@@ -140,7 +147,9 @@ export function FaultStep({
           ) : fault.kind === "purge" ? (
             <>
               <option value="hard">{t("cache.hardPurge")}</option>
-              <option value="soft">{t("cache.softPurge")}</option>
+              <option value="soft">{t("cache.keepExpired")}</option>
+              <option value="deploy-hard">{t("cache.deployEmpty")}</option>
+              <option value="deploy-soft">{t("cache.deployKeep")}</option>
             </>
           ) : (
             [0, 0.1, 0.5].map((rate) => (
@@ -179,17 +188,16 @@ export function FaultStep({
               {table?.default && <option value="rule:">{t("cache.everythingElse")}</option>}
             </ValidationSelect>
           </label>
-          <label>
-            <span>{t("cache.purgeReason")}</span>
-            <ValidationSelect
-              data-testid={`${testId}-fault-reason`}
-              value={fault.reason ?? "purge"}
-              onChange={(e) => onChange({ ...fault, reason: e.currentTarget.value as "purge" | "deploy" })}
+          {ruleInvalid && (
+            <p
+              className="insp-note"
+              role="alert"
+              id={`${testId}-fault-rule-error`}
+              data-testid={`${testId}-fault-rule-error`}
             >
-              <option value="purge">{t("cache.purge")}</option>
-              <option value="deploy">{t("cache.deploy")}</option>
-            </ValidationSelect>
-          </label>
+              {t("workspaceValidation.target", { field: t("cache.purgeRule") })}
+            </p>
+          )}
           <p className="insp-note">{t("cache.purgeHint")}</p>
           {fault.mode === "soft" && <p className="insp-note">{t("cache.softPurgeHint")}</p>}
         </>

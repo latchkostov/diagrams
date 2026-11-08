@@ -485,7 +485,7 @@ export interface Tutorial extends TutorialMetadata {
   study?: true;
   subjects: Readonly<Record<string, SubjectSpec>>;
   steps: readonly TutorialStep[];
-  finish: { text: Words; example?: { slug: string; label: Words } };
+  finish: { text: Words; guidance?: Words; example?: { slug: string; label: Words } };
 }
 
 /** A catalog row and deep-link explanation, with no runnable lesson or fixture. */

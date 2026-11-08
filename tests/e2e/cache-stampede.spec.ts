@@ -52,6 +52,13 @@ for (const step of ["coalesce", "stale"] as const)
     await expect(action).toHaveAttribute("data-action", "cache");
     const label = step === "coalesce" ? "One fetch per item" : "Serve stale while refreshing";
     await expect(action).toHaveText(label);
+    if (step === "stale") {
+      const warning = page.getByTestId("trouble-stale-tradeoff");
+      await expect(warning).toBeVisible();
+      await expect(warning).toContainText("Readers may receive old data");
+      // Compact placement keeps Apply, so its trade-off must retain visible text too.
+      expect(await warning.evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
+    }
     await expect(page.getByTestId("node-cache-cdn")).toContainText("Stampede");
     await expect(page.getByTestId("call-pill-fetch")).toContainText("fetches for one item");
     if (process.env.CDN_SHOTS) {

@@ -3191,6 +3191,12 @@ const en = {
   "cache.off": "Off",
   "cache.staleMs": "Stale window (ms)",
   "cache.staleHint": "Answer from the expired copy while one fetch refreshes it.",
+  "cache.staleTradeoff":
+    "Readers may receive old data while it refreshes. Choose this only where that loss of freshness is acceptable.",
+  "cache.clearingAction": "Cache action",
+  "cache.deployEmpty": "Deploy · empty the cache",
+  "cache.deployKeep": "Deploy · keep expired copies (soft purge)",
+  "cache.keepExpired": "Keep expired copies (soft purge)",
   "cache.staleAction": "Serve stale while refreshing",
   "cache.staleTrace": "Stale copy served · refreshing in the background",
   "cache.purge": "Purge",
@@ -3199,6 +3205,8 @@ const en = {
   "cache.deploy": "Deploy",
   "cache.coldCache": "Cold cache",
   "cache.purgeRule": "Rule",
+  "cache.missingPurgeRule":
+    "Timeline step {step}: cache rule “{rule}” is unavailable. Choose an available rule or remove this step.",
   "cache.allRules": "All rules",
   "cache.ruleRange": "Rules {from}–{to}",
   "cache.hardPurge": "Empty the cache",
@@ -3208,10 +3216,11 @@ const en = {
   "cache.purgeHint": "Instant. In-flight fetches still return; there is nothing to clear.",
   "cache.softPurgeHint": "Without a stale window, soft purge empties the cache too.",
   "cache.purgeWindow": "{label} was purged",
-  "cache.coldLesson": "The purge sent {rate} requests/s to {origin}. {recovery}",
+  "cache.coldLesson": "After the purge or deploy, {origin} received up to {rate} requests/s. {recovery}",
   "cache.coldTailLesson":
     "The hard purge emptied the cache. {origin} is still far behind at the end of this run. Refilling a cold tail of {items} items can take minutes. Soft purge keeps stale copies serving while they refresh.",
-  "cache.coldRecovered": "Hits were back above 80% after {seconds} s.",
+  "cache.coldRecovered":
+    "Hits returned above 80% after {seconds} s as frequently requested items recovered. This does not mean every item has been refilled.",
   "cache.coldUnrecovered": "Hits have not returned above 80% yet.",
   "cache.afterPurge": "{detail} After {node}'s purge {seconds} s ago.",
   "cache.coalesceHint": "Many CDNs collapse requests like this by default.",
@@ -6044,6 +6053,8 @@ const en = {
     "Fresh traffic showed the effect: hits answered here and fewer requests reached the origin.",
   "tutorials.cdnCache.finish":
     "You added a cache rule; the hit ratio and origin counts showed less origin work. A hit can return older data: what freshness would your readers accept?",
+  "tutorials.cdnCache.guidance":
+    "Create a Drill: Live → More → Simulations → New simulation → Timeline → Add step → Cold cache. Compare examples: Examples → search “cache” → Cache stampede or Black Friday commerce.",
   "tutorials.derivedHitRatio.title": "Where the hit ratio comes from",
   "tutorials.derivedHitRatio.summary":
     "Predict how fewer requests and a longer freshness period change hits. Try Cache at the edge first; the ratio is calculated, never a slider.",

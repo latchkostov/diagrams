@@ -23,6 +23,13 @@ import { buildBlueprint } from "./blueprint";
 
 export const cachingLessons = [cdnCache, derivedHitRatio, cacheLatency, cacheStampede, staleWhileRevalidate, coldCache];
 
+it("points the cache learner to the actual Drill authoring path and gallery comparisons", () => {
+  const text = cdnCache.finish.guidance!();
+  expect(text).toContain("New simulation → Timeline → Add step → Cold cache");
+  expect(text).toContain("Examples → search “cache” → Cache stampede or Black Friday commerce");
+  expect(cdnCache.finish.text()).not.toContain("New simulation");
+});
+
 function start(lesson: Tutorial): DiagramFile {
   if (typeof lesson.start !== "function") throw new Error("Expected a local exercise");
   return lesson.start();

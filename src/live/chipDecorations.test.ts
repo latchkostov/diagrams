@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import * as health from "./healthWindow";
 import { Decorator, loadChipInk } from "./decorations";
 import { LiveController } from "./controller";
 import retryStorm from "../examples/retry-storm.json";
@@ -73,6 +74,7 @@ it("weights only shared sections by their members' rates at every sampling scale
         },
       ]),
     );
+    root.setAttribute("data-low-zoom", "mid");
     routes.set("unrelated", {
       points: [
         { x: 0, y: 400 },
@@ -124,6 +126,7 @@ it("rolls current failures and paused nodes up once per zone, clears on recovery
   const root = document.createElement("div");
   root.innerHTML =
     '<div class="react-flow__node-diagram" data-id="payments"></div><div class="react-flow__node-diagram" data-id="orders"></div><span class="chip-trouble" data-testid="zone-trouble-services"></span><g class="react-flow__edge" data-id="orders--payments"></g>';
+  root.setAttribute("data-low-zoom", "mid");
   const decorator = new Decorator(root);
   const zones = new Map([
     ["payments", ["services"]],
@@ -159,6 +162,19 @@ it("rolls current failures and paused nodes up once per zone, clears on recovery
   expect(pill.hasAttribute("data-failing")).toBe(false);
   apply(11125, 1, false);
   expect(pill.textContent).toBe("");
+  apply(11250, 2, true);
+  const summaries = vi.spyOn(health, "currentHealth");
+  summaries.mockClear();
+  root.removeAttribute("data-low-zoom");
+  apply(11375, 2, true);
+  // Only the eligible processor needs baseline heat; inactive chips add no health or rate work.
+  expect(summaries).toHaveBeenCalledTimes(1);
+  expect(root.querySelector("[data-live-trouble], [data-live-rate]")).toBeNull();
+  expect(pill.textContent).toBe("");
+  root.setAttribute("data-low-zoom", "far");
+  apply(11500, 2, true);
+  expect(pill.textContent).toContain("stressed");
+  summaries.mockRestore();
   decorator.clear();
   expect(root.querySelector("[data-live-trouble]")).toBeNull();
 });

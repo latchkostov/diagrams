@@ -6,7 +6,11 @@ import { t } from "../i18n";
 
 import type { DiagramFile, Simulation } from "../model/types";
 import { LIMITS } from "../interop/native";
-import { faultTargets, faultStepCaches } from "./faults";
+import { faultTargets } from "./faults";
+import { timelineConfigurations } from "../model/timelineConfiguration";
+import { MAX_FAULT_WORK } from "../model/faultRuntime";
+import { cacheEnabled } from "../model/caching";
+import { stencilRole } from "../stencils/roles";
 import { editableProperties } from "./editableProperties";
 
 export interface SimFieldError {
@@ -78,7 +82,20 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
       }
     }
   });
-  const stepCaches = faultStepCaches(diagram, sim);
+  // Validation reads only each purge's target, independently of editor list admission.
+  const stepCaches = new Map<number, { valid: boolean; table: import("../model/caching").CacheTable | undefined }>();
+  if (diagram.nodes.length + (sim.timeline?.length ?? 0) <= MAX_FAULT_WORK) {
+    const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
+    for (const [fault, caches, index] of timelineConfigurations(diagram, sim)) {
+      if (fault.kind !== "purge") continue;
+      const node = byId.get(fault.node);
+      const table = caches.get(fault.node);
+      stepCaches.set(index, {
+        valid: !!node && cacheEnabled(diagram.planning, node.stencil, stencilRole(node.stencil), table),
+        table,
+      });
+    }
+  }
   sim.timeline?.forEach((step, i) => {
     const id = `sim-panel-step-${i}`;
     const label = `Timeline ${i + 1}`;
@@ -90,18 +107,18 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
         `${id}-fault-target`,
         `${label}: Target`,
         // The effective targets are purge targets; every other Fault kind targets the diagram itself.
-        (a.fault.kind === "purge" && effective ? effective.targets : faultTargets(diagram, a.fault.kind)).some(
-          (n) => n.id === faultTarget(a.fault),
-        ),
+        a.fault.kind === "purge"
+          ? !!effective?.valid
+          : faultTargets(diagram, a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
       );
       const fault = a.fault;
       if (fault.kind === "purge" && fault.rule !== undefined) {
         const table = effective?.table;
-        target(
-          `${id}-fault-rule`,
-          t("cache.purgeRule"),
-          fault.rule === "" ? !!table?.default : !!table?.rules.some((r) => r.id === fault.rule),
-        );
+        if (!(fault.rule === "" ? table?.default : table?.rules.some((r) => r.id === fault.rule)))
+          add(
+            `${id}-fault-rule`,
+            t("cache.missingPurgeRule", { step: i + 1, rule: fault.rule || t("cache.everythingElse") }),
+          );
       }
     } else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
     if (a.do === "inject") range(`${id}-count`, `${label}: Messages`, a.count, LIMITS.maxMessageCount, true);

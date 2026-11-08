@@ -72,7 +72,12 @@ export function presentCacheFinding(f: Finding): Finding {
   return {
     ...f,
     title,
-    message: message + (c.probe ? ` ${t("cacheChecks.probe")}` : ""),
+    message:
+      message +
+      (c.probe ? ` ${t("cacheChecks.probe")}` : "") +
+      (f.fix?.cacheLabel?.kind === "stale" || f.fix?.options?.some((o) => o.cacheLabel?.kind === "stale")
+        ? ` ${t("cache.staleTradeoff")}`
+        : ""),
     rationale: t("cacheChecks.why"),
     ...(f.fix
       ? {

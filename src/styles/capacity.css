@@ -319,6 +319,16 @@
   white-space: nowrap;
 }
 
+/* A freshness choice must remain visible alongside its Apply action, even in a crowded pane. */
+.cap-callout.is-compact .cap-callout-text > .trouble-stale-tradeoff {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+
 .cap-callout-fix {
   color: var(--text);
   font-weight: 550;

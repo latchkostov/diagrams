@@ -109,6 +109,7 @@ it("covers the small cache example with probe evidence and undoable fixes", () =
     }
   }
   expect(result.findings[0].fix?.options?.[0].cacheLabel).toEqual({ kind: "stale" });
+  expect(presentCacheFinding(result.findings[0]).message).toContain("Readers may receive old data");
   expect(agentReport(result).findings[0].cacheFinding?.kind).toBe("cache-stampede");
 });
 

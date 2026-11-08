@@ -44,14 +44,20 @@ export const Palette = memo(function Palette(props: Props) {
 function PaletteLoading(props: Props & { failed: boolean }) {
   const interaction = useInteraction();
   const input = useRef<HTMLInputElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
   const flyout = props.mode === "flyout";
   const toggleLabel = flyout ? t("workbench.pin") : t("workbench.unpin");
   useLayoutEffect(() => {
     const field = input.current;
+    const button = toggle.current;
     return () => {
-      if (document.activeElement !== field) return;
+      const owner = document.activeElement;
+      if (owner !== field && owner !== button) return;
+      if (owner === button && Contents.getSnapshot().value !== "loaded") return;
       queueMicrotask(() => {
-        if (document.activeElement === document.body) interaction?.dispatch({ type: "tool.focus", cause: "library" });
+        if (document.activeElement !== document.body) return;
+        if (owner === button) interaction?.dispatch({ type: "panel.field", panel: "palette", field: "palette-toggle" });
+        else interaction?.dispatch({ type: "tool.focus", cause: "library" });
       });
     };
   }, [interaction]);
@@ -92,7 +98,13 @@ function PaletteLoading(props: Props & { failed: boolean }) {
               }}
             />
           </label>
-          <button className="icon-btn" onClick={props.onToggle} aria-label={toggleLabel} data-testid="palette-toggle">
+          <button
+            ref={toggle}
+            className="icon-btn"
+            onClick={props.onToggle}
+            aria-label={toggleLabel}
+            data-testid="palette-toggle"
+          >
             <Icon name={flyout ? "pin" : "close"} />
           </button>
         </div>

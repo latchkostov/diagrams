@@ -5,6 +5,66 @@ import { flushSync } from "react-dom";
 import { expect, it, vi } from "vitest";
 import { TroubleCallout } from "./TroubleCallout";
 import { BottleneckCallout } from "./BottleneckCallout";
+import { readFileSync } from "node:fs";
+
+it("keeps the freshness choice visible alongside Apply in compact mode", () => {
+  const style = document.createElement("style");
+  style.textContent = readFileSync("src/styles/capacity.css", "utf8");
+  document.head.append(style);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    flushSync(() =>
+      root.render(
+        <TroubleCallout
+          trouble={{
+            key: "cache:hot",
+            kind: "lag",
+            node: "cache",
+            headline: "Expiry waits",
+            announce: "Expiry waits",
+            detail: "Requests wait.",
+            action: { kind: "cache", node: "cache", rule: "hot", step: "stale", cache: { rules: [] } },
+          }}
+          onAction={() => {}}
+          onDismiss={() => {}}
+        />,
+      ),
+    );
+    host.querySelector('[data-testid="trouble-callout"]')!.classList.add("is-compact");
+    const warning = host.querySelector<HTMLElement>('[data-testid="trouble-stale-tradeoff"]')!;
+    expect(getComputedStyle(warning).clipPath).toBe("none");
+    expect(getComputedStyle(warning).position).toBe("static");
+    expect(host.querySelector('[data-testid="trouble-action"]')?.textContent).toContain("Serve stale while refreshing");
+  } finally {
+    flushSync(() => root.unmount());
+    host.remove();
+    style.remove();
+  }
+});
+
+it("explains the freshness choice before a stale-serving action can be applied", () => {
+  const html = renderToStaticMarkup(
+    <TroubleCallout
+      trouble={{
+        key: "cache:hot",
+        kind: "lag",
+        node: "cache",
+        headline: "Expiry waits",
+        announce: "Expiry waits",
+        detail: "Requests wait.",
+        action: { kind: "cache", node: "cache", rule: "hot", step: "stale", cache: { rules: [] } },
+      }}
+      onAction={() => {}}
+      onDismiss={() => {}}
+    />,
+  );
+  expect(html).toContain("Readers may receive old data while it refreshes.");
+  expect(html.indexOf('data-testid="trouble-stale-tradeoff"')).toBeLessThan(
+    html.indexOf('data-testid="trouble-action"'),
+  );
+});
 
 it("the consumer tutorial target stays inside the existing action button", () => {
   const html = renderToStaticMarkup(

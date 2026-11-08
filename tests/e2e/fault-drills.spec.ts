@@ -393,7 +393,8 @@ test("Zone outage drill shifts traffic by 5 s without loss; the second simulatio
   await seek.fill("1000");
   await seek.press("ArrowRight");
   await expect(page.getByTestId("live-done")).toHaveAttribute("data-status", "fail");
-  await expect(page.getByTestId("live-done")).toHaveText("4/5");
+  await expect(page.getByTestId("live-done")).toHaveText("Done");
+  await expect(page.getByTestId("live-expectations-summary")).toHaveText("Expectations 4 of 5");
   await expect(page.getByTestId("live-run-result")).toHaveText("Lost 26 messages at Checkout API b");
   await expect(page.getByTestId("expectation-api-b-loss")).toHaveAttribute(
     "aria-label",

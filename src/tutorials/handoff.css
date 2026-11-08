@@ -87,6 +87,13 @@
   overflow: auto;
   padding: 16px 24px 12px;
 }
+.handoff-body.has-guidance {
+  flex-direction: column;
+  gap: 14px;
+}
+.has-guidance > .tutorial-handoff-next {
+  flex: none;
+}
 .tutorial-handoff-next {
   display: flex;
   flex: 1;
@@ -181,7 +188,8 @@
 .handoff-titleblock > div:last-child {
   font: 12px var(--font-mono);
 }
-.handoff-summary {
+.handoff-summary,
+.handoff-guidance {
   flex: none;
   font-size: 12px;
   line-height: 1.4;
