@@ -30,7 +30,7 @@ export async function applyFix(editor: EditorApi, finding: Finding, option?: str
   if (requestChecksNeeded(current, rules)) {
     const content = simulationContent(current);
     try {
-      requests = await awaitRequestChecks(current);
+      requests = await awaitRequestChecks(current, { target: finding.target });
     } catch (error) {
       notify(`Couldn't apply the fix: ${error instanceof Error ? error.message : "the diagram changed"}`, {
         kind: "error",

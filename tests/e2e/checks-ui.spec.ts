@@ -83,8 +83,7 @@ test.describe("the count under the title", () => {
 });
 
 test("diagram diagnostics keep guidance and valid element ignores through reload", async ({ page, consoleErrors }) => {
-  test.fixme(true, "quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md");
-  const diagnostic = "message-loop:incomplete";
+  const diagnostic = "diagram:message-loop:incomplete";
   const suggestion = "no-reader:payments-dlq";
   const diagram = JSON.parse(
     readFileSync(new URL("../../src/examples/outbox-saga-checkout.json", import.meta.url), "utf8"),
@@ -122,6 +121,7 @@ test("diagram diagnostics keep guidance and valid element ignores through reload
   await expect(page.getByTestId(`check-about-text-${diagnostic}`)).toBeVisible();
 
   // A real element ignore still works, while the diagram warning stays visible.
+  await page.getByTestId(`check-select-${suggestion}`).click();
   await page.getByTestId(`check-more-${suggestion}`).click();
   await page.getByTestId(`check-ignore-${suggestion}`).click();
   await page.getByTestId(`check-ignore-confirm-${suggestion}`).click();
@@ -137,6 +137,38 @@ test("diagram diagnostics keep guidance and valid element ignores through reload
   await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
   await expect(page.getByTestId("checks-ignored-toggle")).toHaveText("1 ignored");
   expect((await savedDiagram(page)).checks).toEqual(checks);
+  expectNoErrors(consoleErrors);
+});
+
+test("incomplete message-path guidance is readable in Arabic", async ({ page, consoleErrors }) => {
+  const diagram = JSON.parse(
+    readFileSync(new URL("../../src/examples/outbox-saga-checkout.json", import.meta.url), "utf8"),
+  ) as DiagramFile;
+  diagram.edges.push({
+    id: "possible-loop",
+    from: "payment-svc",
+    to: "payment-svc",
+    kind: "async",
+    props: { share: 0 },
+  });
+  await page.addInitScript(
+    ({ key, diagram }) => {
+      localStorage.setItem("diagrams.locale", "ar");
+      localStorage.setItem(key, JSON.stringify(diagram));
+    },
+    { key: STORAGE_KEYS.autosavePrefix + "outbox-saga-checkout", diagram },
+  );
+  await gotoCanvas(page, "outbox-saga-checkout");
+  await openFromCount(page);
+  const diagnostic = row(page, "diagram:message-loop:incomplete");
+  await expect(diagnostic).toContainText("راجع مسارات الرسائل");
+  await expect(diagnostic).toContainText("لا يكتمل تحليل تعديلات تمرير الرسائل في المخطط الزمني.");
+  await page.getByTestId("check-why-toggle-diagram:message-loop:incomplete").click();
+  await expect(page.getByTestId("check-why-text-diagram:message-loop:incomplete")).toContainText(
+    "راجع مسارات الرسائل يدويًا",
+  );
+  const fits = await diagnostic.evaluate((el) => el.scrollWidth <= el.clientWidth);
+  expect(fits).toBe(true);
   expectNoErrors(consoleErrors);
 });
 

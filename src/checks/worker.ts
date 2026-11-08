@@ -19,6 +19,9 @@ export interface CheckRequest {
   plan?: true;
   /** Request findings only (an agent's check or a fix waiting on them): no other rule runs. */
   requests?: true;
+  /** Optional targeted output; old whole-diagram requests retain their original shape and behavior. */
+  target?: string;
+  cancel?: true;
   threadFix?: ThreadFixRequest;
 }
 export type CheckResponse =
@@ -30,7 +33,7 @@ export type CheckResponse =
       /** Absent: none worked out (no enabled rule reads them). */ requests?: Finding[];
     }
   | { id: number; plans: ScalingPlan[] }
-  | { id: number; requestsOnly: Finding[]; plans?: ScalingPlan[] }
+  | { id: number; requestsOnly: Finding[]; plans?: ScalingPlan[]; target?: string }
   | { id: number; error: string };
 
 interface WorkerScope {
@@ -38,8 +41,30 @@ interface WorkerScope {
   postMessage(message: CheckResponse): void;
 }
 const scope = self as unknown as WorkerScope;
+const queuedTargets = new Map<number, ReturnType<typeof setTimeout>>();
 
 scope.onmessage = (e) => {
+  if (e.data.cancel) {
+    clearTimeout(queuedTargets.get(e.data.id));
+    queuedTargets.delete(e.data.id);
+    return;
+  }
+  if (e.data.requests && e.data.target !== undefined) {
+    const request = e.data;
+    queuedTargets.set(
+      request.id,
+      setTimeout(() => {
+        queuedTargets.delete(request.id);
+        execute(request);
+      }, 0),
+    );
+    return;
+  }
+  execute(e.data);
+};
+
+function execute(request: CheckRequest) {
+  const e = { data: request };
   const { id, diagram, plan } = e.data;
   try {
     if (e.data.threadFix) {
@@ -66,8 +91,13 @@ scope.onmessage = (e) => {
       });
     } else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
     else if (e.data.requests) {
-      const { requests, plans } = executeRequestChecks(diagram);
-      scope.postMessage({ id, requestsOnly: requests, plans });
+      const { requests, plans } = executeRequestChecks(diagram, e.data.target);
+      scope.postMessage({
+        id,
+        requestsOnly: requests,
+        plans,
+        ...(e.data.target === undefined ? {} : { target: e.data.target }),
+      });
     } else {
       // Scenario sizing goes back with the result when a check read it, for main-thread readers. A diagram with
       // capacity turned off (and no blocked caller's verified fix) plans nothing.
@@ -77,4 +107,4 @@ scope.onmessage = (e) => {
   } catch (err) {
     scope.postMessage({ id, error: err instanceof Error ? err.message : String(err) });
   }
-};
+}

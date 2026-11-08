@@ -62,6 +62,11 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 
 ## Batch 7: Bounded target-specific findings (1 OPEN)
 
+ES-04 is resolved in [P2-C](../release-notes/2026-11-07-p2-c-notify-checks.md): the scoped cache and worker
+protocol recover cutoff targets with cancellation and budget-preserving verified fixes. The regression
+in `src/checks/requestsReadiness.heavy.test.ts` fails against the prior implementation. The triage counts
+and OPEN description below record the original audit, rather than current acceptance status.
+
 1. **ES-04 — OPEN: Look up omitted findings by target.** `src/lib/requestCheckCache.ts:8`. Queue: #230.
    The inspector reads a bounded whole-diagram result, hiding findings after the output cutoff. Add a bounded target-scoped worker/cache request with cancellation and verified-fix support, preserving existing budgets.
 

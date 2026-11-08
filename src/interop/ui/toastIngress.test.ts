@@ -83,7 +83,8 @@ it("keeps what waits for the renderer compact: invalidation runs and progress, r
   toast.invalidateUndo();
   const runtime = { show: vi.fn(), invalidateUndo: vi.fn(), progress: vi.fn() };
   installToastRuntime(runtime as unknown as Parameters<typeof installToastRuntime>[0]);
-  expect(runtime.show.mock.calls.map(([input]) => input.id)).toEqual([id, task, later]);
+  expect(runtime.show.mock.calls.map(([input]) => input.id)).toEqual([task, later]);
+  expect(id).toBeLessThan(task);
   expect(runtime.progress.mock.calls).toEqual([[task, 1]]);
   // The run saw two different entries: nothing bound to either still stands, as with a fresh one.
   expect(runtime.invalidateUndo).toHaveBeenCalledTimes(2);
@@ -91,4 +92,52 @@ it("keeps what waits for the renderer compact: invalidation runs and progress, r
   expect(run).not.toBe(bound);
   expect(run).toBeTypeOf("object");
   expect(after).toBe(bound);
+});
+
+it("disposes replaced and dismissed resources before the renderer arrives, exactly once", async () => {
+  const { toast, notify } = await import("./toast");
+  const replaced = vi.fn(),
+    dismissed = vi.fn();
+  notify("Recording", { onDismiss: replaced });
+  const id = notify("Another recording", { onDismiss: dismissed });
+  expect(replaced).toHaveBeenCalledTimes(1);
+  toast.dismiss(id);
+  expect(dismissed).toHaveBeenCalledTimes(1);
+  await import("./toastRuntime");
+  expect(replaced).toHaveBeenCalledTimes(1);
+  expect(dismissed).toHaveBeenCalledTimes(1);
+});
+
+it("settles closed dialog feedback ownership before download", async () => {
+  const { toast, notify } = await import("./toast");
+  const { openModalLayer } = await import("../../lib/modalLayers");
+  const page = vi.fn(),
+    oldFeedback = vi.fn(),
+    newest = vi.fn();
+  notify("Page", { onDismiss: page });
+  const close = openModalLayer({} as HTMLElement, { feedback: {} as HTMLElement });
+  notify("Old feedback", { onDismiss: oldFeedback });
+  const id = notify("Latest feedback", { onDismiss: newest });
+  expect(oldFeedback).toHaveBeenCalledTimes(1);
+  close();
+  expect(page).toHaveBeenCalledTimes(1);
+  const { toast: interaction } = await import("./toastRuntime");
+  expect(interaction.current?.id).toBe(id);
+  toast.dismiss(id);
+  expect(newest).toHaveBeenCalledTimes(1);
+});
+
+it("preserves a waiting page notification across nested tasks before download", async () => {
+  const { toast, notify } = await import("./toast");
+  const first = toast.busy("First task", { blocking: true });
+  const dispose = vi.fn();
+  const waiting = notify("Waiting", { onDismiss: dispose });
+  const second = toast.busy("Second task", { blocking: true });
+  expect(dispose).not.toHaveBeenCalled();
+  toast.dismiss(first);
+  toast.dismiss(second);
+  const { toast: interaction } = await import("./toastRuntime");
+  expect(interaction.current?.id).toBe(waiting);
+  toast.dismiss(waiting);
+  expect(dispose).toHaveBeenCalledTimes(1);
 });

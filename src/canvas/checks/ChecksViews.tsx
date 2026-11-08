@@ -21,18 +21,17 @@ import { findingOrder, selectedFinding } from "./findingOrder";
 
 const ChecksCard = lazyComponent(() => loadChecksUi().then((m) => m.ChecksCard));
 /** In the inspector: a failed download says so in place, with Retry (another surface may own the page's toast). */
-const InspectorFindings = lazyComponent(
-  () => loadChecksUi().then((m) => m.InspectorFindings),
-  (_props, { failed, retry }) =>
-    failed ? (
-      <p className="insp-note" role="alert" data-testid="inspector-findings-failed">
-        {t("fileDialog.loadFailed")}{" "}
-        <button type="button" className="link-btn" onClick={retry} data-testid="inspector-findings-retry">
-          {t("common.retry")}
-        </button>
-      </p>
-    ) : null,
-);
+const findingsFallback = (_props: unknown, { failed, retry }: { failed: boolean; retry(): void }) =>
+  failed ? (
+    <p className="insp-note" role="alert" data-testid="inspector-findings-failed">
+      {t("fileDialog.loadFailed")}{" "}
+      <button type="button" className="link-btn" onClick={retry} data-testid="inspector-findings-retry">
+        {t("common.retry")}
+      </button>
+    </p>
+  ) : null;
+const InspectorFindings = lazyComponent(() => loadChecksUi().then((m) => m.InspectorFindings), findingsFallback);
+const TargetFindings = lazyComponent(() => loadChecksUi().then((m) => m.TargetFindings), findingsFallback);
 
 export type ChecksHost = RowHost & {
   open(): void;
@@ -121,8 +120,17 @@ export function ChecksMarkersView({ store }: { store: ChecksStore }) {
 /** A single selected node's or connection's findings, at the top of its inspector. */
 export function SelectionFindings({ store, id, host }: { store: ChecksStore; id: string; host: ChecksHost }) {
   const state = useChecksState(store);
-  const findings = state.byElement.get(id);
-  return findings?.length ? (
-    <InspectorFindings findings={findings} host={{ ...host, applied: store.markStale }} state={state} />
-  ) : null;
+  const findings = state.byElement.get(id) ?? [];
+  if (!state.result?.omitted?.length)
+    return findings.length ? (
+      <InspectorFindings findings={findings} host={{ ...host, applied: store.markStale }} state={state} />
+    ) : null;
+  return (
+    <TargetFindings
+      findings={findings}
+      host={{ ...host, applied: store.markStale }}
+      state={state}
+      target={{ id, diagram: store.getDiagram(), result: state.result }}
+    />
+  );
 }

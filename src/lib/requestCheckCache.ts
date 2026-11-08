@@ -4,6 +4,10 @@ import type { CheckRuleId } from "../model/checks";
 import { revisionAtLeast } from "../model/revisions";
 import { simulationContent } from "../sim/simulationContent";
 import { registerRequestChecks, requestCheckGeneration, requestCheckProvider } from "./requestCheckProvider";
+import type { RequestCheckOptions } from "./requestCheckProvider";
+
+const keyOf = (d: DiagramFile, target?: string) =>
+  target === undefined ? simulationContent(d) : `target:${JSON.stringify([simulationContent(d), target])}`;
 
 export type RequestCheckResult =
   | { status: "pending"; done: Promise<Finding[]> }
@@ -42,6 +46,37 @@ export function requestChecksNeeded(d: DiagramFile, rules?: readonly string[]): 
 const rawCache = new Map<string, RequestCheckResult>();
 /** The newest attempt started for each content still working: only it settles that content's entry. */
 const latest = new Map<string, number>();
+const readers = new WeakMap<Promise<Finding[]>, { controller: AbortController; count: number }>();
+
+function read(done: Promise<Finding[]>, signal?: AbortSignal): Promise<Finding[]> {
+  const shared = readers.get(done);
+  if (!shared) return done;
+  shared.count++;
+  return new Promise((resolve, reject) => {
+    let active = true;
+    const release = () => {
+      if (!active) return false;
+      active = false;
+      signal?.removeEventListener("abort", cancel);
+      shared.count--;
+      return true;
+    };
+    const cancel = () => {
+      if (!release()) return;
+      reject(signal?.reason);
+      if (!shared.count) shared.controller.abort();
+    };
+    signal?.addEventListener("abort", cancel, { once: true });
+    done.then(
+      (findings) => {
+        if (release()) resolve(findings);
+      },
+      (error: unknown) => {
+        if (release()) reject(error);
+      },
+    );
+  });
+}
 let attempts = 0;
 let seen = requestCheckGeneration();
 /** The store, emptied when another provider was registered since it was last read. */
@@ -55,24 +90,24 @@ function entries() {
 }
 export { registerRequestChecks };
 export const hasRequestCheckProvider = () => !!requestCheckProvider();
-export function requestCheckResult(d: DiagramFile): RequestCheckResult | undefined {
-  return entries().get(simulationContent(d));
+export function requestCheckResult(d: DiagramFile, target?: string): RequestCheckResult | undefined {
+  return entries().get(keyOf(d, target));
 }
 function store(key: string, result: RequestCheckResult) {
   entries().delete(key);
   if (entries().size >= 8) entries().delete(entries().keys().next().value!);
   entries().set(key, result);
 }
-export function rememberRequestChecks(d: DiagramFile, findings: Finding[]): void {
-  store(simulationContent(d), {
+export function rememberRequestChecks(d: DiagramFile, findings: Finding[], target?: string): void {
+  store(keyOf(d, target), {
     status: "ready",
     findings: findings.filter(
       (f) => !!f.requestFinding || !!f.resilienceFinding || !!f.cacheFinding || !!f.omitted || !!f.unchecked,
     ),
   });
 }
-export function rememberedRequestChecks(d: DiagramFile): Finding[] | undefined {
-  const result = requestCheckResult(d);
+export function rememberedRequestChecks(d: DiagramFile, target?: string): Finding[] | undefined {
+  const result = requestCheckResult(d, target);
   return result?.status === "ready" ? result.findings : undefined;
 }
 
@@ -80,21 +115,37 @@ export function rememberedRequestChecks(d: DiagramFile): Finding[] | undefined {
  * The request findings for `d`, once ready. A miss is pending work, never a successful empty check. A failure is
  * reported to everyone waiting on that attempt; a later call starts a new one.
  */
-export function awaitRequestChecks(d: DiagramFile): Promise<Finding[]> {
-  const known = requestCheckResult(d);
+export function awaitRequestChecks(d: DiagramFile, options: RequestCheckOptions = {}): Promise<Finding[]> {
+  if (options.signal?.aborted) return Promise.reject(options.signal.reason);
+  if (options.target !== undefined) {
+    const whole = requestCheckResult(d);
+    if (whole?.status === "ready" && !whole.findings.some((f) => f.omitted || f.unchecked))
+      return Promise.resolve(whole.findings.filter((f) => f.elements.includes(options.target!)));
+  }
+  const known = requestCheckResult(d, options.target);
   if (known?.status === "ready") return Promise.resolve(known.findings);
-  if (known?.status === "pending") return known.done;
-  return trackRequestChecks(d, async () => {
-    const provider = requestCheckProvider();
-    if (provider) return provider(d);
-    const [{ requestFindings }, { buildContext }] = await Promise.all([
-      import("../checks/requestFindings"),
-      import("../checks/context"),
-    ]);
-    const ctx = buildContext(d);
-    ctx.local = true;
-    return requestFindings(ctx);
-  });
+  if (known?.status === "pending") return read(known.done, options.signal);
+  const controller = new AbortController();
+  const done = trackRequestChecks(
+    d,
+    async () => {
+      controller.signal.throwIfAborted();
+      const provider = requestCheckProvider();
+      if (provider) return provider(d, { target: options.target, signal: controller.signal });
+      const [{ requestFindings }, { buildContext }] = await Promise.all([
+        import("../checks/requestFindings"),
+        import("../checks/context"),
+      ]);
+      const ctx = buildContext(d);
+      ctx.local = true;
+      ctx.requestTarget = options.target;
+      controller.signal.throwIfAborted();
+      return requestFindings(ctx);
+    },
+    options.target,
+  );
+  readers.set(done, { controller, count: 0 });
+  return read(done, options.signal);
 }
 
 /**
@@ -102,8 +153,12 @@ export function awaitRequestChecks(d: DiagramFile): Promise<Finding[]> {
  * stays ready while it's worked out again (the same content gives the same findings), and an attempt only settles the
  * entry it published: a slower, older attempt never overwrites a newer one.
  */
-export function trackRequestChecks(d: DiagramFile, compute: () => Promise<Finding[]>): Promise<Finding[]> {
-  const key = simulationContent(d);
+export function trackRequestChecks(
+  d: DiagramFile,
+  compute: () => Promise<Finding[]>,
+  target?: string,
+): Promise<Finding[]> {
+  const key = keyOf(d, target);
   const known = entries().get(key);
   const mine = ++attempts;
   latest.set(key, mine);
@@ -119,7 +174,7 @@ export function trackRequestChecks(d: DiagramFile, compute: () => Promise<Findin
       (findings) => {
         const current = entries().get(key);
         // The newest attempt publishes; an older one only fills a gap (nothing there, or a newer failure).
-        if (settle() || !current || current.status === "failed") rememberRequestChecks(d, findings);
+        if (settle() || !current || current.status === "failed") rememberRequestChecks(d, findings, target);
         return findings;
       },
       (cause: unknown) => {

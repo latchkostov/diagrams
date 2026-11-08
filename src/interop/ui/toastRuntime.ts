@@ -174,15 +174,8 @@ export const toast = {
   },
   /** How far busy toast `id` has got (0 to 1), including an owner behind a newer task. */
   progress(id: number, done: number) {
-    const at = blocking.findIndex((t) => t.id === id);
-    const task =
-      at >= 0 ? blocking[at] : deferred?.id === id ? deferred : held?.id === id ? held : (slotOf(id)?.shown ?? null);
-    if (!task || task.progress === done) return;
-    if (at >= 0) blocking[at] = { ...blocking[at], progress: done };
-    else if (deferred?.id === id) deferred = { ...deferred, progress: done };
-    if (held?.id === id) held = { ...held, progress: done };
-    for (const slot of slots.values()) if (slot.shown.id === id) slot.shown = { ...slot.shown, progress: done };
-    publish();
+    if (!live.has(id) || live.get(id)?.progress === done) return;
+    each((t) => (t.id === id ? { ...t, progress: done } : t));
   },
   /** Dismisses `id`, or ordinary notifications if omitted. Only a task's owner dismisses its blocking toast. */
   dismiss(id?: number) {

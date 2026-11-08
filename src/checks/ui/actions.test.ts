@@ -273,8 +273,7 @@ describe("applyFix with an option", () => {
 });
 
 describe("check settings", () => {
-  // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
-  it.skip("rejects diagram and targetless ignores visibly and keeps saved checks valid on reload", () => {
+  it("rejects diagram and targetless ignores visibly and keeps saved checks valid on reload", () => {
     const d = messageTypesFixture();
     d.checks = { off: ["no-reader"] };
     d.simulations = [
@@ -286,7 +285,7 @@ describe("check settings", () => {
       },
     ];
     const diagnostic = runChecks(d, { rules: ["message-loop"] }).findings.find(
-      (f) => f.id === "message-loop:incomplete",
+      (f) => f.id === "diagram:message-loop:incomplete",
     )!;
     expect(diagnostic).toMatchObject({ scope: "diagram", target: "", elements: [] });
     const { api, hint } = editorFor(d);

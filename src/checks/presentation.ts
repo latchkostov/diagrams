@@ -35,6 +35,18 @@ function requestLabel(label: NonNullable<CheckFix["requestLabel"]>): string {
 
 /** Localize broker descriptors at render time, keeping cached and worker findings deterministic. */
 export function presentFinding(finding: Finding): Finding {
+  if (finding.incompleteReasons) {
+    const timeline = finding.incompleteReasons.includes("timeline-forwarding");
+    const work = finding.incompleteReasons.includes("work-budget");
+    return {
+      ...finding,
+      title: t("workspaceChecks.incompleteTitle"),
+      message: timeline ? t("workspaceChecks.incompleteTimeline") : t("messageTypes.incomplete"),
+      rationale: [timeline ? t("messageTypes.timelineIncomplete") : "", work ? t("workspaceChecks.reviewBudget") : ""]
+        .filter(Boolean)
+        .join(" "),
+    };
+  }
   if (finding.cacheFinding) return presentCacheFinding(finding);
   if (finding.resilienceFinding) return presentResilienceFinding(finding);
   if (finding.messageLoop)

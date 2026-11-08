@@ -7,7 +7,7 @@ import { cacheAsideOrigins } from "../model/cacheAside";
 import { popularityTable } from "../sim/cache/popularity";
 import { cacheHitShare } from "../sim/cache/cacheMath";
 import { confirmedCacheFix, cacheLadder, type CacheFixEvidence } from "../live/cacheFixPlan";
-import { fitsRef, type CheckContext } from "./context";
+import { fitsRef, requestTargetMatches, type CheckContext } from "./context";
 import { findingBudget, findingName, omission } from "./findingBudget";
 import { cacheWork, coldCacheSimulation, probeCache } from "./cacheProbe";
 import { scaleFix } from "./scaleFix";
@@ -65,6 +65,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
   const findings: Finding[] = [],
     omitted = new Map<Kind, number>();
   const emit = (finding: Finding) => {
+    if (!requestTargetMatches(ctx, finding.elements)) return;
     if (output.take(strings(finding))) findings.push(finding);
     else omitted.set(finding.rule as Kind, (omitted.get(finding.rule as Kind) ?? 0) + 1);
   };
@@ -114,6 +115,7 @@ export function computeCacheFindings(ctx: CheckContext): Finding[] {
         ...cacheAsideOrigins(ctx.diagram, node.id).map((e) => e.to),
       ]),
     ];
+    if (ctx.requestTarget !== undefined && !requestTargetMatches(ctx, [node.id, ...origins])) continue;
     const probed: (typeof candidates)[number]["rules"] = [];
     let baseline: ReturnType<typeof probeCache>;
     let baselineTried = false;

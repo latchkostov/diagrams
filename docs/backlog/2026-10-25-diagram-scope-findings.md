@@ -1,4 +1,13 @@
-## OPEN: Diagram-scope findings after PR #312's round cap
+## Resolved in P2-C
+
+MT-06, MT-12 and the related identity findings below are fixed: diagram diagnostics use the separate
+`diagram:message-loop:incomplete` namespace, remain outside element ignores and display translated
+reason-specific guidance. All six previously quarantined test families below are enabled, including
+production-budget and browser reload coverage. Collision/evidence regressions fail against the prior
+implementation. See the [release fragment](../release-notes/2026-11-07-p2-c-notify-checks.md).
+The OPEN and quarantine descriptions below are historical context, superseded by this resolution.
+
+## Original diagnosis after PR #312's round cap
 
 The newly visible incomplete-analysis diagnostic is quarantined. It travels through `omitted`,
 as on master, without a finding row or element actions. An omitted result still cannot report

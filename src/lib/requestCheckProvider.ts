@@ -6,7 +6,11 @@ import type { Finding } from "../checks/types";
  * Apart from that cache so the editor's startup registers it for a few bytes. With nothing registered (headless
  * tools, tests, the worker itself) checks work request findings out where they run. Exported files register nothing.
  */
-let provider: ((d: DiagramFile) => Promise<Finding[]>) | undefined;
+export interface RequestCheckOptions {
+  target?: string;
+  signal?: AbortSignal;
+}
+let provider: ((d: DiagramFile, options?: RequestCheckOptions) => Promise<Finding[]>) | undefined;
 let generation = 0;
 export function registerRequestChecks(fn: typeof provider): void {
   provider = fn;

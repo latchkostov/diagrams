@@ -3,7 +3,7 @@ import type { DiagramOp } from "../ai";
 import type { EdgeSimProps } from "../sim/types";
 import type { CheckContext } from "./context";
 import type { CheckFix, CheckRule, Finding } from "./types";
-import { fitsRef, MAX_BATCH } from "./context";
+import { fitsRef, MAX_BATCH, requestTargetMatches } from "./context";
 import { findingBudget, findingName, omission } from "./findingBudget";
 import { revisionAtLeast } from "../model/revisions";
 import { activeCall } from "../sim/topology";
@@ -90,6 +90,7 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
     return value;
   };
   const emit = (f: Finding) => {
+    if (!requestTargetMatches(ctx, f.elements)) return;
     // Reserve against every emitted byte, including escaped authored values in fix ops. Names are already clipped.
     if (budget.take(outputStrings(f))) findings.push(f);
     else omitted.set(f.rule as Kind, (omitted.get(f.rule as Kind) ?? 0) + 1);
@@ -324,7 +325,9 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
     );
   }
   const candidates = calls
-    .filter((e) => attemptsOf(e) >= 2)
+    .filter(
+      (e) => attemptsOf(e) >= 2 && (ctx.requestTarget === undefined || requestTargetMatches(ctx, [e.id, e.from, e.to])),
+    )
     .sort(
       (a, b) =>
         (product.get(b.from) ?? 1) * attemptsOf(b) - (product.get(a.from) ?? 1) * attemptsOf(a) ||

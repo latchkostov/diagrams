@@ -27,7 +27,7 @@ import { scalingFixLabel } from "./scalingFindings";
 import { resourcePlan } from "../sim/resourcePlanning";
 import { requestResponseMs } from "../sim/timing";
 import { activeCall } from "../sim/topology";
-import { fitsRef } from "./context";
+import { fitsRef, requestTargetMatches } from "./context";
 import type { Simulation } from "../model/types";
 import { findingName, FINDINGS_BUDGET as REQUEST_FINDINGS_BUDGET, omission } from "./findingBudget";
 import { computeResilienceFindings } from "./resilienceFindings";
@@ -102,20 +102,20 @@ export function requestFindings(ctx: CheckContext): Finding[] {
   if (!revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1")) return [];
   const given = known.get(ctx);
   if (given) return given;
-  const remembered = rememberedRequestChecks(ctx.diagram);
+  const remembered = rememberedRequestChecks(ctx.diagram, ctx.requestTarget);
   if (remembered) {
     known.set(ctx, remembered);
     return remembered;
   }
   if (!ctx.local && hasRequestCheckProvider()) {
-    const result = requestCheckResult(ctx.diagram);
+    const result = requestCheckResult(ctx.diagram, ctx.requestTarget);
     throw result?.status === "failed"
       ? result.error
       : new Error("Request checks are pending. Await request checks before reading findings.");
   }
   const findings = [...computeRequestFindings(ctx), ...computeResilienceFindings(ctx), ...computeCacheFindings(ctx)];
   known.set(ctx, findings);
-  rememberRequestChecks(ctx.diagram, findings);
+  rememberRequestChecks(ctx.diagram, findings, ctx.requestTarget);
   return findings;
 }
 
@@ -141,6 +141,7 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
     // The calls playback makes: not dead-letter routes, deny rules or connections that forward no share.
     const calls = ctx.requests(node.id).filter((e) => activeCall(ctx.role(node.id), e));
     for (const e of calls) {
+      if (ctx.requestTarget !== undefined && !requestTargetMatches(ctx, [e.id, node.id, e.to])) continue;
       const target = ctx.nodes.get(e.to);
       if (!target || !["external-api", "model-api"].includes(profileOf(target.stencil)?.family ?? "")) continue;
       const edge = ctx.edges.get(e.id)!;
@@ -204,6 +205,8 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
       suggestions.push(suggestion);
     }
     if (
+      (ctx.requestTarget !== undefined &&
+        !requestTargetMatches(ctx, [node.id, ...calls.flatMap((e) => [e.id, e.to])])) ||
       n.role !== "processor" ||
       !w ||
       !(w.callMs > w.workMs) ||
@@ -231,6 +234,7 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
       return e;
     }, undefined);
     if (!edge) continue;
+    if (ctx.requestTarget !== undefined && !requestTargetMatches(ctx, [node.id, edge.id, edge.to])) continue;
     const input = ctx.edges.get(edge.id);
     const work = threadFixWork(d.nodes.length, d.edges.length);
     const action =

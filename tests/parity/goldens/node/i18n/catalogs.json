@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 5130,
-    "fallback": 1851,
+    "messages": 5134,
+    "fallback": 1850,
     "areas": {
       "admission": "121edeb22016",
       "ai": "ff5a7a5d025f",
@@ -48,7 +48,7 @@
       "liveSession": "9567b4b9606f",
       "menu": "ce6cdaed6ff0",
       "messageLoop": "70f726034e7f",
-      "messageTypes": "a66875872b2f",
+      "messageTypes": "cb78a025344b",
       "node": "efcf989edf57",
       "password": "068dd9151563",
       "passwordLink": "7a16c68a40ac",
@@ -82,6 +82,7 @@
       "viewerForge": "4d3bcbf516ea",
       "waitChecks": "60157056f935",
       "workbench": "67ef6687c346",
+      "workspaceChecks": "80f3c1aab4cb",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -89,8 +90,8 @@
     }
   },
   "bg": {
-    "messages": 5130,
-    "fallback": 2230,
+    "messages": 5134,
+    "fallback": 2234,
     "areas": {
       "admission": "def06fe38e15",
       "ai": "be21a15fe0c2",
@@ -171,6 +172,7 @@
       "viewerForge": "64bee278d220",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "c90fda2fed0f",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -178,8 +180,8 @@
     }
   },
   "cs": {
-    "messages": 5130,
-    "fallback": 2235,
+    "messages": 5134,
+    "fallback": 2239,
     "areas": {
       "admission": "066588ffecd0",
       "ai": "cdac78f5eabc",
@@ -260,6 +262,7 @@
       "viewerForge": "5e26de923e3f",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "204484671d15",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -267,8 +270,8 @@
     }
   },
   "da": {
-    "messages": 5130,
-    "fallback": 2212,
+    "messages": 5134,
+    "fallback": 2216,
     "areas": {
       "admission": "8d54b2ff603b",
       "ai": "30c366fbcaa3",
@@ -349,6 +352,7 @@
       "viewerForge": "f94da429f104",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "7b81c422b282",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -356,8 +360,8 @@
     }
   },
   "de": {
-    "messages": 5130,
-    "fallback": 2215,
+    "messages": 5134,
+    "fallback": 2219,
     "areas": {
       "admission": "168ce3bd30f9",
       "ai": "857638035ad7",
@@ -438,6 +442,7 @@
       "viewerForge": "8848d4978e10",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "7e9ecf640fa0",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -445,8 +450,8 @@
     }
   },
   "el": {
-    "messages": 5130,
-    "fallback": 2227,
+    "messages": 5134,
+    "fallback": 2231,
     "areas": {
       "admission": "a9b1a9673fb3",
       "ai": "c7556c1b9ccf",
@@ -527,6 +532,7 @@
       "viewerForge": "8dd98344588f",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "8dd8b058e33a",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -534,7 +540,7 @@
     }
   },
   "en-XA": {
-    "messages": 5130,
+    "messages": 5134,
     "fallback": 0,
     "areas": {
       "admission": "1da83bed3b5a",
@@ -616,6 +622,7 @@
       "viewerForge": "9f91d360961f",
       "waitChecks": "04abb63af9c0",
       "workbench": "1ce3b32df6bf",
+      "workspaceChecks": "c2725d284b6c",
       "workspaceInspector": "cccdd5b245b6",
       "workspaceLive": "114e9c8ba30a",
       "workspaceRoom": "6fc06899d7de",
@@ -623,8 +630,8 @@
     }
   },
   "es": {
-    "messages": 5130,
-    "fallback": 2240,
+    "messages": 5134,
+    "fallback": 2244,
     "areas": {
       "admission": "dacc268e5f2c",
       "ai": "5f18f254b452",
@@ -705,6 +712,7 @@
       "viewerForge": "57601855d5cf",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "18a3edb78ee5",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -712,8 +720,8 @@
     }
   },
   "et": {
-    "messages": 5130,
-    "fallback": 2234,
+    "messages": 5134,
+    "fallback": 2238,
     "areas": {
       "admission": "0ae56a092762",
       "ai": "d66d3769adc9",
@@ -794,6 +802,7 @@
       "viewerForge": "b90b85595733",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "00ba1e477b3b",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -801,8 +810,8 @@
     }
   },
   "fi": {
-    "messages": 5130,
-    "fallback": 2226,
+    "messages": 5134,
+    "fallback": 2230,
     "areas": {
       "admission": "bf60c3fe037d",
       "ai": "e9b23cd51b4e",
@@ -883,6 +892,7 @@
       "viewerForge": "e91fe1f64b97",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "022ed1995aec",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -890,8 +900,8 @@
     }
   },
   "fr": {
-    "messages": 5130,
-    "fallback": 2226,
+    "messages": 5134,
+    "fallback": 2230,
     "areas": {
       "admission": "bb0eadf5ab52",
       "ai": "8372266af473",
@@ -972,6 +982,7 @@
       "viewerForge": "a36422dc6bd7",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "12ae25d8fc09",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -979,8 +990,8 @@
     }
   },
   "he": {
-    "messages": 5130,
-    "fallback": 2240,
+    "messages": 5134,
+    "fallback": 2244,
     "areas": {
       "admission": "602fa127a059",
       "ai": "1c4de3ee24a5",
@@ -1061,6 +1072,7 @@
       "viewerForge": "8d70607e9494",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "5a6ad208ab08",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1068,8 +1080,8 @@
     }
   },
   "hi": {
-    "messages": 5130,
-    "fallback": 2236,
+    "messages": 5134,
+    "fallback": 2240,
     "areas": {
       "admission": "4ec4a9cccfbb",
       "ai": "c2134710abdb",
@@ -1150,6 +1162,7 @@
       "viewerForge": "8f4009516378",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "124560a3cc5d",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1157,8 +1170,8 @@
     }
   },
   "hr": {
-    "messages": 5130,
-    "fallback": 2219,
+    "messages": 5134,
+    "fallback": 2223,
     "areas": {
       "admission": "1b8bc555e482",
       "ai": "41b8c5bd02f8",
@@ -1239,6 +1252,7 @@
       "viewerForge": "588351633f4e",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "ee660e513d6b",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1246,8 +1260,8 @@
     }
   },
   "hu": {
-    "messages": 5130,
-    "fallback": 2213,
+    "messages": 5134,
+    "fallback": 2217,
     "areas": {
       "admission": "8e346cdb7fce",
       "ai": "999015b453fc",
@@ -1328,6 +1342,7 @@
       "viewerForge": "f830295118d9",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "f93fa22a7ae3",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1335,8 +1350,8 @@
     }
   },
   "id": {
-    "messages": 5130,
-    "fallback": 2234,
+    "messages": 5134,
+    "fallback": 2238,
     "areas": {
       "admission": "8f0966817eba",
       "ai": "7508253d3643",
@@ -1417,6 +1432,7 @@
       "viewerForge": "e7d37c99e2d6",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "1aa294f140d4",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1424,8 +1440,8 @@
     }
   },
   "it": {
-    "messages": 5130,
-    "fallback": 2213,
+    "messages": 5134,
+    "fallback": 2217,
     "areas": {
       "admission": "fb4977929365",
       "ai": "b1bdb1b943f2",
@@ -1506,6 +1522,7 @@
       "viewerForge": "a70484a837bd",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "af23b30b303c",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1513,8 +1530,8 @@
     }
   },
   "ja": {
-    "messages": 5130,
-    "fallback": 2212,
+    "messages": 5134,
+    "fallback": 2216,
     "areas": {
       "admission": "70c62834aa0d",
       "ai": "16916e4a6466",
@@ -1595,6 +1612,7 @@
       "viewerForge": "476667bc1597",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "dd1e86a66bbf",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1602,8 +1620,8 @@
     }
   },
   "ko": {
-    "messages": 5130,
-    "fallback": 2189,
+    "messages": 5134,
+    "fallback": 2193,
     "areas": {
       "admission": "fb802d28f5cc",
       "ai": "b9713b0ebc36",
@@ -1684,6 +1702,7 @@
       "viewerForge": "7cc445d8d713",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "dd2e5a89dc2e",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1691,8 +1710,8 @@
     }
   },
   "lt": {
-    "messages": 5130,
-    "fallback": 2249,
+    "messages": 5134,
+    "fallback": 2253,
     "areas": {
       "admission": "b8be855f86e3",
       "ai": "a60d18c72aca",
@@ -1773,6 +1792,7 @@
       "viewerForge": "22c899349986",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "c654519184e2",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1780,8 +1800,8 @@
     }
   },
   "lv": {
-    "messages": 5130,
-    "fallback": 2245,
+    "messages": 5134,
+    "fallback": 2249,
     "areas": {
       "admission": "cc8ad95b3519",
       "ai": "7abcc8e0fca5",
@@ -1862,6 +1882,7 @@
       "viewerForge": "d0f7be3bf9a2",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "d368cab03180",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1869,8 +1890,8 @@
     }
   },
   "nb": {
-    "messages": 5130,
-    "fallback": 2224,
+    "messages": 5134,
+    "fallback": 2228,
     "areas": {
       "admission": "69c76ff37ebc",
       "ai": "1f5a7dd90494",
@@ -1951,6 +1972,7 @@
       "viewerForge": "e8981ee121bf",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "074a610f6030",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -1958,8 +1980,8 @@
     }
   },
   "nl": {
-    "messages": 5130,
-    "fallback": 2217,
+    "messages": 5134,
+    "fallback": 2221,
     "areas": {
       "admission": "a0d535143838",
       "ai": "9c887bebfb5c",
@@ -2040,6 +2062,7 @@
       "viewerForge": "dac110756068",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "b9547ec96f06",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2047,8 +2070,8 @@
     }
   },
   "pl": {
-    "messages": 5130,
-    "fallback": 2230,
+    "messages": 5134,
+    "fallback": 2234,
     "areas": {
       "admission": "e997456a041d",
       "ai": "0076fec882b3",
@@ -2129,6 +2152,7 @@
       "viewerForge": "12c126390fac",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "39fd84c358ae",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2136,8 +2160,8 @@
     }
   },
   "pt-BR": {
-    "messages": 5130,
-    "fallback": 2236,
+    "messages": 5134,
+    "fallback": 2240,
     "areas": {
       "admission": "e6ad0a691675",
       "ai": "a599e0c7104c",
@@ -2218,6 +2242,7 @@
       "viewerForge": "e0b3251bfa40",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "5073a2673539",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2225,8 +2250,8 @@
     }
   },
   "pt-PT": {
-    "messages": 5130,
-    "fallback": 2236,
+    "messages": 5134,
+    "fallback": 2240,
     "areas": {
       "admission": "81395bb7060b",
       "ai": "da44ea732c3a",
@@ -2307,6 +2332,7 @@
       "viewerForge": "839ba9b26afe",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "2b482bd48743",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2314,8 +2340,8 @@
     }
   },
   "ro": {
-    "messages": 5130,
-    "fallback": 2208,
+    "messages": 5134,
+    "fallback": 2212,
     "areas": {
       "admission": "3fcadcd08687",
       "ai": "690dd0af944f",
@@ -2396,6 +2422,7 @@
       "viewerForge": "4648a1fbd346",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "69a5bac1cd17",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2403,8 +2430,8 @@
     }
   },
   "ru": {
-    "messages": 5130,
-    "fallback": 2253,
+    "messages": 5134,
+    "fallback": 2257,
     "areas": {
       "admission": "7813e4e0dc3e",
       "ai": "419829673723",
@@ -2485,6 +2512,7 @@
       "viewerForge": "e791eeb89ed3",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "83386001c537",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2492,8 +2520,8 @@
     }
   },
   "sk": {
-    "messages": 5130,
-    "fallback": 2241,
+    "messages": 5134,
+    "fallback": 2245,
     "areas": {
       "admission": "a2f3f4ec56a8",
       "ai": "b584a1750e62",
@@ -2574,6 +2602,7 @@
       "viewerForge": "f4eb36e8ae21",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "1ad1a9dd1ae3",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2581,8 +2610,8 @@
     }
   },
   "sl": {
-    "messages": 5130,
-    "fallback": 2222,
+    "messages": 5134,
+    "fallback": 2226,
     "areas": {
       "admission": "d812b216e3d3",
       "ai": "844c5fe53eda",
@@ -2663,6 +2692,7 @@
       "viewerForge": "080a4e49daf3",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "fed1c8cd66f6",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2670,8 +2700,8 @@
     }
   },
   "sr-Latn": {
-    "messages": 5130,
-    "fallback": 2234,
+    "messages": 5134,
+    "fallback": 2238,
     "areas": {
       "admission": "5c6599b6aad0",
       "ai": "571bcb1e2693",
@@ -2752,6 +2782,7 @@
       "viewerForge": "a07f86b5bf62",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "daf8ba2ca3bc",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2759,8 +2790,8 @@
     }
   },
   "sv": {
-    "messages": 5130,
-    "fallback": 2220,
+    "messages": 5134,
+    "fallback": 2224,
     "areas": {
       "admission": "b6d059ceea0b",
       "ai": "488379e2ee77",
@@ -2841,6 +2872,7 @@
       "viewerForge": "5c8b593ab979",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "53ca8264ec8c",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2848,8 +2880,8 @@
     }
   },
   "th": {
-    "messages": 5130,
-    "fallback": 2247,
+    "messages": 5134,
+    "fallback": 2251,
     "areas": {
       "admission": "5c9e712f50f6",
       "ai": "25e5a5758e0a",
@@ -2930,6 +2962,7 @@
       "viewerForge": "ec9d4bc7213f",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "2f9ff54a67da",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -2937,8 +2970,8 @@
     }
   },
   "tr": {
-    "messages": 5130,
-    "fallback": 2239,
+    "messages": 5134,
+    "fallback": 2243,
     "areas": {
       "admission": "b1fe3a48378c",
       "ai": "2c45c177a3eb",
@@ -3019,6 +3052,7 @@
       "viewerForge": "677f4f4b227b",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "37764e33a8f0",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -3026,8 +3060,8 @@
     }
   },
   "uk": {
-    "messages": 5130,
-    "fallback": 2223,
+    "messages": 5134,
+    "fallback": 2227,
     "areas": {
       "admission": "b52b23521706",
       "ai": "00c91ebd48c1",
@@ -3108,6 +3142,7 @@
       "viewerForge": "684acb05142a",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "d66e0a9f54dc",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -3115,8 +3150,8 @@
     }
   },
   "vi": {
-    "messages": 5130,
-    "fallback": 2227,
+    "messages": 5134,
+    "fallback": 2231,
     "areas": {
       "admission": "c9572d0ee7aa",
       "ai": "88456409d7c5",
@@ -3197,6 +3232,7 @@
       "viewerForge": "60d0f3ab0fac",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "b39091d39b89",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -3204,8 +3240,8 @@
     }
   },
   "zh-CN": {
-    "messages": 5130,
-    "fallback": 2229,
+    "messages": 5134,
+    "fallback": 2233,
     "areas": {
       "admission": "73ac7006d6ca",
       "ai": "3ef50488a156",
@@ -3286,6 +3322,7 @@
       "viewerForge": "cc2f5374e68d",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "7dadb1096252",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",
@@ -3293,8 +3330,8 @@
     }
   },
   "zh-TW": {
-    "messages": 5130,
-    "fallback": 2231,
+    "messages": 5134,
+    "fallback": 2235,
     "areas": {
       "admission": "8cd77def2e44",
       "ai": "aa167b14e4aa",
@@ -3375,6 +3412,7 @@
       "viewerForge": "490e554bfa68",
       "waitChecks": "dd6a426cc5b6",
       "workbench": "f71e859f525f",
+      "workspaceChecks": "8411e99fe92b",
       "workspaceInspector": "b4df2e71e8e6",
       "workspaceLive": "1694a2d2eb1e",
       "workspaceRoom": "5b780c59fdf4",

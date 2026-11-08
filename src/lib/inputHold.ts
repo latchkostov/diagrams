@@ -29,6 +29,12 @@ const NON_PASSIVE = ["wheel", "touchstart", "touchmove", "touchend", "touchcance
 
 /** The tasks holding the input, latest last: one releasing doesn't free the page while another still reads it. */
 const holders: { onEscape?: () => void }[] = [];
+const listeners = new Set<() => void>();
+export function subscribeInputHold(listener: () => void) {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+const publish = () => listeners.forEach((listener) => listener());
 
 /** A toast's button pressed: a click, or a plain Enter or Space on it. */
 function pressesToastButton(e: Event) {
@@ -58,10 +64,12 @@ export function holdInput(onEscape?: () => void): () => void {
   if (!holders.length)
     for (const type of NON_PASSIVE) window.addEventListener(type, hold, { capture: true, passive: false });
   holders.push(me);
+  publish();
   return () => {
     const at = holders.indexOf(me);
     if (at < 0) return;
     holders.splice(at, 1);
+    publish();
     if (!holders.length) for (const type of NON_PASSIVE) window.removeEventListener(type, hold, { capture: true });
   };
 }

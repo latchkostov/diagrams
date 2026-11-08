@@ -28,6 +28,8 @@ import {
  * share the simulation's model, so a check and the live view never disagree.
  */
 export interface CheckContext {
+  /** Limit request output and verification to this element; analysis still reads the whole graph. */
+  requestTarget?: string;
   /** When applying a fix, generate candidates only for this finding. Safety still analyzes the whole graph. */
   fixTarget?: string;
   /** Worker-unavailable fallback (and the worker itself): request checks may replay simulations on this thread. */
@@ -80,6 +82,8 @@ export interface CheckContext {
 
 /** edit_diagram's limits (src/ai/schemas.ts): a batch's operations, and a reference's length. */
 export const MAX_BATCH = 100;
+export const requestTargetMatches = (ctx: CheckContext, elements: readonly string[]) =>
+  ctx.requestTarget === undefined || elements.includes(ctx.requestTarget);
 const MAX_REF = 200;
 
 /** Whether ops can name an element by this id: a longer one is past the operation schema's limit. */

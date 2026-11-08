@@ -193,6 +193,7 @@ export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key>
         key.startsWith("cacheChecks.") ||
         key.startsWith("resilienceChecks.") ||
         key.startsWith("waitChecks.") ||
+        key.startsWith("workspaceChecks.") ||
         (["tutorials", "tutorialTitles", "ai", "exports"].includes(catalogBucket(key)) && en[key].length >= 64))
     )
       out.add(key);
