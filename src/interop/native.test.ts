@@ -13,6 +13,16 @@ const base = {
 };
 
 describe("native format validation", () => {
+  it.each(["toString", "valueOf", "constructor", "__proto__"])(
+    "rejects inherited migration name %s with the format error",
+    (format) => {
+      expect(validateDiagram({ ...base, format })).toEqual({
+        ok: false,
+        error: `Expected format "diagrams/v1", but it was "${format}". Export a diagram from this app to get a compatible file.`,
+      });
+    },
+  );
+
   it("rejects a missing original parent even when remapping creates that ID", () => {
     const result = parseNative(
       JSON.stringify({
