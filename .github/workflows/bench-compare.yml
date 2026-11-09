@@ -27,6 +27,8 @@ permissions:
 jobs:
   compare:
     runs-on: ubuntu-26.04
+    # Selected revisions can run arbitrary code; scoped tokens must never let them save caches.
+    cache-mode: read
     timeout-minutes: 330
     env:
       CI: "true"
@@ -53,9 +55,13 @@ jobs:
         with:
           ref: ${{ inputs.base }}
           persist-credentials: false
-      - uses: ./.github/actions/toolchain
-      - uses: ./.github/actions/chromium-cache
-      - run: pnpm exec playwright install-deps chromium
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
       - name: Base browser benchmarks
         id: base-bench
         continue-on-error: true
@@ -70,9 +76,13 @@ jobs:
         with:
           ref: ${{ inputs.head }}
           persist-credentials: false
-      - uses: ./.github/actions/toolchain
-      - uses: ./.github/actions/chromium-cache
-      - run: pnpm exec playwright install-deps chromium
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
       - name: Head browser benchmarks
         id: head-bench
         continue-on-error: true

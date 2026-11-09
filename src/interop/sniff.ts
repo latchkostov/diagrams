@@ -3,10 +3,24 @@
 /** Does this text look like draw.io / mxGraph XML? */
 export function looksLikeDrawio(text: string): boolean {
   const head = text.slice(0, 4000).trimStart();
-  return (
-    /^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<(mxfile|mxGraphModel)\b/.test(head) ||
-    (/^(<\?xml[^>]*>\s*)?<svg\b/.test(head) && /content="[^"]*(mxfile|mxGraphModel)/.test(text.slice(0, 200000)))
-  );
+  let at = 0;
+  const skipSpace = () => {
+    while (at < head.length && /\s/.test(head[at])) at++;
+  };
+  if (head.startsWith("<?xml")) {
+    const end = head.indexOf(">", 5);
+    if (end === -1) return false;
+    at = end + 1;
+    skipSpace();
+  }
+  while (head.startsWith("<!--", at)) {
+    const end = head.indexOf("-->", at + 4);
+    if (end === -1) return false;
+    at = end + 3;
+    skipSpace();
+  }
+  const root = /^<(mxfile|mxGraphModel|svg)\b/.exec(head.slice(at))?.[1];
+  return root === "svg" ? /content="[^"]*(mxfile|mxGraphModel)/.test(text.slice(0, 200000)) : root !== undefined;
 }
 
 /** Does this text look like a Mermaid flowchart? */

@@ -103,7 +103,8 @@ class FormatError extends Error {}
 export function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   let cur = raw;
   for (let hops = 0; cur.format !== DIAGRAM_FORMAT && cur.format !== "diagrams/v2"; hops++) {
-    const step = typeof cur.format === "string" ? MIGRATIONS[cur.format] : undefined;
+    const step =
+      typeof cur.format === "string" && Object.hasOwn(MIGRATIONS, cur.format) ? MIGRATIONS[cur.format] : undefined;
     if (!step || hops > 20) {
       const found = cur.format;
       if (typeof found === "string" && /^diagrams\/v\d+$/.test(found)) {

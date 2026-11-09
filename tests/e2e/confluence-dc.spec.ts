@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { test, expect, pauseClock } from "./fixtures";
 import { selfHostHeadersFor } from "../../scripts/self-host-headers";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
+import { fetchConfluenceViewer } from "./confluenceProxy";
 
 const recipe = "deploy/self-host/confluence-dc/";
 const attachment = "/confluence/download/attachments/12345/order-flow.livediagram.json";
@@ -91,7 +92,7 @@ for (const source of ["attachment", "inline"] as const) {
           res.setHeader(key, value);
         if (path === "/embed/confluence-dc.js")
           return send("text/javascript", readFileSync(`${recipe}confluence-dc.js`, "utf8"));
-        const response = await fetch(new URL(req.url ?? "/", baseURL));
+        const response = await fetchConfluenceViewer(req.url ?? "/", baseURL);
         res.writeHead(response.status, {
           "Content-Type": response.headers.get("content-type") ?? "application/octet-stream",
         });
