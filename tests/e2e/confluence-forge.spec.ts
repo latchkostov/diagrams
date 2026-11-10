@@ -583,6 +583,35 @@ test("Forge empty state explains disabled Insert and keyboard Choose stages with
   expect(await writes(page)).toEqual({ uploads: [], saves: 0 });
 });
 
+for (const name of ["checkout.diagram2.json", "checkout.diagram (1).json", "CHECKOUT.JSON"]) {
+  test(`Forge picker accepts ${name} and editing finds the uploaded attachment`, async ({ page }) => {
+    await openConfig(page);
+    await expect(page.getByTestId("forge-file")).toHaveAttribute("accept", /(^|,)\.json(,|$)/);
+    const picker = page.waitForEvent("filechooser");
+    await page.getByTestId("forge-choose").click();
+    await (await picker).setFiles(validFile(name));
+    await expect(page.getByTestId("forge-filename")).toHaveText(name);
+    await expect(page.getByTestId("forge-save")).toBeEnabled();
+    expect(await writes(page)).toEqual({ uploads: [], saves: 0 });
+    await page.getByTestId("forge-save").click();
+    await expect.poll(() => page.evaluate(() => window.__forgeTest.submitted)).toBeTruthy();
+    const uploaded = await page.evaluate(() => window.__forgeTest.uploaded);
+    expect(uploaded).toMatchObject({ id: "9", title: name });
+    const editing = await page.context().newPage();
+    try {
+      await openConfig(editing, { attachmentId: "9" }, { uploaded });
+      await expect(editing.getByTestId("forge-filename")).toHaveText(name);
+      await expect(editing.getByTestId("forge-preview")).toBeVisible();
+      await expect(editing.getByTestId("forge-save")).toBeEnabled();
+      await editing.getByTestId("forge-save").click();
+      await expect.poll(() => editing.evaluate(() => window.__forgeTest.submitted)).toBeTruthy();
+      expect((await writes(editing)).uploads).toEqual([]);
+    } finally {
+      await editing.close();
+    }
+  });
+}
+
 for (const [name, id, path] of [
   ["checkout.diagram.json", "9", ""],
   ["orders.diagram.json", "7", "/7/data"],
@@ -622,7 +651,8 @@ for (const [name, id, path] of [
 for (const [name, buffer, message] of [
   ["bad.diagram.json", Buffer.from("{"), "not a valid Live Diagrams file"],
   ["bad.diagram.json", Buffer.from("{}"), "not a valid Live Diagrams file"],
-  ["diagram.json", Buffer.from(chosenDiagram), "Choose a .diagram.json file"],
+  ["bad.json", Buffer.from("{}"), "not a valid Live Diagrams file"],
+  ["diagram.txt", Buffer.from(chosenDiagram), "Choose a diagram file (.json) saved from Live Diagrams."],
   ["big.diagram.json", Buffer.alloc(8_000_001, " "), "8 MB"],
 ] as const) {
   test(`Forge rejects ${name} (${buffer.length} bytes) inline before upload`, async ({ page }) => {

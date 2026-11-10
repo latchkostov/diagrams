@@ -33,7 +33,7 @@ Public documentation: [Live Diagram for Confluence](https://www.livediagrams.dev
    Keep sharing disabled for development; production distribution is a separate step below.
 
 4. Create and **publish** a Confluence page first. Save a Diagram file from Live Diagrams
-   (**File ▸ Save diagram file**). Native `.diagram.json` and older `.livediagram.json` files work;
+   (**File ▸ Save diagram file**). Any `.json` filename works, including renamed downloads and older `.livediagram.json` files;
    renaming a PNG or Interactive HTML file won't work.
 5. Edit the page and insert **Live Diagram** from the `/` macro picker. Choose or drop the file,
    check its still preview, then click **Insert**. **Options** holds Free play or a saved simulation,
@@ -83,7 +83,7 @@ readable automatic height shipped in #218; the instructions
 and Marketplace package describe that release.
 
 - [ ] `forge lint`, deploy and installation succeed with the existing app ID and two declared scopes.
-- [ ] On a published page, choose or drop `.diagram.json` and older `.livediagram.json` files.
+- [ ] On a published page, choose or drop saved diagrams with any `.json` filename, including renamed downloads.
       Preview appears without uploading; Cancel closes without writes, including after an error.
 - [ ] **Critical spike:** `requestConfluence` returns attachment JSON after the REST download redirect.
       Test a normal file and one near the 8 MB limit. No browser `fetch`, external URL permission or

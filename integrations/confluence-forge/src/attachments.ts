@@ -8,9 +8,8 @@ export interface Attachment {
   title: string;
 }
 export const MAX_FILE_BYTES = 8_000_000;
-export const DIAGRAM_SUFFIXES = [".diagram.json", ".livediagram.json"] as const;
-export const DIAGRAM_FILE_ACCEPT = DIAGRAM_SUFFIXES.join(",");
-export const isDiagramFilename = (name: string): boolean => DIAGRAM_SUFFIXES.some((suffix) => name.endsWith(suffix));
+export const DIAGRAM_FILE_ACCEPT = ".json";
+export const isDiagramFilename = (name: string): boolean => name.toLowerCase().endsWith(DIAGRAM_FILE_ACCEPT);
 
 export function readDiagram(text: string) {
   checkBytes(text);

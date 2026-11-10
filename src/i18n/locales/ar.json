@@ -79,6 +79,8 @@
   "tutorials.saved": "تم حفظ نسخة في مخططاتك",
   "tutorials.openCopy": "فتح",
   "tutorials.saveFailed": "تعذر حفظ نسخة. قم بتحرير بعض مساحة تخزين المتصفح وحاول مرة أخرى.",
+  "viewerForge.invalidFile": "هذا الملف ليس ملف ⁦Live Diagrams⁩ صالحًا. احفظ مخططًا عبر ملف ▸ حفظ ملف المخطط ثم اختره مجددًا.",
+  "viewerForge.invalidFilename": "اختر ملف مخطط (⁦.json⁩) محفوظًا من ⁦Live Diagrams⁩.",
   "inspector.flow": "تدفق",
   "inspector.dependency": "اعتمادية",
   "inspector.rate": "المعدل",

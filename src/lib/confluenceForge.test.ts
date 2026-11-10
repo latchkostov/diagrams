@@ -7,12 +7,22 @@ import {
   downloadDiagramText,
   uploadDiagram,
   stageDiagram,
+  isDiagramFilename,
+  DIAGRAM_FILE_ACCEPT,
   MAX_FILE_BYTES,
 } from "../../integrations/confluence-forge/src/attachments";
 import { checkManifest, checkBudget } from "../../integrations/confluence-forge/check.mjs";
 import { t } from "../i18n/core";
 import { textFieldsFixture } from "../lab/textFieldsFixture";
 import { macroHeight } from "../../integrations/confluence-forge/src/height";
+
+const diagramNames = ["a.diagram.json", "a.livediagram.json", "a.diagram2.json", "a.diagram (1).json", "A.JSON"];
+
+it.each(diagramNames)("accepts JSON filename %s in staging and the picker", async (name) => {
+  expect(isDiagramFilename(name)).toBe(true);
+  expect(DIAGRAM_FILE_ACCEPT.split(",")).toContain(".json");
+  expect(await stageDiagram(new File([JSON.stringify(textFieldsFixture)], name))).toMatchObject({ title: "Fields" });
+});
 
 describe("Forge configuration is a reference, never a diagram", () => {
   it("allowlists only the four settings on both read and save", () => {
@@ -60,6 +70,7 @@ describe("Forge attachment transport", () => {
       )
       .mockResolvedValueOnce(Response.json({ results: [{ id: "2", title: "orders.livediagram.json" }] }));
     expect(await listAttachments(request, "42")).toEqual([
+      { id: "3", title: "notes.json" },
       { id: "4", title: "orders.diagram.json" },
       { id: "2", title: "orders.livediagram.json" },
     ]);
@@ -197,7 +208,7 @@ describe("Forge attachment transport", () => {
     }
     expect(request).not.toHaveBeenCalled();
   });
-  it.each(["orders.diagram.json", "orders.livediagram.json"])("accepts and preserves %s on upload", async (name) => {
+  it.each(diagramNames)("accepts and preserves %s on upload", async (name) => {
     const request = vi.fn(async (_path: string, options?: RequestInit) =>
       Response.json({ results: options?.method === "POST" ? [{ id: "7", title: name }] : [] }),
     );
@@ -208,10 +219,11 @@ describe("Forge attachment transport", () => {
     const body = request.mock.calls[1][1]!.body as FormData;
     expect((body.get("file") as File).name).toBe(name);
   });
-  it.each(["orders.json", "orders.diagram.json.txt", "orders.livediagram.json.zip"])(
+  it.each(["a.txt", "a.json.exe", "orders.diagram.json.txt", "orders.livediagram.json.zip"])(
     "rejects other files before reading %s",
     async (name) => {
       const file = new File([JSON.stringify(textFieldsFixture)], name);
+      expect(isDiagramFilename(name)).toBe(false);
       const read = vi.spyOn(file, "text");
       const request = vi.fn();
       await expect(uploadDiagram(request, "42", file)).rejects.toThrow(t("viewerForge.invalidFilename"));
@@ -255,9 +267,9 @@ it("stages native and legacy files without a transport and validates their conte
     });
   }
   for (const text of ["{", "{}", '{"format":"diagrams/v99"}']) {
-    await expect(stageDiagram(new File([text], "bad.diagram.json"))).rejects.toThrow(t("viewerForge.invalidFile"));
+    await expect(stageDiagram(new File([text], "bad.json"))).rejects.toThrow(t("viewerForge.invalidFile"));
   }
-  const wrong = new File(["{}"], "bad.json");
+  const wrong = new File(["{}"], "bad.txt");
   const readWrong = vi.spyOn(wrong, "text");
   await expect(stageDiagram(wrong)).rejects.toThrow(t("viewerForge.invalidFilename"));
   expect(readWrong).not.toHaveBeenCalled();
@@ -270,11 +282,11 @@ it("stages native and legacy files without a transport and validates their conte
 it("resolves a same-name attachment at upload time and adds its version", async () => {
   const request = vi
     .fn()
-    .mockResolvedValueOnce(Response.json({ results: [{ id: "7", title: "orders.diagram.json" }] }))
-    .mockResolvedValueOnce(Response.json({ id: "att7", title: "orders.diagram.json" }));
+    .mockResolvedValueOnce(Response.json({ results: [{ id: "7", title: "orders.diagram2.json" }] }))
+    .mockResolvedValueOnce(Response.json({ id: "att7", title: "orders.diagram2.json" }));
   await expect(
-    uploadDiagram(request, "42", new File([JSON.stringify(textFieldsFixture)], "orders.diagram.json")),
-  ).resolves.toEqual({ id: "7", title: "orders.diagram.json" });
+    uploadDiagram(request, "42", new File([JSON.stringify(textFieldsFixture)], "orders.diagram2.json")),
+  ).resolves.toEqual({ id: "7", title: "orders.diagram2.json" });
   expect(request.mock.calls.map(([path]) => path)).toEqual([
     "/wiki/api/v2/pages/42/attachments?limit=100",
     "/wiki/rest/api/content/42/child/attachment/7/data",
