@@ -1,7 +1,7 @@
 {
   "ar": {
     "messages": 5130,
-    "fallback": 1851,
+    "fallback": 1849,
     "areas": {
       "admission": "121edeb22016",
       "ai": "ff5a7a5d025f",
@@ -79,7 +79,7 @@
       "trouble": "9f8dcfa8ac2a",
       "tutorials": "8961a4d67138",
       "view": "c4fc417ad54a",
-      "viewerForge": "4d3bcbf516ea",
+      "viewerForge": "d8e40bd2ff14",
       "waitChecks": "60157056f935",
       "workbench": "67ef6687c346",
       "workspaceInspector": "b4df2e71e8e6",
@@ -613,7 +613,7 @@
       "trouble": "8fd79596b605",
       "tutorials": "6ffdfbdeaad5",
       "view": "9a1eebb66b6e",
-      "viewerForge": "9f91d360961f",
+      "viewerForge": "988d0e3a596f",
       "waitChecks": "04abb63af9c0",
       "workbench": "1ce3b32df6bf",
       "workspaceInspector": "cccdd5b245b6",
